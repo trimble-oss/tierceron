@@ -234,7 +234,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 						for cursorField := range cursorFields {
 							secretFieldValue, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapCuratorPath(), cursorField)
 							if err != nil {
-								logger.Printf("Failed to retrieve wanted key: %s\n", cursorField)
+								logger.Printf("Failed to retrieve wanted key: %s error: %s\n", cursorField, err.Error())
 								continue
 							}
 							logger.Printf("Loading field: %s %d\n", cursorField, eUtils.RefLength(secretFieldValue))

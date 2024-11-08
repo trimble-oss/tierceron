@@ -391,6 +391,11 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 								if trustStorePassword, tspOk := projectSecrets["trustStorePassword"].(string); tspOk {
 									driverConfig.KeystorePassword = trustStorePassword
 								}
+							} else {
+								if driverConfig.CoreConfig.TokenCache != nil {
+									mod.EmptyCache()
+									driverConfig.CoreConfig.TokenCache.Clear()
+								}
 							}
 						}
 					}

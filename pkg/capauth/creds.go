@@ -8,6 +8,10 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/trcnet"
 )
 
+func LoopBackAddr() string {
+	return "127.0.0.1"
+}
+
 func LocalAddr(env string) (string, error) {
 	localIP, err := trcnet.LocalIp()
 	if err != nil {

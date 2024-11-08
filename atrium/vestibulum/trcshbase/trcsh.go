@@ -868,8 +868,8 @@ func roleBasedRunner(
 	switch control {
 	case "trcplgtool":
 		envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
-		tokenName = "config_token_pluginany"
 		if kernelopts.BuildOptions.IsKernel() {
+			tokenName = "config_token_pluginany"
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig, kernelPluginHandler)
 		} else {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
@@ -912,12 +912,11 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			fmt.Printf("trccertinit unsupported in production\n")
 			os.Exit(125) // Running functionality not supported in prod.
 		}
-		tokenName := fmt.Sprintf("vault_pub_token_%s", env)
+		tokenName := fmt.Sprintf("vault_pub_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
 		approleconfigPtr := new(string)
 		*approleconfigPtr = "configpub.yml"
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr = approleconfigPtr
-		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 		trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = true
 		if len(*gTrcshConfig.PubRolePtr) == 0 {
@@ -931,12 +930,11 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		trcinitbase.CommonMain(&pubEnv, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.WantCerts, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 		ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
 	case "trcpub":
-		tokenName := fmt.Sprintf("vault_pub_token_%s", env)
+		tokenName := fmt.Sprintf("vault_pub_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
 		approleconfigPtr := new(string)
 		*approleconfigPtr = "configpub.yml"
 		trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr = approleconfigPtr
-		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 		if len(*gTrcshConfig.PubRolePtr) == 0 {
 			fmt.Printf("Missing required pub auth components\n")
@@ -1203,7 +1201,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	if len(mergedEnvBasis) == 0 {
 		// If in context of trcsh, utilize CToken to auth...
 		if gTrcshConfig != nil {
-			mergedEnvBasis = gTrcshConfig.EnvContext
+			mergedEnvBasis = eUtils.GetEnvBasis(gTrcshConfig.EnvContext)
 		}
 	}
 

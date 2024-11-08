@@ -96,23 +96,34 @@ func initCertificates() {
 	MashupCertPool.AddCert(mashupClientCert)
 }
 
-func GetTransportCredentials(drone ...*bool) (credentials.TransportCredentials, error) {
+func GetTransportCredentials(insecureSkipVerify bool, drone ...*bool) (credentials.TransportCredentials, error) {
 	mashupKeyBytes, err := ReadServerCert("", drone...)
 	if err != nil {
 		return nil, err
 	}
 
-	return credentials.NewTLS(&tls.Config{
-		ServerName: "",
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{mashupKeyBytes},
-			},
-		},
-		InsecureSkipVerify: false}), nil
+	serverName := ""
+	return GetTransportCredentialsByCert(insecureSkipVerify, &serverName, &tls.Certificate{Certificate: [][]byte{mashupKeyBytes}})
 }
 
-func GetServerCredentials(logger *log.Logger) (credentials.TransportCredentials, error) {
+func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, cert *tls.Certificate) (credentials.TransportCredentials, error) {
+	if utils.RefLength(serverName) > 0 {
+		return credentials.NewTLS(&tls.Config{
+			ServerName: *serverName,
+			Certificates: []tls.Certificate{
+				*cert,
+			},
+			InsecureSkipVerify: insecureSkipVerify}), nil
+	} else {
+		return credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{
+				*cert,
+			},
+			InsecureSkipVerify: insecureSkipVerify}), nil
+	}
+}
+
+func GetServerCredentials(insecureSkipVerify bool, logger *log.Logger) (credentials.TransportCredentials, error) {
 	mashupCertBytes, err := os.ReadFile(ServCert)
 	if err != nil {
 		logger.Printf("Couldn't load cert: %v\n", err)
@@ -130,5 +141,5 @@ func GetServerCredentials(logger *log.Logger) (credentials.TransportCredentials,
 		logger.Printf("Couldn't load cert: %v\n", err)
 		return nil, err
 	}
-	return credentials.NewServerTLSFromCert(&cert), nil
+	return GetTransportCredentialsByCert(insecureSkipVerify, nil, &cert)
 }
