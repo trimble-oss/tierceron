@@ -103,7 +103,8 @@ func DownloadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, 
 
 	templateList, err := mod.List("templates/", config.Log)
 	if err != nil {
-		eUtils.LogErrorMessage(config, "Couldn't read into paths under templates/", true)
+		eUtils.LogErrorMessage(config, "Couldn't read into paths under templates/", false)
+		return nil, err
 	}
 	for _, templatePath := range templateList.Data {
 		for _, projectInterface := range templatePath.([]interface{}) {
