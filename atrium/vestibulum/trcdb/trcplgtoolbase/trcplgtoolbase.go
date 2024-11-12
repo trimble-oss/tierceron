@@ -287,7 +287,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if eUtils.RefLength(trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
-		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
