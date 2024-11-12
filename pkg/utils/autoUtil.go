@@ -62,7 +62,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	secretIDPtr *string, // Optional if token provided.
 	appRoleIDPtr *string, // Optional if token provided.
 	tokenNamePtr *string, // Required if approle and secret provided.
-	tokenProvidedPtr *string,
+	tokenProvidedPtr **string,
 	envPtr *string,
 	addrPtr *string,
 	envCtxPtr *string,
@@ -81,13 +81,14 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 		}
 	}
-	if tokenPtr == nil && RefLength(tokenProvidedPtr) > 0 {
-		tokenPtr = tokenProvidedPtr
+	if tokenPtr == nil && RefLength(*tokenProvidedPtr) > 0 {
+		tokenPtr = *tokenProvidedPtr
 		// Make thebig assumption here.
 		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 	}
 	if RefLength(tokenPtr) != 0 && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
 		// For token based auth, auto auth not
+		*tokenProvidedPtr = tokenPtr
 		return nil
 	}
 	if tokenPtr == nil {
@@ -408,7 +409,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.Env = "hivekernel"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
-		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
+		tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
 				mod.Env = "sugarcane"
@@ -416,13 +417,14 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				if sugarErr != nil {
 					return err
 				}
-				*tokenPtr = sugarToken
+				tokenPtr = sugarToken
 			} else {
 				return err
 			}
 		}
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		*tokenProvidedPtr = tokenPtr
 	}
 	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")
 	return nil
