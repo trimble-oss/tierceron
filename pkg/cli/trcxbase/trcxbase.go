@@ -298,7 +298,7 @@ func CommonMain(ctx config.ProcessContext,
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
 			appconfigrolePtr := new(string)
-			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 
 			if autoErr != nil {
 				fmt.Println("Auth failure: " + autoErr.Error())
@@ -375,7 +375,7 @@ skipDiff:
 				Insecure:      *insecurePtr,
 				Log:           logger,
 			},
-		}, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+		}, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 		if autoErr != nil {
 			fmt.Println("Missing auth components.")
 			eUtils.LogErrorMessage(driverConfigBase.CoreConfig, autoErr.Error(), true)
@@ -447,7 +447,7 @@ skipDiff:
 							Insecure:      *insecurePtr,
 							Log:           logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, &baseEnv, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, &baseEnv, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Auth failure: "+authErr.Error(), true)
 					}
@@ -471,7 +471,7 @@ skipDiff:
 								Insecure:            *insecurePtr,
 								Log:                 logger,
 							},
-						}, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+						}, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 						if authErr != nil {
 							// Retry once.
 
@@ -483,7 +483,7 @@ skipDiff:
 									Insecure:            *insecurePtr,
 									Log:                 logger,
 								},
-							}, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+							}, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 							if authErr != nil {
 								eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 							}
@@ -618,7 +618,7 @@ skipDiff:
 							Insecure:            *insecurePtr,
 							Log:                 logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenNamePtr, tokenPtr, &baseEnv, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, &baseEnv, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Auth failure: "+authErr.Error(), true)
 					}
@@ -750,7 +750,7 @@ skipDiff:
 							Insecure:            *insecurePtr,
 							Log:                 logger,
 						},
-					}, secretIDPtr, appRoleIDPtr, tokenNameEnvPtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+					}, secretIDPtr, appRoleIDPtr, tokenNameEnvPtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 					if authErr != nil {
 						// Retry once.
 						authErr := eUtils.AutoAuth(&config.DriverConfig{
@@ -761,7 +761,7 @@ skipDiff:
 								Insecure:            *insecurePtr,
 								Log:                 logger,
 							},
-						}, secretIDPtr, appRoleIDPtr, tokenNameEnvPtr, tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
+						}, secretIDPtr, appRoleIDPtr, tokenNameEnvPtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appconfigrolePtr, *pingPtr)
 						if authErr != nil {
 							eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 						}

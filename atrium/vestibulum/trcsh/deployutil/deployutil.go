@@ -73,7 +73,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 			approle := "config.yml"
 			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
@@ -136,7 +136,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	approle := "config.yml"
 	tokenPtr := new(string)
-	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return nil, autoErr
