@@ -173,8 +173,8 @@ var vaultBootState int = 0
 
 var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
-var environments []string = []string{"dev", "QA"}
-var environmentsProd []string = []string{"staging", "prod"}
+var environments []string = []string{"dev"}
+var environmentsProd []string = []string{"staging"}
 var environmentConfigs map[string]interface{} = map[string]interface{}{}
 
 var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)

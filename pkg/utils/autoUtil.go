@@ -408,7 +408,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.Env = "hivekernel"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
-		*tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
+		tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
 				mod.Env = "sugarcane"
@@ -416,7 +416,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				if sugarErr != nil {
 					return err
 				}
-				*tokenPtr = sugarToken
+				tokenPtr = sugarToken
 			} else {
 				return err
 			}

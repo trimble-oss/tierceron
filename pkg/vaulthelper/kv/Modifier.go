@@ -24,6 +24,10 @@ import (
 	"github.com/hashicorp/vault/api"
 )
 
+var (
+	EMPTY_STRING string = ""
+)
+
 // Set all paths that don't use environments to true
 var noEnvironments = map[string]bool{
 	"templates/": true,
@@ -529,27 +533,30 @@ retryVaultAccess:
 }
 
 // ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault
-func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, key string) (string, error) {
+func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, key string) (*string, error) {
 	//return value corresponding to the key
 	if valueMap[key] != nil {
 		if value, ok := valueMap[key].(string); ok {
-			return value, nil
+			return &value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
-			return stringer.GoString(), nil
+			mapval := stringer.GoString()
+			memprotectopts.MemProtect(nil, &mapval)
+			return &mapval, nil
 		} else if stringer, ok := valueMap[key].((json.Number)); ok {
-			return stringer.String(), nil
+			mapval := stringer.String()
+			return &mapval, nil
 		} else {
-			return "", fmt.Errorf("cannot convert value at %s to string", key)
+			return &EMPTY_STRING, fmt.Errorf("cannot convert value at %s to string", key)
 		}
 	}
-	return "", fmt.Errorf("key '%s' not found in '%s' with env '%s'", key, path, m.Env)
+	return &EMPTY_STRING, fmt.Errorf("key '%s' not found in '%s' with env '%s'", key, path, m.Env)
 }
 
 // ReadValue takes a path and a key and returns the corresponding value from the vault
-func (m *Modifier) ReadValue(path string, key string) (string, error) {
+func (m *Modifier) ReadValue(path string, key string) (*string, error) {
 	valueMap, err := m.ReadData(path)
 	if err != nil {
-		return "", err
+		return &EMPTY_STRING, err
 	}
 	return m.ReadMapValue(valueMap, path, key)
 }
