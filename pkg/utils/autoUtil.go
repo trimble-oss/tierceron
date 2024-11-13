@@ -144,10 +144,12 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	// If no token provided but context is provided, prefer the context over env.
-	if tokenPtr == nil && envCtxPtr != nil {
+	if tokenPtr == nil &&
+		envCtxPtr != nil &&
+		(envPtr == nil || len(*envPtr) == 0) {
 		envPtr = envCtxPtr
 	} else {
-		if envPtr == nil && c.EnvCtx != "" {
+		if (envPtr == nil || len(*envPtr) == 0) && c.EnvCtx != "" {
 			envPtr = &c.EnvCtx
 		}
 	}
