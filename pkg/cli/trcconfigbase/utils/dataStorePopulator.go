@@ -356,7 +356,12 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 								if okResultValue {
 									return resultValue, nil
 								} else {
-									return "", errors.New("value not found in store")
+									resultValuePtr, okResultValuePtr := configValue.(*string)
+									if okResultValuePtr {
+										return *resultValuePtr, nil
+									} else {
+										return "", errors.New("value not found in store")
+									}
 								}
 							}
 						}
