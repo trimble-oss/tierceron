@@ -163,8 +163,8 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 									} else if pathBlocks[0] == "values" { // Real value, fetch and populate
 										if key, ok := val[1].(string); ok {
 											value, err := mod.ReadValue(fullPath, key)
-											if err == nil && !eUtils.RefEquals(value, "") {
-												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: *value, Source: "value"})
+											if err == nil && !eUtils.RefEquals(&value, "") {
+												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "value"})
 											}
 										} else {
 											continue
