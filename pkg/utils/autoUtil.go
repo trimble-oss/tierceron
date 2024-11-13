@@ -91,9 +91,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		*tokenProvidedPtr = tokenPtr
 		return nil
 	}
-	if tokenPtr == nil {
-		tokenPtr = new(string)
-	}
 	var err error
 	// Get current user's home directory
 	userHome, err := userHome(driverConfig.CoreConfig.Log)
@@ -409,7 +406,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.Env = "hivekernel"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
-		tokenPtr, err = mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
+		token, err := mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
 				mod.Env = "sugarcane"
@@ -417,11 +414,12 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				if sugarErr != nil {
 					return err
 				}
-				tokenPtr = sugarToken
+				token = sugarToken
 			} else {
 				return err
 			}
 		}
+		tokenPtr = &token
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		*tokenProvidedPtr = tokenPtr
