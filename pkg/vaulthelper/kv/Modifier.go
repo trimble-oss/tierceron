@@ -539,7 +539,9 @@ func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, ke
 		if value, ok := valueMap[key].(string); ok {
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
-			return stringer.GoString(), nil
+			mapval := stringer.GoString()
+			memprotectopts.MemProtect(nil, &mapval)
+			return mapval, nil
 		} else if stringer, ok := valueMap[key].((json.Number)); ok {
 			return stringer.String(), nil
 		} else {
