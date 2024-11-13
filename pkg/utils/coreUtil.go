@@ -46,6 +46,18 @@ func RefString(src *string) *string {
 	return src
 }
 
+func IToString(src interface{}) string {
+	if src == nil {
+		return ""
+	}
+	if strPtr, ok := src.(*string); ok {
+		return *strPtr
+	} else if str, ok := src.(string); ok {
+		return str
+	}
+	return ""
+}
+
 func RefMap(m map[string]interface{}, key string) *string {
 	v, ok := m[key]
 	if !ok {
