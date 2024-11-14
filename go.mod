@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.23.2
+go 1.23.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -94,7 +94,7 @@ require (
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28 // indirect
+	google.golang.org/genproto v0.0.0-20241113202542-65e8d215514f // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 )
