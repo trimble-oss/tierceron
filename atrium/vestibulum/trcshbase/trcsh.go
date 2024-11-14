@@ -927,7 +927,15 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		pubRoleSlice := strings.Split(*gTrcshConfig.PubRolePtr, ":")
 		pubEnv := env
 
-		trcinitbase.CommonMain(&pubEnv, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, &trcshDriverConfig.DriverConfig.CoreConfig.WantCerts, nil, deployArgLines, trcshDriverConfig.DriverConfig)
+		trcinitbase.CommonMain(&pubEnv,
+			trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr,
+			&gTrcshConfig.EnvContext, &pubRoleSlice[1],
+			&pubRoleSlice[0],
+			&tokenName,
+			&trcshDriverConfig.DriverConfig.CoreConfig.WantCerts,
+			nil,
+			deployArgLines,
+			trcshDriverConfig.DriverConfig)
 		ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
 	case "trcpub":
 		tokenName := fmt.Sprintf("vault_pub_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
