@@ -147,11 +147,16 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 		var tempPaths []string
 		for _, templatePath := range templatePaths {
 			var err error
-			tokenName := fmt.Sprintf("config_token_%s_unrestricted", *&driverConfig.CoreConfig.EnvBasis)
+			tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+			if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
+				driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
+				tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+			}
 
 			mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
 			if err != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+				continue
 			}
 
 			mod.Env = driverConfig.CoreConfig.Env
@@ -738,8 +743,11 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 		}
 	}
 
-	tokenName := fmt.Sprintf("config_token_%s_unrestricted", *&driverConfig.CoreConfig.EnvBasis)
-
+	tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+	if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
+		driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
+		tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+	}
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, true) // Connect to vault
 	if mod != nil {
 		defer mod.Release()
@@ -857,7 +865,7 @@ func WriteData(driverConfig *config.DriverConfig, path string, data map[string]i
 			return mod
 		}
 	}
-	tokenName := fmt.Sprintf("config_token_%s_unrestricted", *&driverConfig.CoreConfig.EnvBasis)
+	tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
 	warn, err := mod.Write(path, data, driverConfig.CoreConfig.Log)
 	if err != nil {
 		mod, err = helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, true) // Connect to vault

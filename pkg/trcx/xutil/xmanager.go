@@ -761,7 +761,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
 
-			tokenName := fmt.Sprintf("config_token_%s", *&driverConfig.CoreConfig.EnvBasis)
+			tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 			certMod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, true)
 
 			if err != nil {
