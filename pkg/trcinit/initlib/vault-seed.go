@@ -866,6 +866,10 @@ func WriteData(driverConfig *config.DriverConfig, path string, data map[string]i
 		}
 	}
 	tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+	if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
+		driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
+		tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+	}
 	warn, err := mod.Write(path, data, driverConfig.CoreConfig.Log)
 	if err != nil {
 		mod, err = helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, true) // Connect to vault

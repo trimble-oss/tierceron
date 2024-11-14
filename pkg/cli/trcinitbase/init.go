@@ -871,14 +871,15 @@ func CommonMain(envPtr *string,
 		dConfig := &config.DriverConfig{
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 			CoreConfig: &core.CoreConfig{
-				DynamicPathFilter: *dynamicPathPtr,
-				Insecure:          *insecurePtr,
-				TokenCache:        driverConfigBase.CoreConfig.TokenCache,
-				VaultAddressPtr:   addrPtr,
-				Env:               *envPtr,
-				EnvBasis:          eUtils.GetEnvBasis(*envPtr),
-				WantCerts:         *uploadCertPtr, // TODO: this was false...
-				Log:               driverConfigBase.CoreConfig.Log,
+				DynamicPathFilter:   *dynamicPathPtr,
+				Insecure:            *insecurePtr,
+				CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
+				TokenCache:          driverConfigBase.CoreConfig.TokenCache,
+				VaultAddressPtr:     addrPtr,
+				Env:                 *envPtr,
+				EnvBasis:            eUtils.GetEnvBasis(*envPtr),
+				WantCerts:           *uploadCertPtr, // TODO: this was false...
+				Log:                 driverConfigBase.CoreConfig.Log,
 			},
 			SectionKey:      sectionKey,
 			SectionName:     subSectionName,
