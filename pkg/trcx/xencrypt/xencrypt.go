@@ -57,7 +57,7 @@ func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 		}
 		encryptSecret = input
 	} else {
-		tokenName := fmt.Sprintf("config_token_%s", *&driverConfig.CoreConfig.EnvBasis)
+		tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 
 		mod, modErr := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, true)
 		if modErr != nil {
