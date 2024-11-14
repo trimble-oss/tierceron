@@ -148,7 +148,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		Cyan = ""
 	}*/
 	//Should check if driverConfig is nil here...
-	tokenName := fmt.Sprintf("config_token_%s", *&driverConfig.CoreConfig.EnvBasis)
+	tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 
 	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
 	if err != nil {
@@ -328,7 +328,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			tokenName := fmt.Sprintf("config_token_%s", *&driverConfig.CoreConfig.EnvBasis)
+			tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 
 			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
 			mod.Env = driverConfig.CoreConfig.Env
