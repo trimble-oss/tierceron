@@ -220,3 +220,30 @@ func GetMachineID() string {
 	}
 	return netIP
 }
+
+func GetPluginRestrictedMappings() map[string][][]string {
+	return map[string][][]string{
+		"trcsh-curator": {
+			[]string{"-templateFilter=TrcVault/TrcshCurator", "-restricted=TrcshCurator", "-serviceFilter=config", "-indexFilter=config"},
+			[]string{"-templateFilter=TrcVault/PluginTool", "-restricted=PluginTool", "-serviceFilter=config", "-indexFilter=config"},
+		},
+		"trcshqaw": {
+			[]string{"-templateFilter=APIMConfig/APIMConfig", "-restricted=APIMConfig", "-serviceFilter=config", "-indexFilter=config"},
+		},
+		"trcshqk": {
+			[]string{"-templateFilter=APIMConfig/APIMConfig", "-restricted=APIMConfig", "-serviceFilter=config", "-indexFilter=config"},
+		},
+		"trcsh-cursor-aw": {
+			[]string{"-templateFilter=TrcVault/TrcshCursorAW", "-restricted=TrcshCursorAW", "-serviceFilter=config", "-indexFilter=config"},
+		},
+		"trcsh-cursor-k": {
+			[]string{"-templateFilter=TrcVault/TrcshCursorK", "-restricted=TrcshCursorK", "-serviceFilter=config", "-indexFilter=config"},
+		},
+		"trc-vault-plugin": {
+			[]string{"-templateFilter=FlumeDatabase/TierceronFlow", "-indexed=FlumeDatabase", "-serviceFilter=TierceronFlow", "-indexFilter=flowName"},
+			[]string{"-templateFilter=TrcVault/Database", "-indexed=TrcVault", "-serviceFilter=Database", "-indexFilter=regionId"},
+			[]string{"-templateFilter=TrcVault/Identity", "-restricted=Identity", "-serviceFilter=setup", "-indexFilter=setup"},
+			[]string{"-templateFilter=TrcVault/VaultDatabase", "-restricted=VaultDatabase", "-serviceFilter=config", "-indexFilter=config"},
+		},
+	}
+}
