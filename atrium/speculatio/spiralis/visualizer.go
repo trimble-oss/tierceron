@@ -44,7 +44,7 @@ func main() {
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	tiercerontls.InitRoot()
 
-	worldLog, err := os.OpenFile("ttdivisualizer.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	worldLog, err := os.OpenFile("ttdivisualizer.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -66,6 +66,9 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
 	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
+	pluginInfoPtr := flagset.Bool("pluginInfo", false, "Lists all plugins")
+	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
+
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
@@ -74,8 +77,8 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		envPtr = envDefaultPtr
 	}
 
-	if len(*filterTemplatePtr) == 0 && !*projectInfoPtr && *templatePathsPtr == "" {
-		fmt.Printf("Must specify either -projectInfo or -templateFilter flag \n")
+	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*projectInfoPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
+		fmt.Printf("Must specify either -projectInfo, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
 	var driverConfigBase *config.DriverConfig
@@ -142,10 +145,42 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	}
 	mod.Env = *envPtr
 
+	if len(*pluginNamePtr) > 0 {
+		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", *pluginNamePtr))
+		if err != nil {
+			fmt.Printf("Failure read plugin: %s\n", *pluginNamePtr)
+			driverConfigBase.CoreConfig.Log.Printf("Failure read plugin: %s\n", *pluginNamePtr)
+			return err
+		}
+		if eUtils.RefLength(filterTemplatePtr) == 0 {
+			if projectFilter, ok := certifyMap["trcprojectservice"].(string); ok {
+				filterTemplatePtr = &projectFilter
+			} else {
+				fmt.Printf("No additional secrets for plugin: %s\n", *pluginNamePtr)
+				driverConfigBase.CoreConfig.Log.Printf("No additional secrets for plugin: %s\n", *pluginNamePtr)
+				return err
+			}
+		}
+	}
+
 	if *templatePathsPtr != "" {
 		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
 		il.DownloadTemplates(driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
+	} else if *pluginInfoPtr {
+		pluginList, err := mod.List("super-secrets/Index/TrcVault/trcplugin", driverConfigBase.CoreConfig.Log)
+		if err != nil {
+			fmt.Println("Failure read plugins")
+			driverConfigBase.CoreConfig.Log.Println("Failure read plugins")
+			return err
+		}
+		for _, pluginPath := range pluginList.Data {
+			for _, pluginInterface := range pluginPath.([]interface{}) {
+				plugin := pluginInterface.(string)
+				fmt.Println(strings.TrimRight(plugin, "/"))
+			}
+		}
+
 	} else if *projectInfoPtr {
 		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
