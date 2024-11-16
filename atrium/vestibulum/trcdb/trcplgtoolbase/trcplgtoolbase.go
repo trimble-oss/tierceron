@@ -742,7 +742,7 @@ func CommonMain(envPtr *string,
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0666)
+			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0600)
 			if err != nil {
 				return err
 			}

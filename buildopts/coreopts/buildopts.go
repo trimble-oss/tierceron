@@ -7,28 +7,29 @@ import (
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	GetFolderPrefix       func(custom []string) string
-	GetSupportedTemplates func(custom []string) []string
-	GetVaultInstallRoot   func() string
-	IsLocalEndpoint       func(addr string) bool
-	GetSupportedDomains   func(bool) []string
-	GetSupportedEndpoints func(bool) [][]string
-	GetLocalHost          func() string
-	GetRegion             func(hostName string) string
-	GetVaultHost          func() string
-	GetVaultHostPort      func() string
-	GetUserNameField      func() string
-	GetUserCodeField      func() string
-	ActiveSessions        func(db *sql.DB) ([]map[string]interface{}, error)
-	GetSyncedTables       func() []string
-	FindIndexForService   func(project string, service string) (string, []string, string, error)
-	DecryptSecretConfig   func(tenantConfiguration map[string]interface{}, config map[string]interface{}) string
-	GetDFSPathName        func() (string, string)
-	GetDatabaseName       func() string
-	CompareLastModified   func(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool
-	PreviousStateCheck    func(currentState int) int
-	GetMachineID          func() string
-	InitPluginConfig      func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+	GetFolderPrefix             func(custom []string) string
+	GetSupportedTemplates       func(custom []string) []string
+	GetVaultInstallRoot         func() string
+	IsLocalEndpoint             func(addr string) bool
+	GetSupportedDomains         func(bool) []string
+	GetSupportedEndpoints       func(bool) [][]string
+	GetLocalHost                func() string
+	GetRegion                   func(hostName string) string
+	GetVaultHost                func() string
+	GetVaultHostPort            func() string
+	GetUserNameField            func() string
+	GetUserCodeField            func() string
+	ActiveSessions              func(db *sql.DB) ([]map[string]interface{}, error)
+	GetSyncedTables             func() []string
+	FindIndexForService         func(project string, service string) (string, []string, string, error)
+	DecryptSecretConfig         func(tenantConfiguration map[string]interface{}, config map[string]interface{}) string
+	GetDFSPathName              func() (string, string)
+	GetDatabaseName             func() string
+	CompareLastModified         func(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool
+	PreviousStateCheck          func(currentState int) int
+	GetMachineID                func() string
+	InitPluginConfig            func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+	GetPluginRestrictedMappings func() map[string][][]string
 }
 
 func LoadOptions() Option {
@@ -55,6 +56,7 @@ func LoadOptions() Option {
 		optionsBuilder.PreviousStateCheck = PreviousStateCheck
 		optionsBuilder.GetMachineID = GetMachineID
 		optionsBuilder.InitPluginConfig = InitPluginConfig
+		optionsBuilder.GetPluginRestrictedMappings = GetPluginRestrictedMappings
 	}
 }
 
