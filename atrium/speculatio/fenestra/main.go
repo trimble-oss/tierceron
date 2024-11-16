@@ -41,7 +41,7 @@ func main() {
 	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
 
-	helloLog, err := os.OpenFile("fenestra.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	helloLog, err := os.OpenFile("fenestra.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalf(err.Error(), err)
 	}
