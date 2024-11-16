@@ -242,8 +242,9 @@ func GetPluginRestrictedMappings() map[string][][]string {
 		"trc-vault-plugin": {
 			[]string{"-templateFilter=FlumeDatabase/TierceronFlow", "-indexed=FlumeDatabase", "-serviceFilter=TierceronFlow", "-indexFilter=flowName"},
 			[]string{"-templateFilter=TrcVault/Database", "-indexed=TrcVault", "-serviceFilter=Database", "-indexFilter=regionId"},
-			[]string{"-templateFilter=TrcVault/Identity", "-restricted=Identity", "-serviceFilter=setup", "-indexFilter=setup"},
+			[]string{"-templateFilter=TrcVault/Identity", "-restricted=Identity", "-serviceFilter=config", "-indexFilter=config"},
 			[]string{"-templateFilter=TrcVault/VaultDatabase", "-restricted=VaultDatabase", "-serviceFilter=config", "-indexFilter=config"},
+			[]string{"-templateFilter=TrcVault/SpiralDatabase", "-restricted=SpiralDatabase", "-serviceFilter=config", "-indexFilter=config"},
 		},
 	}
 }
