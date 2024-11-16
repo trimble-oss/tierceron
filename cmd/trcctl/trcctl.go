@@ -49,6 +49,9 @@ func main() {
 	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 	tokenPtr := flagset.String("token", "", "Vault access token")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	var envContext string
 
 	var ctl string
@@ -97,7 +100,6 @@ func main() {
 			return
 		}
 
-		var addrPtr string
 		switch ctl {
 		case "pub":
 			tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
@@ -108,7 +110,7 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcpubbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
+			trcpubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
 		case "sub":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -118,7 +120,7 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
+			trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
 		case "init":
 			//tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -127,7 +129,10 @@ func main() {
 					ExitOnFailure: true,
 				},
 			}
-			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, &driverConfig)
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+			flagset.String("addr", "", "API endpoint for the vault")
+			trcinitbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
 		case "config":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -137,7 +142,7 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcconfigbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, nil, nil, os.Args, &driverConfig)
+			trcconfigbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, nil, nil, os.Args, &driverConfig)
 		case "subx":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -164,20 +169,20 @@ func main() {
 				for _, restrictedMapping := range pluginRestrictedMappings {
 					restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
+					trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
 					restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
 					if eUtils.RefLength(tokenPtr) > 0 {
 						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-tokenName=%s", tokenName))
 						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-token=%s", *tokenPtr))
 					}
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, restrictedMappingX)
+					trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, restrictedMappingX)
 				}
 			}
 			os.Chdir("..")
 		case "x":
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, os.Args)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, os.Args)
 		}
 	}
 }
