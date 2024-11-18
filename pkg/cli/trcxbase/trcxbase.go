@@ -96,8 +96,6 @@ func CommonMain(ctx config.ProcessContext,
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
 
-	eUtils.CheckInitFlags(flagset)
-
 	// Checks for proper flag input
 	args := argLines[1:]
 	for i := 0; i < len(args); i++ {
@@ -108,7 +106,8 @@ func CommonMain(ctx config.ProcessContext,
 		}
 	}
 
-	flagset.Parse(argLines[1:])
+	eUtils.CheckInitFlags(flagset, argLines[1:])
+
 	configCtx := &config.ConfigContext{
 		ResultMap:            make(map[string]*string),
 		EnvSlice:             make([]string, 0),

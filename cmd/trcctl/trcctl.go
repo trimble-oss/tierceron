@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -26,9 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
-const configDir = "/.tierceron/config.yml"
-const envContextPrefix = "envContext: "
-
 // This is a controller program that can act as any command line utility.
 // The swiss army knife of tierceron if you will.
 func main() {
@@ -49,6 +45,9 @@ func main() {
 	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 	tokenPtr := flagset.String("token", "", "Vault access token")
+	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	var envContext string
 
 	var ctl string
@@ -75,7 +74,7 @@ func main() {
 		if strings.Contains(ctl, "context") {
 			contextSplit := strings.Split(ctl, "=")
 			if len(contextSplit) == 1 {
-				*envPtr, envContext, err = GetSetEnvContext(*envPtr, envContext)
+				*envPtr, envContext, err = eUtils.GetSetEnvContext(*envPtr, envContext)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -83,7 +82,7 @@ func main() {
 				fmt.Println("Current context is set to " + envContext)
 			} else if len(contextSplit) == 2 {
 				envContext = contextSplit[1]
-				*envPtr, envContext, err = GetSetEnvContext(*envPtr, envContext)
+				*envPtr, envContext, err = eUtils.GetSetEnvContext(*envPtr, envContext)
 				if err != nil {
 					fmt.Println(err.Error())
 					return
@@ -91,13 +90,12 @@ func main() {
 			}
 		}
 
-		*envPtr, envContext, err = GetSetEnvContext(*envPtr, envContext)
+		*envPtr, envContext, err = eUtils.GetSetEnvContext(*envPtr, envContext)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
 
-		var addrPtr string
 		switch ctl {
 		case "pub":
 			tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
@@ -108,7 +106,7 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcpubbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
+			trcpubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
 		case "sub":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -118,7 +116,7 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
+			trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
 		case "init":
 			//tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -127,7 +125,40 @@ func main() {
 					ExitOnFailure: true,
 				},
 			}
-			trcinitbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, nil, nil, flagset, os.Args, &driverConfig)
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+			flagset.String("addr", "", "API endpoint for the vault")
+			trcinitbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
+		case "plugininit":
+			//			tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
+			driverConfig := config.DriverConfig{
+				CoreConfig: &core.CoreConfig{
+					TokenCache:    cache.NewTokenCacheEmpty(),
+					ExitOnFailure: true,
+				},
+			}
+			os.Chdir(*pluginNamePtr)
+			retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
+
+			if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
+				for _, restrictedMapping := range pluginRestrictedMappings {
+					restrictedMappingInit := []string{""}
+					for _, restrictedMapEntry := range restrictedMapping {
+						if strings.HasPrefix(restrictedMapEntry, "-restricted") {
+							restrictedMappingInit = append(restrictedMappingInit, restrictedMapEntry)
+						}
+					}
+					if eUtils.RefLength(tokenPtr) > 0 {
+						//						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-tokenName=%s", tokenName))
+						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-token=%s", *tokenPtr))
+					}
+					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+					trcinitbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, nil, uploadCertPtr, flagset, restrictedMappingInit, &driverConfig)
+				}
+			}
+
+			os.Chdir("..")
+
 		case "config":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -137,8 +168,8 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcconfigbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, nil, nil, os.Args, &driverConfig)
-		case "subx":
+			trcconfigbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, nil, nil, os.Args, &driverConfig)
+		case "pluginx":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
 				CoreConfig: &core.CoreConfig{
@@ -153,9 +184,7 @@ func main() {
 
 			os.Mkdir(*pluginNamePtr, 0700)
 			os.Chdir(*pluginNamePtr)
-			fmt.Printf("%s\n", *pluginNamePtr)
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			fmt.Printf("%v\n", os.Args)
 			retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
 
 			if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
@@ -164,74 +193,20 @@ func main() {
 				for _, restrictedMapping := range pluginRestrictedMappings {
 					restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					trcsubbase.CommonMain(envPtr, &addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
+					trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
 					restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
 					if eUtils.RefLength(tokenPtr) > 0 {
 						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-tokenName=%s", tokenName))
 						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-token=%s", *tokenPtr))
 					}
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, restrictedMappingX)
+					trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, restrictedMappingX)
 				}
 			}
 			os.Chdir("..")
 		case "x":
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, &addrPtr, &envContext, nil, flagset, os.Args)
+			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, os.Args)
 		}
 	}
-}
-
-func GetSetEnvContext(env string, envContext string) (string, string, error) {
-	dirname, err := os.UserHomeDir()
-	if err != nil {
-		return "", "", err
-	}
-
-	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
-	if env == "" {
-		file, err := os.ReadFile(dirname + configDir)
-		if err != nil {
-			fmt.Printf("Could not read the context file due to this %s error \n", err)
-			return "", "", err
-		}
-		fileContent := string(file)
-		if fileContent == "" {
-			return "", "", errors.New("could not read the context file")
-		}
-		if !strings.Contains(fileContent, envContextPrefix) && envContext != "" {
-			var output string
-			if !strings.HasSuffix(fileContent, "\n") {
-				output = fileContent + "\n" + envContextPrefix + envContext + "\n"
-			} else {
-				output = fileContent + envContextPrefix + envContext + "\n"
-			}
-
-			if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
-				return "", "", err
-			}
-			fmt.Println("Context flag has been written out.")
-			env = envContext
-		} else {
-			currentEnvContext := "dev"
-			if strings.Index(fileContent, envContextPrefix) > 0 {
-				currentEnvContext = strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
-			}
-			if envContext != "" {
-				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
-					return "", "", err
-				}
-				fmt.Println("Context flag has been written out.")
-				env = envContext
-			} else if env == "" {
-				env = currentEnvContext
-				envContext = currentEnvContext
-			}
-		}
-	} else {
-		envContext = env
-		fmt.Println("Context flag will be ignored as env is defined.")
-	}
-	return env, envContext, nil
 }

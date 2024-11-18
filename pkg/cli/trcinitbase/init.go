@@ -123,8 +123,7 @@ func CommonMain(envPtr *string,
 				os.Exit(1)
 			}
 		}
-		eUtils.CheckInitFlags(flagset)
-		flagset.Parse(argLines[1:])
+		eUtils.CheckInitFlags(flagset, argLines[1:])
 
 		// Prints usage if no flags are specified
 		if flagset.NFlag() == 0 {
