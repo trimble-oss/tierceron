@@ -47,6 +47,7 @@ func main() {
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
 	flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
+	flagset.Bool("pluginInfo", false, "Lists all plugins")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	var envContext string
 
@@ -158,7 +159,6 @@ func main() {
 			}
 
 			os.Chdir("..")
-
 		case "config":
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			driverConfig := config.DriverConfig{
@@ -184,6 +184,7 @@ func main() {
 
 			os.Mkdir(*pluginNamePtr, 0700)
 			os.Chdir(*pluginNamePtr)
+			fmt.Printf("%s\n", *pluginNamePtr)
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 			retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
 
@@ -193,6 +194,7 @@ func main() {
 				for _, restrictedMapping := range pluginRestrictedMappings {
 					restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+					flagset.String("env", "dev", "Environment to configure")
 					trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
 					restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
 					if eUtils.RefLength(tokenPtr) > 0 {
@@ -200,8 +202,11 @@ func main() {
 						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-token=%s", *tokenPtr))
 					}
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+					flagset.String("env", "dev", "Environment to configure")
 					trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, restrictedMappingX)
 				}
+			} else {
+				fmt.Printf("Plugin not registered with trcctl.\n")
 			}
 			os.Chdir("..")
 		case "x":
