@@ -117,6 +117,7 @@ func main() {
 				},
 			}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("addr", "", "API endpoint for the vault")
 			trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
 		case "init":
 			//tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
