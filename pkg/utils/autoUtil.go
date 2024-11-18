@@ -57,6 +57,68 @@ func userHome(logger *log.Logger) (string, error) {
 	return userHome, err
 }
 
+const configDir = "/.tierceron/config.yml"
+const envContextPrefix = "envContext: "
+
+func GetSetEnvContext(env string, envContext string) (string, string, error) {
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		return "", "", err
+	}
+
+	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
+	if env == "" {
+		if _, errNotExist := os.Stat(dirname + configDir); errNotExist == nil {
+			file, err := os.ReadFile(dirname + configDir)
+			if err != nil {
+				fmt.Printf("Could not read the context file due to this %s error \n", err)
+				return "", "", err
+			}
+			fileContent := string(file)
+			if fileContent == "" {
+				return "", "", errors.New("could not read the context file")
+			}
+			if !strings.Contains(fileContent, envContextPrefix) && envContext != "" {
+				var output string
+				if !strings.HasSuffix(fileContent, "\n") {
+					output = fileContent + "\n" + envContextPrefix + envContext + "\n"
+				} else {
+					output = fileContent + envContextPrefix + envContext + "\n"
+				}
+
+				if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+					return "", "", err
+				}
+				fmt.Println("Context flag has been written out.")
+				env = envContext
+			} else {
+				currentEnvContext := "dev"
+				if strings.Index(fileContent, envContextPrefix) > 0 {
+					currentEnvContext = strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
+				}
+				if envContext != "" {
+					output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
+					if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+						return "", "", err
+					}
+					fmt.Println("Context flag has been written out.")
+					env = envContext
+				} else if env == "" {
+					env = currentEnvContext
+					envContext = currentEnvContext
+				}
+			}
+		} else {
+			env = "dev"
+			envContext = "dev"
+		}
+	} else {
+		envContext = env
+		fmt.Println("Context flag will be ignored as env is defined.")
+	}
+	return env, envContext, nil
+}
+
 // AutoAuth attempts to authenticate a user.
 func AutoAuth(driverConfig *config.DriverConfig,
 	secretIDPtr *string, // Optional if token provided.
