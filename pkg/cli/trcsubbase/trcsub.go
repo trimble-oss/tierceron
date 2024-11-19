@@ -60,7 +60,6 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
-		flagset.String("addr", "", "API endpoint for the vault")
 	}
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
