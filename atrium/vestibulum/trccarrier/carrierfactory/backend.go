@@ -17,8 +17,11 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	kv "github.com/hashicorp/vault-plugin-secrets-kv"
 
@@ -267,6 +270,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 		tokenMap["kubeconfigptr"] = &tokenConfig.Kubeconfig
 		tokenMap["plugin"] = tokenConfig.Plugin
 	}
+	var verr error = nil
 
 	// Update and lock each field that is provided...
 	if reqData != nil {
@@ -286,14 +290,82 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 				}
 			}
 		}
+		logger.Println("parseCarrierEnvRecord token field retrieval complete")
+		vaddrCheck := ""
+		if v, vOk := tokenMap["vaddress"].(string); vOk {
+			vaddrCheck = v
+		}
+		verr = pluginutil.ValidateVaddr(vaddrCheck, logger)
+		if verr == nil {
+			caddrCheck := ""
+			if c, cvOk := tokenMap["caddress"].(string); cvOk {
+				caddrCheck = c
+			}
+			verr = pluginutil.ValidateVaddr(caddrCheck, logger)
+			if verr == nil {
+				envPtr := new(string)
+
+				if prod.IsProd() {
+					*envPtr = "staging"
+				} else {
+					*envPtr = "dev"
+				}
+				for _, tokenName := range tokenNameSlice {
+					var roleCheckStr *string
+					if r, rvOk := tokenMap[fmt.Sprintf("%sptr", tokenName)].(*string); rvOk {
+						roleCheckStr = r
+					} else {
+						return tokenMap, fmt.Errorf("missing field: %s", tokenName)
+					}
+
+					switch tokenName {
+					case "pubrole":
+						tokenName := fmt.Sprintf("vault_pub_token_%s", *envPtr)
+						approleconfigPtr := new(string)
+						*approleconfigPtr = "configpub.yml"
+
+						token := new(string)
+						pubRoleSlice := strings.Split(*roleCheckStr, ":")
+						verr = eUtils.AutoAuth(&config.DriverConfig{
+							CoreConfig: &core.CoreConfig{
+								ExitOnFailure:       true,
+								CurrentTokenNamePtr: &tokenName,
+								TokenCache:          cache.NewTokenCacheEmpty(),
+								Insecure:            false,
+								Log:                 logger,
+							},
+						}, &pubRoleSlice[1], &pubRoleSlice[0], &tokenName, &token, envPtr, &caddrCheck, nil, approleconfigPtr, false)
+						if verr != nil {
+							return nil, fmt.Errorf("invalid field: %s", tokenName)
+						}
+
+					case "configrole":
+						tokenName := fmt.Sprintf("config_token_%s", *envPtr)
+						approleconfigPtr := new(string)
+						*approleconfigPtr = "config.yml"
+
+						token := new(string)
+						configRoleSlice := strings.Split(*roleCheckStr, ":")
+						verr = eUtils.AutoAuth(&config.DriverConfig{
+							CoreConfig: &core.CoreConfig{
+								ExitOnFailure:       true,
+								CurrentTokenNamePtr: &tokenName,
+								TokenCache:          cache.NewTokenCacheEmpty(),
+								Insecure:            false,
+								Log:                 logger,
+							},
+						}, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &token, envPtr, &caddrCheck, nil, approleconfigPtr, false)
+						if verr != nil {
+							return nil, fmt.Errorf("field validation error: %s", tokenName)
+						}
+					}
+				}
+			}
+		}
 	}
 	logger.Println("parseCarrierEnvRecord complete")
-	vaddrCheck := ""
-	if v, vOk := tokenMap["vaddress"].(string); vOk {
-		vaddrCheck = v
-	}
 
-	return tokenMap, pluginutil.ValidateVaddr(vaddrCheck, logger)
+	return tokenMap, verr
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
