@@ -30,3 +30,18 @@ trcshtalksdk: */*.proto
 plugintrcshtalk:
 	go build -buildmode=plugin -trimpath -o="./echo.so" -tags "tc azrcr memonly kernel" echo.go
 
+tconfig:
+	trcconfig -certs -certDestPath=MashupKey:tls/mashup.key,MashupCert:tls/mashup.crt
+tcconfig:
+	 trcconfig -servicesWanted=Hive/PluginEcho
+tback:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -buildmode=plugin -o="./echo.so" -tags "tc azrcr memonly kernel" echo.go
+
+tdeploy:
+	gcloud app deploy
+
+tdestroy:
+	gcloud app versions delete INSTANCE_ID --service=default
+tlogs:
+	gcloud app logs tail -s default
+

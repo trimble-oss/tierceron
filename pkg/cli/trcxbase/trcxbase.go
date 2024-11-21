@@ -60,7 +60,7 @@ func CommonMain(ctx config.ProcessContext,
 		flagset.String("env", "dev", "Environment to configure")
 	}
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	if addrPtrIn != nil && *addrPtrIn != "" {
+	if eUtils.RefLength(addrPtrIn) > 0 {
 		addrPtr = addrPtrIn
 	}
 

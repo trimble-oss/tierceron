@@ -101,6 +101,18 @@ var cursorFields map[string]cursoropts.CursorFieldAttributes
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
 var curatorPluginConfig map[string]interface{}
 
+var kvRead framework.OperationFunc
+
+var readFunc func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) = func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	logger.Println("Read complete.")
+
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"message": "Nice try.",
+		},
+	}, nil
+}
+
 var createUpdateFunc func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) = func(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	pluginName := cursoropts.BuildOptions.GetPluginName(true)
 	logger.Printf("%s CreateUpdate\n", pluginName)
@@ -192,6 +204,8 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 			bkv, err := kv.Factory(ctx, config)
 			KvInitialize = bkv.(*kv.PassthroughBackend).InitializeFunc
 
+			kvRead = bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation]
+			bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation] = readFunc
 			bkv.(*kv.PassthroughBackend).InitializeFunc = func(ctx context.Context, req *logical.InitializationRequest) error {
 				logger.Println("TrcCursorInitialize init begun.")
 				if memonly.IsMemonly() {
