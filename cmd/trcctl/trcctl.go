@@ -141,6 +141,15 @@ func main() {
 				},
 			}
 			os.Chdir(*pluginNamePtr)
+			tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
+			pubMappingInit := []string{""}
+
+			if eUtils.RefLength(tokenPtr) > 0 {
+				pubMappingInit = append(pubMappingInit, fmt.Sprintf("-token=%s", *tokenPtr))
+			}
+
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			trcpubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, pubMappingInit, &driverConfig)
 			retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
 
 			if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
@@ -152,7 +161,6 @@ func main() {
 						}
 					}
 					if eUtils.RefLength(tokenPtr) > 0 {
-						//						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-tokenName=%s", tokenName))
 						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-token=%s", *tokenPtr))
 						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-prod=%v", *prodPtr))
 					}
