@@ -59,7 +59,7 @@ func InitConfigCerts(mc embed.FS, mk embed.FS) error {
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for trcshtalkback.")
+		fmt.Println("Dataflow Statistic channel not initialized properly for echo.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -76,7 +76,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for trcshtalkback.")
+		fmt.Println("Failure to send error message, error channel not initialized properly for echo.")
 		return
 	}
 	if dfstat != nil {
@@ -145,20 +145,20 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 func InitGServer() (func(error), func()) {
 	if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
-		var trcshtalkbackPort int
+		var echoPort int
 		if port, ok := portInterface.(int); ok {
-			trcshtalkbackPort = port
+			echoPort = port
 		} else {
 			var err error
-			trcshtalkbackPort, err = strconv.Atoi(portInterface.(string))
+			echoPort, err = strconv.Atoi(portInterface.(string))
 			if err != nil {
 				configContext.Log.Printf("Failed to process server port: %v", err)
 				send_err(err)
 				return send_err, send_dfstat
 			}
 		}
-		fmt.Printf("Server listening on :%d\n", trcshtalkbackPort)
-		lis, gServer, err := InitServer(trcshtalkbackPort,
+		fmt.Printf("Server listening on :%d\n", echoPort)
+		lis, gServer, err := InitServer(echoPort,
 			(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
 			(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
 		if err != nil {
@@ -208,7 +208,7 @@ func InitGServer() (func(error), func()) {
 
 func StopGServer() {
 	if grpcServer == nil || configContext == nil {
-		fmt.Println("no server initialized for trcshtalkback")
+		fmt.Println("no server initialized for echo")
 		return
 	}
 	configContext.Log.Println("Healthcheck received shutdown message from kernel.")
@@ -216,7 +216,7 @@ func StopGServer() {
 	fmt.Println("Stopping server")
 	grpcServer.Stop()
 	fmt.Println("Stopped server")
-	configContext.Log.Println("Stopped server for trcshtalkback.")
+	configContext.Log.Println("Stopped server for echo.")
 	dfstat.UpdateDataFlowStatistic("System", "TrcshTalkBack", "Shutdown", "0", 1, nil)
 	send_dfstat()
 	*configContext.CmdSenderChan <- tccore.PLUGIN_EVENT_STOP
@@ -230,12 +230,12 @@ func HelloWorldDiagnostic() string {
 		(*configContext.ConfigCerts) == nil ||
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT] == nil ||
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY] == nil {
-		return "Improper config context for trcshtalkback diagnostic."
+		return "Improper config context for echo diagnostic."
 	}
 	cert, err := tls.X509KeyPair((*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT], (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
 	if err != nil {
 		log.Printf("Couldn't construct key pair: %v\n", err)
-		return "Unable to run diagnostic for trcshtalkback."
+		return "Unable to run diagnostic for echo."
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 

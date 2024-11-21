@@ -175,7 +175,7 @@ func GetConfigPaths() []string {
 }
 
 // Convenience function for starting trcshtalkback outside of the hive.
-func TrcshTalkBackRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS, envPtr *string, logFilePtr *string) *tccore.ChatMsg {
+func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS, envPtr *string, logFilePtr *string) *tccore.ChatMsg {
 	config := make(map[string]interface{})
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)

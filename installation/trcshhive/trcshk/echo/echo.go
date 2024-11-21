@@ -29,11 +29,11 @@ func main() {
 
 	// authorizedSpace := flag.String("space", "", "Authorized space for posting asyncronous messages.")
 	envPtr := flag.String("env", "dev", "Environment to configure") //envPtr :=
-	logFilePtr := flag.String("log", "./trcshtalkback.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./echo.log", "Output path for log file")
 	flag.Parse()
 
 	// Running outside the hive, we must provide our own certs.
-	tbtcore.TrcshTalkBackRunner( /*&mashupCert, &mashupKey,*/ nil, nil, &configFile, envPtr, logFilePtr)
+	tbtcore.EchoRunner( /*&mashupCert, &mashupKey,*/ nil, nil, &configFile, envPtr, logFilePtr)
 
 	wait := make(chan bool)
 	wait <- true

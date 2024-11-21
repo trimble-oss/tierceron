@@ -343,12 +343,12 @@ func StopHttpServer() {
 func InitHttpServer(configContext *tccore.ConfigContext, send_err func(error)) {
 
 	if portInterface, ok := (*configContext.Config)["http_server_port"]; ok {
-		var trcshtalkbackPort int
+		var echoPort int
 		if port, ok := portInterface.(int); ok {
-			trcshtalkbackPort = port
+			echoPort = port
 		} else {
 			var err error
-			trcshtalkbackPort, err = strconv.Atoi(portInterface.(string))
+			echoPort, err = strconv.Atoi(portInterface.(string))
 			if err != nil {
 				configContext.Log.Printf("Failed to process server port: %v", err)
 				send_err(err)
@@ -383,13 +383,13 @@ func InitHttpServer(configContext *tccore.ConfigContext, send_err func(error)) {
 				tlsConfig := &tls.Config{
 					Certificates: []tls.Certificate{cert},
 				}
-				log.Printf("main: listening on port %d", trcshtalkbackPort)
-				tlsListener, err = tls.Listen("tcp", fmt.Sprintf(":%d", trcshtalkbackPort), tlsConfig)
+				log.Printf("main: listening on port %d", echoPort)
+				tlsListener, err = tls.Listen("tcp", fmt.Sprintf(":%d", echoPort), tlsConfig)
 			}
 		} else {
-			log.Printf("main: listening on port %d", trcshtalkbackPort)
+			log.Printf("main: listening on port %d", echoPort)
 			var addr *net.TCPAddr
-			addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", trcshtalkbackPort))
+			addr, err = net.ResolveTCPAddr("tcp", fmt.Sprintf(":%d", echoPort))
 			if err != nil {
 				send_err(err)
 				return

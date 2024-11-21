@@ -46,7 +46,7 @@ func InitNetwork(configContext *tccore.ConfigContext) {
 	echoNetwork := cmap.New[*EchoBus]()
 	GlobalEchoNetwork = &echoNetwork
 
-	envs := []string{"dev", "QA", "staging", "prod"}
+	envs := []string{"dev"}
 	GlobalSupportedEnvMap = make(map[string]bool, 4)
 	for _, env := range envs {
 		GlobalSupportedEnvMap[env] = true
