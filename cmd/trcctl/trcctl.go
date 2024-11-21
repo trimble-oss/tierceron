@@ -46,8 +46,9 @@ func main() {
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
-	flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
+	prodPtr := flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
 	flagset.Bool("pluginInfo", false, "Lists all plugins")
+	flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	var envContext string
 
@@ -153,6 +154,7 @@ func main() {
 					if eUtils.RefLength(tokenPtr) > 0 {
 						//						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-tokenName=%s", tokenName))
 						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-token=%s", *tokenPtr))
+						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-prod=%v", *prodPtr))
 					}
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 					trcinitbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, nil, uploadCertPtr, flagset, restrictedMappingInit, &driverConfig)
@@ -196,6 +198,9 @@ func main() {
 					restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 					flagset.String("env", "dev", "Environment to configure")
+					if eUtils.RefLength(tokenPtr) > 0 {
+						restrictedMappingSub = append(restrictedMappingSub, fmt.Sprintf("-token=%s", *tokenPtr))
+					}
 					trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
 					restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
 					if eUtils.RefLength(tokenPtr) > 0 {
@@ -204,7 +209,14 @@ func main() {
 					}
 					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 					flagset.String("env", "dev", "Environment to configure")
-					trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, restrictedMappingX)
+					trcxbase.CommonMain(nil,
+						xutil.GenerateSeedsFromVault,
+						envPtr,
+						addrPtr,
+						&envContext,
+						nil,
+						flagset,
+						restrictedMappingX)
 				}
 			} else {
 				fmt.Printf("Plugin not registered with trcctl.\n")
