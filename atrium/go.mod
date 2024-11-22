@@ -40,7 +40,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.7.2
-	github.com/trimble-oss/tierceron-core/v2 v2.0.12
+	github.com/trimble-oss/tierceron-core/v2 v2.1.0
 	github.com/trimble-oss/tierceron-nute v1.0.5
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
@@ -142,9 +142,9 @@ require (
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/oauth2 v0.22.0 // indirect
-	google.golang.org/genproto v0.0.0-20241113202542-65e8d215514f // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241104194629-dd2ea8efbc28 // indirect
+	google.golang.org/genproto v0.0.0-20241118233622-e639e219e697 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20241113202542-65e8d215514f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241113202542-65e8d215514f // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
@@ -251,7 +251,7 @@ require (
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/grpc v1.67.1
-	google.golang.org/protobuf v1.35.1 // indirect
+	google.golang.org/protobuf v1.35.2 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
