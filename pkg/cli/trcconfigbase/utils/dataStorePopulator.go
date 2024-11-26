@@ -151,6 +151,7 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 					if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
 						secretBucket, err = mod.ReadData(bucket)
 						if err != nil {
+							eUtils.LogInfo(config, fmt.Sprintf("Failure to read from bucket. %v\n", err))
 							noValueKeys = append(noValueKeys, k)
 						} else {
 							secretBuckets[bucket] = secretBucket

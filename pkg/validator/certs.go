@@ -63,11 +63,11 @@ func ValidateCertificate(certPath string, host string) (bool, error) {
 	if err != nil {
 		return false, errors.New("failed to read file: " + err.Error())
 	}
-	return ValidateCertificateBytes(byteCert, host)
+	return ValidateCertificateBytes(byteCert, host, false)
 }
 
 // ValidateCertificateBytes validates certificate bytes
-func ValidateCertificateBytes(byteCert []byte, host string) (bool, error) {
+func ValidateCertificateBytes(byteCert []byte, host string, selfSignedOk bool) (bool, error) {
 	block, _ := pem.Decode(byteCert)
 	if block == nil {
 		return false, errors.New("failed to parse certificate PEM")
@@ -77,7 +77,7 @@ func ValidateCertificateBytes(byteCert []byte, host string) (bool, error) {
 		return false, errors.New("failed to parse certificate: " + err.Error())
 	}
 
-	isValid, err := VerifyCertificate(cert, host)
+	isValid, err := VerifyCertificate(cert, host, selfSignedOk)
 	return isValid, err
 }
 
@@ -101,19 +101,23 @@ func getCert(url string) (*x509.Certificate, error) {
 }
 
 // VerifyCertificate
-func VerifyCertificate(cert *x509.Certificate, host string) (bool, error) {
+func VerifyCertificate(cert *x509.Certificate, host string, selfSignedOk bool) (bool, error) {
 	opts := x509.VerifyOptions{
 		DNSName:     host,
 		CurrentTime: time.Now(),
 	}
 
 	if !utils.IsWindows() {
-		rootCAs, err := x509.SystemCertPool()
-		if err != nil {
-			return false, err
+		if selfSignedOk {
+			rootCAs, err := x509.SystemCertPool()
+			if err != nil {
+				return false, err
+			}
+			opts.Roots = rootCAs
+			opts.Intermediates = x509.NewCertPool()
+		} else {
+			opts.Roots = x509.NewCertPool()
 		}
-		opts.Roots = rootCAs
-		opts.Intermediates = x509.NewCertPool()
 	}
 
 	if _, err := cert.Verify(opts); err != nil {
