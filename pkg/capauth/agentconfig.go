@@ -3,7 +3,9 @@ package capauth
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
@@ -68,6 +70,29 @@ func ValidateVhostDomain(host string) error {
 		}
 	}
 	return errors.New("Bad host: " + host)
+}
+
+// IsCertValidBySupportedDomains accepts a certificate
+func IsCertValidBySupportedDomains(byteCert []byte,
+	certValidationHelper func(cert *x509.Certificate, host string, selfSignedOk bool) (bool, error),
+) (bool, error) {
+	var ok bool
+	var err error
+	block, _ := pem.Decode(byteCert)
+	if block == nil {
+		return false, errors.New("failed to parse certificate PEM")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false, errors.New("failed to parse certificate: " + err.Error())
+	}
+
+	for _, domain := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
+		if ok, err = certValidationHelper(cert, domain, false); ok {
+			return ok, err
+		}
+	}
+	return ok, err
 }
 
 func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort bool, logger ...*log.Logger) error {

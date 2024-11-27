@@ -140,7 +140,7 @@ func ValidateKeyStore(config *core.CoreConfig, filename string, pass string) (bo
 				return false, errors.New("failed to parse: " + err.Error())
 			}
 
-			isCertValid, err := VerifyCertificate(&cert, "")
+			isCertValid, err := VerifyCertificate(&cert, "", true)
 			if err != nil {
 				eUtils.LogInfo(config, "Certificate validation failure.")
 			}
