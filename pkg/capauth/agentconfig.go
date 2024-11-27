@@ -88,7 +88,7 @@ func IsCertValidBySupportedDomains(byteCert []byte,
 	}
 
 	for _, domain := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
-		if ok, err = certValidationHelper(cert, domain, false); ok {
+		if ok, err = certValidationHelper(cert, domain, prod.IsProd()); ok {
 			return ok, err
 		}
 	}

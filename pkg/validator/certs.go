@@ -5,6 +5,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -100,15 +101,27 @@ func getCert(url string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(data)
 }
 
+func verifyCertHelper(cert *x509.Certificate, host string) (bool, error) {
+	if err := cert.VerifyHostname(host); err != nil {
+		return false, fmt.Errorf("hostname verification failed: %v", err)
+	}
+
+	if cert.NotBefore.After(cert.NotAfter) {
+		return false, fmt.Errorf("certificate validity period is invalid")
+	}
+
+	return true, nil
+}
+
 // VerifyCertificate
-func VerifyCertificate(cert *x509.Certificate, host string, trustSystemCertPool bool) (bool, error) {
+func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPool bool) (bool, error) {
 	opts := x509.VerifyOptions{
 		DNSName:     host,
 		CurrentTime: time.Now(),
 	}
 
 	if !utils.IsWindows() {
-		if trustSystemCertPool {
+		if verifyBySystemCertPool {
 			rootCAs, err := x509.SystemCertPool()
 			if err != nil {
 				return false, err
@@ -121,22 +134,26 @@ func VerifyCertificate(cert *x509.Certificate, host string, trustSystemCertPool 
 		}
 	}
 
-	if _, err := cert.Verify(opts); err != nil {
-		if !utils.IsWindows() {
-			if _, ok := err.(x509.UnknownAuthorityError); ok {
-				issuer, issuerErr := getCert("http://r3.i.lencr.org/")
-				if issuerErr != nil {
-					return false, issuerErr
-				}
-				opts.Intermediates.AddCert(issuer)
-				if _, err := cert.Verify(opts); err != nil {
-					return false, err
-				} else {
-					return true, nil
+	if verifyBySystemCertPool {
+		if _, err := cert.Verify(opts); err != nil {
+			if !utils.IsWindows() {
+				if _, ok := err.(x509.UnknownAuthorityError); ok {
+					issuer, issuerErr := getCert("http://r3.i.lencr.org/")
+					if issuerErr != nil {
+						return false, issuerErr
+					}
+					opts.Intermediates.AddCert(issuer)
+					if _, err := cert.Verify(opts); err != nil {
+						return false, err
+					} else {
+						return true, nil
+					}
 				}
 			}
+			return false, errors.New("failed to verify certificate: " + err.Error())
 		}
-		return false, errors.New("failed to verify certificate: " + err.Error())
+	} else {
+		return verifyCertHelper(cert, opts.DNSName)
 	}
 	return true, nil
 }
