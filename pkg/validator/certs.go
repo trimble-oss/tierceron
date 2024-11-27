@@ -101,14 +101,14 @@ func getCert(url string) (*x509.Certificate, error) {
 }
 
 // VerifyCertificate
-func VerifyCertificate(cert *x509.Certificate, host string, selfSignedOk bool) (bool, error) {
+func VerifyCertificate(cert *x509.Certificate, host string, trustSystemCertPool bool) (bool, error) {
 	opts := x509.VerifyOptions{
 		DNSName:     host,
 		CurrentTime: time.Now(),
 	}
 
 	if !utils.IsWindows() {
-		if selfSignedOk {
+		if trustSystemCertPool {
 			rootCAs, err := x509.SystemCertPool()
 			if err != nil {
 				return false, err
@@ -117,6 +117,7 @@ func VerifyCertificate(cert *x509.Certificate, host string, selfSignedOk bool) (
 			opts.Intermediates = x509.NewCertPool()
 		} else {
 			opts.Roots = x509.NewCertPool()
+			opts.Intermediates = x509.NewCertPool()
 		}
 	}
 
