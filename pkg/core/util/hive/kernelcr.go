@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"runtime/debug"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
@@ -29,6 +30,8 @@ import (
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
 var logger *log.Logger
 var dfstat *core.TTDINode
+
+var m sync.Mutex
 
 var globalCertCache *map[string]certValue
 
@@ -74,11 +77,18 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 	_, mod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
-		return
 	}
 
 	for {
 		if globalCertCache != nil {
+			if mod == nil {
+				pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
+				_, mod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
+				if err != nil {
+					driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+					continue
+				}
+			}
 			for k, v := range *globalCertCache {
 				metadata, err := mod.ReadMetadata(k, driverConfig.CoreConfig.Log)
 				if err != nil {
@@ -109,7 +119,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 							}
 							driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
-							os.Exit(-1) //shutdown kernel
+							os.Exit(0)
 						} else {
 							continue
 						}
@@ -119,6 +129,60 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		}
 		time.Sleep(time.Minute)
 	}
+}
+
+func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier) (*[]byte, error) {
+	// Trim path
+	m.Lock()
+	defer m.Unlock()
+	if v, ok := (*globalCertCache)[path]; ok {
+		driverConfig.CoreConfig.WantCerts = false
+		return v.CertBytes, nil
+	}
+	certPath := strings.TrimPrefix(path, "Common/")
+	certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
+	certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
+	certPath = strings.TrimSuffix(certPath, ".pem.mf.tmpl")
+	metadata, err := mod.ReadMetadata(fmt.Sprintf("values/%s", certPath), driverConfig.CoreConfig.Log)
+	if err != nil {
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+		return nil, err
+	}
+	if t, ok := metadata["created_time"]; ok {
+		configuredCert, err := certutil.LoadCertComponent(driverConfig,
+			mod,
+			path)
+		if err != nil {
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+			return nil, err
+		}
+		var valid bool = false
+
+		if strings.HasSuffix(path, ".crt.mf.tmpl") {
+			valid, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
+			if err != nil {
+				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+				return nil, err
+			}
+		} else {
+			valid = true
+		}
+
+		if valid {
+			(*globalCertCache)[path] = certValue{
+				CreatedTime: t,
+				CertBytes:   &configuredCert,
+			}
+			driverConfig.CoreConfig.WantCerts = false
+
+			return &configuredCert, nil
+		} else {
+			driverConfig.CoreConfig.Log.Println("Invalid cert")
+			return nil, errors.New("invalid cert")
+		}
+	}
+	driverConfig.CoreConfig.Log.Println("Unable to access created time for cert.")
+	return nil, errors.New("no created time for cert")
 }
 
 func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig) {
@@ -251,49 +315,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = false
 						serviceConfig[path] = *v.CertBytes
 					} else {
-						// Trim path
-						certPath := strings.TrimPrefix(path, "Common/")
-						certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
-						certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
-						metadata, err := mod.ReadMetadata(fmt.Sprintf("super-secrets/%s", certPath), driverConfig.CoreConfig.Log)
+						configuredCert, err := addToCache(path, driverConfig, mod)
 						if err != nil {
-							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-							continue
-						}
-						if t, ok := metadata["created_time"]; ok {
-							configuredCert, err := certutil.LoadCertComponent(driverConfig,
-								mod,
-								path)
-							if err != nil {
-								eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-								continue
-							}
-							var valid bool = false
-
-							if strings.HasSuffix(path, ".crt.mf.tmpl") {
-								valid, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
-								if err != nil {
-									eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-									continue
-								}
-							} else {
-								valid = true
-							}
-
-							if valid {
-								(*globalCertCache)[path] = certValue{
-									CreatedTime: t,
-									CertBytes:   &configuredCert,
-								}
-								driverConfig.CoreConfig.WantCerts = false
-								serviceConfig[path] = configuredCert
-							} else {
-								driverConfig.CoreConfig.Log.Println("Invalid cert")
-								continue
-							}
+							driverConfig.CoreConfig.Log.Printf("Unable to load cert: %v\n", err)
 						} else {
-							driverConfig.CoreConfig.Log.Println("Unable to access created time for cert.")
-							continue
+							serviceConfig[path] = *configuredCert
 						}
 					}
 				} else {
