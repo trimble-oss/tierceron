@@ -254,6 +254,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						// Trim path
 						certPath := strings.TrimPrefix(path, "Common/")
 						certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
+						certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
 						metadata, err := mod.ReadMetadata(fmt.Sprintf("super-secrets/%s", certPath), driverConfig.CoreConfig.Log)
 						if err != nil {
 							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
@@ -267,11 +268,16 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 								eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 								continue
 							}
+							var valid bool = false
 
-							valid, err := capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
-							if err != nil {
-								eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-								continue
+							if strings.HasSuffix(path, ".crt.mf.tmpl") {
+								valid, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
+								if err != nil {
+									eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+									continue
+								}
+							} else {
+								valid = true
 							}
 
 							if valid {
