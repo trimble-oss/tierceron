@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
+
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -66,32 +68,33 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to start dynamic reloading.")
 		return
 	}
-
-	driverConfig.CoreConfig.Log.Println("")
-	pluginConfig := make(map[string]interface{})
-	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
-	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
-	pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
-	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
-
-	_, mod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
-	}
+	var mod *helperkv.Modifier
 
 	for {
-		if globalCertCache != nil {
-			if mod == nil {
-				pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
-				_, mod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
-				if err != nil {
-					driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
-					continue
-				}
+		if mod == nil {
+			var err error
+			driverConfig.CoreConfig.Log.Println("")
+			pluginConfig := make(map[string]interface{})
+			pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+			currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
+			pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
+
+			_, mod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
 			}
+		}
+		if globalCertCache != nil && mod != nil {
 			for k, v := range *globalCertCache {
-				metadata, err := mod.ReadMetadata(k, driverConfig.CoreConfig.Log)
+				certPath := strings.TrimPrefix(k, "Common/")
+				certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
+				certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
+				certPath = strings.TrimSuffix(certPath, ".pem.mf.tmpl")
+				metadata, err := mod.ReadMetadata(fmt.Sprintf("values/%s", certPath), driverConfig.CoreConfig.Log)
 				if err != nil {
+					mod.Release()
+					mod = nil
 					eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 					continue
 				}
@@ -107,12 +110,16 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 
-						valid, err := capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
-						if err != nil {
-							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-							continue
-						}
+						var valid bool = false
 
+						if strings.HasSuffix(k, ".crt.mf.tmpl") {
+							valid, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
+							if err != nil {
+								eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+							}
+						} else {
+							valid = true
+						}
 						if valid {
 							for service, servPh := range *pH.Services {
 								*servPh.ConfigContext.CmdSenderChan <- core.PLUGIN_EVENT_STOP
