@@ -587,10 +587,13 @@ retryQuery:
 	}
 	if err != nil {
 		logger.Printf("modifier failing after %d retries.\n", retries)
+		return nil, err
 	}
 
-	if data, ok := secret.Data["metadata"].(map[string]interface{}); ok {
-		return data, err
+	if secret != nil {
+		if data, ok := secret.Data["metadata"].(map[string]interface{}); ok {
+			return data, err
+		}
 	}
 	return nil, errors.New("could not get metadata from vault response")
 }

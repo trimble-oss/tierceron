@@ -251,7 +251,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = false
 						serviceConfig[path] = *v.CertBytes
 					} else {
-						metadata, err := mod.ReadMetadata(path, driverConfig.CoreConfig.Log)
+						// Trim path
+						certPath := strings.TrimPrefix(path, "Common/")
+						certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
+						metadata, err := mod.ReadMetadata(fmt.Sprintf("super-secrets/%s", certPath), driverConfig.CoreConfig.Log)
 						if err != nil {
 							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 							continue
