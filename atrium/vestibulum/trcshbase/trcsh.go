@@ -688,6 +688,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
 			kernelPluginHandler = hive.InitKernel()
+			go kernelPluginHandler.DynamicReloader(trcshDriverConfig.DriverConfig)
 		}
 
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
