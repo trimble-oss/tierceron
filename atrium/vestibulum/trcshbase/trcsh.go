@@ -737,7 +737,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		for _, deployment := range deployments {
-			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment, dronePtr, projectServicePtr)
+			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, true, deployment, dronePtr, projectServicePtr)
 		}
 
 		<-shutdown

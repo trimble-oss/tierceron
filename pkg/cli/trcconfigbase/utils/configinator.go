@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -109,7 +110,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 		}
 
 		//get files from directory
-		tp, ep := getDirFiles(startDir, driverConfig.EndDir)
+		tp, ep := getDirFiles(driverConfig, startDir, driverConfig.EndDir)
 		if len(trcProjectService) > 0 {
 			epScrubbed := []string{}
 			tpScrubbed := []string{}
@@ -525,8 +526,6 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	return nil, nil
 }
 
-var memCacheLock sync.Mutex
-
 func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
@@ -557,7 +556,7 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	var newFile *os.File
 
 	if driverConfig.OutputMemCache {
-		driverConfig.MemFs.WriteToMemFile(driverConfig, &memCacheLock, &byteData, path)
+		driverConfig.MemFs.WriteToMemFile(driverConfig, &byteData, path)
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)
@@ -574,39 +573,78 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	}
 }
 
-func getDirFiles(dir string, endDir string) ([]string, []string) {
-	files, err := os.ReadDir(dir)
+func getDirFiles(driverConfig *config.DriverConfig, dir string, endDir string) ([]string, []string) {
 	filePaths := []string{}
 	endPaths := []string{}
-	if err != nil {
-		//this is a file
-		return []string{dir}, []string{endDir}
-	}
-	for _, file := range files {
-		//add this directory to path names
-		if dir[len(dir)-1] != os.PathSeparator {
-			dir = dir + string(os.PathSeparator)
+
+	if driverConfig.OutputMemCache {
+		configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
+		files, err := configMemFs.BillyFs.ReadDir(dir)
+		if err != nil || len(files) == 0 {
+			dirInfo, err := configMemFs.BillyFs.Lstat(dir)
+			if err == nil && !dirInfo.IsDir() {
+				//this is a file
+				return []string{dir}, []string{endDir}
+			}
+		}
+		for _, file := range files {
+			//add this directory to path names
+			if dir[len(dir)-1] != os.PathSeparator {
+				dir = dir + string(os.PathSeparator)
+			}
+			//take off .tmpl extension
+			filename := file.Name()
+			filePath := dir + filename
+			if strings.HasSuffix(filename, ".DS_Store") {
+				continue
+			}
+			extension := filepath.Ext(filename)
+			endPath := ""
+			if extension == ".tmpl" {
+				name := filename[0 : len(filename)-len(extension)]
+				endPath = endDir + string(os.PathSeparator) + name
+			} else {
+				endPath = endDir + string(os.PathSeparator) + filename
+			}
+			//recurse to next level
+			newPaths, newEndPaths := getDirFiles(driverConfig, filePath, endPath)
+			filePaths = append(filePaths, newPaths...)
+			endPaths = append(endPaths, newEndPaths...)
+			//add endings of path names
 		}
 
-		filePath := dir + file.Name()
-		//take off .tmpl extension
-		filename := file.Name()
-		if strings.HasSuffix(filename, ".DS_Store") {
-			continue
+	} else {
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			//this is a file
+			return []string{dir}, []string{endDir}
 		}
-		extension := filepath.Ext(filename)
-		endPath := ""
-		if extension == ".tmpl" {
-			name := filename[0 : len(filename)-len(extension)]
-			endPath = endDir + string(os.PathSeparator) + name
-		} else {
-			endPath = endDir + string(os.PathSeparator) + filename
+		for _, file := range files {
+			//add this directory to path names
+			if dir[len(dir)-1] != os.PathSeparator {
+				dir = dir + string(os.PathSeparator)
+			}
+			//take off .tmpl extension
+			filename := file.Name()
+			filePath := dir + filename
+			if strings.HasSuffix(filename, ".DS_Store") {
+				continue
+			}
+			extension := filepath.Ext(filename)
+			endPath := ""
+			if extension == ".tmpl" {
+				name := filename[0 : len(filename)-len(extension)]
+				endPath = endDir + string(os.PathSeparator) + name
+			} else {
+				endPath = endDir + string(os.PathSeparator) + filename
+			}
+			//recurse to next level
+			newPaths, newEndPaths := getDirFiles(driverConfig, filePath, endPath)
+			filePaths = append(filePaths, newPaths...)
+			endPaths = append(endPaths, newEndPaths...)
+			//add endings of path names
 		}
-		//recurse to next level
-		newPaths, newEndPaths := getDirFiles(filePath, endPath)
-		filePaths = append(filePaths, newPaths...)
-		endPaths = append(endPaths, newEndPaths...)
-		//add endings of path names
+
 	}
 	return filePaths, endPaths
 }

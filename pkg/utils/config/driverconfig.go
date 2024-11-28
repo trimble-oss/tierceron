@@ -45,7 +45,7 @@ func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
 }
 
 type MemoryFileSystem interface {
-	WriteToMemFile(driverConfig *DriverConfig, memCacheLocal *sync.Mutex, byteData *[]byte, path string)
+	WriteToMemFile(driverConfig *DriverConfig, byteData *[]byte, path string)
 }
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
@@ -70,6 +70,7 @@ type DriverConfig struct {
 	EndDir            string
 	OutputMemCache    bool
 	MemFs             MemoryFileSystem
+	MemCacheLock      sync.Mutex
 	CertPathOverrides map[string]string // certFileName -> certDest
 
 	// Config modes....
@@ -123,9 +124,11 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 	if driverConfig.StartDir[0] == coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates" {
 		// Set up for single service configuration when available.
 		// This is the most common use of the tool.
-		pwd, err := os.Getwd()
-		if err == nil {
-			driverConfig.StartDir[0] = pwd + string(os.PathSeparator) + driverConfig.StartDir[0]
+		if !driverConfig.OutputMemCache {
+			pwd, err := os.Getwd()
+			if err == nil {
+				driverConfig.StartDir[0] = pwd + string(os.PathSeparator) + driverConfig.StartDir[0]
+			}
 		}
 
 		projectFilesComplete, err := os.ReadDir(driverConfig.StartDir[0])
