@@ -166,7 +166,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	if *templatePathsPtr != "" {
 		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		il.DownloadTemplates(driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
+		il.DownloadTemplates(driverConfigBase, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
 	} else if *pluginInfoPtr {
 		pluginList, err := mod.List("super-secrets/Index/TrcVault/trcplugin", driverConfigBase.CoreConfig.Log)
 		if err != nil || pluginList == nil {
