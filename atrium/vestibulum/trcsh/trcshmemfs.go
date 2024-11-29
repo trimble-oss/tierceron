@@ -2,6 +2,7 @@ package trcsh
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -37,4 +38,35 @@ func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData 
 		eUtils.LogInfo(driverConfig.CoreConfig, "Unexpected memfile exists:"+path)
 		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	}
+}
+
+func (t *TrcshMemFs) ClearCache(driverConfig *config.DriverConfig, path string) {
+	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
+
+	driverConfig.MemCacheLock.Lock()
+	defer driverConfig.MemCacheLock.Unlock()
+	filestack := []string{path}
+	var p string
+
+summitatem:
+
+	if len(filestack) == 0 {
+		return
+	}
+	p, filestack = filestack[len(filestack)-1], filestack[:len(filestack)-1]
+
+	if fileset, err := configMemFs.BillyFs.ReadDir(p); err == nil {
+		for _, file := range fileset {
+			if file.IsDir() {
+				filestack = append(filestack, p)
+				filestack = append(filestack, fmt.Sprintf("%s/%s", p, file.Name()))
+				goto summitatem
+			} else {
+				configMemFs.BillyFs.Remove(fmt.Sprintf("%s/%s", p, file.Name()))
+			}
+		}
+	}
+	configMemFs.BillyFs.Remove(p)
+
+	goto summitatem
 }

@@ -248,7 +248,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig, env string, region str
 
 	go captiplib.FeatherCtlEmitter(trcshDriverConfig.FeatherCtx, trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan, deployerEmote, nil)
 	var projServ = ""
-	if len(projectService) > 0 && kernelopts.BuildOptions.IsKernel() {
+	if len(projectService) > 0 && projectService[0] != nil && kernelopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
 	}
 
@@ -1325,6 +1325,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
 			configMemFs.BillyFs.Remove(trcPath)
+			configMemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
