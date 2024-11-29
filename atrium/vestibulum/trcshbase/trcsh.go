@@ -563,7 +563,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
-		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, agentEnv, *regionPtr, "", true, driverConfigPtr.CoreConfig.Log)
+		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+			agentEnv,
+			*regionPtr,
+			"",
+			kernelopts.BuildOptions.IsKernel(),
+			driverConfigPtr.CoreConfig.Log)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
