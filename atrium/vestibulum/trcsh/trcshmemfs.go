@@ -40,6 +40,14 @@ func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData 
 	}
 }
 
+func (t *TrcshMemFs) ReadDir(driverConfig *config.DriverConfig, path string) ([]os.FileInfo, error) {
+	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
+
+	driverConfig.MemCacheLock.Lock()
+	defer driverConfig.MemCacheLock.Unlock()
+	return configMemFs.BillyFs.ReadDir(path)
+}
+
 func (t *TrcshMemFs) ClearCache(driverConfig *config.DriverConfig, path string) {
 	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
 
