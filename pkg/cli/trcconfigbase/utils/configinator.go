@@ -577,7 +577,7 @@ func getDirFiles(driverConfig *config.DriverConfig, dir string, endDir string) (
 	filePaths := []string{}
 	endPaths := []string{}
 
-	if driverConfig.OutputMemCache {
+	if driverConfig.SubOutputMemCache {
 		configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
 		files, err := configMemFs.BillyFs.ReadDir(dir)
 		if err != nil || len(files) == 0 {

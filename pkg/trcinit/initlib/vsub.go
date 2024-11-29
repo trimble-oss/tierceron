@@ -67,7 +67,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 		fmt.Printf("file: %s\n", file)
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
 
-		if driverConfig.OutputMemCache {
+		if driverConfig.SubOutputMemCache {
 			driverConfig.MemFs.WriteToMemFile(driverConfig, &templateBytes, templateFile)
 		} else {
 			err = os.MkdirAll(dirPath, os.ModePerm)

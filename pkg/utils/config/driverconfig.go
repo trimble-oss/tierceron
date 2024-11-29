@@ -69,6 +69,7 @@ type DriverConfig struct {
 	// Tierceron source and destination I/O
 	StartDir          []string // Starting directory. possibly multiple
 	EndDir            string
+	SubOutputMemCache bool
 	OutputMemCache    bool
 	MemFs             MemoryFileSystem
 	MemCacheLock      sync.Mutex
@@ -127,19 +128,19 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 		// This is the most common use of the tool.
 		projectFileNames := map[string]bool{}
 
-		if !driverConfig.OutputMemCache {
-			pwd, err := os.Getwd()
-			if err == nil {
-				driverConfig.StartDir[0] = pwd + string(os.PathSeparator) + driverConfig.StartDir[0]
-			}
-			projectFilesComplete, err := os.ReadDir(driverConfig.StartDir[0])
+		if driverConfig.SubOutputMemCache {
+			projectFilesComplete, err := driverConfig.MemFs.ReadDir(driverConfig, driverConfig.StartDir[0])
 			if err == nil {
 				for _, projectFile := range projectFilesComplete {
 					projectFileNames[projectFile.Name()] = projectFile.IsDir()
 				}
 			}
 		} else {
-			projectFilesComplete, err := driverConfig.MemFs.ReadDir(driverConfig, driverConfig.StartDir[0])
+			pwd, err := os.Getwd()
+			if err == nil {
+				driverConfig.StartDir[0] = pwd + string(os.PathSeparator) + driverConfig.StartDir[0]
+			}
+			projectFilesComplete, err := os.ReadDir(driverConfig.StartDir[0])
 			if err == nil {
 				for _, projectFile := range projectFilesComplete {
 					projectFileNames[projectFile.Name()] = projectFile.IsDir()
@@ -167,15 +168,14 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile
 				} else if projectFileNames[projectFile] {
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile
-					if !driverConfig.OutputMemCache {
-						serviceFiles, err := os.ReadDir(projectStartDir)
+					if driverConfig.SubOutputMemCache {
+						serviceFiles, err := driverConfig.MemFs.ReadDir(driverConfig, projectStartDir)
 						if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 							projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
 							driverConfig.VersionFilter = append(driverConfig.VersionFilter, serviceFiles[0].Name())
 						}
 					} else {
-						// TODO: ReadDir from Memfs.
-						serviceFiles, err := driverConfig.MemFs.ReadDir(driverConfig, projectStartDir)
+						serviceFiles, err := os.ReadDir(projectStartDir)
 						if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 							projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
 							driverConfig.VersionFilter = append(driverConfig.VersionFilter, serviceFiles[0].Name())
