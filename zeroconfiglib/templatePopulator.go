@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
@@ -56,7 +57,7 @@ func ConfigTemplateLib(token string, address string, env string, templatePath st
 //export ConfigCertLib
 func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
 	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
-	logger.Println("NCLib Version: " + "1.20")
+	logger.Println("NCLib Version: " + "1.21")
 	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
 	mod.Env = env
 	driverConfig := &config.DriverConfig{
@@ -74,7 +75,8 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
 		return C.CString("")
 	}
-	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, service, true, true)
+	serviceParts := strings.Split(service, ".")
+	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, serviceParts[0], true, true)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
