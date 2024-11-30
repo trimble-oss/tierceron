@@ -21,50 +21,22 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 )
 
-//export ConfigTemplateLib
-func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
-	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
-
-	logger.Println("NCLib Version: " + "1.20")
-	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
-			WantCerts:  false,
-			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token),
-			Insecure:   false,
-			Log:        logger,
-		},
-		ZeroConfig: true,
-		StartDir:   append([]string{}, "trc_templates"),
-	}
-
-	mod, err := helperkv.NewModifier(false, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", env)), &address, env, nil, true, logger)
-	mod.Env = env
-
-	if err != nil {
-		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-	}
-
-	configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, service, false, true)
-	if err != nil {
-		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-	}
-
-	mod.Close()
-
-	return C.CString(configuredTemplate)
-}
-
-//export ConfigCertLib
-func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
-	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
-	logger.Println("NCLib Version: " + "1.21")
+func configCertLibHelper(token string,
+	address string,
+	env string,
+	templatePath string,
+	configuredFilePath string,
+	project string,
+	service string,
+	wantCerts bool) (string, string, error) {
+	logger := log.New(os.Stdout, "[configCertLibHelper]", log.LstdFlags)
 	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
 	mod.Env = env
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
-			WantCerts:  true,
+			WantCerts:  wantCerts,
 			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token),
-			Insecure:   false,
+			Insecure:   true,
 			Log:        logger,
 		},
 
@@ -73,17 +45,57 @@ func ConfigCertLib(token string, address string, env string, templatePath string
 	}
 	if err != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
-		return C.CString("")
+		return "", "", err
 	}
 	serviceParts := strings.Split(service, ".")
-	_, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, serviceParts[0], true, true)
+	configTemplate, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, serviceParts[0], wantCerts, true)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
 	mod.Close()
 
-	certBase64 := base64.StdEncoding.EncodeToString([]byte(configuredCert[1]))
+	if wantCerts {
+		return "", base64.StdEncoding.EncodeToString([]byte(configuredCert[1])), err
+	} else {
+		return configTemplate, "", err
+	}
+}
+
+//export ConfigTemplateLib
+func ConfigTemplateLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
+	logger := log.New(os.Stdout, "[ConfigTemplateLib]", log.LstdFlags)
+	logger.Println("NCLib Version: " + "1.21")
+	configuredTemplate, _, err := configCertLibHelper(token,
+		address,
+		env,
+		templatePath,
+		configuredFilePath,
+		project,
+		service,
+		false)
+	if err != nil {
+		return C.CString("")
+	}
+
+	return C.CString(configuredTemplate)
+}
+
+//export ConfigCertLib
+func ConfigCertLib(token string, address string, env string, templatePath string, configuredFilePath string, project string, service string) *C.char {
+	logger := log.New(os.Stdout, "[ConfigCertLib]", log.LstdFlags)
+	logger.Println("NCLib Version: " + "1.21")
+	certBase64, _, err := configCertLibHelper(token,
+		address,
+		env,
+		templatePath,
+		configuredFilePath,
+		project,
+		service,
+		true)
+	if err != nil {
+		return C.CString("")
+	}
 
 	return C.CString(certBase64)
 }
