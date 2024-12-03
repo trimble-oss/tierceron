@@ -84,7 +84,7 @@ func CreateLogFile() (*log.Logger, error) {
 	return logger, nil
 }
 
-func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region string, pathParam string, outputMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
+func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region string, pathParam string, subOutputMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -145,7 +145,8 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 				Log:           providedLogger,
 			},
 			IsShellSubProcess: false,
-			OutputMemCache:    outputMemCache,
+			SubOutputMemCache: subOutputMemCache,
+			OutputMemCache:    true,
 			MemFs: &trcshMemFs.TrcshMemFs{
 				BillyFs: memfs.New(),
 			},
@@ -247,11 +248,11 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig, env string, region str
 
 	go captiplib.FeatherCtlEmitter(trcshDriverConfig.FeatherCtx, trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan, deployerEmote, nil)
 	var projServ = ""
-	if len(projectService) > 0 && kernelopts.BuildOptions.IsKernel() {
+	if len(projectService) > 0 && projectService[0] != nil && kernelopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
 	}
 
-	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, deployment, trcPath, projServ, secretId, approleId, false, dronePtr)
+	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, deployment, trcPath, projServ, secretId, approleId, dronePtr)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -344,7 +345,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		//Open deploy script and parse it.
-		ProcessDeploy(nil, trcshDriverConfig, "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, true, dronePtr)
+		ProcessDeploy(nil, trcshDriverConfig, "", *trcPathPtr, *projectServicePtr, secretIDPtr, appRoleIDPtr, dronePtr)
 	} else {
 		if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Log == nil {
 			logger, err := CreateLogFile()
@@ -562,7 +563,12 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		// Preload agent synchronization configs...
-		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, agentEnv, *regionPtr, "", true, driverConfigPtr.CoreConfig.Log)
+		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+			agentEnv,
+			*regionPtr,
+			"",
+			kernelopts.BuildOptions.IsKernel(),
+			driverConfigPtr.CoreConfig.Log)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
@@ -736,7 +742,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		for _, deployment := range deployments {
-			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, false, deployment, dronePtr, projectServicePtr)
+			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, kernelopts.BuildOptions.IsKernel(), deployment, dronePtr, projectServicePtr)
 		}
 
 		<-shutdown
@@ -1112,7 +1118,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	projectServicePtr string,
 	secretId *string,
 	approleId *string,
-	outputMemCache bool,
 	dronePtr *bool) {
 	// Verify Billy implementation
 	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
@@ -1324,6 +1329,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
 			configMemFs.BillyFs.Remove(trcPath)
+			configMemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
