@@ -972,10 +972,6 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		}
 	case "trcplgtool":
 		// Utilize elevated CToken to perform certifications if asked.
-		if prod.IsProd() {
-			fmt.Printf("trcplgtool unsupported in production\n")
-			os.Exit(125) // Running functionality not supported in prod.
-		}
 		trcshDriverConfig.FeatherCtlCb = featherCtlCb
 		if gAgentConfig == nil {
 
