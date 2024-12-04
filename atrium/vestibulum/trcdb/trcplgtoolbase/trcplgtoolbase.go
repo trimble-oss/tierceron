@@ -765,12 +765,12 @@ func CommonMain(envPtr *string,
 					return err
 				}
 				if pluginHandler != nil {
-					if pluginHandler.State == 2 && sha == pluginHandler.Id { //make sure this won't break...not set yet
+					if pluginHandler.State == 2 && sha == pluginHandler.Signature { //make sure this won't break...not set yet
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
 						pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
-						pluginHandler.Id = sha
+						pluginHandler.Signature = sha
 					}
 				} else {
 					fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)

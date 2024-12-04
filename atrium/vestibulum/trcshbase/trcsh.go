@@ -507,7 +507,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
-
+		var kernelId int
+		var kernelName string = "trcshk"
 		if kernelopts.BuildOptions.IsKernel() {
 			hostname := os.Getenv("HOSTNAME")
 			id := 0
@@ -542,6 +543,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				if err != nil {
 					id = 0
 				}
+				kernelId = id
+				kernelName = hostParts[0]
 				driverConfigPtr.CoreConfig.Log.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
 			} else {
 				driverConfigPtr.CoreConfig.Log.Printf("Unable to match: %s\n", hostname)
@@ -693,7 +696,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
-			kernelPluginHandler = hive.InitKernel()
+			kernelPluginHandler = hive.InitKernel(fmt.Sprintf("%s-%d", kernelName, kernelId))
 			go kernelPluginHandler.DynamicReloader(trcshDriverConfig.DriverConfig)
 		}
 
