@@ -31,6 +31,7 @@ import (
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
@@ -507,7 +508,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error())
 			os.Exit(124)
 		}
-
+		var kernelId int
 		if kernelopts.BuildOptions.IsKernel() {
 			hostname := os.Getenv("HOSTNAME")
 			id := 0
@@ -542,6 +543,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				if err != nil {
 					id = 0
 				}
+				kernelId = id
 				driverConfigPtr.CoreConfig.Log.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
 			} else {
 				driverConfigPtr.CoreConfig.Log.Printf("Unable to match: %s\n", hostname)
@@ -693,7 +695,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
-			kernelPluginHandler = hive.InitKernel()
+			pluginName := cursoropts.BuildOptions.GetPluginName(false)
+			kernelPluginHandler = hive.InitKernel(fmt.Sprintf("%s-%d", pluginName, kernelId))
 			go kernelPluginHandler.DynamicReloader(trcshDriverConfig.DriverConfig)
 		}
 
