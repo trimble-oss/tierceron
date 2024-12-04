@@ -45,7 +45,8 @@ type certValue struct {
 type PluginHandler struct {
 	Name          string //service
 	State         int    //0 - initialized, 1 - running, 2 - failed
-	Id            string //sha256 of plugin or if kernel - kernel id
+	Id            string
+	Signature     string //sha256 of plugin
 	ConfigContext *core.ConfigContext
 	Services      *map[string]*PluginHandler
 	PluginMod     *plugin.Plugin
