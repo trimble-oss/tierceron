@@ -533,7 +533,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 					hostname = string(hostOutput)
 				}
 			}
-			if matches, _ := regexp.MatchString("trcshk\\-\\d+$", hostname); matches {
+			if matches, _ := regexp.MatchString("\\-\\d+$", hostname); matches {
 				driverConfigPtr.CoreConfig.Log.Println("Stateful set enabled")
 
 				// spectrum-aggregator-snapshot-<pool>
