@@ -85,7 +85,7 @@ func CreateLogFile() (*log.Logger, error) {
 	return logger, nil
 }
 
-func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region string, pathParam string, subOutputMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
+func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region string, pathParam string, useMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -146,7 +146,8 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 				Log:           providedLogger,
 			},
 			IsShellSubProcess: false,
-			SubOutputMemCache: subOutputMemCache,
+			ReadMemCache:      useMemCache,
+			SubOutputMemCache: useMemCache,
 			OutputMemCache:    true,
 			MemFs: &trcshMemFs.TrcshMemFs{
 				BillyFs: memfs.New(),
@@ -1340,6 +1341,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				content = buf.Bytes()
 				configMemFs.BillyFs.Remove(trcPath)
+				configMemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
 			} else {
 				if strings.HasPrefix(trcPath, "./") {
 					trcPath = strings.TrimLeft(trcPath, "./")
@@ -1348,6 +1350,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				// TODO: Move this out into its own function
 				fmt.Println("Trcsh - Error could not find " + trcPath + " for deployment instructions..")
 			}
+		}
+
+		if !kernelopts.BuildOptions.IsKernel() {
+			// Ensure trcconfig pulls templates from file system for builds and releases.
+			trcshDriverConfig.DriverConfig.ReadMemCache = false
 		}
 
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" {
