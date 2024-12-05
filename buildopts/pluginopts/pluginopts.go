@@ -18,6 +18,6 @@ func Init(pluginName string, properties *map[string]interface{}) {
 }
 
 // GetPluginMessages - Override plugin messages
-func GetPluginMessages(string) []string {
+func GetPluginMessages(pluginName string) []string {
 	return []string{}
 }
