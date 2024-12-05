@@ -747,6 +747,13 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		}
 
 		for _, deployment := range deployments {
+			go func(driverConfigPtr *config.DriverConfig, env string, region string, trcPath string, secretId *string, approleId *string, outputMemCache bool, dronePtr *bool, projectService *string) {
+				for {
+					deploy := <-*kernelPluginHandler.KernelCtx.DeployRestartChan
+					driverConfigPtr.CoreConfig.Log.Printf("Restarting deploy for %s.\n", deploy)
+					go EnableDeployer(driverConfigPtr, env, region, deploy, trcPath, secretId, approleId, outputMemCache, deploy, dronePtr, projectService)
+				}
+			}(driverConfigPtr, *gAgentConfig.Env, *regionPtr, *trcPathPtr, secretIDPtr, appRoleIDPtr, kernelopts.BuildOptions.IsKernel(), dronePtr, projectServicePtr)
 			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, kernelopts.BuildOptions.IsKernel(), deployment, dronePtr, projectServicePtr)
 		}
 

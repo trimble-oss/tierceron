@@ -50,18 +50,30 @@ type PluginHandler struct {
 	ConfigContext *core.ConfigContext
 	Services      *map[string]*PluginHandler
 	PluginMod     *plugin.Plugin
+	KernelCtx     *KernelCtx
+}
+
+type KernelCtx struct {
+	DeployRestartChan *chan string
+	PluginRestartChan *chan core.KernelCmd
 }
 
 func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
 	certCache := make(map[string]certValue)
 	globalCertCache = &certCache
+	deployRestart := make(chan string)
+	pluginRestart := make(chan core.KernelCmd)
 	return &PluginHandler{
 		Name:          "Kernel",
 		Id:            id,
 		State:         0,
 		Services:      &pluginMap,
 		ConfigContext: &core.ConfigContext{},
+		KernelCtx: &KernelCtx{
+			DeployRestartChan: &deployRestart,
+			PluginRestartChan: &pluginRestart,
+		},
 	}
 }
 
@@ -139,6 +151,35 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 			}
 		}
+		if pH.KernelCtx != nil && pH.KernelCtx.DeployRestartChan != nil && pH.KernelCtx.PluginRestartChan != nil && mod != nil {
+			for service, servPh := range *pH.Services {
+				certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", service))
+				if err != nil {
+					logger.Printf("Unable to read certification data for %s %s\n", service, err)
+					continue
+				}
+
+				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha != servPh.Signature {
+					driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+					*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+						PluginName: servPh.Name,
+						Command:    core.PLUGIN_EVENT_STOP,
+					}
+					cmd := <-*pH.KernelCtx.PluginRestartChan
+					if cmd.Command == core.PLUGIN_EVENT_STOP {
+						(*pH.Services)[service] = &PluginHandler{
+							Name:          service,
+							ConfigContext: &core.ConfigContext{},
+							KernelCtx: &KernelCtx{
+								PluginRestartChan: pH.KernelCtx.PluginRestartChan,
+							},
+						}
+						driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
+						*pH.KernelCtx.DeployRestartChan <- service
+					}
+				}
+			}
+		}
 		time.Sleep(time.Minute)
 	}
 }
@@ -207,6 +248,9 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 		(*pH.Services)[service] = &PluginHandler{
 			Name:          service,
 			ConfigContext: &core.ConfigContext{},
+			KernelCtx: &KernelCtx{
+				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
+			},
 		}
 	}
 }
@@ -402,6 +446,11 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) 
 			*pluginHandler.ConfigContext.ErrorChan <- errors.New(pluginHandler.Name + " shutting down")
 			*pluginHandler.ConfigContext.DfsChan <- nil
 			pluginHandler.PluginMod = nil
+			if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil {
+				go func(e core.KernelCmd) {
+					*pluginHandler.KernelCtx.PluginRestartChan <- e
+				}(event)
+			}
 			return
 		case event.Command == core.PLUGIN_EVENT_STATUS:
 			//TODO
