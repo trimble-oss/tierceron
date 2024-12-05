@@ -159,7 +159,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 					continue
 				}
 
-				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha != servPh.Signature {
+				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
 					driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 					*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
 						PluginName: servPh.Name,
