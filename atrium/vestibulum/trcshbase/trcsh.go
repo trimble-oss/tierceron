@@ -1363,8 +1363,13 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			trcshDriverConfig.DriverConfig.ReadMemCache = false
 		}
 
-		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" {
+		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" ||
+			trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" ||
+			trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" {
+
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
+			trcshDriverConfig.DriverConfig.ReadMemCache = false
+			trcshDriverConfig.DriverConfig.SubOutputMemCache = false
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Processing trcshell")
 	} else {
