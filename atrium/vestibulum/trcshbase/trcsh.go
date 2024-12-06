@@ -498,6 +498,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			agentEnv = *envPtr
 		}
 
+		if strings.HasPrefix(agentEnv, "staging") || strings.HasPrefix(agentEnv, "prod") {
+			prod.SetProd(true)
+		}
+
 		if eUtils.RefLength(addressPtr) == 0 {
 			fmt.Println("drone trcsh requires VAULT_ADDR address.")
 			driverConfigPtr.CoreConfig.Log.Println("drone trcsh requires VAULT_ADDR address.")
