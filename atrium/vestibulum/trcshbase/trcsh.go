@@ -1163,8 +1163,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	pluginAny := os.Getenv("PLUGIN_ANY")
 	fileBytes, _ := os.ReadFile("")
 	kc := base64.StdEncoding.EncodeToString(fileBytes)
-	gTrcshConfig = &capauth.TrcShConfig{Env: "dev",
-		EnvContext:    "dev",
+	gTrcshConfig = &capauth.TrcShConfig{Env: trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
+		EnvContext:    trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
 		TokenCache:    trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
 		ConfigRolePtr: &configRole,
 		PubRolePtr:    &pubRole,
@@ -1173,6 +1173,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	vAddr := os.Getenv("VAULT_ADDR")
 	trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr = &vAddr
 	gTrcshConfig.VaultAddressPtr = trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr
+	kubedata, _ := os.ReadFile(fmt.Sprintf("%s/.kube/config", os.Getenv("HOME")))
+	kubCfg := base64.StdEncoding.EncodeToString(kubedata)
+	//kubCfg := string(kubedata)
+	gTrcshConfig.KubeConfigPtr = &kubCfg
+
 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", &pluginAny)
 	//	Chewbacca: end scrub
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
