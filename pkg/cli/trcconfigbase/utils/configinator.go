@@ -534,6 +534,9 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 			var err error
 			if driverConfig.CoreConfig.Env == "staging" || driverConfig.CoreConfig.Env == "prod" {
 				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+				if !matched || err != nil {
+					matched, err = regexp.MatchString("^v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+				}
 			} else {
 				matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
 			}
