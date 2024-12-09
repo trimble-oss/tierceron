@@ -9,8 +9,9 @@ import (
 	"net"
 	"strconv"
 
+	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hellosdk" // Update package path as needed
+	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
@@ -21,7 +22,7 @@ type server struct {
 	pb.UnimplementedGreeterServer
 }
 
-var configContext *tccore.ConfigContext
+var configContextMap map[string]*tccore.ConfigContext
 var grpcServer *grpc.Server
 var sender chan error
 
@@ -36,17 +37,17 @@ const (
 	COMMON_PATH = "config"
 )
 
-func receiver(receive_chan chan int) {
+func receiverMutabile(configContext *tccore.ConfigContext, receive_chan chan core.KernelCmd) {
 	for {
 		event := <-receive_chan
 		switch {
-		case event == tccore.PLUGIN_EVENT_START:
-			go start()
-		case event == tccore.PLUGIN_EVENT_STOP:
-			go stop()
+		case event.Command == tccore.PLUGIN_EVENT_START:
+			go configContext.Start(event.PluginName)
+		case event.Command == tccore.PLUGIN_EVENT_STOP:
+			go stop(event.PluginName)
 			sender <- errors.New("hello shutting down")
 			return
-		case event == tccore.PLUGIN_EVENT_STATUS:
+		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			//TODO
 		default:
 			//TODO
@@ -54,7 +55,7 @@ func receiver(receive_chan chan int) {
 	}
 }
 
-func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
+func InitServer(pluginName string, port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
 	var err error
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
@@ -74,63 +75,72 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 	return lis, grpcServer, nil
 }
 
-func start() {
-	if configContext == nil {
+func start(pluginName string) {
+	if configContextMap == nil {
 		fmt.Println("no config context initialized for healthcheck")
 		return
 	}
-	if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
-		var helloPort int
-		if port, ok := portInterface.(int); ok {
-			helloPort = port
-		} else {
-			var err error
-			helloPort, err = strconv.Atoi(portInterface.(string))
+
+	if configContext, ok := configContextMap[pluginName]; ok {
+
+		if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
+			var helloPort int
+			if port, ok := portInterface.(int); ok {
+				helloPort = port
+			} else {
+				var err error
+				helloPort, err = strconv.Atoi(portInterface.(string))
+				if err != nil {
+					configContext.Log.Printf("Failed to process server port: %v", err)
+					if sender != nil {
+						sender <- err
+					}
+					return
+				}
+			}
+
+			fmt.Printf("Server listening on :%d\n", helloPort)
+			lis, gServer, err := InitServer(pluginName, helloPort,
+				(*configContext.ConfigCerts)[HELLO_CERT],
+				(*configContext.ConfigCerts)[HELLO_KEY])
 			if err != nil {
-				configContext.Log.Printf("Failed to process server port: %v", err)
+				configContext.Log.Printf("Failed to start server: %v", err)
 				if sender != nil {
 					sender <- err
 				}
 				return
 			}
-		}
+			configContext.Log.Println("Starting server")
 
-		fmt.Printf("Server listening on :%d\n", helloPort)
-		lis, gServer, err := InitServer(helloPort,
-			(*configContext.ConfigCerts)[HELLO_CERT],
-			(*configContext.ConfigCerts)[HELLO_KEY])
-		if err != nil {
-			configContext.Log.Printf("Failed to start server: %v", err)
+			grpcServer = gServer
+			grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+			pb.RegisterGreeterServer(grpcServer, &server{})
+			log.Printf("server listening at %v", lis.Addr())
+			if err := grpcServer.Serve(lis); err != nil {
+				configContext.Log.Println("Failed to serve:", err)
+				if sender != nil {
+					sender <- err
+				}
+				return
+			}
+		} else {
+			configContext.Log.Println("Missing config: gprc_server_port")
 			if sender != nil {
-				sender <- err
+				sender <- errors.New("missing config: gprc_server_port")
 			}
 			return
 		}
-		configContext.Log.Println("Starting server")
-
-		grpcServer = gServer
-		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-		pb.RegisterGreeterServer(grpcServer, &server{})
-		log.Printf("server listening at %v", lis.Addr())
-		if err := grpcServer.Serve(lis); err != nil {
-			configContext.Log.Println("Failed to serve:", err)
-			if sender != nil {
-				sender <- err
-			}
-			return
-		}
-	} else {
-		configContext.Log.Println("Missing config: gprc_server_port")
-		if sender != nil {
-			sender <- errors.New("missing config: gprc_server_port")
-		}
-		return
 	}
 }
 
-func stop() {
-	if grpcServer == nil || configContext == nil {
-		fmt.Println("no server initialized for hello")
+func stop(pluginName string) {
+	if grpcServer == nil || configContextMap == nil {
+		fmt.Println("no server initialized for mutabilis")
+		return
+	}
+	configContext := configContextMap[pluginName]
+	if configContext == nil {
+		fmt.Println("no context initialized for mutabilis")
 		return
 	}
 	configContext.Log.Println("Stopping server")
@@ -142,9 +152,11 @@ func stop() {
 	sender = nil
 }
 
-func GetConfigContext() *tccore.ConfigContext { return configContext }
+func GetConfigContext(pluginName string) *tccore.ConfigContext {
+	return configContextMap[pluginName]
+}
 
-func GetConfigPaths() []string {
+func GetConfigPaths(pluginName string) []string {
 	return []string{
 		COMMON_PATH,
 		HELLO_CERT,
@@ -152,7 +164,7 @@ func GetConfigPaths() []string {
 	}
 }
 
-func Init(properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]interface{}) {
 	if properties == nil {
 		fmt.Println("Missing initialization components")
 		return
@@ -161,6 +173,7 @@ func Init(properties *map[string]interface{}) {
 	if _, ok := (*properties)["log"].(*log.Logger); ok {
 		logger = (*properties)["log"].(*log.Logger)
 	}
+	configContext := configContextMap[pluginName]
 
 	configContext = &tccore.ConfigContext{
 		Config: properties,
@@ -186,8 +199,8 @@ func Init(properties *map[string]interface{}) {
 	if channels, ok := (*properties)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY]; ok {
 		if chans, ok := channels.(map[string]interface{}); ok {
 			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN]; ok {
-				if rc, ok := rchan.(chan int); ok && rc != nil {
-					go receiver(rc)
+				if rc, ok := rchan.(chan core.KernelCmd); ok && rc != nil {
+					go receiverMutabile(configContext, rc)
 				} else {
 					configContext.Log.Println("Unsupported receiving channel passed into hello")
 					return
