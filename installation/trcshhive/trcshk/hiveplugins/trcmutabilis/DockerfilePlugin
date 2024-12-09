@@ -1,0 +1,2 @@
+FROM scratch
+ADD bin/mutabilis.so /usr/local/trcshk/plugins
