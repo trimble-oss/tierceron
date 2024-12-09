@@ -31,6 +31,7 @@ This section is if you would like to develop Tierceron trusted business flows ut
 See [installation/trcdb/README.md](installation/trcdb/README.md)
 
 ### Automated tests ⚙
-TODO...
+Not many at this point.
+
 
 

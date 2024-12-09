@@ -70,6 +70,7 @@ type DriverConfig struct {
 	StartDir          []string // Starting directory. possibly multiple
 	EndDir            string
 	SubOutputMemCache bool
+	ReadMemCache      bool
 	OutputMemCache    bool
 	MemFs             MemoryFileSystem
 	MemCacheLock      sync.Mutex
@@ -128,7 +129,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 		// This is the most common use of the tool.
 		projectFileNames := map[string]bool{}
 
-		if driverConfig.SubOutputMemCache {
+		if driverConfig.ReadMemCache {
 			projectFilesComplete, err := driverConfig.MemFs.ReadDir(driverConfig, driverConfig.StartDir[0])
 			if err == nil {
 				for _, projectFile := range projectFilesComplete {
@@ -168,7 +169,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile
 				} else if projectFileNames[projectFile] {
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile
-					if driverConfig.SubOutputMemCache {
+					if driverConfig.ReadMemCache {
 						serviceFiles, err := driverConfig.MemFs.ReadDir(driverConfig, projectStartDir)
 						if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 							projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
