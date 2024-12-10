@@ -301,7 +301,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 		mod.SectionPath = ""
 		if vaultWriteBack {
 			mod.SectionPath = ""
-			_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dfStatDeliveryCtx.FlowGroup+"/dataFlowName/"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
+			_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
 			if writeErr != nil && dsc.LogFunc != nil {
 				(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 			}
@@ -312,7 +312,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.
 					mod.SectionPath = ""
-					_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dfStatDeliveryCtx.FlowGroup+"/dataFlowName/"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
+					_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
 					if writeErr != nil && dsc.LogFunc != nil {
 						(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 					}
@@ -323,20 +323,20 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 }
 
 func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
-	listData, listErr := mod.List("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+flowG+"/dataFlowName/"+flowN, logger)
+	listData, listErr := mod.List("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/"+flowN, logger)
 	if listErr != nil {
 		return listErr
 	}
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
-			data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
+			data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowN + "/" + stateCode.(string))
 			if readErr != nil {
 				return readErr
 			}
 			if data == nil {
 				time.Sleep(1000)
-				data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowG + "/dataFlowName/" + flowN + "/" + stateCode.(string))
+				data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/" + flowN + "/" + stateCode.(string))
 				if readErr == nil && data == nil {
 					return nil
 				}
