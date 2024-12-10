@@ -25,6 +25,8 @@ type server struct {
 var configContextMap map[string]*tccore.ConfigContext
 var grpcServer *grpc.Server
 var sender chan error
+var serverAddr *string //another way to do this...
+var dfstat *tccore.TTDINode
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
 	log.Printf("Received: %v", in.GetName())
@@ -75,6 +77,61 @@ func InitServer(pluginName string, port int, certBytes []byte, keyBytes []byte) 
 	return lis, grpcServer, nil
 }
 
+func send_dfstat(pluginName string) {
+	if configContext, ok := configContextMap[pluginName]; ok {
+		if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
+			fmt.Println("Dataflow Statistic channel not initialized properly for healthcheck.")
+			return
+		}
+		dfsctx, _, err := dfstat.GetDeliverStatCtx()
+		if err != nil {
+			configContext.Log.Println("Failed to get dataflow statistic context: ", err)
+			send_err(pluginName, err)
+			return
+		}
+		dfstat.Name = configContext.ArgosId
+		dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
+		configContext.Log.Printf("Sending dataflow statistic to kernel: %s\n", dfstat.Name)
+		dfstatClone := *dfstat
+		go func(dsc *tccore.TTDINode) {
+			if configContext != nil && *configContext.DfsChan != nil {
+				*configContext.DfsChan <- dsc
+			}
+		}(&dfstatClone)
+	}
+}
+
+func send_err(pluginName string, err error) {
+	if configContext, ok := configContextMap[pluginName]; ok {
+		if configContext == nil || configContext.ErrorChan == nil || err == nil {
+			fmt.Println("Failure to send error message, error channel not initialized properly for healthcheck.")
+			return
+		}
+		if dfstat != nil {
+			dfsctx, _, err := dfstat.GetDeliverStatCtx()
+			if err != nil {
+				configContext.Log.Println("Failed to get dataflow statistic context: ", err)
+				return
+			}
+			dfstat.UpdateDataFlowStatistic(dfsctx.FlowGroup,
+				dfsctx.FlowName,
+				dfsctx.StateName,
+				dfsctx.StateCode,
+				2,
+				func(msg string, err error) {
+					configContext.Log.Println(msg, err)
+				})
+			dfstat.Name = configContext.ArgosId
+			dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
+			configContext.Log.Printf("Sending failed dataflow statistic to kernel: %s\n", dfstat.Name)
+			go func(sender chan *tccore.TTDINode, dfs *tccore.TTDINode) {
+				sender <- dfs
+			}(*configContext.DfsChan, dfstat)
+		}
+		*configContext.ErrorChan <- err
+	}
+}
+
 func start(pluginName string) {
 	if configContextMap == nil {
 		fmt.Println("no config context initialized for healthcheck")
@@ -82,7 +139,6 @@ func start(pluginName string) {
 	}
 
 	if configContext, ok := configContextMap[pluginName]; ok {
-
 		if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
 			var helloPort int
 			if port, ok := portInterface.(int); ok {
@@ -115,14 +171,29 @@ func start(pluginName string) {
 			grpcServer = gServer
 			grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 			pb.RegisterGreeterServer(grpcServer, &server{})
-			log.Printf("server listening at %v", lis.Addr())
-			if err := grpcServer.Serve(lis); err != nil {
-				configContext.Log.Println("Failed to serve:", err)
-				if sender != nil {
-					sender <- err
+			addr := lis.Addr().String()
+			serverAddr = &addr
+			configContext.Log.Printf("server listening at %v", lis.Addr())
+			go func(l net.Listener, cmd_send_chan *chan tccore.KernelCmd) {
+				if cmd_send_chan != nil {
+					*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 				}
-				return
-			}
+				if err := grpcServer.Serve(l); err != nil {
+					configContext.Log.Println("Failed to serve:", err)
+					send_err(pluginName, err)
+					return
+				}
+			}(lis, configContext.CmdSenderChan)
+			dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+			dfstat.UpdateDataFlowStatistic("System",
+				pluginName,
+				"Start up",
+				"1",
+				1,
+				func(msg string, err error) {
+					configContext.Log.Println(msg, err)
+				})
+			send_dfstat(pluginName)
 		} else {
 			configContext.Log.Println("Missing config: gprc_server_port")
 			if sender != nil {
@@ -134,21 +205,36 @@ func start(pluginName string) {
 }
 
 func stop(pluginName string) {
-	if grpcServer == nil || configContextMap == nil {
-		fmt.Println("no server initialized for mutabilis")
-		return
-	}
 	configContext := configContextMap[pluginName]
-	if configContext == nil {
-		fmt.Println("no context initialized for mutabilis")
-		return
+
+	if configContext != nil {
+		configContext.Log.Println("Healthcheck received shutdown message from kernel.")
+		configContext.Log.Println("Stopping server")
 	}
-	configContext.Log.Println("Stopping server")
-	fmt.Println("Stopping server")
-	grpcServer.Stop()
-	fmt.Println("Stopped server")
-	configContext = nil
+	if grpcServer != nil {
+		grpcServer.Stop()
+	} else {
+		fmt.Println("no server initialized for healthcheck")
+	}
+	if configContext != nil {
+		configContext.Log.Println("Stopped server")
+		configContext.Log.Println("Stopped server for healthcheck.")
+		dfstat.UpdateDataFlowStatistic("System",
+			pluginName,
+			"Shutdown",
+			"0",
+			1, func(msg string, err error) {
+				if err != nil {
+					configContext.Log.Println(tccore.SanitizeForLogging(err.Error()))
+				} else {
+					configContext.Log.Println(tccore.SanitizeForLogging(msg))
+				}
+			})
+		send_dfstat(pluginName)
+		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
+	}
 	grpcServer = nil
+	dfstat = nil
 	sender = nil
 }
 

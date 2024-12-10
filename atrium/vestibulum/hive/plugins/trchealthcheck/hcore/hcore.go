@@ -199,7 +199,7 @@ func start(pluginName string) {
 		}(lis, configContext.CmdSenderChan)
 		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
 		dfstat.UpdateDataFlowStatistic("System",
-			"HealthCheck",
+			pluginName,
 			"Start up",
 			"1",
 			1,
@@ -228,7 +228,7 @@ func stop(pluginName string) {
 		configContext.Log.Println("Stopped server")
 		configContext.Log.Println("Stopped server for healthcheck.")
 		dfstat.UpdateDataFlowStatistic("System",
-			"HealthCheck",
+			pluginName,
 			"Shutdown",
 			"0",
 			1, func(msg string, err error) {
