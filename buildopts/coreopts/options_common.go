@@ -248,3 +248,21 @@ func GetPluginRestrictedMappings() map[string][][]string {
 		},
 	}
 }
+
+func GetConfigPaths(pluginName string) []string {
+	switch pluginName {
+	// An example mutabilis plugin -- not really implemented as such.
+	case "healthcheck":
+		return []string{
+			"Common/serviceclientcert.pem.mf.tmpl",
+			"Common/servicecert.crt.mf.tmpl",
+			"Common/servicekey.key.mf.tmpl",
+			"/local_config/application",
+			"/local_config/contrast",
+			"/local_config/logback",
+			"/local_config/newrelic",
+		}
+	default:
+		return []string{}
+	}
+}
