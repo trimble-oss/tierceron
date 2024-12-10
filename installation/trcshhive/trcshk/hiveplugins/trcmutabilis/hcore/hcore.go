@@ -10,7 +10,7 @@ import (
 	"strconv"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hellosdk" // Update package path as needed
+	pb "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcmutabilis/mutabilissdk" // Update package path as needed
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
@@ -21,7 +21,7 @@ type server struct {
 	pb.UnimplementedGreeterServer
 }
 
-var configContext *tccore.ConfigContext
+var configContextMap map[string]*tccore.ConfigContext
 var grpcServer *grpc.Server
 var sender chan error
 
@@ -36,12 +36,12 @@ const (
 	COMMON_PATH = "config"
 )
 
-func receiver(receive_chan chan int) {
+func receiverMutabile(configContext *tccore.ConfigContext, receive_chan chan int) {
 	for {
 		event := <-receive_chan
 		switch {
 		case event == tccore.PLUGIN_EVENT_START:
-			go start()
+			go configContext.Start()
 		case event == tccore.PLUGIN_EVENT_STOP:
 			go stop()
 			sender <- errors.New("hello shutting down")
@@ -54,7 +54,7 @@ func receiver(receive_chan chan int) {
 	}
 }
 
-func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
+func InitServer(pluginName string, port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
 	var err error
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
@@ -75,10 +75,11 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 }
 
 func start() {
-	if configContext == nil {
+	if configContextMap == nil {
 		fmt.Println("no config context initialized for healthcheck")
 		return
 	}
+
 	if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
 		var helloPort int
 		if port, ok := portInterface.(int); ok {
@@ -96,7 +97,7 @@ func start() {
 		}
 
 		fmt.Printf("Server listening on :%d\n", helloPort)
-		lis, gServer, err := InitServer(helloPort,
+		lis, gServer, err := InitMutabileServer(pluginName, helloPort,
 			(*configContext.ConfigCerts)[HELLO_CERT],
 			(*configContext.ConfigCerts)[HELLO_KEY])
 		if err != nil {
@@ -128,9 +129,14 @@ func start() {
 	}
 }
 
-func stop() {
-	if grpcServer == nil || configContext == nil {
-		fmt.Println("no server initialized for hello")
+func stop(pluginName string) {
+	if grpcServer == nil || configContextMap == nil {
+		fmt.Println("no server initialized for mutabilis")
+		return
+	}
+	configContext := configContextMap[pluginName]
+	if configContext == nil {
+		fmt.Println("no context initialized for mutabilis")
 		return
 	}
 	configContext.Log.Println("Stopping server")
@@ -142,9 +148,11 @@ func stop() {
 	sender = nil
 }
 
-func GetConfigContext() *tccore.ConfigContext { return configContext }
+func GetConfigContext(pluginName string) *tccore.ConfigContext {
+	return configContextMap[pluginName]
+}
 
-func GetConfigPaths() []string {
+func GetConfigPaths(pluginName string) []string {
 	return []string{
 		COMMON_PATH,
 		HELLO_CERT,
@@ -152,7 +160,7 @@ func GetConfigPaths() []string {
 	}
 }
 
-func Init(properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]interface{}) {
 	if properties == nil {
 		fmt.Println("Missing initialization components")
 		return
@@ -161,6 +169,7 @@ func Init(properties *map[string]interface{}) {
 	if _, ok := (*properties)["log"].(*log.Logger); ok {
 		logger = (*properties)["log"].(*log.Logger)
 	}
+	configContext := configContextMap[pluginName]
 
 	configContext = &tccore.ConfigContext{
 		Config: properties,
@@ -187,7 +196,7 @@ func Init(properties *map[string]interface{}) {
 		if chans, ok := channels.(map[string]interface{}); ok {
 			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN]; ok {
 				if rc, ok := rchan.(chan int); ok && rc != nil {
-					go receiver(rc)
+					go receiverMutabile(configContext, rc)
 				} else {
 					configContext.Log.Println("Unsupported receiving channel passed into hello")
 					return

@@ -8,16 +8,16 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	hcore "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hcore"
+	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 	// Update package path as needed
 )
 
-func GetConfigPaths() []string {
-	return hcore.GetConfigPaths()
+func GetConfigPaths(pluginName string) []string {
+	return hcore.GetConfigPaths(pluginName)
 }
 
-func Init(properties *map[string]interface{}) {
-	hcore.Init(properties)
+func Init(pluginName string, properties *map[string]interface{}) {
+	hcore.Init(pluginName, properties)
 }
 
 func main() {
@@ -62,6 +62,6 @@ func main() {
 	config[hcore.HELLO_CERT] = helloCertBytes
 	config[hcore.HELLO_KEY] = helloKeyBytes
 
-	Init(&config)
-	hcore.GetConfigContext().Start()
+	Init("healthcheck", &config)
+	hcore.GetConfigContext("healthcheck").Start("healthcheck")
 }

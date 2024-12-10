@@ -1,0 +1,5 @@
+{{.certData}}
+{{or .certSourcePath "certs/hive.crt"}}
+{{or .certDestPath "local_config/hive.crt"}}
+{{or .certHost "*"}}
+{{or .certBundleJks "spectrumkeys.jks"}}

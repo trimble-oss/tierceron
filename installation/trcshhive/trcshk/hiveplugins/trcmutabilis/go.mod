@@ -1,4 +1,4 @@
-module github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld
+module github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcmutabilis
 
 go 1.23.2
 

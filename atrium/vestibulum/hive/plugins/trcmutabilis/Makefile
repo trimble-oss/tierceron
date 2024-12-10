@@ -21,12 +21,12 @@ depend:
 clean:
 	rm -f bin
 
-cleanhellosdk:
-	rm hellosdk/hellosdk_grpc.pb.go; rm hellosdk/hellosdk.pb.go
+cleanmutabilissdk:
+	rm mutabilissdk/hellosdk_grpc.pb.go; rm mutabilissdk/hellosdk.pb.go
 
-hellosdk: */*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative hellosdk/hellosdk.proto
+mutabilissdk: */*.proto
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative mutabilissdk/mutabilissdk.proto
 
-pluginhello:
-	go build -buildmode=plugin -trimpath -o="./hello.so" -tags "tc azrcr memonly kernel" trchelloworld.go
+pluginmutabilis:
+	go build -buildmode=plugin -trimpath -o="./trcmutabilis.so" -tags "tc azrcr memonly kernel" trcmutabilis.go
 
