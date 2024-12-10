@@ -7,11 +7,15 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
+
+	"golang.org/x/sys/unix"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
@@ -32,12 +36,6 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	log.Printf("Received: %v", in.GetName())
 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
-
-const (
-	HELLO_CERT  = "Common/hello.crt.mf.tmpl"
-	HELLO_KEY   = "Common/hellokey.key.mf.tmpl"
-	COMMON_PATH = "config"
-)
 
 func receiverMutabile(configContext *tccore.ConfigContext, receive_chan chan core.KernelCmd) {
 	for {
@@ -157,8 +155,8 @@ func start(pluginName string) {
 
 			fmt.Printf("Server listening on :%d\n", helloPort)
 			lis, gServer, err := InitServer(pluginName, helloPort,
-				(*configContext.ConfigCerts)[HELLO_CERT],
-				(*configContext.ConfigCerts)[HELLO_KEY])
+				(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
+				(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
 			if err != nil {
 				configContext.Log.Printf("Failed to start server: %v", err)
 				if sender != nil {
@@ -243,11 +241,7 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext {
 }
 
 func GetConfigPaths(pluginName string) []string {
-	return []string{
-		COMMON_PATH,
-		HELLO_CERT,
-		HELLO_KEY,
-	}
+	return coreopts.BuildOptions.GetConfigPaths(pluginName)
 }
 
 func Init(pluginName string, properties *map[string]interface{}) {
@@ -267,19 +261,22 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		Log:    logger,
 	}
 
-	var certbytes []byte
-	var keybytes []byte
-	if cert, ok := (*properties)[HELLO_CERT]; ok {
-		certbytes = cert.([]byte)
-		(*configContext.ConfigCerts)[HELLO_CERT] = certbytes
-	}
-	if key, ok := (*properties)[HELLO_KEY]; ok {
-		keybytes = key.([]byte)
-		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
-	}
-	if _, ok := (*properties)[COMMON_PATH]; !ok {
-		fmt.Println("Missing common config components")
-		return
+	// Convert all properties to mem files....
+	for propKey, propValue := range *properties {
+		data := propValue.([]byte)
+		fd, err := unix.MemfdCreate(propKey, unix.MFD_CLOEXEC)
+		if err != nil {
+			log.Fatal("Failed to create memory file:", err)
+		}
+
+		// Convert the file descriptor to *os.File
+		file := os.NewFile(uintptr(fd), propKey)
+		defer file.Close()
+
+		// Resize file to match data length
+		if _, err := file.Write(make([]byte, len(data))); err != nil {
+			log.Fatal("Failed to resize file:", err)
+		}
 	}
 
 	if channels, ok := (*properties)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY]; ok {
