@@ -32,7 +32,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	aFleet.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 	aFleet.MashupDetailedElement.Name = project
 	aFleet.ChildNodes = make([]*tccore.TTDINode, 0)
-	idNameListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project, logger)
+	idNameListData, serviceListErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s", project), logger)
 	if serviceListErr != nil || idNameListData == nil {
 		return &aFleet, serviceListErr
 	}
@@ -43,7 +43,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 
 	for _, idNameList := range idNameListData.Data {
 		for _, idName := range idNameList.([]interface{}) {
-			idListData, idListErr := mod.List("super-secrets/Index/"+project+"/tenantId", logger)
+			idListData, idListErr := mod.List(fmt.Sprintf("super-secrets/Index/%s/tenantId", project), logger)
 			if idListErr != nil || idListData == nil {
 				return &aFleet, idListErr
 			}
@@ -120,9 +120,6 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						data["flowName"] = flowName
 						data["stateName"] = stateName
 						data["stateCode"] = stateCode
-						if mode == "2" {
-							fmt.Println("hi")
-						}
 						data["mode"] = mode
 						data["timeSplit"] = timeSplit
 						data["lastTestedDate"] = lastTestedDate
@@ -218,7 +215,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 			for _, idList := range idListData.Data {
 				for _, id := range idList.([]interface{}) {
 					id = strings.Trim(id.(string), "/")
-					serviceListData, serviceListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName.(string)+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup", logger)
+					serviceListData, serviceListErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup", project, idName.(string), id.(string)), logger)
 					if serviceListErr != nil {
 						return &aFleet, serviceListErr
 					}
@@ -236,8 +233,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 							var dfgroup tccore.TTDINode
 							dfgroup.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							dfgroup.MashupDetailedElement.Name = strings.TrimSuffix(service.(string), "/")
-
-							statisticNameList, statisticNameListErr := mod.List("super-secrets/PublicIndex/"+project+"/"+idName.(string)+"/"+id.(string)+"/DataFlowStatistics/DataFlowGroup/Flows"+service.(string)+"/dataFlowName/", logger)
+							statisticNameList, statisticNameListErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/dataFlowName/", project, idName.(string), id.(string), service.(string)), logger)
 							if statisticNameListErr != nil {
 								return &aFleet, statisticNameListErr
 							}
@@ -301,7 +297,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 		mod.SectionPath = ""
 		if vaultWriteBack {
 			mod.SectionPath = ""
-			_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/Flows"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
+			_, writeErr := mod.Write(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s", indexPath, idName, id, dfStatDeliveryCtx.FlowName, dfStatDeliveryCtx.StateCode), statMap, logger)
 			if writeErr != nil && dsc.LogFunc != nil {
 				(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 			}
@@ -312,7 +308,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.
 					mod.SectionPath = ""
-					_, writeErr := mod.Write("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/Flows"+dfStatDeliveryCtx.FlowName+"/"+dfStatDeliveryCtx.StateCode, statMap, logger)
+					_, writeErr := mod.Write(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s", indexPath, idName, id, dfStatDeliveryCtx.FlowName, dfStatDeliveryCtx.StateCode), statMap, logger)
 					if writeErr != nil && dsc.LogFunc != nil {
 						(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 					}
@@ -323,27 +319,27 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 }
 
 func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
-	listData, listErr := mod.List("super-secrets/PublicIndex/"+indexPath+"/"+idName+"/"+id+"/DataFlowStatistics/DataFlowGroup/Flows"+flowN, logger)
+	listData, listErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s", indexPath, idName, id, flowN), logger)
 	if listErr != nil {
 		return listErr
 	}
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
-			data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/Flows" + flowN + "/" + stateCode.(string))
+			data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s", indexPath, idName, id, flowN, stateCode.(string)))
 			if readErr != nil {
 				return readErr
 			}
 			if data == nil {
 				time.Sleep(1000)
-				data, readErr := mod.ReadData("super-secrets/PublicIndex/" + indexPath + "/" + idName + "/" + id + "/DataFlowStatistics/DataFlowGroup/Flows" + flowN + "/" + stateCode.(string))
+				data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s", indexPath, idName, id, flowN, stateCode.(string)))
 				if readErr == nil && data == nil {
 					return nil
 				}
 			}
 			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
 				if testedDate == "" {
-					flowData, flowReadErr := mod.ReadData("super-secrets/" + data["flowGroup"].(string))
+					flowData, flowReadErr := mod.ReadData(fmt.Sprintf("super-secrets/%s", data["flowGroup"].(string)))
 					// if flowReadErr != nil {
 					// 	return flowReadErr
 					// } ***
@@ -368,7 +364,7 @@ func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexP
 func UpdateLastTestedDate(mod *kv.Modifier, dfs *tccore.DeliverStatCtx, statMap map[string]interface{}) {
 	if _, ok := statMap["lastTestedDate"].(string); ok {
 		if statMap["lastTestedDate"].(string) == "" {
-			flowData, flowReadErr := mod.ReadData("super-secrets/" + dfs.FlowGroup)
+			flowData, flowReadErr := mod.ReadData(fmt.Sprintf("super-secrets/%s", dfs.FlowGroup))
 			if flowReadErr != nil && dfs.LogFunc != nil {
 				(*dfs.LogFunc)("Error reading flow properties from vault", flowReadErr)
 			}

@@ -420,7 +420,14 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handle_errors(driverConfig)
-			go pluginHandler.handle_dataflowstat(driverConfig, mod, vault)
+			currentTokenName := "config_token_pluginany"
+			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
+			_, statmod, v, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("Problem initializing dataflow statistic mod: %s\n", err)
+				return
+			}
+			go pluginHandler.handle_dataflowstat(driverConfig, statmod, v)
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
@@ -492,7 +499,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 				driverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
 				return
 			}
-			flowcore.DeliverStatistic(nil, nil, mod, dfstat, "hive", tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
+			flowcore.DeliverStatistic(nil, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
 			driverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		case dfstat == nil:
 			driverConfig.CoreConfig.Log.Println("Shutting down dataflow statistic receiver in kernel")
