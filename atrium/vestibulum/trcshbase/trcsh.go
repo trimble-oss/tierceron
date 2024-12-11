@@ -605,7 +605,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		var errAgentLoad error
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(addressPtr,
-			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("trcsh_agent_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)),
+			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
+			fmt.Sprintf("trcsh_agent_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis),
 			agentEnv, deployCtlAcceptRemoteNoTimeout, nil, true, driverConfigPtr.CoreConfig.Log, dronePtr)
 		if errAgentLoad != nil {
 			// check os.env for another token
@@ -1019,7 +1020,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(gTrcshConfig.VaultAddressPtr,
-				gTrcshConfig.TokenCache.GetToken("config_token_pluginany"),
+				gTrcshConfig.TokenCache,
+				"config_token_pluginany",
 				env,
 				deployCtlAcceptRemote,
 				deployCtlInterrupted,
