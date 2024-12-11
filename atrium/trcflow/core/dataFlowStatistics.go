@@ -332,7 +332,7 @@ func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexP
 			}
 			if data == nil {
 				time.Sleep(1000)
-				data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s", indexPath, idName, id, flowN, stateCode.(string)))
+				data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s/%s", indexPath, idName, id, flowG, flowN, stateCode.(string)))
 				if readErr == nil && data == nil {
 					return nil
 				}
