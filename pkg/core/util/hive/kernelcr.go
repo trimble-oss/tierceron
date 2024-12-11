@@ -420,7 +420,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handle_errors(driverConfig)
-			go pluginHandler.handle_dataflowstat(driverConfig, mod, vault)
+			currentTokenName := "config_token_pluginany"
+			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
+			_, statmod, v, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("Problem initializing dataflow statistic mod: %s\n", err)
+				return
+			}
+			if v != nil {
+				defer v.Close()
+			}
+			go pluginHandler.handle_dataflowstat(driverConfig, statmod, v)
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
