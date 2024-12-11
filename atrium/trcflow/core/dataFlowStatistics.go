@@ -26,7 +26,10 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
-var HIVE_STAT_PATH string = "super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s"
+var PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"
+var HIVE_STAT_DFG_PATH string = fmt.Sprintf("%s%s", PUBLIC_INDEX_BASIS_PATH, "/%s/%s/DataFlowStatistics/DataFlowGroup")
+var HIVE_STAT_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_DFG_PATH, "/%s/dataFlowName/%s")
+var HIVE_STAT_CODE_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
 
 // New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tccore.TTDINode, error) {
@@ -34,7 +37,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	aFleet.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 	aFleet.MashupDetailedElement.Name = project
 	aFleet.ChildNodes = make([]*tccore.TTDINode, 0)
-	idNameListData, serviceListErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s", project), logger)
+	idNameListData, serviceListErr := mod.List(fmt.Sprintf(PUBLIC_INDEX_BASIS_PATH, project), logger)
 	if serviceListErr != nil || idNameListData == nil {
 		return &aFleet, serviceListErr
 	}
@@ -218,7 +221,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 				for _, id := range idList.([]interface{}) {
 					id = strings.Trim(id.(string), "/")
 					statPath := fmt.Sprintf(
-						"super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup",
+						HIVE_STAT_DFG_PATH,
 						project,
 						idName.(string),
 						id.(string))
@@ -310,14 +313,14 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 
 		mod.SectionPath = ""
 		statPath := fmt.Sprintf(
-			HIVE_STAT_PATH,
+			HIVE_STAT_CODE_PATH,
 			indexPath,
 			idName,
 			id,
 			dfStatDeliveryCtx.FlowGroup,
-			dfStatDeliveryCtx.FlowName)
-
-		statPath = fmt.Sprintf("%s/%s", statPath, dfStatDeliveryCtx.StateCode)
+			dfStatDeliveryCtx.FlowName,
+			dfStatDeliveryCtx.StateCode,
+		)
 
 		if vaultWriteBack {
 			mod.SectionPath = ""
