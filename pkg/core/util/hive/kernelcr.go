@@ -427,6 +427,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Problem initializing dataflow statistic mod: %s\n", err)
 				return
 			}
+			if v != nil {
+				defer v.Close()
+			}
 			go pluginHandler.handle_dataflowstat(driverConfig, statmod, v)
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)

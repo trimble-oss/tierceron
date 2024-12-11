@@ -297,10 +297,11 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 		statMap := dataFlowStatistic.FinishStatistic(id, indexPath, idName, logger, vaultWriteBack, dsc)
 
 		mod.SectionPath = ""
+		statPath := fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s",
+			indexPath, idName, id, dfStatDeliveryCtx.FlowName, dfStatDeliveryCtx.StateCode)
 		if vaultWriteBack {
 			mod.SectionPath = ""
-			_, writeErr := mod.Write(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s",
-				indexPath, idName, id, dfStatDeliveryCtx.FlowName, dfStatDeliveryCtx.StateCode), statMap, logger)
+			_, writeErr := mod.Write(statPath, statMap, logger)
 			if writeErr != nil && dsc.LogFunc != nil {
 				(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 			}
@@ -311,8 +312,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.
 					mod.SectionPath = ""
-					_, writeErr := mod.Write(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s",
-						indexPath, idName, id, dfStatDeliveryCtx.FlowName, dfStatDeliveryCtx.StateCode), statMap, logger)
+					_, writeErr := mod.Write(statPath, statMap, logger)
 					if writeErr != nil && dsc.LogFunc != nil {
 						(*dsc.LogFunc)("Error writing out DataFlowStatistics to vault", writeErr)
 					}
@@ -323,23 +323,22 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 }
 
 func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
-	listData, listErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s",
-		indexPath, idName, id, flowG, flowN), logger)
+	statPath := fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s",
+		indexPath, idName, id, flowG, flowN)
+	listData, listErr := mod.List(statPath, logger)
 	if listErr != nil {
 		return listErr
 	}
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
-			data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s/%s",
-				indexPath, idName, id, flowG, flowN, stateCode.(string)))
+			data, readErr := mod.ReadData(fmt.Sprintf("%s/%s", statPath, stateCode.(string)))
 			if readErr != nil {
 				return readErr
 			}
 			if data == nil {
 				time.Sleep(1000)
-				data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s/%s",
-					indexPath, idName, id, flowG, flowN, stateCode.(string)))
+				data, readErr := mod.ReadData(fmt.Sprintf("%s/%s", statPath, stateCode.(string)))
 				if readErr == nil && data == nil {
 					return nil
 				}
