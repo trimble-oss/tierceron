@@ -319,14 +319,14 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 }
 
 func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
-	listData, listErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s", indexPath, idName, id, flowN), logger)
+	listData, listErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s", indexPath, idName, id, flowG, flowN), logger)
 	if listErr != nil {
 		return listErr
 	}
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
-			data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s", indexPath, idName, id, flowN, stateCode.(string)))
+			data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s/%s", indexPath, idName, id, flowG, flowN, stateCode.(string)))
 			if readErr != nil {
 				return readErr
 			}
