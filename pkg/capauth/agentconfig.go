@@ -21,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/tls"
@@ -421,6 +422,20 @@ func NewAgentConfig(addressPtr *string,
 			logger.Printf(".")
 		} else {
 			fmt.Printf(".")
+		}
+
+		if kernelopts.BuildOptions.IsKernel() {
+			tokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("token")
+			if penseError != nil {
+				return nil, nil, penseError
+			}
+			trcshConfig.TokenCache.AddToken("config_token_pluginany", tokenPtr)
+
+			if logger != nil {
+				logger.Printf(".")
+			} else {
+				fmt.Printf(".")
+			}
 		}
 
 		return agentconfig, trcshConfig, nil
