@@ -428,7 +428,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			_, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig, currentStatTokenName, driverConfig.CoreConfig.Log)
 			if err != nil {
-				driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 				return
 			}
 			if statvault != nil {
