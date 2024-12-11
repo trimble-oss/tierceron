@@ -26,6 +26,8 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
+var HIVE_STAT_PATH string = "super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s"
+
 // New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tccore.TTDINode, error) {
 	var aFleet tccore.TTDINode
@@ -215,8 +217,15 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 			for _, idList := range idListData.Data {
 				for _, id := range idList.([]interface{}) {
 					id = strings.Trim(id.(string), "/")
-					serviceListData, serviceListErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup",
-						project, idName.(string), id.(string)), logger)
+					statPath := fmt.Sprintf(
+						"super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup",
+						project,
+						idName.(string),
+						id.(string))
+
+					serviceListData, serviceListErr := mod.List(statPath,
+						logger)
+
 					if serviceListErr != nil {
 						return &aFleet, serviceListErr
 					}
@@ -234,8 +243,11 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 							var dfgroup tccore.TTDINode
 							dfgroup.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							dfgroup.MashupDetailedElement.Name = strings.TrimSuffix(service.(string), "/")
-							statisticNameList, statisticNameListErr := mod.List(fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/dataFlowName/",
-								project, idName.(string), id.(string), service.(string)), logger)
+							statisticNameList, statisticNameListErr := mod.List(fmt.Sprintf("%s/%s/dataFlowName/",
+								statPath,
+								service.(string)),
+								logger)
+
 							if statisticNameListErr != nil {
 								return &aFleet, statisticNameListErr
 							}
@@ -297,8 +309,16 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 		statMap := dataFlowStatistic.FinishStatistic(id, indexPath, idName, logger, vaultWriteBack, dsc)
 
 		mod.SectionPath = ""
-		statPath := fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/Flows/%s/%s",
-			indexPath, idName, id, dfStatDeliveryCtx.FlowName, dfStatDeliveryCtx.StateCode)
+		statPath := fmt.Sprintf(
+			HIVE_STAT_PATH,
+			indexPath,
+			idName,
+			id,
+			dfStatDeliveryCtx.FlowGroup,
+			dfStatDeliveryCtx.FlowName)
+
+		statPath = fmt.Sprintf("%s/%s", statPath, dfStatDeliveryCtx.StateCode)
+
 		if vaultWriteBack {
 			mod.SectionPath = ""
 			_, writeErr := mod.Write(statPath, statMap, logger)
@@ -323,8 +343,14 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 }
 
 func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
-	statPath := fmt.Sprintf("super-secrets/PublicIndex/%s/%s/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s",
-		indexPath, idName, id, flowG, flowN)
+	statPath := fmt.Sprintf(
+		HIVE_STAT_PATH,
+		indexPath,
+		idName,
+		id,
+		flowG,
+		flowN)
+
 	listData, listErr := mod.List(statPath, logger)
 	if listErr != nil {
 		return listErr
@@ -332,13 +358,14 @@ func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexP
 
 	for _, stateCodeList := range listData.Data {
 		for _, stateCode := range stateCodeList.([]interface{}) {
-			data, readErr := mod.ReadData(fmt.Sprintf("%s/%s", statPath, stateCode.(string)))
+			path := fmt.Sprintf("%s/%s", statPath, stateCode.(string))
+			data, readErr := mod.ReadData(path)
 			if readErr != nil {
 				return readErr
 			}
 			if data == nil {
 				time.Sleep(1000)
-				data, readErr := mod.ReadData(fmt.Sprintf("%s/%s", statPath, stateCode.(string)))
+				data, readErr := mod.ReadData(path)
 				if readErr == nil && data == nil {
 					return nil
 				}
