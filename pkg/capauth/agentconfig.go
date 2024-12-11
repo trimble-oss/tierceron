@@ -21,8 +21,10 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/tls"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -280,13 +282,16 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 }
 
 func NewAgentConfig(addressPtr *string,
-	agentTokenPtr *string,
+	tokenCache *cache.TokenCache,
+	agentTokenName string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
 	initNewTrcsh bool,
 	logger *log.Logger,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
+
+	agentTokenPtr := tokenCache.GetToken(agentTokenName)
 	if agentTokenPtr == nil {
 		logger.Println("trcsh Failed to bootstrap")
 		return nil, nil, errors.New("missing required agent auth")
@@ -421,6 +426,20 @@ func NewAgentConfig(addressPtr *string,
 			logger.Printf(".")
 		} else {
 			fmt.Printf(".")
+		}
+
+		if kernelopts.BuildOptions.IsKernel() {
+			tokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("token")
+			if penseError != nil {
+				return nil, nil, penseError
+			}
+			tokenCache.AddToken("config_token_pluginany", tokenPtr)
+
+			if logger != nil {
+				logger.Printf(".")
+			} else {
+				fmt.Printf(".")
+			}
 		}
 
 		return agentconfig, trcshConfig, nil
