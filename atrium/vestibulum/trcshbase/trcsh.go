@@ -136,7 +136,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
 				IsShell:       true,
-				TokenCache:    cache.NewTokenCacheEmpty(),
+				TokenCache:    gTokenCache,
 				Insecure:      false,
 				Env:           env,
 				EnvBasis:      eUtils.GetEnvBasis(env),
@@ -206,6 +206,8 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 	cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 	return nil
 }
+
+var gTokenCache *cache.TokenCache
 
 // EnableDeploy - initializes and starts running deployer for provided deployment and environment.
 func EnableDeployer(driverConfigPtr *config.DriverConfig, env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string, dronePtr *bool, projectService ...*string) {
@@ -296,6 +298,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	} else {
 		dronePtr = flagset.Bool("drone", false, "Run as drone.")
 	}
+
+	// Initialize the token cache
+	gTokenCache = cache.NewTokenCacheEmpty()
+
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
 			fmt.Println("Trcsh cannot be run as root.")
@@ -686,7 +692,9 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			pluginConfig["plugin"] = "trcsh"
 		}
 
-		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfigPtr.CoreConfig.Log)
+		_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
+			gTokenCache,
+			currentTokenName, driverConfigPtr.CoreConfig.Log)
 		if err != nil {
 			fmt.Printf("Problem initializing mod: %s\n", err)
 			driverConfigPtr.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)

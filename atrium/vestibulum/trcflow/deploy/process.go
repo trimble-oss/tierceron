@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
 	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -43,7 +44,9 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	tempTokenPtr := pluginConfig["tokenptr"]
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
-	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", logger)
+	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		"config_token_pluginany", logger)
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -101,7 +104,9 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	tokenPtr := eUtils.RefMap(pluginConfig, "tokenptr")
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
-	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig, "config_token_pluginany", logger)
+	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig,
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		"config_token_pluginany", logger)
 	carrierDriverConfig.SubSectionValue = pluginName
 	if err != nil {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)

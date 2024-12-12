@@ -173,7 +173,7 @@ func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *lo
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
 
@@ -189,8 +189,10 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, currentTokenName
 
 	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
 	if tokenPtr, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk || RefLength(tokenPtr) < 5 {
-		trcdbEnvLogger.Println("Missing required token")
-		return nil, nil, nil, errors.New("missing required token")
+		if tokenCache.GetToken(currentTokenName) == nil {
+			trcdbEnvLogger.Println("Missing required token")
+			return nil, nil, nil, errors.New("missing required token")
+		}
 	}
 	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
 		trcdbEnvLogger.Println("Missing required vaddress")
@@ -206,7 +208,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, currentTokenName
 			WantCerts:           false,
 			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 			CurrentTokenNamePtr: &currentTokenName,
-			TokenCache:          cache.NewTokenCache(currentTokenName, RefMap(pluginConfig, "tokenptr")),
+			TokenCache:          tokenCache,
 			VaultAddressPtr:     RefMap(pluginConfig, "vaddress"),
 			Env:                 pluginConfig["env"].(string),
 			Regions:             regions,

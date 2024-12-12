@@ -94,9 +94,11 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
 			pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-			_, mod, _, err = eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
+			_, mod, _, err = eUtils.InitVaultModForPlugin(pluginConfig,
+				driverConfig.CoreConfig.TokenCache,
+				currentTokenName, driverConfig.CoreConfig.Log)
 			if err != nil {
-				driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+				driverConfig.CoreConfig.Log.Printf("DynamicReloader Problem initializing mod: %s  Trying again later\n", err)
 			}
 		}
 		if globalCertCache != nil && mod != nil {
@@ -151,7 +153,11 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 			}
 		}
-		if pH.KernelCtx != nil && pH.KernelCtx.DeployRestartChan != nil && pH.KernelCtx.PluginRestartChan != nil && mod != nil {
+		if pH.KernelCtx != nil &&
+			pH.KernelCtx.DeployRestartChan != nil &&
+			pH.KernelCtx.PluginRestartChan != nil &&
+			mod != nil &&
+			!pluginopts.BuildOptions.IsPluginHardwired() {
 			for service, servPh := range *pH.Services {
 				certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", service))
 				if err != nil {
@@ -325,10 +331,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
 	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
-	pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, currentTokenName, driverConfig.CoreConfig.Log)
+	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
+		driverConfig.CoreConfig.TokenCache,
+		currentTokenName,
+		driverConfig.CoreConfig.Log)
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
 		return
@@ -423,10 +431,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			statPluginConfig := make(map[string]interface{})
 			statPluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
 			currentStatTokenName := "config_token_pluginany"
-			statPluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentStatTokenName)
 			statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-			_, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig, currentStatTokenName, driverConfig.CoreConfig.Log)
+			_, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
+				driverConfig.CoreConfig.TokenCache,
+				currentStatTokenName,
+				driverConfig.CoreConfig.Log)
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 				return
