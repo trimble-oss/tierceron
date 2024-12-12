@@ -617,10 +617,12 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			for _, p := range *pluginHandler.Services {
 				if p.ConfigContext.ChatSenderChan != nil && *msg.Query != nil && len(*msg.Query) > 0 && (*msg.Query)[0] == p.Name {
-					*p.ConfigContext.ChatSenderChan <- &core.ChatMsg{
+					go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
+						sender <- message
+					}(*p.ConfigContext.ChatSenderChan, &core.ChatMsg{
 						Name:     msg.Name,
 						KernelId: &pluginHandler.Id,
-					}
+					})
 				}
 			}
 			return
@@ -646,13 +648,17 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				if eUtils.RefLength(msg.ChatId) > 0 && eUtils.RefLength((*msg).ChatId) > 0 {
 					new_msg.ChatId = (*msg).ChatId
 				}
-				*plugin.ConfigContext.ChatSenderChan <- new_msg
+				go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
+					sender <- message
+				}(*plugin.ConfigContext.ChatSenderChan, new_msg)
 			} else if eUtils.RefLength(msg.Name) > 0 {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					responseError := "Service unavailable"
 					msg.Response = &responseError
-					*plugin.ConfigContext.ChatSenderChan <- msg //update msg with error response
+					go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
+						sender <- message
+					}(*plugin.ConfigContext.ChatSenderChan, msg)
 				}
 				continue
 			} else {
