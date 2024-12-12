@@ -428,7 +428,7 @@ func NewAgentConfig(addressPtr *string,
 			fmt.Printf(".")
 		}
 
-		if kernelopts.BuildOptions.IsKernel() {
+		if kernelopts.BuildOptions.IsKernel() && tokenCache.GetToken("config_token_pluginany") == nil {
 			tokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("token")
 			if penseError != nil {
 				return nil, nil, penseError
