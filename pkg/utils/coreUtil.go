@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"reflect"
 	"runtime"
 )
 
@@ -64,16 +63,17 @@ func RefMap(m map[string]interface{}, key string) *string {
 		return nil
 	}
 
-	rv := reflect.ValueOf(v)
-	if rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-	}
-	if rv.Kind() != reflect.String {
+	if _, ok := v.(*string); ok {
+		return v.(*string)
+	} else if _, ok := v.(**string); ok {
+		refStr := v.(**string)
+		return *refStr
+	} else if _, ok := v.(string); ok {
+		str := v.(string)
+		return &str
+	} else {
 		return nil
 	}
-	strPtr := rv.String()
-
-	return &strPtr
 }
 
 func EmptyStringRef() *string { return &EMPTY_STRING }
