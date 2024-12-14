@@ -71,6 +71,8 @@ func main() {
 	if strings.HasSuffix(executableName, "-prod") {
 		logger.Println("Running prod plugin")
 		prod.SetProd(true)
+	} else {
+		logger.Println("Running non-prod plugin")
 	}
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 	carrierfactory.InitLogger(logger)
@@ -79,7 +81,6 @@ func main() {
 	if e != nil {
 		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
-	cursoropts.BuildOptions.TapInit()
 
 	carrierfactory.Init(coreopts.BuildOptions.InitPluginConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
