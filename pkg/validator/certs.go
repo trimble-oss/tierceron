@@ -11,6 +11,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -138,15 +139,24 @@ func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPo
 		if _, err := cert.Verify(opts); err != nil {
 			if !utils.IsWindows() {
 				if _, ok := err.(x509.UnknownAuthorityError); ok {
-					issuer, issuerErr := getCert("http://r3.i.lencr.org/")
-					if issuerErr != nil {
-						return false, issuerErr
+					var lastError error
+
+					for _, supportedIssueer := range coreopts.BuildOptions.GetSupportedCertIssuers() {
+						issuer, issuerErr := getCert(supportedIssueer)
+						if issuerErr != nil {
+							return false, issuerErr
+						}
+						opts.Intermediates.AddCert(issuer)
+						if _, err := cert.Verify(opts); err != nil {
+							lastError = err
+							continue
+						} else {
+							return true, nil
+						}
 					}
-					opts.Intermediates.AddCert(issuer)
-					if _, err := cert.Verify(opts); err != nil {
-						return false, err
-					} else {
-						return true, nil
+
+					if lastError != nil {
+						return false, lastError
 					}
 				}
 			}
