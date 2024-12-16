@@ -266,3 +266,7 @@ func GetConfigPaths(pluginName string) []string {
 		return []string{}
 	}
 }
+
+func GetSupportedCertIssuers() []string {
+	return []string{"http://r3.i.lencr.org/"}
+}
