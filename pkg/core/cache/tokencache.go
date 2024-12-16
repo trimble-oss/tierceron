@@ -3,25 +3,27 @@ package cache
 import (
 	"errors"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 )
 
 type TokenCache struct {
-	cache map[string]*string // tokenKey, *token
+	cache *cmap.ConcurrentMap[string, *string] // tokenKey, *token
 }
 
 func NewTokenCacheEmpty() *TokenCache {
-	return &TokenCache{cache: map[string]*string{}}
+	ccmap := cmap.New[*string]()
+	return &TokenCache{cache: &ccmap}
 }
 
 func NewTokenCache(tokenKey string, token *string) *TokenCache {
 	if token == nil || len(*token) == 0 {
 		return NewTokenCacheEmpty()
 	}
-	return &TokenCache{cache: map[string]*string{
-		tokenKey: token,
-	}}
+	ccmap := cmap.New[*string]()
+	ccmap.Set(tokenKey, token)
+	return &TokenCache{cache: &ccmap}
 }
 
 func (tc *TokenCache) AddToken(tokenKey string, token *string) error {
@@ -34,7 +36,7 @@ func (tc *TokenCache) AddToken(tokenKey string, token *string) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtect(nil, token)
 	}
-	tc.cache[tokenKey] = token
+	tc.cache.Set(tokenKey, token)
 	return nil
 }
 
@@ -42,9 +44,13 @@ func (tc *TokenCache) GetToken(tokenKey string) *string {
 	if tc.cache == nil {
 		return nil
 	}
-	return tc.cache[tokenKey]
+	if token, ok := tc.cache.Get(tokenKey); ok {
+		return token
+	} else {
+		return nil
+	}
 }
 
 func (tc *TokenCache) Clear() {
-	tc.cache = map[string]*string{}
+	tc.cache.Clear()
 }
