@@ -31,6 +31,7 @@ type OptionsBuilder struct {
 	InitPluginConfig            func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 	GetPluginRestrictedMappings func() map[string][][]string
 	GetConfigPaths              func(string) []string
+	GetSupportedCertIssuers     func() []string
 }
 
 func LoadOptions() Option {
@@ -59,6 +60,7 @@ func LoadOptions() Option {
 		optionsBuilder.InitPluginConfig = InitPluginConfig
 		optionsBuilder.GetPluginRestrictedMappings = GetPluginRestrictedMappings
 		optionsBuilder.GetConfigPaths = GetConfigPaths
+		optionsBuilder.GetSupportedCertIssuers = GetSupportedCertIssuers
 	}
 }
 
