@@ -334,6 +334,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
+	if !pluginopts.BuildOptions.IsPluginHardwired() {
+		set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
+		if err == nil && set_prod != nil {
+			driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
+			setProd := set_prod.(func(bool))
+			setProd(prod.IsProd())
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
+		}
+	}
+
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
 		driverConfig.CoreConfig.TokenCache,
 		currentTokenName,
@@ -412,17 +423,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			if chatReceiverChan == nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 				return
-			}
-
-			if !pluginopts.BuildOptions.IsPluginHardwired() {
-				set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
-				if err == nil && set_prod != nil {
-					driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
-					setProd := set_prod.(func(bool))
-					setProd(prod.IsProd())
-				} else {
-					driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
-				}
 			}
 
 			chan_map := make(map[string]interface{})
