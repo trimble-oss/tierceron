@@ -16,6 +16,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
@@ -411,6 +412,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			if chatReceiverChan == nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 				return
+			}
+
+			if !pluginopts.BuildOptions.IsPluginHardwired() {
+				set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
+				if err == nil && set_prod != nil {
+					driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
+					setProd := set_prod.(func(bool))
+					setProd(prod.IsProd())
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
+				}
 			}
 
 			chan_map := make(map[string]interface{})
