@@ -20,7 +20,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -145,6 +144,10 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 								}
 								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 							}
+							//TODO: Get rid of os.Exit
+							// 0. Reload certificates
+							// 1. Recall Init function for each plugin
+							// 2. Start each plugin
 							driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
 							os.Exit(0)
 						} else {
@@ -167,22 +170,36 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 
 				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
-					driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
-					*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-						PluginName: servPh.Name,
-						Command:    core.PLUGIN_EVENT_STOP,
-					}
-					cmd := <-*pH.KernelCtx.PluginRestartChan
-					if cmd.Command == core.PLUGIN_EVENT_STOP {
-						(*pH.Services)[service] = &PluginHandler{
-							Name:          service,
-							ConfigContext: &core.ConfigContext{},
-							KernelCtx: &KernelCtx{
-								PluginRestartChan: pH.KernelCtx.PluginRestartChan,
-							},
+					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
+					for service, servPh := range *pH.Services {
+						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+							PluginName: servPh.Name,
+							Command:    core.PLUGIN_EVENT_STOP,
 						}
-						driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
-						*pH.KernelCtx.DeployRestartChan <- service
+						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+					}
+
+					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
+						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+							PluginName: servPh.Name,
+							Command:    core.PLUGIN_EVENT_STOP,
+						}
+						cmd := <-*pH.KernelCtx.PluginRestartChan
+						if cmd.Command == core.PLUGIN_EVENT_STOP {
+							(*pH.Services)[service] = &PluginHandler{
+								Name:          service,
+								ConfigContext: &core.ConfigContext{},
+								KernelCtx: &KernelCtx{
+									PluginRestartChan: pH.KernelCtx.PluginRestartChan,
+								},
+							}
+							driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
+							*pH.KernelCtx.DeployRestartChan <- service
+						}
+					} else {
+						driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
+						os.Exit(0)
 					}
 				}
 			}
@@ -399,22 +416,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						}
 					}
 				} else {
-					if pluginToolConfig["trcprojectservice"] == "trcshkubeservice" {
-						// TODO: Pull all templates under path and feed them into configTemplate...
-						configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
-						if err != nil {
-							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-							return
-						}
-						serviceConfig[path] = []byte(configuredTemplate)
-					} else {
-						sc, ok := properties.GetConfigValues(projServ[1], path)
-						if !ok {
-							driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
-							return
-						}
-						serviceConfig[path] = &sc
+					// if pluginToolConfig["trcprojectservice"] == "trcshkubeservice" {
+					// 	// TODO: Pull all templates under path and feed them into configTemplate...
+					// 	configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
+					// 	if err != nil {
+					// 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+					// 		return
+					// 	}
+					// 	serviceConfig[path] = []byte(configuredTemplate)
+					// } else {
+					sc, ok := properties.GetConfigValues(projServ[1], path)
+					if !ok {
+						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+						return
 					}
+					serviceConfig[path] = &sc
+					// }
 				}
 			}
 			// Initialize channels
