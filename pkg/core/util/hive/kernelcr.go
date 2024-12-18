@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
-
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
@@ -36,7 +35,7 @@ var dfstat *core.TTDINode
 
 var m sync.Mutex
 
-var globalCertCache *map[string]certValue
+var globalCertCache *cmap.ConcurrentMap[string, certValue]
 
 type certValue struct {
 	CertBytes   *[]byte
@@ -61,7 +60,7 @@ type KernelCtx struct {
 
 func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
-	certCache := make(map[string]certValue)
+	certCache := cmap.New[certValue]()
 	globalCertCache = &certCache
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
@@ -83,7 +82,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to start dynamic reloading.")
 		return
 	}
-	var mod *helperkv.Modifier
+	var mod *kv.Modifier
 
 	for {
 		if mod == nil {
@@ -103,7 +102,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 			}
 		}
 		if globalCertCache != nil && mod != nil {
-			for k, v := range *globalCertCache {
+			for k, v := range globalCertCache.Items() {
 				certPath := strings.TrimPrefix(k, "Common/")
 				certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
 				certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
@@ -145,6 +144,10 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 								}
 								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 							}
+							//TODO: Get rid of os.Exit
+							// 0. Reload certificates
+							// 1. Recall Init function for each plugin
+							// 2. Start each plugin
 							driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
 							os.Exit(0)
 						} else {
@@ -167,22 +170,36 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 
 				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
-					driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
-					*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-						PluginName: servPh.Name,
-						Command:    core.PLUGIN_EVENT_STOP,
-					}
-					cmd := <-*pH.KernelCtx.PluginRestartChan
-					if cmd.Command == core.PLUGIN_EVENT_STOP {
-						(*pH.Services)[service] = &PluginHandler{
-							Name:          service,
-							ConfigContext: &core.ConfigContext{},
-							KernelCtx: &KernelCtx{
-								PluginRestartChan: pH.KernelCtx.PluginRestartChan,
-							},
+					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
+					for service, servPh := range *pH.Services {
+						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+							PluginName: servPh.Name,
+							Command:    core.PLUGIN_EVENT_STOP,
 						}
-						driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
-						*pH.KernelCtx.DeployRestartChan <- service
+						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+					}
+
+					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
+						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+							PluginName: servPh.Name,
+							Command:    core.PLUGIN_EVENT_STOP,
+						}
+						cmd := <-*pH.KernelCtx.PluginRestartChan
+						if cmd.Command == core.PLUGIN_EVENT_STOP {
+							(*pH.Services)[service] = &PluginHandler{
+								Name:          service,
+								ConfigContext: &core.ConfigContext{},
+								KernelCtx: &KernelCtx{
+									PluginRestartChan: pH.KernelCtx.PluginRestartChan,
+								},
+							}
+							driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
+							*pH.KernelCtx.DeployRestartChan <- service
+						}
+					} else {
+						driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
+						os.Exit(0)
 					}
 				}
 			}
@@ -195,7 +212,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	// Trim path
 	m.Lock()
 	defer m.Unlock()
-	if v, ok := (*globalCertCache)[path]; ok {
+	if v, ok := globalCertCache.Get(path); ok {
 		driverConfig.CoreConfig.WantCerts = false
 		return v.CertBytes, nil
 	}
@@ -229,10 +246,10 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 		}
 
 		if valid {
-			(*globalCertCache)[path] = certValue{
+			globalCertCache.Set(path, certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
-			}
+			})
 			driverConfig.CoreConfig.WantCerts = false
 
 			return &configuredCert, nil
@@ -387,7 +404,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig := make(map[string]interface{})
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
-					if v, ok := (*globalCertCache)[path]; ok {
+					if v, ok := globalCertCache.Get(path); ok {
 						driverConfig.CoreConfig.WantCerts = false
 						serviceConfig[path] = *v.CertBytes
 					} else {
@@ -399,12 +416,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						}
 					}
 				} else {
+					// if pluginToolConfig["trcprojectservice"] == "trcshkubeservice" {
+					// 	// TODO: Pull all templates under path and feed them into configTemplate...
+					// 	configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
+					// 	if err != nil {
+					// 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+					// 		return
+					// 	}
+					// 	serviceConfig[path] = []byte(configuredTemplate)
+					// } else {
 					sc, ok := properties.GetConfigValues(projServ[1], path)
 					if !ok {
 						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 						return
 					}
 					serviceConfig[path] = &sc
+					// }
 				}
 			}
 			// Initialize channels
