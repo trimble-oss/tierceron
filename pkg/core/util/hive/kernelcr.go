@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
-
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
@@ -21,6 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -36,7 +36,7 @@ var dfstat *core.TTDINode
 
 var m sync.Mutex
 
-var globalCertCache *map[string]certValue
+var globalCertCache *cmap.ConcurrentMap[string, certValue]
 
 type certValue struct {
 	CertBytes   *[]byte
@@ -61,7 +61,7 @@ type KernelCtx struct {
 
 func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
-	certCache := make(map[string]certValue)
+	certCache := cmap.New[certValue]()
 	globalCertCache = &certCache
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
@@ -83,7 +83,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to start dynamic reloading.")
 		return
 	}
-	var mod *helperkv.Modifier
+	var mod *kv.Modifier
 
 	for {
 		if mod == nil {
@@ -103,7 +103,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 			}
 		}
 		if globalCertCache != nil && mod != nil {
-			for k, v := range *globalCertCache {
+			for k, v := range globalCertCache.Items() {
 				certPath := strings.TrimPrefix(k, "Common/")
 				certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
 				certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
@@ -195,7 +195,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	// Trim path
 	m.Lock()
 	defer m.Unlock()
-	if v, ok := (*globalCertCache)[path]; ok {
+	if v, ok := globalCertCache.Get(path); ok {
 		driverConfig.CoreConfig.WantCerts = false
 		return v.CertBytes, nil
 	}
@@ -229,10 +229,10 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 		}
 
 		if valid {
-			(*globalCertCache)[path] = certValue{
+			globalCertCache.Set(path, certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
-			}
+			})
 			driverConfig.CoreConfig.WantCerts = false
 
 			return &configuredCert, nil
@@ -387,7 +387,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig := make(map[string]interface{})
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
-					if v, ok := (*globalCertCache)[path]; ok {
+					if v, ok := globalCertCache.Get(path); ok {
 						driverConfig.CoreConfig.WantCerts = false
 						serviceConfig[path] = *v.CertBytes
 					} else {
@@ -399,12 +399,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						}
 					}
 				} else {
-					sc, ok := properties.GetConfigValues(projServ[1], path)
-					if !ok {
-						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
-						return
+					if pluginToolConfig["trcprojectservice"] == "trcshkubeservice" {
+						// TODO: Pull all templates under path and feed them into configTemplate...
+						configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
+						if err != nil {
+							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+							return
+						}
+						serviceConfig[path] = []byte(configuredTemplate)
+					} else {
+						sc, ok := properties.GetConfigValues(projServ[1], path)
+						if !ok {
+							driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+							return
+						}
+						serviceConfig[path] = &sc
 					}
-					serviceConfig[path] = &sc
 				}
 			}
 			// Initialize channels
