@@ -199,7 +199,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	} else {
 		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
-		warn, err := il.DownloadTemplateDirectory(driverConfigBase.CoreConfig, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
+		warn, err := il.DownloadTemplateDirectory(driverConfigBase, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
 			fmt.Println(err)
 			driverConfigBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
