@@ -176,6 +176,11 @@ func CommonMain(envDefaultPtr *string,
 				if len(endDir) > 1 {
 					*endDirPtr = endDir[1]
 				}
+			} else if strings.HasPrefix(args, "-servicesWanted") {
+				servicesWantedArg := strings.Split(args, "=")
+				if len(servicesWantedArg) > 1 {
+					*servicesWanted = servicesWantedArg[1]
+				}
 			} else if strings.HasPrefix(args, "-certDestPath") {
 				certDestPath := strings.Split(args, "=")
 				if len(certDestPath) > 1 {
@@ -184,6 +189,10 @@ func CommonMain(envDefaultPtr *string,
 			} else if strings.HasPrefix(args, "-env") {
 				envArgs := strings.Split(args, "=")
 				if len(envArgs) > 1 {
+					if envPtr == nil {
+						env := ""
+						envPtr = &env
+					}
 					*envPtr = envArgs[1]
 				}
 			}
