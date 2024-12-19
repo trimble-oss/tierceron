@@ -34,6 +34,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.0
 	github.com/docker/docker v26.1.5+incompatible
+	github.com/go-git/go-billy/v5 v5.6.0
 	github.com/graphql-go/graphql v0.8.1-0.20220614210743-09272f350067
 	github.com/trimble-oss/tierceron-core/v2 v2.1.2
 	github.com/trimble-oss/tierceron-hat v1.2.8
@@ -47,7 +48,7 @@ require (
 	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lafriks/go-shamir v1.1.0 // indirect
-	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/templexxx/cpu v0.1.0 // indirect
 	github.com/templexxx/xorsimd v0.4.2 // indirect
@@ -66,7 +67,6 @@ require (
 	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
-	github.com/go-git/go-billy/v5 v5.6.0 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -120,7 +120,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	golang.org/x/net v0.32.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/term v0.27.0
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
