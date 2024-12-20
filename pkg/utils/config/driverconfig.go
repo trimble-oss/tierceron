@@ -45,17 +45,6 @@ func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
 	return cfgContext.DiffFileCount
 }
 
-type MemoryFileSystem interface {
-	WriteToMemFile(driverConfig *DriverConfig, byteData *[]byte, path string)
-	ReadDir(driverConfig *DriverConfig, path string) ([]os.FileInfo, error)
-	Remove(string) error
-	Lstat(filename string) (os.FileInfo, error)
-	Create(string) (trcshio.TrcshReadWriteCloser, error)
-	Open(string) (trcshio.TrcshReadWriteCloser, error)
-	Stat(string) (os.FileInfo, error)
-	ClearCache(driverConfig *DriverConfig, path string)
-}
-
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
 	CoreConfig *core.CoreConfig
@@ -79,8 +68,7 @@ type DriverConfig struct {
 	SubOutputMemCache bool
 	ReadMemCache      bool
 	OutputMemCache    bool
-	MemFs             MemoryFileSystem
-	MemCacheLock      sync.Mutex
+	MemFs             trcshio.MemoryFileSystem
 	CertPathOverrides map[string]string // certFileName -> certDest
 
 	// Config modes....
@@ -137,7 +125,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 		projectFileNames := map[string]bool{}
 
 		if driverConfig.ReadMemCache {
-			projectFilesComplete, err := driverConfig.MemFs.ReadDir(driverConfig, driverConfig.StartDir[0])
+			projectFilesComplete, err := driverConfig.MemFs.ReadDir(driverConfig.StartDir[0])
 			if err == nil {
 				for _, projectFile := range projectFilesComplete {
 					projectFileNames[projectFile.Name()] = projectFile.IsDir()
@@ -177,7 +165,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 				} else if projectFileNames[projectFile] {
 					projectStartDir = projectStartDir + string(os.PathSeparator) + projectFile
 					if driverConfig.ReadMemCache {
-						serviceFiles, err := driverConfig.MemFs.ReadDir(driverConfig, projectStartDir)
+						serviceFiles, err := driverConfig.MemFs.ReadDir(projectStartDir)
 						if err == nil && len(serviceFiles) == 1 && serviceFiles[0].IsDir() {
 							projectStartDir = projectStartDir + string(os.PathSeparator) + serviceFiles[0].Name()
 							driverConfig.VersionFilter = append(driverConfig.VersionFilter, serviceFiles[0].Name())

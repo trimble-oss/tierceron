@@ -558,7 +558,7 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	var newFile *os.File
 
 	if driverConfig.OutputMemCache {
-		driverConfig.MemFs.WriteToMemFile(driverConfig, &byteData, path)
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, path)
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)
@@ -580,7 +580,7 @@ func getDirFiles(driverConfig *config.DriverConfig, dir string, endDir string) (
 	endPaths := []string{}
 
 	if driverConfig.ReadMemCache {
-		files, err := driverConfig.MemFs.ReadDir(driverConfig, dir)
+		files, err := driverConfig.MemFs.ReadDir(dir)
 		if err != nil || len(files) == 0 {
 			dirInfo, err := driverConfig.MemFs.Lstat(dir)
 			if err == nil && !dirInfo.IsDir() {

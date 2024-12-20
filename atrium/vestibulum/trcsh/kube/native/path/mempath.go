@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
-	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -42,7 +41,7 @@ func ignoreFile(path string, extensions []string) bool {
 }
 
 type MemPathVisitor struct {
-	MemFs     config.MemoryFileSystem // Where to send output.
+	MemFs     trcshio.MemoryFileSystem // Where to send output.
 	Iostreams genericclioptions.IOStreams
 }
 

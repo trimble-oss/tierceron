@@ -1347,7 +1347,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
 			trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
-			trcshDriverConfig.DriverConfig.MemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
+			trcshDriverConfig.DriverConfig.MemFs.ClearCache("/trc_templates")
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
@@ -1358,7 +1358,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				content = buf.Bytes()
 				trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
-				trcshDriverConfig.DriverConfig.MemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
+				trcshDriverConfig.DriverConfig.MemFs.ClearCache("/trc_templates")
 			} else {
 				if strings.HasPrefix(trcPath, "./") {
 					trcPath = strings.TrimLeft(trcPath, "./")

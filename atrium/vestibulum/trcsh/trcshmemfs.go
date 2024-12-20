@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
+	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
-	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 )
 
 type TrcshMemFs struct {
-	BillyFs *billy.Filesystem
+	BillyFs      *billy.Filesystem
+	MemCacheLock sync.Mutex
 }
 
 func NewTrcshMemFs() *TrcshMemFs {
@@ -25,37 +27,37 @@ func NewTrcshMemFs() *TrcshMemFs {
 	}
 }
 
-func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData *[]byte, path string) {
+func (t *TrcshMemFs) WriteToMemFile(coreConfig *core.CoreConfig, byteData *[]byte, path string) {
 
-	driverConfig.MemCacheLock.Lock()
+	t.MemCacheLock.Lock()
 	if _, err := (*t.BillyFs).Stat(path); errors.Is(err, os.ErrNotExist) {
 		if strings.HasPrefix(path, "./") {
 			path = strings.TrimLeft(path, "./")
 		}
-		memFile, err := driverConfig.MemFs.Create(path)
+		memFile, err := t.Create(path)
 		if err != nil {
-			eUtils.CheckError(driverConfig.CoreConfig, err, true)
+			eUtils.CheckError(coreConfig, err, true)
 		}
 		memFile.Write(*byteData)
 		memFile.Close()
-		driverConfig.MemCacheLock.Unlock()
-		eUtils.LogInfo(driverConfig.CoreConfig, "Wrote memfile:"+path)
+		t.MemCacheLock.Unlock()
+		eUtils.LogInfo(coreConfig, "Wrote memfile:"+path)
 	} else {
-		driverConfig.MemCacheLock.Unlock()
-		eUtils.LogInfo(driverConfig.CoreConfig, "Unexpected memfile exists:"+path)
-		eUtils.CheckError(driverConfig.CoreConfig, err, true)
+		t.MemCacheLock.Unlock()
+		eUtils.LogInfo(coreConfig, "Unexpected memfile exists:"+path)
+		eUtils.CheckError(coreConfig, err, true)
 	}
 }
 
-func (t *TrcshMemFs) ReadDir(driverConfig *config.DriverConfig, path string) ([]os.FileInfo, error) {
-	driverConfig.MemCacheLock.Lock()
-	defer driverConfig.MemCacheLock.Unlock()
+func (t *TrcshMemFs) ReadDir(path string) ([]os.FileInfo, error) {
+	t.MemCacheLock.Lock()
+	defer t.MemCacheLock.Unlock()
 	return (*t.BillyFs).ReadDir(path)
 }
 
-func (t *TrcshMemFs) ClearCache(driverConfig *config.DriverConfig, path string) {
-	driverConfig.MemCacheLock.Lock()
-	defer driverConfig.MemCacheLock.Unlock()
+func (t *TrcshMemFs) ClearCache(path string) {
+	t.MemCacheLock.Lock()
+	defer t.MemCacheLock.Unlock()
 	filestack := []string{path}
 	var p string
 
@@ -73,11 +75,11 @@ summitatem:
 				filestack = append(filestack, fmt.Sprintf("%s/%s", p, file.Name()))
 				goto summitatem
 			} else {
-				driverConfig.MemFs.Remove(fmt.Sprintf("%s/%s", p, file.Name()))
+				(*t.BillyFs).Remove(fmt.Sprintf("%s/%s", p, file.Name()))
 			}
 		}
 	}
-	driverConfig.MemFs.Remove(p)
+	(*t.BillyFs).Remove(p)
 
 	goto summitatem
 }

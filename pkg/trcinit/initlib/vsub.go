@@ -67,7 +67,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
 
 		if driverConfig.SubOutputMemCache {
-			driverConfig.MemFs.WriteToMemFile(driverConfig, &templateBytes, templateFile)
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
 		} else {
 			err = os.MkdirAll(dirPath, os.ModePerm)
 			if err != nil {
@@ -203,7 +203,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
 
 				if driverConfig.SubOutputMemCache {
-					driverConfig.MemFs.WriteToMemFile(driverConfig, &templateBytes, templateFile)
+					driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
 				} else {
 					err = os.MkdirAll(dirPath, os.ModePerm)
 					if err != nil {
