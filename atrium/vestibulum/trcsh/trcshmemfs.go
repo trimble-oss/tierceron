@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
@@ -13,19 +14,41 @@ import (
 )
 
 type TrcshMemFs struct {
-	BillyFs billy.Filesystem
+	BillyFs *billy.Filesystem
+}
+
+type TrcshFile struct {
+	BillyFs   *billy.Filesystem
+	BillyFile billy.File
+}
+
+func (t *TrcshFile) Name() string {
+	return t.BillyFile.Name()
+}
+
+func (t *TrcshFile) Stat() (os.FileInfo, error) {
+	return (*t.BillyFs).Stat(t.BillyFile.Name())
+}
+
+func (t *TrcshFile) Write(p []byte) (int, error) {
+	return t.BillyFile.Write(p)
+}
+
+func (t *TrcshFile) Read(p []byte) (int, error) {
+	return t.BillyFile.Read(p)
+}
+func (t *TrcshFile) Close() error {
+	return t.BillyFile.Close()
 }
 
 func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData *[]byte, path string) {
 
-	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
-
 	driverConfig.MemCacheLock.Lock()
-	if _, err := configMemFs.BillyFs.Stat(path); errors.Is(err, os.ErrNotExist) {
+	if _, err := (*t.BillyFs).Stat(path); errors.Is(err, os.ErrNotExist) {
 		if strings.HasPrefix(path, "./") {
 			path = strings.TrimLeft(path, "./")
 		}
-		memFile, err := configMemFs.BillyFs.Create(path)
+		memFile, err := driverConfig.MemFs.Create(path)
 		if err != nil {
 			eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		}
@@ -41,16 +64,12 @@ func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData 
 }
 
 func (t *TrcshMemFs) ReadDir(driverConfig *config.DriverConfig, path string) ([]os.FileInfo, error) {
-	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
-
 	driverConfig.MemCacheLock.Lock()
 	defer driverConfig.MemCacheLock.Unlock()
-	return configMemFs.BillyFs.ReadDir(path)
+	return (*t.BillyFs).ReadDir(path)
 }
 
 func (t *TrcshMemFs) ClearCache(driverConfig *config.DriverConfig, path string) {
-	configMemFs := driverConfig.MemFs.(*TrcshMemFs)
-
 	driverConfig.MemCacheLock.Lock()
 	defer driverConfig.MemCacheLock.Unlock()
 	filestack := []string{path}
@@ -63,18 +82,54 @@ summitatem:
 	}
 	p, filestack = filestack[len(filestack)-1], filestack[:len(filestack)-1]
 
-	if fileset, err := configMemFs.BillyFs.ReadDir(p); err == nil {
+	if fileset, err := (*t.BillyFs).ReadDir(p); err == nil {
 		for _, file := range fileset {
 			if file.IsDir() {
 				filestack = append(filestack, p)
 				filestack = append(filestack, fmt.Sprintf("%s/%s", p, file.Name()))
 				goto summitatem
 			} else {
-				configMemFs.BillyFs.Remove(fmt.Sprintf("%s/%s", p, file.Name()))
+				driverConfig.MemFs.Remove(fmt.Sprintf("%s/%s", p, file.Name()))
 			}
 		}
 	}
-	configMemFs.BillyFs.Remove(p)
+	driverConfig.MemFs.Remove(p)
 
 	goto summitatem
+}
+
+func (t *TrcshMemFs) Create(filename string) (trcshio.TrcshReadWriteCloser, error) {
+	if billyFile, err := (*t.BillyFs).Create(filename); err != nil {
+		return nil, err
+	} else {
+		trcshFile := &TrcshFile{
+			BillyFs:   t.BillyFs,
+			BillyFile: billyFile,
+		}
+		return trcshFile, nil
+	}
+}
+
+func (t *TrcshMemFs) Open(filename string) (trcshio.TrcshReadWriteCloser, error) {
+	if billyFile, err := (*t.BillyFs).Open(filename); err != nil {
+		return nil, err
+	} else {
+		trcshFile := &TrcshFile{
+			BillyFs:   t.BillyFs,
+			BillyFile: billyFile,
+		}
+		return trcshFile, nil
+	}
+}
+
+func (t *TrcshMemFs) Stat(filename string) (os.FileInfo, error) {
+	return (*t.BillyFs).Stat(filename)
+}
+
+func (t *TrcshMemFs) Remove(filename string) error {
+	return (*t.BillyFs).Remove(filename)
+}
+
+func (t *TrcshMemFs) Lstat(filename string) (os.FileInfo, error) {
+	return (*t.BillyFs).Lstat(filename)
 }

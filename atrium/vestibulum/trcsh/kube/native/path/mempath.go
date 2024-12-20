@@ -4,7 +4,8 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/go-git/go-billy/v5"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -13,7 +14,7 @@ import (
 
 // MemoryFileVisitor is wrapping around a StreamVisitor, to handle open/close files
 type MemoryFileVisitor struct {
-	MemFile billy.File
+	MemFile trcshio.TrcshReadWriteCloser
 	*resource.StreamVisitor
 }
 
@@ -41,13 +42,13 @@ func ignoreFile(path string, extensions []string) bool {
 }
 
 type MemPathVisitor struct {
-	MemFs     billy.Filesystem // Where to send output.
+	MemFs     config.MemoryFileSystem // Where to send output.
 	Iostreams genericclioptions.IOStreams
 }
 
 func (mpv *MemPathVisitor) FileVisitorForSTDIN(builder *resource.Builder) resource.Visitor {
 	return &MemoryFileVisitor{
-		MemFile:       mpv.Iostreams.In.(billy.File),
+		MemFile:       mpv.Iostreams.In.(trcshio.TrcshReadWriteCloser),
 		StreamVisitor: builder.NewStreamVisitorHelper(resource.NewStreamVisitor, mpv.Iostreams.In),
 	}
 }
@@ -65,7 +66,7 @@ func (mpv *MemPathVisitor) ExpandPathsToFileVisitors(mapper resource.InfoMapper,
 		return nil, errors.New("Unsupported extension")
 	}
 	memPath := path
-	var memFile billy.File
+	var memFile trcshio.TrcshReadWriteCloser
 	var memFileErr error
 
 	if memFile, memFileErr = mpv.MemFs.Open(memPath); memFileErr != nil {

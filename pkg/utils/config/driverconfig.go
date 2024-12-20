@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 )
@@ -47,6 +48,12 @@ func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
 type MemoryFileSystem interface {
 	WriteToMemFile(driverConfig *DriverConfig, byteData *[]byte, path string)
 	ReadDir(driverConfig *DriverConfig, path string) ([]os.FileInfo, error)
+	Remove(string) error
+	Lstat(filename string) (os.FileInfo, error)
+	Create(string) (trcshio.TrcshReadWriteCloser, error)
+	Open(string) (trcshio.TrcshReadWriteCloser, error)
+	Stat(string) (os.FileInfo, error)
+	ClearCache(driverConfig *DriverConfig, path string)
 }
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.

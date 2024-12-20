@@ -258,6 +258,7 @@ func CommonMain(envDefaultPtr *string,
 		os.Chdir("..")
 	case "pluginrun":
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+		billyFs := memfs.New()
 		driverConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
@@ -274,7 +275,7 @@ func CommonMain(envDefaultPtr *string,
 			ReadMemCache:      true,
 			OutputMemCache:    true,
 			MemFs: &trcshMemFs.TrcshMemFs{
-				BillyFs: memfs.New(),
+				BillyFs: &billyFs,
 			},
 		}
 		if len(*pluginNamePtr) == 0 {
@@ -288,6 +289,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		GetPluginConfigs(&driverConfig, flagset, pluginNamePtr, ctl, envCtxPtr)
 		os.Chdir("..")
+		// TODO: run the plugin...
 	case "x":
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, envCtxPtr, nil, flagset, os.Args)
@@ -358,8 +360,8 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				restrictedMappingConfig,
 				driverConfig)
 
-			fmt.Println("Here")
-			// Run the plugin.
+			driverConfig.MemFs.ClearCache(driverConfig, "./trc_templates")
+			driverConfig.MemFs.ClearCache(driverConfig, "./deploy")
 		}
 	} else {
 		fmt.Printf("Plugin not registered with trcctl.\n")

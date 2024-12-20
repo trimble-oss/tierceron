@@ -11,7 +11,6 @@ import (
 	"strings"
 	"sync"
 
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -581,10 +580,9 @@ func getDirFiles(driverConfig *config.DriverConfig, dir string, endDir string) (
 	endPaths := []string{}
 
 	if driverConfig.ReadMemCache {
-		configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
-		files, err := configMemFs.BillyFs.ReadDir(dir)
+		files, err := driverConfig.MemFs.ReadDir(driverConfig, dir)
 		if err != nil || len(files) == 0 {
-			dirInfo, err := configMemFs.BillyFs.Lstat(dir)
+			dirInfo, err := driverConfig.MemFs.Lstat(dir)
 			if err == nil && !dirInfo.IsDir() {
 				//this is a file
 				return []string{dir}, []string{endDir}

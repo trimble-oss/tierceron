@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/danieljoos/wincred"
-	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
@@ -30,6 +29,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
@@ -132,6 +132,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 		}
 	}
 
+	bfs := memfs.New()
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
@@ -149,7 +150,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 			SubOutputMemCache: useMemCache,
 			OutputMemCache:    true,
 			MemFs: &trcshMemFs.TrcshMemFs{
-				BillyFs: memfs.New(),
+				BillyFs: &bfs,
 			},
 			ZeroConfig: true,
 			PathParam:  pathParam, // Make available to trcplgtool
@@ -928,7 +929,7 @@ func roleBasedRunner(
 
 func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
-	PipeOS billy.File,
+	PipeOS trcshio.TrcshReadWriteCloser,
 	env string,
 	region string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
@@ -1107,7 +1108,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 
 func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	onceKubeInit *sync.Once,
-	PipeOS billy.File,
+	PipeOS trcshio.TrcshReadWriteCloser,
 	region string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,
@@ -1142,8 +1143,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	secretId *string,
 	approleId *string,
 	dronePtr *bool) {
-	// Verify Billy implementation
-	configMemFs := trcshDriverConfig.DriverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
 
 	pwd, _ := os.Getwd()
 	var content []byte
@@ -1344,26 +1343,26 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 		ResetModifier(trcshDriverConfig.DriverConfig.CoreConfig, tokenName) //Resetting modifier cache to avoid token conflicts.
 
-		var memFile billy.File
+		var memFile trcshio.TrcshReadWriteCloser
 		var memFileErr error
-		if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
+		if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
-			configMemFs.BillyFs.Remove(trcPath)
-			configMemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
+			trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
+			trcshDriverConfig.DriverConfig.MemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
 			}
-			if memFile, memFileErr = configMemFs.BillyFs.Open(trcPath); memFileErr == nil {
+			if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
 				// Read the generated .trc code...
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				content = buf.Bytes()
-				configMemFs.BillyFs.Remove(trcPath)
-				configMemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
+				trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
+				trcshDriverConfig.DriverConfig.MemFs.ClearCache(trcshDriverConfig.DriverConfig, "/trc_templates")
 			} else {
 				if strings.HasPrefix(trcPath, "./") {
 					trcPath = strings.TrimLeft(trcPath, "./")
@@ -1432,7 +1431,7 @@ collaboratorReRun:
 
 	var trcKubeDeploymentConfig *kube.TrcKubeConfig
 	var onceKubeInit sync.Once
-	var PipeOS billy.File
+	var PipeOS trcshio.TrcshReadWriteCloser
 
 	for _, deployPipeline := range deployArgLines {
 		deployPipeline = strings.TrimLeft(deployPipeline, " \t\r\n")
@@ -1443,7 +1442,7 @@ collaboratorReRun:
 		fmt.Println(deployPipeline)
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
-		if PipeOS, err = configMemFs.BillyFs.Create("io/STDIO"); err != nil {
+		if PipeOS, err = trcshDriverConfig.DriverConfig.MemFs.Create("io/STDIO"); err != nil {
 			fmt.Println("Failure to open io stream.")
 			os.Exit(-1)
 		}
