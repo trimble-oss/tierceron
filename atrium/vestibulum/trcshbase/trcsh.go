@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/danieljoos/wincred"
-	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -132,7 +131,6 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 		}
 	}
 
-	bfs := memfs.New()
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
@@ -149,11 +147,9 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 			ReadMemCache:      useMemCache,
 			SubOutputMemCache: useMemCache,
 			OutputMemCache:    true,
-			MemFs: &trcshMemFs.TrcshMemFs{
-				BillyFs: &bfs,
-			},
-			ZeroConfig: true,
-			PathParam:  pathParam, // Make available to trcplgtool
+			MemFs:             trcshMemFs.NewTrcshMemFs(),
+			ZeroConfig:        true,
+			PathParam:         pathParam, // Make available to trcplgtool
 		},
 	}
 	return trcshDriverConfig, nil

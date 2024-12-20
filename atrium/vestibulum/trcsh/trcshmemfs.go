@@ -11,10 +11,18 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5/memfs"
 )
 
 type TrcshMemFs struct {
 	BillyFs *billy.Filesystem
+}
+
+func NewTrcshMemFs() *TrcshMemFs {
+	billyFs := memfs.New()
+	return &TrcshMemFs{
+		BillyFs: &billyFs,
+	}
 }
 
 func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData *[]byte, path string) {

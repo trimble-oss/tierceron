@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-git/go-billy/v5/memfs"
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -258,7 +257,6 @@ func CommonMain(envDefaultPtr *string,
 		os.Chdir("..")
 	case "pluginrun":
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-		billyFs := memfs.New()
 		driverConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
@@ -274,9 +272,7 @@ func CommonMain(envDefaultPtr *string,
 			SubOutputMemCache: true,
 			ReadMemCache:      true,
 			OutputMemCache:    true,
-			MemFs: &trcshMemFs.TrcshMemFs{
-				BillyFs: &billyFs,
-			},
+			MemFs:             trcshMemFs.NewTrcshMemFs(),
 		}
 		if len(*pluginNamePtr) == 0 {
 			fmt.Printf("Must specify either -pluginName flag \n")

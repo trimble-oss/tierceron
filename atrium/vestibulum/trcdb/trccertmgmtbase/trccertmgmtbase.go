@@ -28,11 +28,11 @@ func CommonMain(certPathPtr *string, driverConfig *config.DriverConfig, mod *kv.
 	var err error
 
 	if driverConfig.CoreConfig.IsShell {
-		billyFile, billyErr := driverConfig.MemFs.Open(*certPathPtr)
+		trcshioFile, trcshiFileErr := driverConfig.MemFs.Open(*certPathPtr)
 		buffer := bytes.NewBuffer(nil)
-		io.Copy(buffer, billyFile)
+		io.Copy(buffer, trcshioFile)
 		certBytes = buffer.Bytes()
-		err = billyErr
+		err = trcshiFileErr
 	} else {
 		certBytes, err = os.ReadFile(*certPathPtr)
 	}
