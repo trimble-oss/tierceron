@@ -315,6 +315,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				restrictedMappingSub,
 				driverConfig)
 
+			driverConfig.EndDir = "."
 			restrictedMappingConfig := []string{"", os.Args[1]}
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 			flagset.String("env", "dev", "Environment to configure")
