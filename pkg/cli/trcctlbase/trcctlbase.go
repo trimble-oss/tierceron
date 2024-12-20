@@ -324,8 +324,8 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				nil, // secretId
-				nil, // approleId
+				new(string), // secretId
+				new(string), // approleId
 				driverConfig.CoreConfig.CurrentTokenNamePtr, // tokenName
 				nil, // regionPtr
 				flagset,
@@ -349,8 +349,8 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				nil, // secretId
-				nil, // approleId
+				new(string), // secretId
+				new(string), // approleId
 				driverConfig.CoreConfig.CurrentTokenNamePtr, // tokenName
 				nil, // regionPtr
 				flagset,
