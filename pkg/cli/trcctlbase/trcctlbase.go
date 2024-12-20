@@ -250,9 +250,12 @@ func CommonMain(envDefaultPtr *string,
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 		driverConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
-				IsShell:       true, // Pretent to be shell to keep things in memory
-				TokenCache:    cache.NewTokenCache(tokenName, tokenPtr),
-				ExitOnFailure: true,
+				IsShell:             true, // Pretent to be shell to keep things in memory
+				TokenCache:          cache.NewTokenCache(tokenName, tokenPtr),
+				ExitOnFailure:       true,
+				CurrentTokenNamePtr: &tokenName,
+				VaultAddressPtr:     addrPtr,
+				Env:                 *envPtr,
 			},
 			SecretMode:        true,
 			ZeroConfig:        true,
@@ -272,69 +275,7 @@ func CommonMain(envDefaultPtr *string,
 		os.Chdir(*pluginNamePtr)
 		fmt.Printf("%s\n", *pluginNamePtr)
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
-
-		if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
-			for _, restrictedMapping := range pluginRestrictedMappings {
-				restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
-				flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-				flagset.String("env", "dev", "Environment to configure")
-				if eUtils.RefLength(tokenPtr) > 0 {
-					restrictedMappingSub = append(restrictedMappingSub, fmt.Sprintf("-token=%s", *tokenPtr))
-				}
-				trcsubbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
-
-				restrictedMappingConfig := []string{"", os.Args[1]}
-				flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-				flagset.String("env", "dev", "Environment to configure")
-				if eUtils.RefLength(tokenPtr) > 0 {
-					restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-token=%s", *tokenPtr))
-				}
-
-				// Get certs...
-				driverConfig.CoreConfig.WantCerts = true
-				trcconfigbase.CommonMain(envPtr,
-					addrPtr,
-					envCtxPtr,
-					nil,        // secretId
-					nil,        // approleId
-					&tokenName, // tokenName
-					nil,        // regionPtr
-					flagset,
-					restrictedMappingConfig,
-					&driverConfig)
-
-				if strings.HasPrefix(restrictedMapping[0], "-templateFilter=") {
-					filter := restrictedMapping[0][strings.Index(restrictedMapping[0], "=")+1:]
-					filterParts := strings.Split(filter, ",")
-					for _, filterPart := range filterParts {
-						if !strings.HasPrefix(filterPart, "Common") {
-							restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
-							break
-						}
-					}
-				}
-
-				driverConfig.CoreConfig.WantCerts = false
-				flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-				flagset.String("env", "dev", "Environment to configure")
-				trcconfigbase.CommonMain(envPtr,
-					addrPtr,
-					envCtxPtr,
-					nil,        // secretId
-					nil,        // approleId
-					&tokenName, // tokenName
-					nil,        // regionPtr
-					flagset,
-					restrictedMappingConfig,
-					&driverConfig)
-
-				fmt.Println("Here")
-				// Run the plugin.
-			}
-		} else {
-			fmt.Printf("Plugin not registered with trcctl.\n")
-		}
+		GetPluginConfigs(&driverConfig, flagset, pluginNamePtr, ctl, envCtxPtr)
 		os.Chdir("..")
 	case "x":
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
@@ -342,4 +283,73 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	return nil
+}
+
+func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, pluginNamePtr *string, ctl string, envCtxPtr *string) {
+	retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
+
+	if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
+		for _, restrictedMapping := range pluginRestrictedMappings {
+			restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+
+			trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
+				driverConfig.CoreConfig.VaultAddressPtr,
+				envCtxPtr,
+				nil,
+				nil,
+				driverConfig.CoreConfig.CurrentTokenNamePtr,
+				flagset,
+				restrictedMappingSub,
+				driverConfig)
+
+			restrictedMappingConfig := []string{"", os.Args[1]}
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+
+			// Get certs...
+			driverConfig.CoreConfig.WantCerts = true
+			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+				driverConfig.CoreConfig.VaultAddressPtr,
+				envCtxPtr,
+				nil, // secretId
+				nil, // approleId
+				driverConfig.CoreConfig.CurrentTokenNamePtr, // tokenName
+				nil, // regionPtr
+				flagset,
+				restrictedMappingConfig,
+				driverConfig)
+
+			if strings.HasPrefix(restrictedMapping[0], "-templateFilter=") {
+				filter := restrictedMapping[0][strings.Index(restrictedMapping[0], "=")+1:]
+				filterParts := strings.Split(filter, ",")
+				for _, filterPart := range filterParts {
+					if !strings.HasPrefix(filterPart, "Common") {
+						restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
+						break
+					}
+				}
+			}
+
+			driverConfig.CoreConfig.WantCerts = false
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+				driverConfig.CoreConfig.VaultAddressPtr,
+				envCtxPtr,
+				nil, // secretId
+				nil, // approleId
+				driverConfig.CoreConfig.CurrentTokenNamePtr, // tokenName
+				nil, // regionPtr
+				flagset,
+				restrictedMappingConfig,
+				driverConfig)
+
+			fmt.Println("Here")
+			// Run the plugin.
+		}
+	} else {
+		fmt.Printf("Plugin not registered with trcctl.\n")
+	}
 }
