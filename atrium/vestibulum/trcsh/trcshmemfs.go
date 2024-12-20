@@ -17,30 +17,6 @@ type TrcshMemFs struct {
 	BillyFs *billy.Filesystem
 }
 
-type TrcshFile struct {
-	BillyFs   *billy.Filesystem
-	BillyFile billy.File
-}
-
-func (t *TrcshFile) Name() string {
-	return t.BillyFile.Name()
-}
-
-func (t *TrcshFile) Stat() (os.FileInfo, error) {
-	return (*t.BillyFs).Stat(t.BillyFile.Name())
-}
-
-func (t *TrcshFile) Write(p []byte) (int, error) {
-	return t.BillyFile.Write(p)
-}
-
-func (t *TrcshFile) Read(p []byte) (int, error) {
-	return t.BillyFile.Read(p)
-}
-func (t *TrcshFile) Close() error {
-	return t.BillyFile.Close()
-}
-
 func (t *TrcshMemFs) WriteToMemFile(driverConfig *config.DriverConfig, byteData *[]byte, path string) {
 
 	driverConfig.MemCacheLock.Lock()
@@ -99,27 +75,11 @@ summitatem:
 }
 
 func (t *TrcshMemFs) Create(filename string) (trcshio.TrcshReadWriteCloser, error) {
-	if billyFile, err := (*t.BillyFs).Create(filename); err != nil {
-		return nil, err
-	} else {
-		trcshFile := &TrcshFile{
-			BillyFs:   t.BillyFs,
-			BillyFile: billyFile,
-		}
-		return trcshFile, nil
-	}
+	return (*t.BillyFs).Create(filename)
 }
 
 func (t *TrcshMemFs) Open(filename string) (trcshio.TrcshReadWriteCloser, error) {
-	if billyFile, err := (*t.BillyFs).Open(filename); err != nil {
-		return nil, err
-	} else {
-		trcshFile := &TrcshFile{
-			BillyFs:   t.BillyFs,
-			BillyFile: billyFile,
-		}
-		return trcshFile, nil
-	}
+	return (*t.BillyFs).Open(filename)
 }
 
 func (t *TrcshMemFs) Stat(filename string) (os.FileInfo, error) {
