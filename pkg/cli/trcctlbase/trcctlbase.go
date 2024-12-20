@@ -356,8 +356,8 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				restrictedMappingConfig,
 				driverConfig)
 
-			driverConfig.MemFs.ClearCache(driverConfig, "./trc_templates")
-			driverConfig.MemFs.ClearCache(driverConfig, "./deploy")
+			driverConfig.MemFs.ClearCache("./trc_templates")
+			driverConfig.MemFs.ClearCache("./deploy")
 		}
 	} else {
 		fmt.Printf("Plugin not registered with trcctl.\n")
