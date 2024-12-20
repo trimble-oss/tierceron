@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -45,6 +46,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 	var envPtr *string = nil
 	var envCtxPtr *string = new(string)
+	var logFilePtr *string = nil
 
 	if flagset == nil {
 		fmt.Println("Version: " + "1.36")
@@ -61,10 +63,17 @@ func CommonMain(envDefaultPtr *string,
 		flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
 		flagset.Bool("pluginInfo", false, "Lists all plugins")
 		flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	} else {
+		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
 	}
+	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if logErr != nil {
+		return logErr
+	}
+	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 
 	var ctl string
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
@@ -257,6 +266,7 @@ func CommonMain(envDefaultPtr *string,
 				CurrentTokenNamePtr: &tokenName,
 				VaultAddressPtr:     addrPtr,
 				Env:                 *envPtr,
+				Log:                 logger,
 			},
 			SecretMode:        true,
 			ZeroConfig:        true,
