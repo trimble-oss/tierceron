@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -29,12 +28,11 @@ func CommonMain(certPathPtr *string, driverConfig *config.DriverConfig, mod *kv.
 	var err error
 
 	if driverConfig.CoreConfig.IsShell {
-		memFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
-		billyFile, billyErr := memFs.BillyFs.Open(*certPathPtr)
+		trcshioFile, trcshiFileErr := driverConfig.MemFs.Open(*certPathPtr)
 		buffer := bytes.NewBuffer(nil)
-		io.Copy(buffer, billyFile)
+		io.Copy(buffer, trcshioFile)
 		certBytes = buffer.Bytes()
-		err = billyErr
+		err = trcshiFileErr
 	} else {
 		certBytes, err = os.ReadFile(*certPathPtr)
 	}

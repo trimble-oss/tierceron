@@ -26,10 +26,9 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
-	"github.com/go-git/go-billy/v5"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -68,7 +67,7 @@ type TrcKubeConfig struct {
 	// Current kubectl directive... configmap, secret, apply, etc...
 	KubeDirective *TrcKubeDirective
 
-	PipeOS billy.File // Where to send output.
+	PipeOS trcshio.TrcshReadWriteCloser // Where to send output.
 }
 
 func LoadFromKube(kubeConfigBytes []byte, config *core.CoreConfig) (*TrcKubeConfig, error) {
@@ -247,10 +246,8 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 	}
 	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
-	configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
-
 	configFlags.PathVisitorLoader = func() resource.PathVisitor {
-		return &path.MemPathVisitor{MemFs: configMemFs.BillyFs, Iostreams: iostreams}
+		return &path.MemPathVisitor{MemFs: driverConfig.MemFs, Iostreams: iostreams}
 	}
 
 	configFlags.HandleSecretFromFileSources = func(secret *corev1.Secret, fileSources []string) error {
@@ -261,10 +258,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 			}
 			var data []byte
 
-			var memFile billy.File
+			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = configMemFs.BillyFs.Open(filePath); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(filePath); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -292,10 +289,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 			}
 			var data []byte
 
-			var memFile billy.File
+			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = configMemFs.BillyFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -314,10 +311,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 		for _, fileSource := range fileSources {
 			var data []byte
 
-			var memFile billy.File
+			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = configMemFs.BillyFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -334,11 +331,11 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 	}
 
 	if trcKubeDeploymentConfig.PipeOS != nil {
-		if iostat, ioerr := configMemFs.BillyFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
+		if iostat, ioerr := driverConfig.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
 			if iostat.Size() > 0 {
 				pipeName := trcKubeDeploymentConfig.PipeOS.Name()
 				trcKubeDeploymentConfig.PipeOS.Close()
-				if trcKubeDeploymentConfig.PipeOS, ioerr = configMemFs.BillyFs.Open(pipeName); ioerr == nil {
+				if trcKubeDeploymentConfig.PipeOS, ioerr = driverConfig.MemFs.Open(pipeName); ioerr == nil {
 					iostreams.In = trcKubeDeploymentConfig.PipeOS
 				}
 			} else {
@@ -406,11 +403,9 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driv
 		return config, nil
 	}
 
-	configMemFs := driverConfig.MemFs.(*trcshMemFs.TrcshMemFs)
-
 	f := cmdutil.NewFactory(
 		cmdutil.NewMatchVersionFlags(configFlags),
-		&path.MemPathVisitor{MemFs: configMemFs.BillyFs},
+		&path.MemPathVisitor{MemFs: driverConfig.MemFs},
 		configFlags.HandleSecretFromFileSources,
 		configFlags.HandleConfigMapFromFileSources,
 		configFlags.HandleConfigMapFromEnvFileSources,
