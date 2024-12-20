@@ -33,7 +33,6 @@ func PrintVersion() {
 // The swiss army knife of tierceron if you will.
 func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
-	envCtxPtr *string,
 	pluginNamePtr *string,
 	tokenPtr *string,
 	uploadCertPtr *bool,
@@ -45,6 +44,7 @@ func CommonMain(envDefaultPtr *string,
 		memprotectopts.MemProtectInit(nil)
 	}
 	var envPtr *string = nil
+	var envCtxPtr *string = new(string)
 
 	if flagset == nil {
 		fmt.Println("Version: " + "1.36")

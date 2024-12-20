@@ -48,7 +48,6 @@ func main() {
 	flagset.Bool("pluginInfo", false, "Lists all plugins")
 	flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	var envContext string
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
@@ -58,7 +57,6 @@ func main() {
 
 	err := trcctlbase.CommonMain(envPtr,
 		addrPtr,
-		&envContext,
 		tokenPtr,
 		pluginNamePtr,
 		uploadCertPtr,
