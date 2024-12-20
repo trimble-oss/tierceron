@@ -6,6 +6,12 @@ import (
 	"os"
 	"strings"
 
+	buildloadopts "github.com/trimble-oss/tierceron/buildopts"
+	coreloadopts "github.com/trimble-oss/tierceron/buildopts/coreopts"
+	deployloadopts "github.com/trimble-oss/tierceron/buildopts/deployopts"
+	tcloadopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
+	xencryptloadopts "github.com/trimble-oss/tierceron/buildopts/xencryptopts"
+
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
@@ -13,14 +19,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
-	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
-	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
-	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
-	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcctlbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
-	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
@@ -31,11 +31,11 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
-	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
-	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
-	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
-	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
+	buildopts.NewOptionsBuilder(buildloadopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreloadopts.LoadOptions())
+	deployopts.NewOptionsBuilder(deployloadopts.LoadOptions())
+	tcopts.NewOptionsBuilder(tcloadopts.LoadOptions())
+	xencryptopts.NewOptionsBuilder(xencryptloadopts.LoadOptions())
 	fmt.Println("Version: " + "1.36")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
@@ -91,148 +91,25 @@ func main() {
 				}
 			}
 		}
+	}
 
-		*envPtr, envContext, err = eUtils.GetSetEnvContext(*envPtr, envContext)
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
+	driverConfig := config.DriverConfig{
+		CoreConfig: &core.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
 
-		switch ctl {
-		case "pub":
-			tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
-			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCacheEmpty(),
-					ExitOnFailure: true,
-				},
-			}
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcpubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
-		case "sub":
-			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCacheEmpty(),
-					ExitOnFailure: true,
-				},
-			}
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			flagset.String("addr", "", "API endpoint for the vault")
-			trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
-		case "init":
-			//tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
-			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCacheEmpty(),
-					ExitOnFailure: true,
-				},
-			}
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			flagset.String("env", "dev", "Environment to configure")
-			flagset.String("addr", "", "API endpoint for the vault")
-			trcinitbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
-		case "plugininit":
-			//			tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
-			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCacheEmpty(),
-					ExitOnFailure: true,
-				},
-			}
-			os.Chdir(*pluginNamePtr)
-			tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
-			pubMappingInit := []string{""}
-
-			if eUtils.RefLength(tokenPtr) > 0 {
-				pubMappingInit = append(pubMappingInit, fmt.Sprintf("-token=%s", *tokenPtr))
-			}
-
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcpubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, pubMappingInit, &driverConfig)
-			retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
-
-			if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
-				for _, restrictedMapping := range pluginRestrictedMappings {
-					restrictedMappingInit := []string{""}
-					for _, restrictedMapEntry := range restrictedMapping {
-						if strings.HasPrefix(restrictedMapEntry, "-restricted") {
-							restrictedMappingInit = append(restrictedMappingInit, restrictedMapEntry)
-						}
-					}
-					if eUtils.RefLength(tokenPtr) > 0 {
-						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-token=%s", *tokenPtr))
-						restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-prod=%v", *prodPtr))
-					}
-					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					trcinitbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, nil, uploadCertPtr, flagset, restrictedMappingInit, &driverConfig)
-				}
-			}
-
-			os.Chdir("..")
-		case "config":
-			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCacheEmpty(),
-					ExitOnFailure: true,
-				},
-			}
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcconfigbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, nil, nil, os.Args, &driverConfig)
-		case "pluginx":
-			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					TokenCache:    cache.NewTokenCache(tokenName, tokenPtr),
-					ExitOnFailure: true,
-				},
-			}
-			if len(*pluginNamePtr) == 0 {
-				fmt.Printf("Must specify either -pluginName flag \n")
-				return
-			}
-
-			os.Mkdir(*pluginNamePtr, 0700)
-			os.Chdir(*pluginNamePtr)
-			fmt.Printf("%s\n", *pluginNamePtr)
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
-
-			if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
-
-				os.Mkdir("trc_seeds", 0700)
-				for _, restrictedMapping := range pluginRestrictedMappings {
-					restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
-					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					flagset.String("env", "dev", "Environment to configure")
-					if eUtils.RefLength(tokenPtr) > 0 {
-						restrictedMappingSub = append(restrictedMappingSub, fmt.Sprintf("-token=%s", *tokenPtr))
-					}
-					trcsubbase.CommonMain(envPtr, addrPtr, &envContext, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
-					restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
-					if eUtils.RefLength(tokenPtr) > 0 {
-						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-tokenName=%s", tokenName))
-						restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-token=%s", *tokenPtr))
-					}
-					flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-					flagset.String("env", "dev", "Environment to configure")
-					trcxbase.CommonMain(nil,
-						xutil.GenerateSeedsFromVault,
-						envPtr,
-						addrPtr,
-						&envContext,
-						nil,
-						flagset,
-						restrictedMappingX)
-				}
-			} else {
-				fmt.Printf("Plugin not registered with trcctl.\n")
-			}
-			os.Chdir("..")
-		case "x":
-			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-			trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, &envContext, nil, flagset, os.Args)
-		}
+	err := trcctlbase.CommonMain(envPtr,
+		addrPtr,
+		nil,
+		tokenPtr,
+		pluginNamePtr,
+		uploadCertPtr,
+		prodPtr,
+		flagset,
+		os.Args,
+		&driverConfig)
+	if err != nil {
+		os.Exit(1)
 	}
 }
