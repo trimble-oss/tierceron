@@ -62,7 +62,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset.Bool("pluginInfo", false, "Lists all plugins")
 		flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	} else {
-		flagset.Parse(argLines[1:])
+		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
 	}
 
