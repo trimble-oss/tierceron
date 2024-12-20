@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	buildloadopts "github.com/trimble-oss/tierceron/buildopts"
 	coreloadopts "github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -21,7 +20,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcctlbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -52,47 +50,6 @@ func main() {
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	var envContext string
 
-	var ctl string
-	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
-		ctl = os.Args[1]
-		ctlSplit := strings.Split(ctl, " ")
-		if len(ctlSplit) >= 2 {
-			fmt.Println("Invalid arguments - only 1 non flag argument available at a time.")
-			return
-		}
-
-		if len(os.Args) > 2 {
-			os.Args = os.Args[1:]
-		}
-	}
-	flagset.Parse(os.Args[1:])
-	if flagset.NFlag() == 0 {
-		flagset.Usage()
-		os.Exit(0)
-	}
-
-	if ctl != "" {
-		var err error
-		if strings.Contains(ctl, "context") {
-			contextSplit := strings.Split(ctl, "=")
-			if len(contextSplit) == 1 {
-				*envPtr, envContext, err = eUtils.GetSetEnvContext(*envPtr, envContext)
-				if err != nil {
-					fmt.Println(err.Error())
-					return
-				}
-				fmt.Println("Current context is set to " + envContext)
-			} else if len(contextSplit) == 2 {
-				envContext = contextSplit[1]
-				*envPtr, envContext, err = eUtils.GetSetEnvContext(*envPtr, envContext)
-				if err != nil {
-					fmt.Println(err.Error())
-					return
-				}
-			}
-		}
-	}
-
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
@@ -101,7 +58,7 @@ func main() {
 
 	err := trcctlbase.CommonMain(envPtr,
 		addrPtr,
-		nil,
+		&envContext,
 		tokenPtr,
 		pluginNamePtr,
 		uploadCertPtr,
