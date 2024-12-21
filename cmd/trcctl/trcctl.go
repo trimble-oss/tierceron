@@ -57,8 +57,8 @@ func main() {
 
 	err := trcctlbase.CommonMain(envPtr,
 		addrPtr,
-		tokenPtr,
 		pluginNamePtr,
+		tokenPtr,
 		uploadCertPtr,
 		prodPtr,
 		flagset,
