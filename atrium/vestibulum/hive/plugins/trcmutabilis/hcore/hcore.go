@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 
 	"golang.org/x/sys/unix"
 
@@ -240,8 +241,19 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext {
 	return configContextMap[pluginName]
 }
 
+// Start here...
 func GetConfigPaths(pluginName string) []string {
-	return coreopts.BuildOptions.GetConfigPaths(pluginName)
+	retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
+
+	if pluginRestrictedMappings, ok := retrictedMappingsMap[pluginName]; ok {
+		for _, restrictedMapping := range pluginRestrictedMappings {
+			if strings.Contains(restrictedMapping[0], "-templateFilter=") {
+				pluginFilters := strings.Split(restrictedMapping[0], "-templateFilter=")
+				return pluginFilters
+			}
+		}
+	}
+	return []string{}
 }
 
 func Init(pluginName string, properties *map[string]interface{}) {
@@ -253,13 +265,13 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	if _, ok := (*properties)["log"].(*log.Logger); ok {
 		logger = (*properties)["log"].(*log.Logger)
 	}
-	configContext := configContextMap[pluginName]
 
-	configContext = &tccore.ConfigContext{
+	configContext := &tccore.ConfigContext{
 		Config: properties,
 		Start:  start,
 		Log:    logger,
 	}
+	configContextMap[pluginName] = configContext
 
 	// Convert all properties to mem files....
 	for propKey, propValue := range *properties {

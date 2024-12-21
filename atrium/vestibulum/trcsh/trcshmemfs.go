@@ -55,7 +55,7 @@ func (t *TrcshMemFs) ReadDir(path string) ([]os.FileInfo, error) {
 	return (*t.BillyFs).ReadDir(path)
 }
 
-func (t *TrcshMemFs) ClearCache(path string) {
+func (t *TrcshMemFs) WalkCache(path string, nodeProcessFunc func(string) error) {
 	t.MemCacheLock.Lock()
 	defer t.MemCacheLock.Unlock()
 	filestack := []string{path}
@@ -75,13 +75,28 @@ summitatem:
 				filestack = append(filestack, fmt.Sprintf("%s/%s", p, file.Name()))
 				goto summitatem
 			} else {
-				(*t.BillyFs).Remove(fmt.Sprintf("%s/%s", p, file.Name()))
+				nodeProcessFunc(fmt.Sprintf("%s/%s", p, file.Name()))
 			}
 		}
 	}
-	(*t.BillyFs).Remove(p)
+	nodeProcessFunc(p)
 
 	goto summitatem
+}
+
+func (t *TrcshMemFs) ClearCache(path string) {
+	t.WalkCache(path, t.Remove)
+}
+
+func (t *TrcshMemFs) SerializeToMap(path string, configCache map[string]interface{}) {
+	t.WalkCache(path, func(path string) error {
+		if _, err := t.Open(path); err != nil {
+			fileBytes := []byte{}
+			// TODO: Read from file and put in cache...
+			configCache[path] = fileBytes
+		}
+		return nil
+	})
 }
 
 func (t *TrcshMemFs) Create(filename string) (trcshio.TrcshReadWriteCloser, error) {
