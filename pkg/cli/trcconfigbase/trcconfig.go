@@ -331,7 +331,17 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+			autoErr := eUtils.AutoAuth(driverConfigBase,
+				secretIDPtr,
+				appRoleIDPtr,
+				&wantedTokenName,
+				&tokenPtr,
+				envPtr,
+				addrPtr,
+				envCtxPtr,
+				appRoleConfigPtr,
+				*pingPtr)
 			if autoErr != nil {
 				if isShell {
 					driverConfig.CoreConfig.Log.Printf("auth error: %s  Trcsh expecting <roleid>:<secretid>", autoErr)

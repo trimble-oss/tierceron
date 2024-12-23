@@ -314,6 +314,72 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 	}
 }
 
+func (pluginHandler *PluginHandler) RunPlugin(
+	driverConfig *config.DriverConfig,
+	service string,
+	serviceConfig *map[string]interface{},
+	chatReceiverChan *chan *core.ChatMsg,
+) {
+	// Initialize channels
+	sender := make(chan core.KernelCmd)
+	pluginHandler.ConfigContext.CmdSenderChan = &sender
+	msg_sender := make(chan *core.ChatMsg)
+	pluginHandler.ConfigContext.ChatSenderChan = &msg_sender
+
+	err_receiver := make(chan error)
+	pluginHandler.ConfigContext.ErrorChan = &err_receiver
+	ttdi_receiver := make(chan *core.TTDINode)
+	pluginHandler.ConfigContext.DfsChan = &ttdi_receiver
+	status_receiver := make(chan core.KernelCmd)
+	pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
+
+	if chatReceiverChan == nil {
+		driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+		return
+	}
+
+	chan_map := make(map[string]interface{})
+
+	chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]interface{})
+	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
+
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]interface{})
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+	(*serviceConfig)[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
+	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
+	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
+	go pluginHandler.handle_errors(driverConfig)
+	statPluginConfig := make(map[string]interface{})
+	statPluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+	wantedTokenName := "config_token_pluginany"
+	statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
+
+	_, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
+		driverConfig.CoreConfig.TokenCache,
+		wantedTokenName,
+		driverConfig.CoreConfig.Log)
+	if err != nil {
+		driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
+		return
+	}
+	if statvault != nil {
+		defer statvault.Close()
+	}
+	go pluginHandler.handle_dataflowstat(driverConfig, statmod, statvault)
+	go pluginHandler.receiver(driverConfig)
+	pluginHandler.Init(serviceConfig)
+	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
+	*pluginHandler.ConfigContext.CmdSenderChan <- core.KernelCmd{
+		PluginName: pluginHandler.Name,
+		Command:    core.PLUGIN_EVENT_START,
+	}
+	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+}
+
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, chatReceiverChan *chan *core.ChatMsg) {
 	if driverConfig.CoreConfig.Log != nil {
 		if logger == nil {

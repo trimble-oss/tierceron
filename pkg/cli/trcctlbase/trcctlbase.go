@@ -10,6 +10,7 @@ import (
 
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
@@ -20,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -256,7 +258,8 @@ func CommonMain(envDefaultPtr *string,
 		}
 		os.Chdir("..")
 	case "pluginrun":
-		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+		//		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+		tokenName := "config_token_pluginany"
 		driverConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
@@ -303,12 +306,14 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 			flagset.String("env", "dev", "Environment to configure")
 
+			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+
 			trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
 				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
 				new(string),
 				new(string),
-				driverConfig.CoreConfig.CurrentTokenNamePtr,
+				&wantedTokenName,
 				flagset,
 				restrictedMappingSub,
 				driverConfig)
@@ -323,10 +328,10 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				new(string), // secretId
-				new(string), // approleId
-				driverConfig.CoreConfig.CurrentTokenNamePtr, // tokenName
-				nil, // regionPtr
+				new(string),      // secretId
+				new(string),      // approleId
+				&wantedTokenName, // wantedTokenName
+				nil,              // regionPtr
 				flagset,
 				restrictedMappingConfig,
 				driverConfig)
@@ -348,17 +353,29 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				new(string), // secretId
-				new(string), // approleId
-				driverConfig.CoreConfig.CurrentTokenNamePtr, // tokenName
-				nil, // regionPtr
+				new(string),      // secretId
+				new(string),      // approleId
+				&wantedTokenName, // tokenName
+				nil,              // regionPtr
 				flagset,
 				restrictedMappingConfig,
 				driverConfig)
 
 			driverConfig.MemFs.ClearCache("./trc_templates")
 			driverConfig.MemFs.ClearCache("./deploy")
-			driverConfig.MemFs.SerializeToMap(".", serviceMap)
+			serviceConfig := map[string]interface{}{}
+			driverConfig.MemFs.SerializeToMap(".", serviceConfig)
+			pluginRestart := make(chan tccore.KernelCmd)
+			chatReceiverChan := make(chan *tccore.ChatMsg)
+			pluginHandler := &hive.PluginHandler{
+				Name:          *pluginNamePtr,
+				ConfigContext: &tccore.ConfigContext{},
+				KernelCtx: &hive.KernelCtx{
+					PluginRestartChan: &pluginRestart,
+				},
+			}
+
+			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig, &chatReceiverChan)
 		}
 	} else {
 		fmt.Printf("Plugin not registered with trcctl.\n")

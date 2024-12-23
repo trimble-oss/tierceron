@@ -8,6 +8,8 @@ import (
 	buildloadopts "github.com/trimble-oss/tierceron/buildopts"
 	coreloadopts "github.com/trimble-oss/tierceron/buildopts/coreopts"
 	deployloadopts "github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
+	pluginloadopts "github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	tcloadopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 	xencryptloadopts "github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 
@@ -29,6 +31,7 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	pluginopts.NewOptionsBuilder(pluginloadopts.LoadOptions())
 	buildopts.NewOptionsBuilder(buildloadopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreloadopts.LoadOptions())
 	deployopts.NewOptionsBuilder(deployloadopts.LoadOptions())
