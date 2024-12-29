@@ -371,8 +371,10 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			pluginRestart := make(chan tccore.KernelCmd)
 			chatReceiverChan := make(chan *tccore.ChatMsg)
 			pluginHandler := &hive.PluginHandler{
-				Name:          *pluginNamePtr,
-				ConfigContext: &tccore.ConfigContext{},
+				Name: *pluginNamePtr,
+				ConfigContext: &tccore.ConfigContext{
+					Log: driverConfig.CoreConfig.Log,
+				},
 				KernelCtx: &hive.KernelCtx{
 					PluginRestartChan: &pluginRestart,
 				},

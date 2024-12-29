@@ -294,20 +294,20 @@ func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.D
 
 func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 	if pluginHandler.Name == "" {
-		logger.Println("No plugin name set for initializing plugin service.")
+		pluginHandler.ConfigContext.Log.Println("No plugin name set for initializing plugin service.")
 		return
 	}
 
 	if !pluginopts.BuildOptions.IsPluginHardwired() {
 		if pluginHandler.PluginMod == nil {
-			logger.Println("No plugin module set for initializing plugin service.")
+			pluginHandler.ConfigContext.Log.Println("No plugin module set for initializing plugin service.")
 			return
 		}
 		symbol, err := pluginHandler.PluginMod.Lookup("Init")
 		if err != nil {
-			logger.Printf("Unable to lookup plugin export: %s\n", err)
+			pluginHandler.ConfigContext.Log.Printf("Unable to lookup plugin export: %s\n", err)
 		}
-		logger.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
+		pluginHandler.ConfigContext.Log.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
 		reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(pluginHandler.Name), reflect.ValueOf(properties)})
 	} else {
 		pluginopts.BuildOptions.Init(pluginHandler.Name, properties)
