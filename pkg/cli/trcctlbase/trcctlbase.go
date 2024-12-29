@@ -288,6 +288,9 @@ func CommonMain(envDefaultPtr *string,
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		GetPluginConfigs(&driverConfig, flagset, pluginNamePtr, ctl, envCtxPtr)
 		os.Chdir("..")
+		var pluginCompleteChan chan bool
+		<-pluginCompleteChan
+
 		// TODO: run the plugin...
 	case "x":
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)

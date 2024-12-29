@@ -133,6 +133,7 @@ require (
 	github.com/templexxx/xorsimd v0.4.2 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
@@ -261,6 +262,10 @@ require (
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.24
+
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => /home/joel/workspace/github/mrjrieke/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck
+
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => /home/joel/workspace/github/mrjrieke/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 

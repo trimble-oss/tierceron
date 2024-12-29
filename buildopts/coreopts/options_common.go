@@ -247,7 +247,7 @@ func GetPluginRestrictedMappings() map[string][][]string {
 			[]string{"-templateFilter=TrcVault/SpiralDatabase", "-restricted=SpiralDatabase", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"trchelloworld": {
-			[]string{"-templateFilter=Common/hello.crt,Common/hello.hellokey.key,HelloProjectPlugin/HelloServicePlugin"},
+			[]string{"-templateFilter=Common/hello.crt,Common/hellokey.key,HelloProjectPlugin/HelloServicePlugin"},
 		},
 	}
 }
