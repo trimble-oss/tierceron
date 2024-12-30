@@ -18,7 +18,8 @@ type MemoryFileSystem interface {
 	Create(string) (TrcshReadWriteCloser, error)
 	Open(string) (TrcshReadWriteCloser, error)
 	Stat(string) (os.FileInfo, error)
-	WriteToMemFile(driverConfig *core.CoreConfig, byteData *[]byte, path string)
+	WriteToMemFile(coreConfig *core.CoreConfig, byteData *[]byte, path string)
 	ReadDir(path string) ([]os.FileInfo, error)
 	ClearCache(path string)
+	SerializeToMap(path string, configCache map[string]interface{})
 }

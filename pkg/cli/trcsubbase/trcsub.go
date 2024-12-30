@@ -128,7 +128,17 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+	wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+	autoErr := eUtils.AutoAuth(driverConfigBase,
+		secretIDPtr,
+		appRoleIDPtr,
+		&wantedTokenName,
+		&tokenPtr, // Token matching currentTokenNamePtr
+		envPtr,
+		addrPtr,
+		envCtxPtr,
+		appRoleConfigPtr,
+		*pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr

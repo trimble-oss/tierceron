@@ -123,7 +123,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 func AutoAuth(driverConfig *config.DriverConfig,
 	secretIDPtr *string, // Optional if token provided.
 	appRoleIDPtr *string, // Optional if token provided.
-	tokenNamePtr *string, // Required if approle and secret provided.
+	wantedTokenNamePtr *string,
 	tokenProvidedPtr **string,
 	envPtr *string,
 	addrPtr *string,
@@ -137,18 +137,22 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var v *sys.Vault
 
 	var tokenPtr *string
-	if RefLength(tokenNamePtr) > 0 {
-		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
+	if RefLength(wantedTokenNamePtr) > 0 {
+		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*wantedTokenNamePtr)
 		if !driverConfig.CoreConfig.IsShell && tokenProvidedPtr != nil {
-			driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+			driverConfig.CoreConfig.CurrentTokenNamePtr = wantedTokenNamePtr
 		}
 	}
 	if tokenPtr == nil && RefLength(*tokenProvidedPtr) > 0 {
 		tokenPtr = *tokenProvidedPtr
 		// Make thebig assumption here.
-		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
 	}
-	if RefLength(tokenPtr) != 0 && !RefEquals(addrPtr, "") && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
+	if RefLength(tokenPtr) != 0 &&
+		!RefEquals(addrPtr, "") &&
+		!RefEquals(appRoleConfigPtr, "deployauth") &&
+		!RefEquals(appRoleConfigPtr, "hivekernel") &&
+		*wantedTokenNamePtr == *driverConfig.CoreConfig.CurrentTokenNamePtr {
 		// For token based auth, auto auth not
 		*tokenProvidedPtr = tokenPtr
 		return nil
@@ -188,7 +192,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 					*addrPtr = c.VaultHost
 				}
 
-				if RefLength(tokenPtr) == 0 {
+				if RefLength(tokenPtr) == 0 || *wantedTokenNamePtr != *driverConfig.CoreConfig.CurrentTokenNamePtr {
 					if !override {
 						LogInfo(driverConfig.CoreConfig, "Obtaining auth credentials.")
 						if c.SecretID != "" && secretIDPtr != nil {
@@ -363,7 +367,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	//if using appRole
-	if *secretIDPtr != "" || *appRoleIDPtr != "" || *tokenNamePtr != "" {
+	if *secretIDPtr != "" || *appRoleIDPtr != "" || *wantedTokenNamePtr != "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
@@ -386,32 +390,32 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			goto skipswitch
 		case "hivekernel":
 			tokenNamePrefix = "trcsh_agent"
-			*tokenNamePtr = tokenNamePrefix + "_" + GetEnvBasis(env)
+			*wantedTokenNamePtr = tokenNamePrefix + "_" + GetEnvBasis(env)
 			goto skipswitch
 		}
 		switch GetEnvBasis(env) {
 		case "dev":
-			*tokenNamePtr = tokenNamePrefix + "_token_dev"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_dev"
 		case "QA":
-			*tokenNamePtr = tokenNamePrefix + "_token_QA"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_QA"
 		case "RQA":
-			*tokenNamePtr = tokenNamePrefix + "_token_RQA"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_RQA"
 		case "itdev":
-			*tokenNamePtr = tokenNamePrefix + "_token_itdev"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_itdev"
 		case "performance":
-			*tokenNamePtr = tokenNamePrefix + "_token_performance"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_performance"
 		case "staging":
-			*tokenNamePtr = tokenNamePrefix + "_token_staging"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_staging"
 		case "prod":
-			*tokenNamePtr = tokenNamePrefix + "_token_prod"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_prod"
 		case "servicepack":
-			*tokenNamePtr = tokenNamePrefix + "_token_servicepack"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_servicepack"
 		case "auto":
-			*tokenNamePtr = tokenNamePrefix + "_token_auto"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_auto"
 		case "local":
-			*tokenNamePtr = tokenNamePrefix + "_token_local"
+			*wantedTokenNamePtr = tokenNamePrefix + "_token_local"
 		default:
-			*tokenNamePtr = "Invalid environment"
+			*wantedTokenNamePtr = "Invalid environment"
 		}
 	skipswitch:
 		//check that none are empty
@@ -419,20 +423,20 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required secretID", 1)
 		} else if *appRoleIDPtr == "" {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required appRoleID", 1)
-		} else if *tokenNamePtr == "" {
+		} else if *wantedTokenNamePtr == "" {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required tokenName", 1)
-		} else if *tokenNamePtr == "Invalid environment" {
+		} else if *wantedTokenNamePtr == "Invalid environment" {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Invalid environment:"+*envPtr, 1)
 		}
 		//check that token matches environment
-		tokenParts := strings.Split(*tokenNamePtr, "_")
+		tokenParts := strings.Split(*wantedTokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
 		if GetEnvBasis(env) != tokenEnv {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Token doesn't match environment", 1)
 		}
 	}
 
-	if len(*tokenNamePtr) > 0 {
+	if len(*wantedTokenNamePtr) > 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
 		}
@@ -470,11 +474,11 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.Env = "hivekernel"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
-		token, err := mod.ReadValue("super-secrets/tokens", *tokenNamePtr)
+		token, err := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
 				mod.Env = "sugarcane"
-				sugarToken, sugarErr := mod.ReadValue("super-secrets/tokens", *tokenNamePtr+"_protected")
+				sugarToken, sugarErr := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr+"_protected")
 				if sugarErr != nil {
 					return err
 				}
@@ -484,8 +488,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 		}
 		tokenPtr = &token
-		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
-		driverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		driverConfig.CoreConfig.CurrentTokenNamePtr = wantedTokenNamePtr
+		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
 		*tokenProvidedPtr = tokenPtr
 	}
 	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")
