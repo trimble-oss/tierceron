@@ -15,6 +15,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"google.golang.org/grpc"
@@ -38,9 +39,9 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
 }
 
-func receiverMutabile(configContext *tccore.ConfigContext, receive_chan chan core.KernelCmd) {
+func receiverMutabile(configContext *tccore.ConfigContext, receive_chan *chan core.KernelCmd) {
 	for {
-		event := <-receive_chan
+		event := <-*receive_chan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
 			go configContext.Start(event.PluginName)
@@ -88,15 +89,7 @@ func send_dfstat(pluginName string) {
 			send_err(pluginName, err)
 			return
 		}
-		dfstat.Name = configContext.ArgosId
-		dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
-		configContext.Log.Printf("Sending dataflow statistic to kernel: %s\n", dfstat.Name)
-		dfstatClone := *dfstat
-		go func(dsc *tccore.TTDINode) {
-			if configContext != nil && *configContext.DfsChan != nil {
-				*configContext.DfsChan <- dsc
-			}
-		}(&dfstatClone)
+		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
 	}
 }
 
@@ -120,12 +113,7 @@ func send_err(pluginName string, err error) {
 				func(msg string, err error) {
 					configContext.Log.Println(msg, err)
 				})
-			dfstat.Name = configContext.ArgosId
-			dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
-			configContext.Log.Printf("Sending failed dataflow statistic to kernel: %s\n", dfstat.Name)
-			go func(sender chan *tccore.TTDINode, dfs *tccore.TTDINode) {
-				sender <- dfs
-			}(*configContext.DfsChan, dfstat)
+			pluginlib.SendDfStat(configContext, dfsctx, dfstat)
 		}
 		*configContext.ErrorChan <- err
 	}
@@ -256,22 +244,20 @@ func GetConfigPaths(pluginName string) []string {
 	return []string{}
 }
 
+func PostInit(configContext *tccore.ConfigContext) {
+	configContext.Start = start
+	sender = *configContext.ErrorChan
+	go receiverMutabile(configContext, configContext.CmdReceiverChan)
+}
+
 func Init(pluginName string, properties *map[string]interface{}) {
-	if properties == nil {
-		fmt.Println("Missing initialization components")
+	var err error
+
+	configContextMap[pluginName], err = pluginlib.Init(pluginName, properties, PostInit)
+	if err != nil {
+		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
-	var logger *log.Logger
-	if _, ok := (*properties)["log"].(*log.Logger); ok {
-		logger = (*properties)["log"].(*log.Logger)
-	}
-
-	configContext := &tccore.ConfigContext{
-		Config: properties,
-		Start:  start,
-		Log:    logger,
-	}
-	configContextMap[pluginName] = configContext
 
 	// Convert all properties to mem files....
 	for propKey, propValue := range *properties {
@@ -288,36 +274,6 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		// Resize file to match data length
 		if _, err := file.Write(make([]byte, len(data))); err != nil {
 			log.Fatal("Failed to resize file:", err)
-		}
-	}
-
-	if channels, ok := (*properties)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY]; ok {
-		if chans, ok := channels.(map[string]interface{}); ok {
-			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN]; ok {
-				if rc, ok := rchan.(chan core.KernelCmd); ok && rc != nil {
-					go receiverMutabile(configContext, rc)
-				} else {
-					configContext.Log.Println("Unsupported receiving channel passed into hello")
-					return
-				}
-			} else {
-				configContext.Log.Println("No receiving channel passed into hello")
-				return
-			}
-			if schan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_OUT]; ok {
-				if sc, ok := schan.(chan error); ok && sc != nil {
-					sender = sc
-				} else {
-					configContext.Log.Println("Unsupported sending channel passed into hello")
-					return
-				}
-			} else {
-				configContext.Log.Println("No sending channel passed into hello")
-				return
-			}
-		} else {
-			configContext.Log.Println("No channels passed into hello")
-			return
 		}
 	}
 }
