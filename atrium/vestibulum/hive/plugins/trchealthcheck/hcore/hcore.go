@@ -12,14 +12,17 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hellosdk" // Update package path as needed
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"gopkg.in/yaml.v2"
 )
 
 type server struct {
@@ -38,14 +41,23 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 }
 
 const (
-	HELLO_CERT  = "Common/hello.crt.mf.tmpl"
-	HELLO_KEY   = "Common/hellokey.key.mf.tmpl"
-	COMMON_PATH = "config"
+	HELLO_CERT  = "./hello.crt"
+	HELLO_KEY   = "./hellokey.key"
+	COMMON_PATH = "./config.yml"
 )
 
-func receiver(receive_chan chan core.KernelCmd) {
+func templateIfy(configKey string) string {
+	if strings.Contains(HELLO_CERT, ".crt") || strings.Contains(HELLO_CERT, ".key") {
+		return fmt.Sprintf("Common/%s.mf.tmpl", configKey[2])
+	} else {
+		commonBasis := strings.Split(configKey, ".")[1]
+		return commonBasis[1:]
+	}
+}
+
+func receiver(receive_chan *chan core.KernelCmd) {
 	for {
-		event := <-receive_chan
+		event := <-*receive_chan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
 			go start(event.PluginName)
@@ -90,15 +102,7 @@ func send_dfstat() {
 		send_err(err)
 		return
 	}
-	dfstat.Name = configContext.ArgosId
-	dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
-	configContext.Log.Printf("Sending dataflow statistic to kernel: %s\n", dfstat.Name)
-	dfstatClone := *dfstat
-	go func(dsc *tccore.TTDINode) {
-		if configContext != nil && *configContext.DfsChan != nil {
-			*configContext.DfsChan <- dsc
-		}
-	}(&dfstatClone)
+	pluginlib.SendDfStat(configContext, dfsctx, dfstat)
 }
 
 func send_err(err error) {
@@ -120,12 +124,7 @@ func send_err(err error) {
 			func(msg string, err error) {
 				configContext.Log.Println(msg, err)
 			})
-		dfstat.Name = configContext.ArgosId
-		dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
-		configContext.Log.Printf("Sending failed dataflow statistic to kernel: %s\n", dfstat.Name)
-		go func(sender chan *tccore.TTDINode, dfs *tccore.TTDINode) {
-			sender <- dfs
-		}(*configContext.DfsChan, dfstat)
+		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
 	}
 	*configContext.ErrorChan <- err
 }
@@ -155,63 +154,97 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for healthcheck")
 		return
 	}
-
-	if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
-		var healthcheckPort int
-		if port, ok := portInterface.(int); ok {
-			healthcheckPort = port
-		} else {
-			var err error
-			healthcheckPort, err = strconv.Atoi(portInterface.(string))
-			if err != nil {
-				configContext.Log.Printf("Failed to process server port: %v", err)
-				send_err(err)
-				return
-			}
-		}
-		configContext.Log.Printf("Server listening on :%d\n", healthcheckPort)
-		lis, gServer, err := InitServer(healthcheckPort,
-			(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
-			(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
+	var config map[string]interface{}
+	var configCert []byte
+	var configKey []byte
+	var ok bool
+	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
+		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
+		err := yaml.Unmarshal(configBytes, &config)
 		if err != nil {
-			configContext.Log.Printf("Failed to start server: %v", err)
+			configContext.Log.Println("Missing common configs")
 			send_err(err)
 			return
 		}
-		configContext.Log.Println("Starting server")
+	}
+	if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
+		if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+			configContext.Log.Println("Missing config cert")
+			send_err(errors.New("Missing config cert"))
+			return
+		}
+	}
+	if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
+		if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+			configContext.Log.Println("Missing config key")
+			send_err(errors.New("Missing config key"))
+			return
+		}
+	}
 
-		grpcServer = gServer
-		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-		pb.RegisterGreeterServer(grpcServer, &server{})
-		// reflection.Register(grpcServer)
-		addr := lis.Addr().String()
-		serverAddr = &addr
-		configContext.Log.Printf("server listening at %v", lis.Addr())
-		go func(l net.Listener, cmd_send_chan *chan tccore.KernelCmd) {
-			if cmd_send_chan != nil {
-				*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
+	if config != nil {
+		if portInterface, ok := config["grpc_server_port"]; ok {
+			var healthcheckPort int
+			if port, ok := portInterface.(int); ok {
+				healthcheckPort = port
+			} else {
+				var err error
+				healthcheckPort, err = strconv.Atoi(portInterface.(string))
+				if err != nil {
+					configContext.Log.Printf("Failed to process server port: %v", err)
+					send_err(err)
+					return
+				}
 			}
-			if err := grpcServer.Serve(l); err != nil {
-				configContext.Log.Println("Failed to serve:", err)
+			configContext.Log.Printf("Server listening on :%d\n", healthcheckPort)
+			lis, gServer, err := InitServer(healthcheckPort,
+				configCert,
+				configKey)
+			if err != nil {
+				configContext.Log.Printf("Failed to start server: %v", err)
 				send_err(err)
 				return
 			}
-		}(lis, configContext.CmdSenderChan)
-		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
-		dfstat.UpdateDataFlowStatistic("System",
-			pluginName,
-			"Start up",
-			"1",
-			1,
-			func(msg string, err error) {
-				configContext.Log.Println(msg, err)
-			})
-		send_dfstat()
+			configContext.Log.Println("Starting server")
+
+			grpcServer = gServer
+			grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+			pb.RegisterGreeterServer(grpcServer, &server{})
+			// reflection.Register(grpcServer)
+			addr := lis.Addr().String()
+			serverAddr = &addr
+			configContext.Log.Printf("server listening at %v", lis.Addr())
+			go func(l net.Listener, cmd_send_chan *chan tccore.KernelCmd) {
+				if cmd_send_chan != nil {
+					*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
+				}
+				if err := grpcServer.Serve(l); err != nil {
+					configContext.Log.Println("Failed to serve:", err)
+					send_err(err)
+					return
+				}
+			}(lis, configContext.CmdSenderChan)
+			dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+			dfstat.UpdateDataFlowStatistic("System",
+				pluginName,
+				"Start up",
+				"1",
+				1,
+				func(msg string, err error) {
+					configContext.Log.Println(msg, err)
+				})
+			send_dfstat()
+		} else {
+			configContext.Log.Println("Missing config: gprc_server_port")
+			send_err(errors.New("missing config: gprc_server_port"))
+			return
+		}
 	} else {
-		configContext.Log.Println("Missing config: gprc_server_port")
-		send_err(errors.New("missing config: gprc_server_port"))
+		configContext.Log.Println("Missing common configs")
+		send_err(errors.New("missing common configs"))
 		return
 	}
+
 }
 
 func stop(pluginName string) {
@@ -255,22 +288,20 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
+func PostInit(configContext *tccore.ConfigContext) {
+	configContext.Start = start
+	sender = *configContext.ErrorChan
+	go receiver(configContext.CmdReceiverChan)
+}
+
 func Init(pluginName string, properties *map[string]interface{}) {
-	if properties == nil {
-		fmt.Println("Missing initialization components")
+	var err error
+
+	configContext, err = pluginlib.Init(pluginName, properties, PostInit)
+	if err != nil {
+		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
-	var logger *log.Logger
-	if _, ok := (*properties)["log"].(*log.Logger); ok {
-		logger = (*properties)["log"].(*log.Logger)
-	}
-
-	configContext = &tccore.ConfigContext{
-		Config: properties,
-		Start:  start,
-		Log:    logger,
-	}
-
 	var certbytes []byte
 	var keybytes []byte
 	if cert, ok := (*properties)[HELLO_CERT]; ok {
@@ -284,35 +315,5 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
 		fmt.Println("Missing common config components")
 		return
-	}
-
-	if channels, ok := (*properties)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY]; ok {
-		if chans, ok := channels.(map[string]interface{}); ok {
-			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN]; ok {
-				if rc, ok := rchan.(chan core.KernelCmd); ok && rc != nil {
-					go receiver(rc)
-				} else {
-					configContext.Log.Println("Unsupported receiving channel passed into hello")
-					return
-				}
-			} else {
-				configContext.Log.Println("No receiving channel passed into hello")
-				return
-			}
-			if schan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_OUT]; ok {
-				if sc, ok := schan.(chan error); ok && sc != nil {
-					sender = sc
-				} else {
-					configContext.Log.Println("Unsupported sending channel passed into hello")
-					return
-				}
-			} else {
-				configContext.Log.Println("No sending channel passed into hello")
-				return
-			}
-		} else {
-			configContext.Log.Println("No channels passed into hello")
-			return
-		}
 	}
 }

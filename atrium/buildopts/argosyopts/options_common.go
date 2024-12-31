@@ -1,5 +1,5 @@
-//go:build !argosy && !tc && !argosystub
-// +build !argosy,!tc,!argosystub
+//go:build !argosy && !tc && !argosystub && !trcx
+// +build !argosy,!tc,!argosystub,!trcx
 
 package argosyopts
 

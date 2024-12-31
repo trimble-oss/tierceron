@@ -48,19 +48,19 @@ func main() {
 		logger.Println("Error unmarshaling YAML:", err)
 		os.Exit(-1)
 	}
-	config[hcore.COMMON_PATH] = &configCommon
+	//	config[hcore.COMMON_PATH] = &configCommon
 
-	helloCertBytes, err := os.ReadFile("./hello.crt")
-	if err != nil {
-		log.Printf("Couldn't load cert: %v", err)
-	}
+	// helloCertBytes, err := os.ReadFile("./hello.crt")
+	// if err != nil {
+	// 	log.Printf("Couldn't load cert: %v", err)
+	// }
 
-	helloKeyBytes, err := os.ReadFile("./hellokey.key")
-	if err != nil {
-		log.Printf("Couldn't load key: %v", err)
-	}
-	config[hcore.HELLO_CERT] = helloCertBytes
-	config[hcore.HELLO_KEY] = helloKeyBytes
+	// helloKeyBytes, err := os.ReadFile("./hellokey.key")
+	// if err != nil {
+	// 	log.Printf("Couldn't load key: %v", err)
+	// }
+	//	config[hcore.HELLO_CERT] = helloCertBytes
+	//	config[hcore.HELLO_KEY] = helloKeyBytes
 
 	Init("mutabilis", &config)
 	hcore.GetConfigContext("mutabilis").Start("mutabilis")
