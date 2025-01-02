@@ -152,7 +152,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		!RefEquals(addrPtr, "") &&
 		!RefEquals(appRoleConfigPtr, "deployauth") &&
 		!RefEquals(appRoleConfigPtr, "hivekernel") &&
-		*wantedTokenNamePtr == *driverConfig.CoreConfig.CurrentTokenNamePtr {
+		(driverConfig.CoreConfig.CurrentTokenNamePtr == nil || wantedTokenNamePtr == nil &&
+			RefRefEquals(wantedTokenNamePtr, driverConfig.CoreConfig.CurrentTokenNamePtr)) {
 		// For token based auth, auto auth not
 		*tokenProvidedPtr = tokenPtr
 		return nil
