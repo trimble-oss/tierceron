@@ -3,7 +3,6 @@ package hive
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"plugin"
 	"reflect"
@@ -30,7 +29,6 @@ import (
 )
 
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
-var logger *log.Logger
 var dfstat *core.TTDINode
 
 var m sync.Mutex
@@ -165,7 +163,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 			for service, servPh := range *pH.Services {
 				certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", service))
 				if err != nil {
-					logger.Printf("Unable to read certification data for %s %s\n", service, err)
+					pH.ConfigContext.Log.Printf("Unable to read certification data for %s %s\n", service, err)
 					continue
 				}
 
@@ -188,8 +186,10 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 						cmd := <-*pH.KernelCtx.PluginRestartChan
 						if cmd.Command == core.PLUGIN_EVENT_STOP {
 							(*pH.Services)[service] = &PluginHandler{
-								Name:          service,
-								ConfigContext: &core.ConfigContext{},
+								Name: service,
+								ConfigContext: &core.ConfigContext{
+									Log: driverConfig.CoreConfig.Log,
+								},
 								KernelCtx: &KernelCtx{
 									PluginRestartChan: pH.KernelCtx.PluginRestartChan,
 								},
@@ -270,8 +270,10 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 	if pH.Services != nil {
 		driverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", service)
 		(*pH.Services)[service] = &PluginHandler{
-			Name:          service,
-			ConfigContext: &core.ConfigContext{},
+			Name: service,
+			ConfigContext: &core.ConfigContext{
+				Log: driverConfig.CoreConfig.Log,
+			},
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
 			},
@@ -382,8 +384,8 @@ func (pluginHandler *PluginHandler) RunPlugin(
 
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, chatReceiverChan *chan *core.ChatMsg) {
 	if driverConfig.CoreConfig.Log != nil {
-		if logger == nil {
-			logger = driverConfig.CoreConfig.Log
+		if pluginHandler.ConfigContext.Log == nil {
+			pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
 		}
 	} else {
 		fmt.Println("No logger passed in to plugin service")

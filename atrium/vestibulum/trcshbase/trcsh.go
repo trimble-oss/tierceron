@@ -708,6 +708,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
 			kernelPluginHandler = hive.InitKernel(fmt.Sprintf("%s-%d", kernelName, kernelId))
+			kernelPluginHandler.ConfigContext.Log = driverConfigPtr.CoreConfig.Log
 			go kernelPluginHandler.DynamicReloader(trcshDriverConfig.DriverConfig)
 		}
 
