@@ -19,6 +19,15 @@ func RefEquals(src *string, dest string) bool {
 	return *src == dest
 }
 
+func RefRefEquals(src *string, dest *string) bool {
+	if src == nil && dest == nil {
+		return true
+	} else if src == nil || dest == nil {
+		return false
+	}
+	return *src == *dest
+}
+
 func RefEqualsAny(src *string, dest []string) bool {
 	if src == nil {
 		return false
