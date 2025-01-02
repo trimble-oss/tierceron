@@ -138,11 +138,11 @@ replace github.com/trimble-oss/tierceron/atrium => ./atrium
 
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck@v0.0.0-20241220234051-2d8c369c5b69 ./atrium/vestibulum/hive/plugins/trchealthcheck
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => /home/joel/workspace/github/mrjrieke/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => ./atrium/vestibulum/hive/plugins/trchealthcheck
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => /home/joel/workspace/github/mrjrieke/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./atrium/vestibulum/hive/plugins/trchealthcheck/hcore
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => /home/joel/workspace/github/mrjrieke/tierceron/atrium/vestibulum/hive/plugins/atrium/vestibulum/hive/plugins/trcmutabilis
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./atrium/vestibulum/hive/plugins/atrium/vestibulum/hive/plugins/trcmutabilis
 
 //replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
