@@ -83,7 +83,11 @@ func CreateLogFile() (*log.Logger, error) {
 	return logger, nil
 }
 
-func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region string, pathParam string, useMemCache bool, logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
+func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
+	env string, region string,
+	pathParam string,
+	useMemCache bool,
+	logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -146,7 +150,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig, env string, region st
 			IsShellSubProcess: false,
 			ReadMemCache:      useMemCache,
 			SubOutputMemCache: useMemCache,
-			OutputMemCache:    true,
+			OutputMemCache:    useMemCache,
 			MemFs:             trcshMemFs.NewTrcshMemFs(),
 			ZeroConfig:        true,
 			PathParam:         pathParam, // Make available to trcplgtool
@@ -207,8 +211,18 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 var gTokenCache *cache.TokenCache
 
 // EnableDeploy - initializes and starts running deployer for provided deployment and environment.
-func EnableDeployer(driverConfigPtr *config.DriverConfig, env string, region string, token string, trcPath string, secretId *string, approleId *string, outputMemCache bool, deployment string, dronePtr *bool, projectService ...*string) {
-	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, env, region, "", outputMemCache)
+func EnableDeployer(driverConfigPtr *config.DriverConfig,
+	env string, region string,
+	token string,
+	trcPath string,
+	secretId *string,
+	approleId *string,
+	useMemCache bool,
+	deployment string,
+	dronePtr *bool,
+	projectService ...*string) {
+
+	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, env, region, "", useMemCache)
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
@@ -758,11 +772,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		for _, deployment := range deployments {
 			if kernelopts.BuildOptions.IsKernel() {
-				go func(driverConfigPtr *config.DriverConfig, env string, region string, trcPath string, secretId *string, approleId *string, outputMemCache bool, dronePtr *bool, projectService *string) {
+				go func(driverConfigPtr *config.DriverConfig, env string, region string, trcPath string, secretId *string, approleId *string, useMemCache bool, dronePtr *bool, projectService *string) {
 					for {
 						deploy := <-*kernelPluginHandler.KernelCtx.DeployRestartChan
 						driverConfigPtr.CoreConfig.Log.Printf("Restarting deploy for %s.\n", deploy)
-						go EnableDeployer(driverConfigPtr, env, region, deploy, trcPath, secretId, approleId, outputMemCache, deploy, dronePtr, projectService)
+						go EnableDeployer(driverConfigPtr, env, region, deploy, trcPath, secretId, approleId, useMemCache, deploy, dronePtr, projectService)
 					}
 				}(driverConfigPtr, *gAgentConfig.Env, *regionPtr, *trcPathPtr, secretIDPtr, appRoleIDPtr, kernelopts.BuildOptions.IsKernel(), dronePtr, projectServicePtr)
 			}
