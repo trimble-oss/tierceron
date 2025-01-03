@@ -377,12 +377,8 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, driverConfig.ZeroConfig)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							if !driverConfig.CoreConfig.WantCerts || strings.Contains(templatePath, "Common") {
-								eUtils.CheckError(driverConfig.CoreConfig, ctErr, true)
-							} else {
-								eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
-								goto wait
-							}
+							eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
+							goto wait
 						}
 					} else if driverConfig.WantKeystore != "" && len(certData) == 0 {
 						if driverConfig.KeystorePassword == "" {
@@ -449,7 +445,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 				if templateInfo {
 					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
 					if errTemplateVersion != nil {
-						return errTemplateVersion
+						goto wait
 					}
 					versionData[endPaths[i]] = data
 					goto wait
@@ -458,7 +454,8 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							eUtils.CheckError(driverConfig.CoreConfig, ctErr, true)
+							eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
+							goto wait
 						}
 					}
 				}
