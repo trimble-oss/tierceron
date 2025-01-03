@@ -217,7 +217,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 					queuedEnvironments = environmentsProd
 				}
 
-				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, queuedEnvironments[0], "", "", true, logger)
+				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, queuedEnvironments[0], "", "", true, true, logger)
 				eUtils.CheckError(&core.CoreConfig{
 					ExitOnFailure: true,
 					Log:           logger,

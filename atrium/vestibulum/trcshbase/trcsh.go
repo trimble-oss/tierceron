@@ -87,6 +87,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	env string, region string,
 	pathParam string,
 	useMemCache bool,
+	outputMemCache bool,
 	logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
@@ -150,7 +151,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 			IsShellSubProcess: false,
 			ReadMemCache:      useMemCache,
 			SubOutputMemCache: useMemCache,
-			OutputMemCache:    useMemCache,
+			OutputMemCache:    outputMemCache,
 			MemFs:             trcshMemFs.NewTrcshMemFs(),
 			ZeroConfig:        true,
 			PathParam:         pathParam, // Make available to trcplgtool
@@ -218,11 +219,12 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	secretId *string,
 	approleId *string,
 	useMemCache bool,
+	outputMemCache bool,
 	deployment string,
 	dronePtr *bool,
 	projectService ...*string) {
 
-	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, env, region, "", useMemCache)
+	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, env, region, "", useMemCache, outputMemCache)
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
@@ -356,7 +358,7 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		memprotectopts.MemProtect(nil, secretIDPtr)
 		memprotectopts.MemProtect(nil, appRoleIDPtr)
 
-		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, *envPtr, *regionPtr, pathParam, !prod.IsProd())
+		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, *envPtr, *regionPtr, pathParam, !prod.IsProd(), !prod.IsProd())
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
@@ -592,7 +594,8 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			agentEnv,
 			*regionPtr,
 			"",
-			kernelopts.BuildOptions.IsKernel(),
+			true,                               // useMemCache
+			kernelopts.BuildOptions.IsKernel(), // outputMemCache
 			driverConfigPtr.CoreConfig.Log)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
@@ -772,15 +775,51 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 
 		for _, deployment := range deployments {
 			if kernelopts.BuildOptions.IsKernel() {
-				go func(driverConfigPtr *config.DriverConfig, env string, region string, trcPath string, secretId *string, approleId *string, useMemCache bool, dronePtr *bool, projectService *string) {
+				go func(driverConfigPtr *config.DriverConfig,
+					env string,
+					region string,
+					trcPath string,
+					secretId *string,
+					approleId *string,
+					outputMemCache bool,
+					dronePtr *bool,
+					projectService *string) {
 					for {
 						deploy := <-*kernelPluginHandler.KernelCtx.DeployRestartChan
 						driverConfigPtr.CoreConfig.Log.Printf("Restarting deploy for %s.\n", deploy)
-						go EnableDeployer(driverConfigPtr, env, region, deploy, trcPath, secretId, approleId, useMemCache, deploy, dronePtr, projectService)
+						go EnableDeployer(driverConfigPtr,
+							env,
+							region,
+							deploy,
+							trcPath,
+							secretId,
+							approleId,
+							true, // useMemCache
+							outputMemCache,
+							deploy, dronePtr, projectService)
 					}
-				}(driverConfigPtr, *gAgentConfig.Env, *regionPtr, *trcPathPtr, secretIDPtr, appRoleIDPtr, kernelopts.BuildOptions.IsKernel(), dronePtr, projectServicePtr)
+				}(driverConfigPtr,
+					*gAgentConfig.Env,
+					*regionPtr,
+					*trcPathPtr,
+					secretIDPtr,
+					appRoleIDPtr,
+					kernelopts.BuildOptions.IsKernel(), // outputMemCache
+					dronePtr,
+					projectServicePtr)
 			}
-			EnableDeployer(driverConfigPtr, *gAgentConfig.Env, *regionPtr, deployment, *trcPathPtr, secretIDPtr, appRoleIDPtr, kernelopts.BuildOptions.IsKernel(), deployment, dronePtr, projectServicePtr)
+			EnableDeployer(driverConfigPtr,
+				*gAgentConfig.Env,
+				*regionPtr,
+				deployment,
+				*trcPathPtr,
+				secretIDPtr,
+				appRoleIDPtr,
+				true,                               // useMemCache
+				kernelopts.BuildOptions.IsKernel(), // outputMemCache
+				deployment,
+				dronePtr,
+				projectServicePtr)
 		}
 
 		<-shutdown
