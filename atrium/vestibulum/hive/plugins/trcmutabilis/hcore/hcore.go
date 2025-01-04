@@ -126,6 +126,7 @@ func start(pluginName string) {
 	}
 
 	if configContext, ok := configContextMap[pluginName]; ok {
+		// TODO: Chewbacca, exec java here...
 		if portInterface, ok := (*configContext.Config)["grpc_server_port"]; ok {
 			var helloPort int
 			if port, ok := portInterface.(int); ok {
