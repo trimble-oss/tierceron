@@ -88,7 +88,15 @@ summitatem:
 }
 
 func (t *TrcshMemFs) ClearCache(path string) {
-	t.WalkCache(path, t.Remove)
+	if path == "." {
+		t.MemCacheLock.Lock()
+		defer t.MemCacheLock.Unlock()
+		t.BillyFs = nil
+		newBilly := memfs.New()
+		t.BillyFs = &newBilly
+	} else {
+		t.WalkCache(path, t.Remove)
+	}
 }
 
 func (t *TrcshMemFs) SerializeToMap(path string, configCache map[string]interface{}) {
@@ -116,7 +124,11 @@ func (t *TrcshMemFs) Stat(filename string) (os.FileInfo, error) {
 }
 
 func (t *TrcshMemFs) Remove(filename string) error {
-	return (*t.BillyFs).Remove(filename)
+	if filename != "." {
+		return (*t.BillyFs).Remove(filename)
+	} else {
+		return nil
+	}
 }
 
 func (t *TrcshMemFs) Lstat(filename string) (os.FileInfo, error) {
