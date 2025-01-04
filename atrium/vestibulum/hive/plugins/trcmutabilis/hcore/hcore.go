@@ -253,6 +253,9 @@ func PostInit(configContext *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]interface{}) {
 	var err error
 
+	if configContextMap == nil {
+		configContextMap = map[string]*tccore.ConfigContext{}
+	}
 	configContextMap[pluginName], err = pluginlib.Init(pluginName, properties, PostInit)
 	if err != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
@@ -261,19 +264,20 @@ func Init(pluginName string, properties *map[string]interface{}) {
 
 	// Convert all properties to mem files....
 	for propKey, propValue := range *properties {
-		data := propValue.([]byte)
-		fd, err := unix.MemfdCreate(propKey, unix.MFD_CLOEXEC)
-		if err != nil {
-			log.Fatal("Failed to create memory file:", err)
-		}
+		if data, ok := propValue.([]byte); ok {
+			fd, err := unix.MemfdCreate(propKey, unix.MFD_CLOEXEC)
+			if err != nil {
+				log.Fatal("Failed to create memory file:", err)
+			}
 
-		// Convert the file descriptor to *os.File
-		file := os.NewFile(uintptr(fd), propKey)
-		defer file.Close()
+			// Convert the file descriptor to *os.File
+			file := os.NewFile(uintptr(fd), propKey)
+			defer file.Close()
 
-		// Resize file to match data length
-		if _, err := file.Write(make([]byte, len(data))); err != nil {
-			log.Fatal("Failed to resize file:", err)
+			// Resize file to match data length
+			if _, err := file.Write(make([]byte, len(data))); err != nil {
+				log.Fatal("Failed to resize file:", err)
+			}
 		}
 	}
 }
