@@ -163,6 +163,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 	prev_value, ok := (*GlobalStats).Get(key)
 	var err error
 	var max_value string
+	reset := false
 	if data_type == "int" {
 		old_val := 0
 		if ok {
@@ -184,6 +185,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 			}, errors.New("different type of value passed in than specified")
 		}
 		if new_val > old_val {
+			reset = true
 			old_val = new_val
 		}
 		max_value = strconv.Itoa(old_val)
@@ -208,6 +210,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 			}, errors.New("different type of value passed in than specified")
 		}
 		if new_val > prev {
+			reset = true
 			prev = new_val
 		}
 		max_value = fmt.Sprintf("%v", prev)
@@ -220,7 +223,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 
 	(*GlobalStats).Set(key, max_value)
 	return &pb.UpdateStatResponse{
-		Success: true,
+		Success: reset,
 	}, nil
 }
 
