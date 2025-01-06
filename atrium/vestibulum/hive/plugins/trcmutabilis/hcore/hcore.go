@@ -264,21 +264,5 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	// Convert all properties to mem files....
 	for propKey, _ := range *properties {
 		trcshzig.WriteMemFile(*properties, propKey)
-		// if data, ok := propValue.([]byte); ok {
-
-		// 	fd, err := unix.MemfdCreate(propKey, unix.MFD_CLOEXEC)
-		// 	if err != nil {
-		// 		log.Fatal("Failed to create memory file:", err)
-		// 	}
-
-		// 	// Convert the file descriptor to *os.File
-		// 	file := os.NewFile(uintptr(fd), propKey)
-		// 	defer file.Close()
-
-		// 	// Resize file to match data length
-		// 	if _, err := file.Write(make([]byte, len(data))); err != nil {
-		// 		log.Fatal("Failed to resize file:", err)
-		// 	}
-		// }
 	}
 }
