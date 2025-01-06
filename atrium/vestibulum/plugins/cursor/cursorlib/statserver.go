@@ -151,7 +151,10 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 
 func resetLongestConverting(key string) error {
 	for {
-		time.Sleep(time.Hour)
+		currentTime := time.Now()
+		nextHour := currentTime.Truncate(time.Hour).Add(time.Hour)
+		durationUntilNextHour := nextHour.Sub(currentTime)
+		time.Sleep(durationUntilNextHour)
 		var t float64 = 0
 		(*GlobalStats).Set(key, fmt.Sprintf("%f", t))
 	}
