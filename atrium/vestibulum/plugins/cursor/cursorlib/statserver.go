@@ -8,7 +8,9 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
@@ -147,6 +149,14 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 	}, nil
 }
 
+func resetLongestConverting(key string) error {
+	for {
+		time.Sleep(time.Hour)
+		var t float64 = 0
+		(*GlobalStats).Set(key, fmt.Sprintf("%f", t))
+	}
+}
+
 func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
 	token := req.GetToken()
 	if !eUtils.RefEquals(globalToken, token) {
@@ -161,6 +171,9 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 	key := req.GetKey()
 	value := req.GetValue()
 	prev_value, ok := (*GlobalStats).Get(key)
+	if !ok && strings.HasPrefix(key, "LONGEST_PDF_CONVERTING") {
+		go resetLongestConverting(key)
+	}
 	var err error
 	var max_value string
 	reset := false
