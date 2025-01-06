@@ -1463,6 +1463,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 collaboratorReRun:
 	if featherCtx != nil && content == nil {
+		// Start with a clean cache always.
+		if trcshDriverConfig.DriverConfig != nil && trcshDriverConfig.DriverConfig.MemFs != nil {
+			trcshDriverConfig.DriverConfig.MemFs.ClearCache(".")
+		}
+
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		for {
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {

@@ -15,6 +15,8 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -66,19 +68,21 @@ func WriteMemFile(configService map[string]interface{}, filename string) {
 		defer C.munmap(mem, C.size_t(dataLen))
 
 		// Write data into the memory file
-		copy((*[4096]byte)(mem)[:len(data)], data)
+		memSlice := (*[1 << 30]byte)(mem)[:len(data):len(data)] // Adjust slice size dynamically
+		copy(memSlice, data)
 
 		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
+		filename = strings.Replace(filename, "./local_config/", "/", 1)
 
-		// TODO: make symlink
+		os.Symlink(filePath, fmt.Sprintf("/usr/local/trcshk/plugins/%s", filename))
 	}
 
 }
 
 func exec(cmdMessage string) {
-	cmd := exec.Command("java", cmdMessage)
-	output, err := cmd.Output()
-	if err != nil {
-		log.Fatalf("Failed to execute Java process: %v", err)
-	}
+	// cmd := exec.Command("java", cmdMessage)
+	// output, err := cmd.Output()
+	// if err != nil {
+	// 	log.Fatalf("Failed to execute Java process: %v", err)
+	// }
 }
