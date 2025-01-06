@@ -7,16 +7,14 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"strings"
-
-	"golang.org/x/sys/unix"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio/trcshzig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -264,21 +262,23 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	}
 
 	// Convert all properties to mem files....
-	for propKey, propValue := range *properties {
-		if data, ok := propValue.([]byte); ok {
-			fd, err := unix.MemfdCreate(propKey, unix.MFD_CLOEXEC)
-			if err != nil {
-				log.Fatal("Failed to create memory file:", err)
-			}
+	for propKey, _ := range *properties {
+		trcshzig.WriteMemFile(*properties, propKey)
+		// if data, ok := propValue.([]byte); ok {
 
-			// Convert the file descriptor to *os.File
-			file := os.NewFile(uintptr(fd), propKey)
-			defer file.Close()
+		// 	fd, err := unix.MemfdCreate(propKey, unix.MFD_CLOEXEC)
+		// 	if err != nil {
+		// 		log.Fatal("Failed to create memory file:", err)
+		// 	}
 
-			// Resize file to match data length
-			if _, err := file.Write(make([]byte, len(data))); err != nil {
-				log.Fatal("Failed to resize file:", err)
-			}
-		}
+		// 	// Convert the file descriptor to *os.File
+		// 	file := os.NewFile(uintptr(fd), propKey)
+		// 	defer file.Close()
+
+		// 	// Resize file to match data length
+		// 	if _, err := file.Write(make([]byte, len(data))); err != nil {
+		// 		log.Fatal("Failed to resize file:", err)
+		// 	}
+		// }
 	}
 }
