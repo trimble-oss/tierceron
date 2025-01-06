@@ -1,8 +1,10 @@
 package trcsh
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"sync"
@@ -69,11 +71,12 @@ summitatem:
 	p, filestack = filestack[len(filestack)-1], filestack[:len(filestack)-1]
 
 	if fileset, err := (*t.BillyFs).ReadDir(p); err == nil {
+		if path != "." {
+			filestack = append(filestack, p)
+		}
 		for _, file := range fileset {
 			if file.IsDir() {
-				filestack = append(filestack, p)
 				filestack = append(filestack, fmt.Sprintf("%s/%s", p, file.Name()))
-				goto summitatem
 			} else {
 				nodeProcessFunc(fmt.Sprintf("%s/%s", p, file.Name()))
 			}
@@ -85,15 +88,24 @@ summitatem:
 }
 
 func (t *TrcshMemFs) ClearCache(path string) {
-	t.WalkCache(path, t.Remove)
+	if path == "." {
+		t.MemCacheLock.Lock()
+		defer t.MemCacheLock.Unlock()
+		t.BillyFs = nil
+		newBilly := memfs.New()
+		t.BillyFs = &newBilly
+	} else {
+		t.WalkCache(path, t.Remove)
+	}
 }
 
 func (t *TrcshMemFs) SerializeToMap(path string, configCache map[string]interface{}) {
 	t.WalkCache(path, func(path string) error {
-		if _, err := t.Open(path); err != nil {
-			fileBytes := []byte{}
-			// TODO: Read from file and put in cache...
-			configCache[path] = fileBytes
+		if fileReader, err := t.Open(path); err == nil {
+			bytesBuffer := new(bytes.Buffer)
+
+			io.Copy(bytesBuffer, fileReader)
+			configCache[path] = bytesBuffer.Bytes()
 		}
 		return nil
 	})
@@ -112,7 +124,11 @@ func (t *TrcshMemFs) Stat(filename string) (os.FileInfo, error) {
 }
 
 func (t *TrcshMemFs) Remove(filename string) error {
-	return (*t.BillyFs).Remove(filename)
+	if filename != "." {
+		return (*t.BillyFs).Remove(filename)
+	} else {
+		return nil
+	}
 }
 
 func (t *TrcshMemFs) Lstat(filename string) (os.FileInfo, error) {
