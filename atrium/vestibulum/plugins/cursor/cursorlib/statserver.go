@@ -8,7 +8,9 @@ import (
 	"log"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
@@ -147,6 +149,17 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 	}, nil
 }
 
+func resetLongestConverting(key string) error {
+	for {
+		currentTime := time.Now()
+		nextHour := currentTime.Truncate(time.Hour).Add(time.Hour)
+		durationUntilNextHour := nextHour.Sub(currentTime)
+		time.Sleep(durationUntilNextHour)
+		var t float64 = 0
+		(*GlobalStats).Set(key, fmt.Sprintf("%f", t))
+	}
+}
+
 func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
 	token := req.GetToken()
 	if !eUtils.RefEquals(globalToken, token) {
@@ -161,8 +174,12 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 	key := req.GetKey()
 	value := req.GetValue()
 	prev_value, ok := (*GlobalStats).Get(key)
+	if !ok && strings.HasPrefix(key, "LONGEST_PDF_CONVERTING") {
+		go resetLongestConverting(key)
+	}
 	var err error
 	var max_value string
+	reset := false
 	if data_type == "int" {
 		old_val := 0
 		if ok {
@@ -184,6 +201,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 			}, errors.New("different type of value passed in than specified")
 		}
 		if new_val > old_val {
+			reset = true
 			old_val = new_val
 		}
 		max_value = strconv.Itoa(old_val)
@@ -208,6 +226,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 			}, errors.New("different type of value passed in than specified")
 		}
 		if new_val > prev {
+			reset = true
 			prev = new_val
 		}
 		max_value = fmt.Sprintf("%v", prev)
@@ -220,7 +239,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 
 	(*GlobalStats).Set(key, max_value)
 	return &pb.UpdateStatResponse{
-		Success: true,
+		Success: reset,
 	}, nil
 }
 
