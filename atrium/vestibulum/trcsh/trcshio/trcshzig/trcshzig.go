@@ -14,11 +14,14 @@ int memfd_create(const char *name, int flags);
 import "C"
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"syscall"
 	"unsafe"
+
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+
+	"golang.org/x/sys/unix"
 )
 
 // Define MFD_CLOEXEC for Go
@@ -49,34 +52,63 @@ func createMemfdSyscall() (uintptr, error) {
 	return fd, nil
 }
 
-func WriteMemFile(configService map[string]interface{}, filename string) {
-	fd, err := createMemfd(filename)
-	if err != nil {
-		log.Fatalf("Error creating memfd: %v", err)
+func ZigInit(configContext *tccore.ConfigContext) error {
+	if err := unix.Unshare(unix.CLONE_NEWNS); err != nil {
+		configContext.Log.Printf("Failed to unshare mount namespace: %v", err)
+		return err
 	}
-	defer C.close(fd)
+	var statfs unix.Statfs_t
 
+	err := unix.Statfs("/proc", &statfs)
+	if err != nil {
+		configContext.Log.Printf("Error getting /proc stat:", err)
+		return err
+	}
+	if statfs.Type != unix.PROC_SUPER_MAGIC {
+		if err := unix.Mount("proc", "/proc", "proc", unix.MS_PRIVATE|unix.MS_RDONLY, ""); err != nil {
+			configContext.Log.Printf("Failed to mount /proc: %v", err)
+			return err
+		}
+	} else {
+		configContext.Log.Printf("Already mounted.  Insecure run...\n")
+	}
+	return nil
+}
+
+// Add this to the kernel when running....
+// sudo setcap cap_sys_admin+ep /usr/bin/code
+func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string) error {
 	if data, ok := configService[filename].([]byte); ok {
 		dataLen := len(data)
-		C.ftruncate(fd, C.off_t(dataLen))
 
-		// Memory-map the file in the parent process
-		mem := C.mmap(nil, C.size_t(dataLen), C.PROT_READ|C.PROT_WRITE, C.MAP_SHARED, fd, 0)
-		if mem == C.MAP_FAILED {
-			log.Fatal("Failed to mmap memfd")
+		// Create a memory-backed file using memfd_create
+		fd, err := unix.MemfdCreate(filename, 0)
+		if err != nil {
+			configContext.Log.Printf("Failed to create memfd: %v", err)
+			return err
 		}
-		defer C.munmap(mem, C.size_t(dataLen))
+		defer unix.Close(fd)
+
+		if err := unix.Ftruncate(fd, int64(dataLen)); err != nil {
+			configContext.Log.Printf("Failed to resize memfd: %v", err)
+		}
+		mem, err := unix.Mmap(fd, 0, dataLen, unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+		if err != nil {
+			configContext.Log.Printf("Failed to mmap: %v", err)
+			return err
+		}
+		defer unix.Munmap(mem)
 
 		// Write data into the memory file
-		memSlice := (*[1 << 30]byte)(mem)[:len(data):len(data)] // Adjust slice size dynamically
-		copy(memSlice, data)
+		copy(mem, data)
 
 		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
-		filename = strings.Replace(filename, "./local_config/", "/", 1)
+		filename = strings.Replace(filename, "./local_config/", "", 1)
 
 		os.Symlink(filePath, fmt.Sprintf("/usr/local/trcshk/plugins/%s", filename))
 	}
 
+	return nil
 }
 
 func exec(cmdMessage string) {
