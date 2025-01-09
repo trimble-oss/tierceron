@@ -25,8 +25,6 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
-	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a
-
 )
 
 require (
@@ -39,22 +37,23 @@ require (
 	github.com/trimble-oss/tierceron-hat v1.2.9
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20241231000200-edfd1fe078b0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
+	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
-	github.com/klauspost/reedsolomon v1.11.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+	github.com/klauspost/reedsolomon v1.12.4 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/lafriks/go-shamir v1.1.0 // indirect
+	github.com/lafriks/go-shamir v1.2.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/templexxx/cpu v0.1.0 // indirect
-	github.com/templexxx/xorsimd v0.4.2 // indirect
-	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
+	github.com/templexxx/cpu v0.1.1 // indirect
+	github.com/templexxx/xorsimd v0.4.3 // indirect
+	github.com/xtaci/kcp-go/v5 v5.6.16 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250102185135-69823020774d // indirect
 )
 
 require (
@@ -67,8 +66,8 @@ require (
 	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
-	github.com/go-git/go-billy/v5 v5.6.0 // indirect
-	github.com/go-kit/kit v0.10.0 // indirect
+	github.com/go-git/go-billy/v5 v5.6.1 // indirect
+	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
@@ -86,6 +85,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/trimble-oss/tierceron-nute v1.0.6 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
 	go.opentelemetry.io/otel v1.31.0 // indirect
@@ -96,9 +96,10 @@ require (
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241219192143-6b3ec007d9bb // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250102185135-69823020774d // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
+	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 )
 
 require (
@@ -126,7 +127,7 @@ require (
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
 	google.golang.org/grpc v1.69.2
-	google.golang.org/protobuf v1.36.0
+	google.golang.org/protobuf v1.36.1
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
