@@ -25,7 +25,7 @@ require (
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible // indirect
 	github.com/trimble-oss/tierceron-hat v1.2.9
-	github.com/youmark/pkcs8 v0.0.0-20201027041543-1326539a0a0a // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 
 )
 
@@ -35,7 +35,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
 	github.com/danieljoos/wincred v1.2.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
-	github.com/go-git/go-billy/v5 v5.6.0
+	github.com/go-git/go-billy/v5 v5.6.1
 	github.com/newrelic/go-agent/v3 v3.33.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -97,10 +97,10 @@ require (
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/cpuid/v2 v2.2.6 // indirect
-	github.com/klauspost/reedsolomon v1.11.8 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+	github.com/klauspost/reedsolomon v1.12.4 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/lafriks/go-shamir v1.1.0 // indirect
+	github.com/lafriks/go-shamir v1.2.0 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lithammer/dedent v1.1.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -129,22 +129,21 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/templexxx/cpu v0.1.0 // indirect
-	github.com/templexxx/xorsimd v0.4.2 // indirect
+	github.com/templexxx/cpu v0.1.1 // indirect
+	github.com/templexxx/xorsimd v0.4.3 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
-	github.com/xtaci/kcp-go/v5 v5.6.3 // indirect
+	github.com/xtaci/kcp-go/v5 v5.6.16 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0 // indirect
 	go.opentelemetry.io/otel/metric v1.31.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
-	google.golang.org/genproto v0.0.0-20241223144023-3abc09e42ca8 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241219192143-6b3ec007d9bb // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250102185135-69823020774d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250102185135-69823020774d // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
@@ -193,7 +192,7 @@ require (
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/srwiley/oksvg v0.0.0-20200311192757-870daf9aa564 // indirect
 	github.com/srwiley/rasterx v0.0.0-20200120212402-85cb7272f5e9 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/yuin/goldmark v1.4.13 // indirect
 	golang.org/x/image v0.21.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
@@ -208,7 +207,7 @@ require (
 	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/getkin/kin-openapi v0.122.0
-	github.com/go-kit/kit v0.10.0 // indirect
+	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -251,7 +250,7 @@ require (
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	google.golang.org/grpc v1.69.2
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
