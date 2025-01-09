@@ -38,7 +38,6 @@ require (
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20241231000200-edfd1fe078b0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
-	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
 require (
@@ -96,10 +95,9 @@ require (
 	golang.org/x/mod v0.19.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250102185135-69823020774d // indirect
+	google.golang.org/genproto v0.0.0-20250106144421-5f5ef82da422 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
-	kernel.org/pub/linux/libs/security/libcap/psx v1.2.70 // indirect
 )
 
 require (
