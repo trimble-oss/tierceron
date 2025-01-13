@@ -415,6 +415,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				useRole = false
 				driverConfigPtr.CoreConfig.Log.Println("Error reading config value")
 			}
+			if region, ok := config["region"].(string); ok {
+				// Override command line region with config provided region here.
+				regionPtr = &region
+			}
 			if addr, ok := config["vault_addr"].(string); ok {
 				addressPtr = &addr
 			} else {
