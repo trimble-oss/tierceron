@@ -65,6 +65,33 @@ func (p *Properties) GetConfigValues(service string, config string) (map[string]
 	return p.cds.GetConfigValues(service, config)
 }
 
+func (p *Properties) GetRegionConfigValues(service string, config string) (map[string]interface{}, bool) {
+	valueMap, _ := p.GetConfigValues(service, config)
+	if valueMap == nil {
+		valueMap = make(map[string]interface{})
+	}
+	//Grabs region fields and replaces into base fields if region is available.
+	if len(p.mod.Regions) > 0 {
+		regionFields := make(map[string]interface{})
+		region := "~" + p.mod.Regions[0]
+		for field, value := range valueMap {
+			if !strings.Contains(field, region) {
+				regionFields[field] = value
+				continue
+			}
+		}
+		for field, _ := range valueMap {
+			if strings.Contains(field, region) {
+				if _, valueOK := valueMap[strings.TrimSuffix(field, region)]; valueOK {
+					regionFields[strings.TrimSuffix(field, region)] = valueMap[field]
+				}
+			}
+		}
+		return regionFields, true
+	}
+	return valueMap, true
+}
+
 func ResolveTokenName(env string) string {
 	tokenNamePtr := ""
 	switch env {

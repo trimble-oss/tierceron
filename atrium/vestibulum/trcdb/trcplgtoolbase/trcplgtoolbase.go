@@ -254,9 +254,9 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if *pluginTypePtr != "vault" {
-		*regionPtr = ""
-	}
+	// if *pluginTypePtr != "vault" {
+	// 	*regionPtr = ""
+	// }
 
 	var appRoleConfigPtr *string
 	var trcshDriverConfigBase *capauth.TrcshDriverConfig

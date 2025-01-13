@@ -119,6 +119,9 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 
 	fmt.Println("trcsh env: " + env)
 	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
+	if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
+		driverConfigPtr.CoreConfig.Regions = regions
+	}
 
 	//Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
@@ -413,6 +416,10 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 			} else {
 				useRole = false
 				driverConfigPtr.CoreConfig.Log.Println("Error reading config value")
+			}
+			if region, ok := config["region"].(string); ok {
+				// Override command line region with config provided region here.
+				regionPtr = &region
 			}
 			if addr, ok := config["vault_addr"].(string); ok {
 				addressPtr = &addr
@@ -1314,7 +1321,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				return
 			}
 
-			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)), mergedVaultAddressPtr, mergedEnvBasis, nil, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+			mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)), mergedVaultAddressPtr, mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if mod != nil {
 				defer mod.Release()
 			}

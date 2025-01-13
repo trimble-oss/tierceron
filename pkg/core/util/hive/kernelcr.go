@@ -416,6 +416,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
 	pluginConfig := make(map[string]interface{})
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+	if len(driverConfig.CoreConfig.Regions) > 0 {
+		pluginConfig["regions"] = driverConfig.CoreConfig.Regions
+	}
 	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
@@ -493,7 +496,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					// 	}
 					// 	serviceConfig[path] = []byte(configuredTemplate)
 					// } else {
-					sc, ok := properties.GetConfigValues(projServ[1], path)
+					sc, ok := properties.GetRegionConfigValues(projServ[1], path)
 					if !ok {
 						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
 						return
