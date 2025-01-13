@@ -78,7 +78,10 @@ func (p *Properties) GetRegionConfigValues(service string, config string) (map[s
 			if !strings.Contains(field, region) {
 				regionFields[field] = value
 				continue
-			} else {
+			}
+		}
+		for field, _ := range valueMap {
+			if strings.Contains(field, region) {
 				if _, valueOK := valueMap[strings.TrimSuffix(field, region)]; valueOK {
 					regionFields[strings.TrimSuffix(field, region)] = valueMap[field]
 				}
