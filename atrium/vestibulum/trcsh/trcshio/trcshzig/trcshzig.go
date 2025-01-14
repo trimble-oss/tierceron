@@ -13,8 +13,14 @@ int memfd_create(const char *name, int flags);
 */
 import "C"
 import (
+	"archive/zip"
+	"bufio"
+	"bytes"
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -77,7 +83,7 @@ func ZigInit(configContext *tccore.ConfigContext) error {
 
 // Add this to the kernel when running....
 // sudo setcap cap_sys_admin+ep /usr/bin/code
-func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string) error {
+func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string) error {
 	if data, ok := configService[filename].([]byte); ok {
 		dataLen := len(data)
 
@@ -105,16 +111,42 @@ func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]
 		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
 		filename = strings.Replace(filename, "./local_config/", "", 1)
 
-		os.Symlink(filePath, fmt.Sprintf("/usr/local/trcshk/plugins/%s", filename))
+		os.Symlink(filePath, fmt.Sprintf("./plugins/%s", filename))
+
+		// TODO: Symlink new relic folder
+
+		// TODO: How to specify jar file...
+
+		zr, err := zip.OpenReader(fmt.Sprintf("./plugins/%s/", pluginName))
+		if err != nil {
+			return err
+		}
+		defer zr.Close()
+		for _, file := range zr.File {
+			if strings.Contains(file.Name, "startup-command") {
+				r, err := file.Open()
+				if err != nil {
+					return err
+				}
+				var cmd bytes.Buffer
+				_, err = io.Copy(bufio.NewWriter(&cmd), r)
+				if err != nil {
+					return err
+				}
+				execCmd(cmd.String())
+			}
+		}
 	}
 
 	return nil
 }
 
-func exec(cmdMessage string) {
-	// cmd := exec.Command("java", cmdMessage)
-	// output, err := cmd.Output()
-	// if err != nil {
-	// 	log.Fatalf("Failed to execute Java process: %v", err)
-	// }
+func execCmd(cmdMessage string) {
+	cmd := exec.Command("java", cmdMessage)
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println(err)
+		log.Fatalf("Failed to execute Java process: %v", err)
+	}
+	fmt.Println(output)
 }

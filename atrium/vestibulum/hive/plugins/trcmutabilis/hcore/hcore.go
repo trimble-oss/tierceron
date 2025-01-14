@@ -264,6 +264,6 @@ func Init(pluginName string, properties *map[string]interface{}) {
 
 	// Convert all properties to mem files....
 	for propKey, _ := range *properties {
-		trcshzig.WriteMemFile(configContextMap[pluginName], *properties, propKey)
+		trcshzig.WriteMemFile(configContextMap[pluginName], *properties, propKey, pluginName)
 	}
 }
