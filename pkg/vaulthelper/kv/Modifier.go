@@ -128,7 +128,9 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 			checkoutModifier.SubSectionName = ""        // The name of the actual subsection.
 			checkoutModifier.SubSectionValue = ""       // The actual value for the sub section.
 			checkoutModifier.SectionPath = ""           // The path to the Index (both seed and vault)
-
+			if tokenPtr != nil {
+				checkoutModifier.client.SetToken(*tokenPtr)
+			}
 			return checkoutModifier, nil
 		}
 	}
@@ -196,6 +198,7 @@ func (m *Modifier) Release() {
 		m.httpClient.CloseIdleConnections()
 		return
 	}
+	m.client.SetToken("")
 	if _, ok := modifierCache[m.Env]; ok {
 		m.releaseHelper(m.Env)
 	} else {

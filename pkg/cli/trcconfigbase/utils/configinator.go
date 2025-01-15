@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -528,7 +529,7 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 		if len(tag) > 0 {
 			var matched bool
 			var err error
-			if driverConfig.CoreConfig.Env == "staging" || driverConfig.CoreConfig.Env == "prod" {
+			if prod.IsStagingProd(driverConfig.CoreConfig.Env) {
 				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
 				if !matched || err != nil {
 					matched, err = regexp.MatchString("^v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
