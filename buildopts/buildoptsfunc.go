@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 )
 
 // SetLogger is called by TrcDb and other utilities to provide the extensions
@@ -140,7 +142,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 		"trc_templates/TrcVault/Certify/config.yml.tmpl",
 	}
 
-	if pluginEnvConfig["env"] == "prod" || pluginEnvConfig["env"] == "staging" {
+	if env, ok := pluginEnvConfig["env"].(string); ok && prod.IsStagingProd(env) {
 		pluginEnvConfig["regions"] = GetSupportedSourceRegions()
 	} else {
 		pluginEnvConfig["regions"] = []string{}

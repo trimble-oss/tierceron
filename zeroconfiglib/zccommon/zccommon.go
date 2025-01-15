@@ -26,7 +26,6 @@ func ConfigCertLibHelper(token string,
 	wantCerts bool) (string, string, error) {
 	logger := log.New(os.Stdout, "[configCertLibHelper]", log.LstdFlags)
 	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
-	mod.Env = env
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			WantCerts:  wantCerts,
@@ -42,13 +41,13 @@ func ConfigCertLibHelper(token string,
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
 		return "", "", err
 	}
+	mod.Env = env
+	defer mod.Release()
 	serviceParts := strings.Split(service, ".")
 	configTemplate, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, serviceParts[0], wantCerts, true)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
-
-	mod.Close()
 
 	if wantCerts {
 		return "", base64.StdEncoding.EncodeToString([]byte(configuredCert[1])), err
