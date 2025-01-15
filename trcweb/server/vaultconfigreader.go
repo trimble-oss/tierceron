@@ -11,5 +11,6 @@ func (s *Server) GetConfig(env string, path string) (map[string]interface{}, err
 		return nil, err
 	}
 	mod.Env = env
+	defer mod.Release()
 	return mod.ReadData(path)
 }

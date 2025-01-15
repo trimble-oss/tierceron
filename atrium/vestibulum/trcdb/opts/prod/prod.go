@@ -9,3 +9,10 @@ func SetProd(prod bool) {
 func IsProd() bool {
 	return isProd
 }
+
+func IsStagingProd(env string) bool {
+	if env == "staging" || env == "prod" {
+		return true
+	}
+	return false
+}
