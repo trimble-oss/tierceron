@@ -303,18 +303,15 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	eUtils.InitHeadless(true)
 	var regionPtr, trcPathPtr, projectServicePtr *string
 	var dronePtr *bool
+	var projectServiceFlagPtr *string
+	var droneFlagPtr *bool
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
 
 	regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
 	trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
-
-	if kernelopts.BuildOptions.IsKernel() {
-		dronePtr = new(bool)
-		*dronePtr = true
-	} else {
-		dronePtr = flagset.Bool("drone", false, "Run as drone.")
-	}
+	projectServiceFlagPtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
+	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
 
 	// Initialize the token cache
 	gTokenCache = cache.NewTokenCacheEmpty()
@@ -333,7 +330,6 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				os.Args[1] = "-c=" + os.Args[1]
 			}
 		}
-		projectServicePtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
 		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
 	} else {
 		dronePtr = new(bool)
@@ -347,6 +343,16 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 	}()
 
 	flagset.Parse(argLines[1:])
+
+	if kernelopts.BuildOptions.IsKernel() {
+		dronePtr = new(bool)
+		*dronePtr = true
+	} else {
+		if dronePtr == nil || !*dronePtr {
+			dronePtr = droneFlagPtr
+		}
+	}
+	projectServicePtr = projectServiceFlagPtr
 
 	if !*dronePtr {
 		if len(*appRoleIDPtr) == 0 {
