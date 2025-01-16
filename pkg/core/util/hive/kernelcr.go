@@ -135,15 +135,15 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							valid = true
 						}
 						if valid {
-							for serv, phServ := range *pH.Services {
-								if phServ.ConfigContext != nil && *phServ.ConfigContext.CmdSenderChan != nil {
-									*phServ.ConfigContext.CmdSenderChan <- core.KernelCmd{
-										PluginName: phServ.Name,
+							for s, sPh := range *pH.Services {
+								if sPh.ConfigContext != nil && *sPh.ConfigContext.CmdSenderChan != nil {
+									*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+										PluginName: sPh.Name,
 										Command:    core.PLUGIN_EVENT_STOP,
 									}
-									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", serv)
+									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 								} else {
-									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", serv)
+									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", s)
 									goto waitToReload
 								}
 							}
