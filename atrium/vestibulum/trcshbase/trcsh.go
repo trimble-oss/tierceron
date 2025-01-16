@@ -347,8 +347,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 		dronePtr = new(bool)
 		*dronePtr = true
 	} else {
-		
+		if dronePtr == nil || !*dronePtr {
+			dronePtr = droneFlagPtr
+		}
 	}
+	projectServicePtr = projectServiceFlagPtr
 
 	if !*dronePtr {
 		if len(*appRoleIDPtr) == 0 {
