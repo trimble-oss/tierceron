@@ -135,16 +135,16 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							valid = true
 						}
 						if valid {
-							for service, servPh := range *pH.Services {
-								if servPh.ConfigContext != nil && *servPh.ConfigContext.CmdSenderChan != nil {
-									*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-										PluginName: servPh.Name,
+							for serv, phServ := range *pH.Services {
+								if phServ.ConfigContext != nil && *phServ.ConfigContext.CmdSenderChan != nil {
+									*phServ.ConfigContext.CmdSenderChan <- core.KernelCmd{
+										PluginName: phServ.Name,
 										Command:    core.PLUGIN_EVENT_STOP,
 									}
-									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", serv)
 								} else {
-									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", service)
-									goto sleep
+									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", serv)
+									goto waitToReload
 								}
 							}
 							//TODO: Get rid of os.Exit
@@ -183,14 +183,14 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 						} else {
 							driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down: %s\n", s)
-							goto sleep
+							goto waitToReload
 						}
 					}
 
 					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
 						if servPh.ConfigContext == nil || *servPh.ConfigContext.CmdSenderChan == nil {
 							driverConfig.CoreConfig.Log.Printf("Kube service not properly initialized to shut down: %s\n", service)
-							goto sleep
+							goto waitToReload
 						}
 						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
@@ -218,7 +218,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 			}
 		}
-	sleep:
+	waitToReload:
 		time.Sleep(time.Minute)
 	}
 }
