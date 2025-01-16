@@ -135,12 +135,17 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							valid = true
 						}
 						if valid {
-							for service, servPh := range *pH.Services {
-								*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-									PluginName: servPh.Name,
-									Command:    core.PLUGIN_EVENT_STOP,
+							for s, sPh := range *pH.Services {
+								if sPh.ConfigContext != nil && *sPh.ConfigContext.CmdSenderChan != nil {
+									*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+										PluginName: sPh.Name,
+										Command:    core.PLUGIN_EVENT_STOP,
+									}
+									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+								} else {
+									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", s)
+									goto waitToReload
 								}
-								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 							}
 							//TODO: Get rid of os.Exit
 							// 0. Reload certificates
@@ -169,15 +174,24 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 
 				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
 					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
-					for service, servPh := range *pH.Services {
-						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-							PluginName: servPh.Name,
-							Command:    core.PLUGIN_EVENT_STOP,
+					for s, sPh := range *pH.Services {
+						if sPh.ConfigContext != nil && *sPh.ConfigContext.CmdSenderChan != nil {
+							*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+								PluginName: sPh.Name,
+								Command:    core.PLUGIN_EVENT_STOP,
+							}
+							driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+						} else {
+							driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down: %s\n", s)
+							goto waitToReload
 						}
-						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 					}
 
 					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
+						if servPh.ConfigContext == nil || *servPh.ConfigContext.CmdSenderChan == nil {
+							driverConfig.CoreConfig.Log.Printf("Kube service not properly initialized to shut down: %s\n", service)
+							goto waitToReload
+						}
 						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
 						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
 							PluginName: servPh.Name,
@@ -204,6 +218,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 			}
 		}
+	waitToReload:
 		time.Sleep(time.Minute)
 	}
 }
