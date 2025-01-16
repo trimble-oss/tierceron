@@ -136,7 +136,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 						}
 						if valid {
 							for s, sPh := range *pH.Services {
-								if sPh.ConfigContext != nil && *sPh.ConfigContext.CmdSenderChan != nil {
+								if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
 									*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
 										PluginName: sPh.Name,
 										Command:    core.PLUGIN_EVENT_STOP,
@@ -175,7 +175,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
 					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
 					for s, sPh := range *pH.Services {
-						if sPh.ConfigContext != nil && *sPh.ConfigContext.CmdSenderChan != nil {
+						if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
 							*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
 								PluginName: sPh.Name,
 								Command:    core.PLUGIN_EVENT_STOP,
@@ -188,7 +188,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 					}
 
 					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
-						if servPh.ConfigContext == nil || *servPh.ConfigContext.CmdSenderChan == nil {
+						if servPh != nil && servPh.ConfigContext == nil || (*servPh.ConfigContext).CmdSenderChan == nil {
 							driverConfig.CoreConfig.Log.Printf("Kube service not properly initialized to shut down: %s\n", service)
 							goto waitToReload
 						}
