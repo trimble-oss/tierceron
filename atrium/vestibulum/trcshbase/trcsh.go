@@ -236,7 +236,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 		// Set the name of the plugin to deploy in "trcplugin"
 		// Used later by codedeploy
 		trcshDriverConfig.DriverConfig.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
-		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 5)
+		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 20)
 		fmt.Printf("Starting deployer: %s\n", deployment)
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Starting deployer: %s\n", deployment)
 	}
@@ -1551,6 +1551,7 @@ collaboratorReRun:
 				if len(trcshDriverConfig.DriverConfig.CoreConfig.Regions) > 0 {
 					region = trcshDriverConfig.DriverConfig.CoreConfig.Regions[0]
 				}
+				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- deployLine
 				err := processDroneCmds(
 					trcKubeDeploymentConfig,
 					&onceKubeInit,
@@ -1571,16 +1572,11 @@ collaboratorReRun:
 					deliverableMsg := fmt.Sprintf("%s encountered errors - %s\n", deployLine, errMessageFiltered)
 					go func(dMesg string) {
 						trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- dMesg
-						trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+						closeCleanupMessaging(trcshDriverConfig)
 					}(deliverableMsg)
 
-					atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 					content = nil
 					goto collaboratorReRun
-				} else {
-					go func(dl string) {
-						trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- dl
-					}(deployLine)
 				}
 			} else {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployLine)
@@ -1605,13 +1601,11 @@ collaboratorReRun:
 		}
 	}
 	if *dronePtr {
+		completeOnce := false
 		for {
-			completeOnce := false
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
 				if !completeOnce {
-					go func() {
-						trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
-					}()
+					closeCleanupMessaging(trcshDriverConfig)
 					completeOnce = true
 				}
 				time.Sleep(time.Second)
@@ -1624,4 +1618,38 @@ collaboratorReRun:
 	}
 	//Make the arguments in the script -> os.args.
 
+}
+
+func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
+	lastCtlChanLen := 0
+	waitCtr := 0
+	for {
+		ctlChanLen := len(trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan)
+		if ctlChanLen > 0 && waitCtr < 10 {
+			if lastCtlChanLen != ctlChanLen {
+				waitCtr = 0
+			} else {
+				waitCtr++
+			}
+			lastCtlChanLen = ctlChanLen
+			time.Sleep(1 * time.Second)
+		} else {
+			if waitCtr == 10 {
+				for {
+					if len(trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan) > 0 {
+						select {
+						case <-trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan:
+						default:
+							break
+						}
+					}
+				}
+			} else {
+				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
+			}
+			trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+			atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
+			break
+		}
+	}
 }
