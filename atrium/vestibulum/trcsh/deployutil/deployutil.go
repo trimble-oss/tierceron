@@ -112,6 +112,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				deployScriptPath := fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string))
 				subErr := SubDeployScript(trcshDriverConfig,
 					deployScriptPath,
+					trcProjectService.(string),
 					configRoleSlice)
 				if subErr != nil {
 					eUtils.LogErrorObject(trcshDriverConfig.DriverConfig.CoreConfig, subErr, false)
@@ -137,30 +138,26 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 func SubDeployScript(
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	trcPath string,
+	projectService string,
 	configRoleSlice []string) error {
 
 	if !strings.Contains(trcPath, "/deploy/") {
 		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
 		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
 	}
-	if projectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(projectService.(string), "/") {
-		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-		mergedVaultAddressPtr := trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr
+	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	mergedVaultAddressPtr := trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr
 
-		deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
-		if trcIndex := strings.Index(deployTrcPath, ".trc"); trcIndex > 0 {
-			deployTrcPath = deployTrcPath[0:trcIndex] // get rid of trailing .trc
-		}
-		templatePathsPtr := projectService.(string) + deployTrcPath
-		trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
-
-		return trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, mergedVaultAddressPtr,
-			&mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
-	} else {
-		fmt.Println("Project not configured and ready for deployment.  Missing projectservice")
-		return errors.New("project not configured and ready for deployment.  missing projectservice")
+	deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
+	if trcIndex := strings.Index(deployTrcPath, ".trc"); trcIndex > 0 {
+		deployTrcPath = deployTrcPath[0:trcIndex] // get rid of trailing .trc
 	}
+	templatePathsPtr := projectService + deployTrcPath
+	trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
+
+	return trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, mergedVaultAddressPtr,
+		&mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
 }
 
 // Gets list of supported deployers for current environment.
