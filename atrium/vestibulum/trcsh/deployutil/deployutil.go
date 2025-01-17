@@ -133,15 +133,15 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 	return nil, errors.New("not deployer")
 }
 
+// Loads a plugin's deploy template from vault.
 func SubDeployScript(
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	trcPath string,
 	configRoleSlice []string) error {
 
 	if !strings.Contains(trcPath, "/deploy/") {
-		errMsg := "Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/"
-		fmt.Println(errMsg)
-		return errors.New(errMsg)
+		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
+		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
 	}
 	if projectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(projectService.(string), "/") {
 		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
