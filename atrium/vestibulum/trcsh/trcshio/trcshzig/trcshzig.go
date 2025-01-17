@@ -142,7 +142,13 @@ func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]
 }
 
 func execCmd(cmdMessage string) {
-	cmd := exec.Command("java", cmdMessage)
+	cmdTokens := strings.Fields(cmdMessage)
+	if len(cmdTokens) <= 1 {
+		return
+	}
+	cmdName := cmdTokens[0]
+	cmdArgs := strings.Join(cmdTokens[1:], " ")
+	cmd := exec.Command(cmdName, cmdArgs)
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Println(err)
