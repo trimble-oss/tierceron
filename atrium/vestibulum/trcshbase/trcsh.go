@@ -1362,16 +1362,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 		if projectServicePtr != "" {
 			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
-			if !strings.Contains(trcPath, "/deploy/") {
-				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
-				return
-			}
-			deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
-			templatePathsPtr := projectServicePtr + strings.TrimSuffix(deployTrcPath, ".trc") // get rid of trailing .trc
-			trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
+			err := deployutil.SubDeployScript(trcshDriverConfig, trcPath, configRoleSlice)
 
-			err := trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, mergedVaultAddressPtr,
-				&mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
 			if err != nil {
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
@@ -1580,7 +1572,9 @@ collaboratorReRun:
 					content = nil
 					goto collaboratorReRun
 				} else {
-					trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- deployLine
+					go func(dl string) {
+						trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- dl
+					}(deployLine)
 				}
 			} else {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployLine)
