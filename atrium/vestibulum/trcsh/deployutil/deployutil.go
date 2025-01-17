@@ -11,6 +11,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"gopkg.in/fsnotify.v1"
@@ -108,7 +109,15 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
 				fmt.Printf("Loading deployment script for %s and env %s\n", deployment, mod.Env)
-				contentArray, _, _, err := vcutils.ConfigTemplate(trcshDriverConfig.DriverConfig, mod, fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string)), true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
+				deployScriptPath := fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string))
+				subErr := SubDeployScript(trcshDriverConfig,
+					deployScriptPath,
+					configRoleSlice)
+				if subErr != nil {
+					eUtils.LogErrorObject(trcshDriverConfig.DriverConfig.CoreConfig, subErr, false)
+					return nil, subErr
+				}
+				contentArray, _, _, err := vcutils.ConfigTemplate(trcshDriverConfig.DriverConfig, mod, deployScriptPath, true, trcProjectServiceSlice[0], trcProjectServiceSlice[1], false, true)
 				if err != nil {
 					eUtils.LogErrorObject(trcshDriverConfig.DriverConfig.CoreConfig, err, false)
 					return nil, err
@@ -122,6 +131,36 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 		}
 	}
 	return nil, errors.New("not deployer")
+}
+
+// Loads a plugin's deploy template from vault.
+func SubDeployScript(
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	trcPath string,
+	configRoleSlice []string) error {
+
+	if !strings.Contains(trcPath, "/deploy/") {
+		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
+		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
+	}
+	if projectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(projectService.(string), "/") {
+		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+		tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+		mergedVaultAddressPtr := trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr
+
+		deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
+		if trcIndex := strings.Index(deployTrcPath, ".trc"); trcIndex > 0 {
+			deployTrcPath = deployTrcPath[0:trcIndex] // get rid of trailing .trc
+		}
+		templatePathsPtr := projectService.(string) + deployTrcPath
+		trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
+
+		return trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, mergedVaultAddressPtr,
+			&mergedEnvBasis, &configRoleSlice[1], &configRoleSlice[0], &tokenName, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
+	} else {
+		fmt.Println("Project not configured and ready for deployment.  Missing projectservice")
+		return errors.New("project not configured and ready for deployment.  missing projectservice")
+	}
 }
 
 // Gets list of supported deployers for current environment.
