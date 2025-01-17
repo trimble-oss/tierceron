@@ -1197,7 +1197,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	deployment string,
 	trcPath string,
-	projectServicePtr string,
+	projectService string,
 	secretId *string,
 	approleId *string,
 	dronePtr *bool) {
@@ -1338,7 +1338,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				return
 			}
 			if pjService, ok := certifyMap["trcprojectservice"]; ok {
-				projectServicePtr = pjService.(string)
+				projectService = pjService.(string)
 			} else {
 				fmt.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
 				return
@@ -1360,15 +1360,15 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Couldn't config auth required resource.\n")
 			os.Exit(124)
 		}
-		if projectServicePtr != "" {
-			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectServicePtr)
-			err := deployutil.SubDeployScript(trcshDriverConfig, trcPath, configRoleSlice)
+		if projectService != "" {
+			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
+			err := deployutil.SubDeployScript(trcshDriverConfig, trcPath, projectService, configRoleSlice)
 
 			if err != nil {
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			}
-			trcshDriverConfig.DriverConfig.ServicesWanted = strings.Split(projectServicePtr, ",")
+			trcshDriverConfig.DriverConfig.ServicesWanted = strings.Split(projectService, ",")
 		}
 
 		trcshDriverConfig.DriverConfig.OutputMemCache = true

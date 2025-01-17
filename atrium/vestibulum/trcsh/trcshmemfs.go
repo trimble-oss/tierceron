@@ -71,7 +71,7 @@ summitatem:
 	p, filestack = filestack[len(filestack)-1], filestack[:len(filestack)-1]
 
 	if fileset, err := (*t.BillyFs).ReadDir(p); err == nil {
-		if path != "." {
+		if path != "." && len(fileset) > 0 {
 			filestack = append(filestack, p)
 		}
 		for _, file := range fileset {
