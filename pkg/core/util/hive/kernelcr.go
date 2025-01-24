@@ -1,6 +1,7 @@
 package hive
 
 import (
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"os"
@@ -38,6 +39,8 @@ var globalCertCache *cmap.ConcurrentMap[string, certValue]
 type certValue struct {
 	CertBytes   *[]byte
 	CreatedTime interface{}
+	NotAfter    time.Time
+	lastUpdate  time.Time
 }
 
 type PluginHandler struct {
@@ -127,7 +130,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 						var valid bool = false
 
 						if strings.HasSuffix(k, ".crt.mf.tmpl") {
-							valid, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
+							valid, _, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
 							if err != nil {
 								eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 							}
@@ -157,7 +160,52 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 					}
+				} else if !v.NotAfter.IsZero() {
+					timeDiff := v.NotAfter.Sub(time.Now())
+					if timeDiff <= 0 && (v.lastUpdate.IsZero() || time.Now().Sub(v.lastUpdate) < time.Hour) {
+						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
+						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
+							Name:        &pH.Name,
+							Query:       &[]string{"trcshtalk"},
+							IsBroadcast: true,
+							Response:    &response,
+						}
+						v.lastUpdate = time.Now()
+						for s, sPh := range *pH.Services {
+							if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
+								if sPh.Name != "healthcheck" {
+									*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+										PluginName: sPh.Name,
+										Command:    core.PLUGIN_EVENT_STOP,
+									}
+									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+								}
+							} else {
+								driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert expiration: %s\n", s)
+							}
+						}
+					} else if timeDiff <= time.Hour*24 && (v.lastUpdate.IsZero() || time.Now().Sub(v.lastUpdate) < time.Hour) {
+						response := fmt.Sprintf("Cert %s expiring in %.2f hours.", k, timeDiff.Hours())
+						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
+							Name:        &pH.Name,
+							Query:       &[]string{"trcshtalk"},
+							IsBroadcast: true,
+							Response:    &response,
+						}
+						v.lastUpdate = time.Now()
+					} else if timeDiff <= time.Hour*168 && (v.lastUpdate.IsZero() || time.Now().Sub(v.lastUpdate) < time.Hour*24) {
+						daysLeft := timeDiff.Hours() / 24.0
+						response := fmt.Sprintf("Cert %s expiring in %d days.", k, int(daysLeft))
+						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
+							Name:        &pH.Name,
+							Query:       &[]string{"trcshtalk"},
+							IsBroadcast: true,
+							Response:    &response,
+						}
+						v.lastUpdate = time.Now()
+					}
 				}
+
 			}
 		}
 		if pH.KernelCtx != nil &&
@@ -249,10 +297,10 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 			return nil, err
 		}
 		var valid bool = false
-
+		var cert *x509.Certificate
 		if strings.HasSuffix(path, ".crt.mf.tmpl") {
-			valid, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
-			if err != nil {
+			valid, cert, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
+			if err != nil && cert == nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 				return nil, err
 			}
@@ -264,6 +312,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 			globalCertCache.Set(path, certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
+				NotAfter:    cert.NotAfter,
 			})
 			driverConfig.CoreConfig.WantCerts = false
 
@@ -343,6 +392,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	msg_sender := make(chan *core.ChatMsg)
 	pluginHandler.ConfigContext.ChatSenderChan = &msg_sender
 
+	broadcastChan := make(chan *core.ChatMsg)
+	pluginHandler.ConfigContext.ChatBroadcastChan = &broadcastChan
+
 	err_receiver := make(chan error)
 	pluginHandler.ConfigContext.ErrorChan = &err_receiver
 	ttdi_receiver := make(chan *core.TTDINode)
@@ -366,6 +418,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+
+	chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
+
 	(*serviceConfig)[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
@@ -526,6 +581,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			msg_sender := make(chan *core.ChatMsg)
 			pluginHandler.ConfigContext.ChatSenderChan = &msg_sender
 
+			broadcastChan := make(chan *core.ChatMsg)
+			pluginHandler.ConfigContext.ChatBroadcastChan = &broadcastChan
+
 			err_receiver := make(chan error)
 			pluginHandler.ConfigContext.ErrorChan = &err_receiver
 			ttdi_receiver := make(chan *core.TTDINode)
@@ -549,6 +607,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+
+			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
+
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
@@ -669,8 +730,8 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 	}
 	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
 	*pluginHandler.ConfigContext.CmdSenderChan <- core.KernelCmd{
-		pluginName,
-		core.PLUGIN_EVENT_STOP,
+		PluginName: pluginName,
+		Command:    core.PLUGIN_EVENT_STOP,
 	}
 	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
 }
@@ -773,9 +834,24 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				if eUtils.RefLength(msg.ChatId) > 0 && eUtils.RefLength((*msg).ChatId) > 0 {
 					new_msg.ChatId = (*msg).ChatId
 				}
+				var chatSenderChan chan *core.ChatMsg
+				if (*msg).IsBroadcast {
+					if (*plugin.ConfigContext).ChatBroadcastChan != nil {
+						new_msg.IsBroadcast = true
+						chatSenderChan = *plugin.ConfigContext.ChatBroadcastChan
+					} else {
+						driverConfig.CoreConfig.Log.Printf("Service unavailable to broadcast query from %s\n", *msg.Name)
+						continue
+					}
+				} else if (*plugin.ConfigContext).ChatSenderChan != nil {
+					chatSenderChan = *plugin.ConfigContext.ChatSenderChan
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Unable to send query from %s\n", *msg.Name)
+					continue
+				}
 				go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
 					sender <- message
-				}(*plugin.ConfigContext.ChatSenderChan, new_msg)
+				}(chatSenderChan, new_msg)
 			} else if eUtils.RefLength(msg.Name) > 0 {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
