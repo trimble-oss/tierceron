@@ -39,8 +39,8 @@ var globalCertCache *cmap.ConcurrentMap[string, certValue]
 type certValue struct {
 	CertBytes   *[]byte
 	CreatedTime interface{}
-	NotAfter    time.Time
-	lastUpdate  time.Time
+	NotAfter    *time.Time
+	lastUpdate  *time.Time
 }
 
 type PluginHandler struct {
@@ -160,9 +160,9 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 					}
-				} else if !v.NotAfter.IsZero() {
-					timeDiff := v.NotAfter.Sub(time.Now())
-					if timeDiff <= 0 && (v.lastUpdate.IsZero() || time.Now().Sub(v.lastUpdate) < time.Hour) {
+				} else if v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() {
+					timeDiff := (*v.NotAfter).Sub(time.Now())
+					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
 							Name:        &pH.Name,
@@ -170,7 +170,8 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							IsBroadcast: true,
 							Response:    &response,
 						}
-						v.lastUpdate = time.Now()
+						tiNow := time.Now()
+						v.lastUpdate = &tiNow
 						for s, sPh := range *pH.Services {
 							if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
 								if sPh.Name != "healthcheck" {
@@ -184,7 +185,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 								driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert expiration: %s\n", s)
 							}
 						}
-					} else if timeDiff <= time.Hour*24 && (v.lastUpdate.IsZero() || time.Now().Sub(v.lastUpdate) < time.Hour) {
+					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Cert %s expiring in %.2f hours.", k, timeDiff.Hours())
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
 							Name:        &pH.Name,
@@ -192,8 +193,9 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							IsBroadcast: true,
 							Response:    &response,
 						}
-						v.lastUpdate = time.Now()
-					} else if timeDiff <= time.Hour*168 && (v.lastUpdate.IsZero() || time.Now().Sub(v.lastUpdate) < time.Hour*24) {
+						tiNow := time.Now()
+						v.lastUpdate = &tiNow
+					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour*24) {
 						daysLeft := timeDiff.Hours() / 24.0
 						response := fmt.Sprintf("Cert %s expiring in %d days.", k, int(daysLeft))
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
@@ -202,7 +204,8 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							IsBroadcast: true,
 							Response:    &response,
 						}
-						v.lastUpdate = time.Now()
+						tiNow := time.Now()
+						v.lastUpdate = &tiNow
 					}
 				}
 
@@ -309,10 +312,12 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 		}
 
 		if valid {
+			var zeroTime time.Time
 			globalCertCache.Set(path, certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
-				NotAfter:    cert.NotAfter,
+				NotAfter:    &cert.NotAfter,
+				lastUpdate:  &zeroTime,
 			})
 			driverConfig.CoreConfig.WantCerts = false
 
