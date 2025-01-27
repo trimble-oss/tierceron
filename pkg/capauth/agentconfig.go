@@ -77,24 +77,24 @@ func ValidateVhostDomain(host string) error {
 // IsCertValidBySupportedDomains accepts a certificate
 func IsCertValidBySupportedDomains(byteCert []byte,
 	certValidationHelper func(cert *x509.Certificate, host string, selfSignedOk bool) (bool, error),
-) (bool, error) {
+) (bool, *x509.Certificate, error) {
 	var ok bool
 	var err error
 	block, _ := pem.Decode(byteCert)
 	if block == nil {
-		return false, errors.New("failed to parse certificate PEM")
+		return false, nil, errors.New("failed to parse certificate PEM")
 	}
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		return false, errors.New("failed to parse certificate: " + err.Error())
+		return false, nil, errors.New("failed to parse certificate: " + err.Error())
 	}
 
 	for _, domain := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
 		if ok, err = certValidationHelper(cert, domain, prod.IsProd()); ok {
-			return ok, err
+			return ok, cert, err
 		}
 	}
-	return ok, err
+	return ok, cert, err
 }
 
 func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort bool, logger ...*log.Logger) error {
