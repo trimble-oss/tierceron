@@ -36,6 +36,10 @@ var m sync.Mutex
 
 var globalCertCache *cmap.ConcurrentMap[string, certValue]
 
+var globalCertInfo *cmap.ConcurrentMap[string, string]
+
+var globalTrcshTalking bool = false
+
 type certValue struct {
 	CertBytes   *[]byte
 	CreatedTime interface{}
@@ -63,6 +67,8 @@ func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
 	certCache := cmap.New[certValue]()
 	globalCertCache = &certCache
+	certInfo := cmap.New[string]()
+	globalCertInfo = &certInfo
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
 	return &PluginHandler{
@@ -160,9 +166,22 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 					}
-				} else if v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() {
+				} else if v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalTrcshTalking {
 					timeDiff := (*v.NotAfter).Sub(time.Now())
-					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
+					if (*v.lastUpdate).IsZero() && globalCertInfo != nil && globalCertInfo.Count() > 0 {
+						response := ""
+						for p, info := range globalCertInfo.Items() {
+							response = response + fmt.Sprintf("Cert %s expires on %s\n", p, info)
+						}
+						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
+							Name:        &pH.Name,
+							Query:       &[]string{"trcshtalk"},
+							IsBroadcast: true,
+							Response:    &response,
+						}
+						tiNow := time.Now()
+						v.lastUpdate = &tiNow
+					} else if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
 							Name:        &pH.Name,
@@ -319,6 +338,15 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 				NotAfter:    &cert.NotAfter,
 				lastUpdate:  &zeroTime,
 			})
+			if globalCertInfo != nil {
+				globalCertInfo.Set(path, fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+					cert.NotAfter.Year(), cert.NotAfter.Month(), cert.NotAfter.Day(),
+					cert.NotAfter.Hour(), cert.NotAfter.Minute(), cert.NotAfter.Second()))
+			} else {
+				err := errors.New("No cert info map initialized for adding certs to cache...")
+				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+			}
+
 			driverConfig.CoreConfig.WantCerts = false
 
 			return &configuredCert, nil
@@ -654,6 +682,9 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) 
 		switch {
 		case event.Command == core.PLUGIN_EVENT_START:
 			pluginHandler.State = 1
+			if pluginHandler.Name == "trcshtalk" {
+				globalTrcshTalking = true
+			}
 			driverConfig.CoreConfig.Log.Printf("Kernel finished starting plugin: %s\n", pluginHandler.Name)
 		case event.Command == core.PLUGIN_EVENT_STOP:
 			driverConfig.CoreConfig.Log.Printf("Kernel finished stopping plugin: %s\n", pluginHandler.Name)
