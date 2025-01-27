@@ -34,7 +34,7 @@ var dfstat *core.TTDINode
 
 var m sync.Mutex
 
-var globalCertCache *cmap.ConcurrentMap[string, certValue]
+var globalCertCache *cmap.ConcurrentMap[string, *certValue]
 
 var globalCertInfo *cmap.ConcurrentMap[string, string]
 
@@ -65,7 +65,7 @@ type KernelCtx struct {
 
 func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
-	certCache := cmap.New[certValue]()
+	certCache := cmap.New[*certValue]()
 	globalCertCache = &certCache
 	certInfo := cmap.New[string]()
 	globalCertInfo = &certInfo
@@ -166,7 +166,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 					}
-				} else if v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalTrcshTalking {
+				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalTrcshTalking {
 					timeDiff := (*v.NotAfter).Sub(time.Now())
 					if (*v.lastUpdate).IsZero() && globalCertInfo != nil && globalCertInfo.Count() > 0 {
 						response := ""
@@ -332,7 +332,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 
 		if valid {
 			var zeroTime time.Time
-			globalCertCache.Set(path, certValue{
+			globalCertCache.Set(path, &certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
 				NotAfter:    &cert.NotAfter,
