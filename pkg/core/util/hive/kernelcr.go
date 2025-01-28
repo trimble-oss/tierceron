@@ -38,7 +38,7 @@ var globalCertCache *cmap.ConcurrentMap[string, *certValue]
 
 var globalCertInfo *cmap.ConcurrentMap[string, string]
 
-var globalTrcshTalking bool = false
+var globalPluginStatusChan chan string
 
 type certValue struct {
 	CertBytes   *[]byte
@@ -166,22 +166,9 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 					}
-				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalTrcshTalking {
+				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && len(globalPluginStatusChan) == 0 {
 					timeDiff := (*v.NotAfter).Sub(time.Now())
-					if (*v.lastUpdate).IsZero() && globalCertInfo != nil && globalCertInfo.Count() > 0 {
-						response := ""
-						for p, info := range globalCertInfo.Items() {
-							response = response + fmt.Sprintf("Cert %s expires on %s\n", p, info)
-						}
-						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
-							Name:        &pH.Name,
-							Query:       &[]string{"trcshtalk"},
-							IsBroadcast: true,
-							Response:    &response,
-						}
-						tiNow := time.Now()
-						v.lastUpdate = &tiNow
-					} else if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
+					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
 							Name:        &pH.Name,
@@ -320,14 +307,17 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 		}
 		var valid bool = false
 		var cert *x509.Certificate
+		var certNotAfter *time.Time
 		if strings.HasSuffix(path, ".crt.mf.tmpl") {
 			valid, cert, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
-			if err != nil && cert == nil {
+			if err != nil || cert == nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 				return nil, err
 			}
+			certNotAfter = &cert.NotAfter
 		} else {
 			valid = true
+			certNotAfter = &time.Time{}
 		}
 
 		if valid {
@@ -335,17 +325,9 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 			globalCertCache.Set(path, &certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
-				NotAfter:    &cert.NotAfter,
+				NotAfter:    certNotAfter,
 				lastUpdate:  &zeroTime,
 			})
-			if globalCertInfo != nil {
-				globalCertInfo.Set(path, fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
-					cert.NotAfter.Year(), cert.NotAfter.Month(), cert.NotAfter.Day(),
-					cert.NotAfter.Hour(), cert.NotAfter.Minute(), cert.NotAfter.Second()))
-			} else {
-				err := errors.New("No cert info map initialized for adding certs to cache...")
-				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-			}
 
 			driverConfig.CoreConfig.WantCerts = false
 
@@ -374,6 +356,19 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
 			},
+		}
+	}
+}
+
+func (pH *PluginHandler) InitPluginStatus(driverConfig *config.DriverConfig) {
+	if pH == nil || pH.Name != "Kernel" {
+		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
+		return
+	}
+	if pH.Services != nil {
+		globalPluginStatusChan = make(chan string, len(*pH.Services))
+		for k, _ := range *pH.Services {
+			globalPluginStatusChan <- k
 		}
 	}
 }
@@ -682,8 +677,8 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) 
 		switch {
 		case event.Command == core.PLUGIN_EVENT_START:
 			pluginHandler.State = 1
-			if pluginHandler.Name == "trcshtalk" {
-				globalTrcshTalking = true
+			if globalPluginStatusChan != nil {
+				<-globalPluginStatusChan
 			}
 			driverConfig.CoreConfig.Log.Printf("Kernel finished starting plugin: %s\n", pluginHandler.Name)
 		case event.Command == core.PLUGIN_EVENT_STOP:
@@ -710,6 +705,12 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverCon
 	for {
 		result := <-*pluginHandler.ConfigContext.ErrorChan
 		switch {
+		case pluginHandler.State == 2 && result != nil:
+			if globalPluginStatusChan != nil {
+				<-globalPluginStatusChan
+			}
+			eUtils.LogErrorObject(driverConfig.CoreConfig, result, false)
+			return
 		case result != nil:
 			eUtils.LogErrorObject(driverConfig.CoreConfig, result, false)
 			return
@@ -819,6 +820,34 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 	}
 }
 
+func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.DriverConfig) {
+	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for plugin: %s\n", pluginHandler.Name)
+		return
+	}
+	if globalCertCache == nil {
+		driverConfig.CoreConfig.Log.Printf("No cert information to broadcast\n")
+		return
+	}
+	for _, v := range globalCertCache.Items() {
+		if v != nil && v.NotAfter != nil && (*v.NotAfter).IsZero() && (*v.lastUpdate).IsZero() {
+			response := ""
+			for p, info := range globalCertInfo.Items() {
+				response = response + fmt.Sprintf("Cert %s expires on %s\n", p, info)
+			}
+			*pluginHandler.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
+				Name:        &pluginHandler.Name,
+				Query:       &[]string{"trcshtalk"},
+				IsBroadcast: true,
+				Response:    &response,
+			}
+			tiNow := time.Now()
+			v.lastUpdate = &tiNow
+		}
+	}
+
+}
+
 func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfig) {
 	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Chat handling not supported for plugin: %s\n", pluginHandler.Name)
@@ -829,6 +858,13 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		pluginHandler.ConfigContext.ChatReceiverChan = &msg_receiver
 		pluginHandler.State = 1
 	}
+
+	for len(globalPluginStatusChan) != 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+	driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
+	pluginHandler.sendInitBroadcast(driverConfig)
+
 	for {
 		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
 		if msg.KernelId == nil || *(msg.KernelId) == "" {
@@ -888,7 +924,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
 					sender <- message
 				}(chatSenderChan, new_msg)
-			} else if eUtils.RefLength(msg.Name) > 0 {
+			} else if eUtils.RefLength(msg.Name) > 0 && msg.IsBroadcast {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					responseError := "Service unavailable"
