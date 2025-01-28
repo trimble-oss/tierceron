@@ -36,8 +36,6 @@ var m sync.Mutex
 
 var globalCertCache *cmap.ConcurrentMap[string, *certValue]
 
-var globalCertInfo *cmap.ConcurrentMap[string, string]
-
 var globalPluginStatusChan chan string
 
 type certValue struct {
@@ -67,8 +65,6 @@ func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
 	certCache := cmap.New[*certValue]()
 	globalCertCache = &certCache
-	certInfo := cmap.New[string]()
-	globalCertInfo = &certInfo
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
 	return &PluginHandler{
@@ -829,22 +825,26 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		driverConfig.CoreConfig.Log.Printf("No cert information to broadcast\n")
 		return
 	}
-	for _, v := range globalCertCache.Items() {
-		if v != nil && v.NotAfter != nil && (*v.NotAfter).IsZero() && (*v.lastUpdate).IsZero() {
-			response := ""
-			for p, info := range globalCertInfo.Items() {
-				response = response + fmt.Sprintf("Cert %s expires on %s\n", p, info)
-			}
-			*pluginHandler.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
-				Name:        &pluginHandler.Name,
-				Query:       &[]string{"trcshtalk"},
-				IsBroadcast: true,
-				Response:    &response,
-			}
+	response := ""
+	for k, v := range globalCertCache.Items() {
+		if v != nil && v.NotAfter != nil && !(*v.NotAfter).IsZero() && (*v.lastUpdate).IsZero() {
+			info := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+				v.NotAfter.Year(), v.NotAfter.Month(), v.NotAfter.Day(),
+				v.NotAfter.Hour(), v.NotAfter.Minute(), v.NotAfter.Second())
+			response = response + fmt.Sprintf("Cert %s expires on %s\n", k, info)
 			tiNow := time.Now()
 			v.lastUpdate = &tiNow
 		}
 	}
+	msg := &core.ChatMsg{
+		Name:        &pluginHandler.Name,
+		Query:       &[]string{"trcshtalk"},
+		IsBroadcast: true,
+		Response:    &response,
+	}
+	go func(recChan chan *core.ChatMsg, m *core.ChatMsg) {
+		recChan <- m
+	}(*pluginHandler.ConfigContext.ChatReceiverChan, msg)
 
 }
 
