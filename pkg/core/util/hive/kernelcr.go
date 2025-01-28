@@ -162,7 +162,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 					}
-				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && len(globalPluginStatusChan) == 0 {
+				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalPluginStatusChan != nil && len(globalPluginStatusChan) == 0 {
 					timeDiff := (*v.NotAfter).Sub(time.Now())
 					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
