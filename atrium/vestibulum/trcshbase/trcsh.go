@@ -769,6 +769,11 @@ func CommonMain(envPtr *string, addrPtr *string, envCtxPtr *string,
 				}
 			}
 		}
+
+		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
+			kernelPluginHandler.InitPluginStatus(trcshDriverConfig.DriverConfig)
+		}
+
 		deploymentsCDL := strings.Join(deployments, ",")
 		gAgentConfig.Deployments = &deploymentsCDL
 
