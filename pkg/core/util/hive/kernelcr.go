@@ -924,7 +924,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
 					sender <- message
 				}(chatSenderChan, new_msg)
-			} else if eUtils.RefLength(msg.Name) > 0 && msg.IsBroadcast {
+			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					responseError := "Service unavailable"
