@@ -862,8 +862,10 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 	for len(globalPluginStatusChan) != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
-	driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
-	pluginHandler.sendInitBroadcast(driverConfig)
+	if !pluginopts.BuildOptions.IsPluginHardwired() {
+		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
+		pluginHandler.sendInitBroadcast(driverConfig)
+	}
 
 	for {
 		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
