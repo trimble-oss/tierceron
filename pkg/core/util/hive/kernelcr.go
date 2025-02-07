@@ -115,7 +115,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 					mod.Release()
 					mod = nil
 					eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-					continue
+					goto waitToReload
 				}
 				if t, ok := metadata["created_time"]; ok {
 					if t != v.CreatedTime {
@@ -227,18 +227,6 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 
 				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
 					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
-					for s, sPh := range *pH.Services {
-						if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
-							*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-								PluginName: sPh.Name,
-								Command:    core.PLUGIN_EVENT_STOP,
-							}
-							driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
-						} else {
-							driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down: %s\n", s)
-							goto waitToReload
-						}
-					}
 
 					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
 						if servPh != nil && servPh.ConfigContext == nil || (*servPh.ConfigContext).CmdSenderChan == nil {
@@ -265,6 +253,22 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							*pH.KernelCtx.DeployRestartChan <- service
 						}
 					} else {
+						for s, sPh := range *pH.Services {
+							if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
+								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+								*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
+									PluginName: sPh.Name,
+									Command:    core.PLUGIN_EVENT_STOP,
+								}
+								cmd := <-*pH.KernelCtx.PluginRestartChan
+								if cmd.Command == core.PLUGIN_EVENT_STOP {
+									driverConfig.CoreConfig.Log.Printf("Shut down service: %s\n", s)
+								}
+							} else {
+								driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down: %s\n", s)
+								goto waitToReload
+							}
+						}
 						driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
 						os.Exit(0)
 					}
