@@ -266,4 +266,8 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	for propKey, _ := range *properties {
 		trcshzig.WriteMemFile(configContextMap[pluginName], *properties, propKey, pluginName)
 	}
+	err = trcshzig.ExecPlugin(pluginName)
+	if err != nil {
+		fmt.Println(err)
+	}
 }

@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -111,33 +110,36 @@ func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]
 		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
 		filename = strings.Replace(filename, "./local_config/", "", 1)
 
-		os.Symlink(filePath, fmt.Sprintf("./plugins/%s", filename))
+		os.Symlink(filePath, fmt.Sprintf("./plugins/%s/%s", pluginName, filename))
 
 		// TODO: Symlink new relic folder
 
-		// TODO: How to specify jar file...
-
-		zr, err := zip.OpenReader(fmt.Sprintf("./plugins/%s/", pluginName))
-		if err != nil {
-			return err
-		}
-		defer zr.Close()
-		for _, file := range zr.File {
-			if strings.Contains(file.Name, "startup-command") {
-				r, err := file.Open()
-				if err != nil {
-					return err
-				}
-				var cmd bytes.Buffer
-				_, err = io.Copy(bufio.NewWriter(&cmd), r)
-				if err != nil {
-					return err
-				}
-				execCmd(cmd.String())
-			}
-		}
 	}
 
+	return nil
+}
+
+func ExecPlugin(pluginName string) error {
+	// TODO: How to specify jar file... -- deploy path/root for plugin in certify
+	zr, err := zip.OpenReader(fmt.Sprintf("./plugins/%s/", pluginName))
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+	for _, file := range zr.File {
+		if strings.Contains(file.Name, "startup-command") {
+			r, err := file.Open()
+			if err != nil {
+				return err
+			}
+			var cmd bytes.Buffer
+			_, err = io.Copy(bufio.NewWriter(&cmd), r)
+			if err != nil {
+				return err
+			}
+			execCmd(cmd.String())
+		}
+	}
 	return nil
 }
 
@@ -146,13 +148,12 @@ func execCmd(cmdMessage string) {
 	if len(cmdTokens) <= 1 {
 		return
 	}
-	cmdName := cmdTokens[0]
-	cmdArgs := strings.Join(cmdTokens[1:], " ")
-	cmd := exec.Command(cmdName, cmdArgs)
+	cmd := exec.Command(cmdTokens[0], cmdTokens[1:]...)
 	output, err := cmd.Output()
+	fmt.Println(cmd.Stdout)
 	if err != nil {
 		fmt.Println(err)
-		log.Fatalf("Failed to execute Java process: %v", err)
+		// log.Fatalf("Failed to execute Java process: %v", err)
 	}
-	fmt.Println(output)
+	fmt.Println(string(output))
 }
