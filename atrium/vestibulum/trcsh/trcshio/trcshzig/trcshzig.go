@@ -109,9 +109,21 @@ func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]
 
 		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
 		filename = strings.Replace(filename, "./local_config/", "", 1)
+		if strings.Contains(filename, "newrelic") {
+			filename = fmt.Sprintf("newrelic/%s", filename)
+		}
+		symlinkPath := fmt.Sprintf("./plugins/%s/%s", pluginName, filename)
+		if _, err := os.Lstat(symlinkPath); err == nil {
+			err = syscall.Unlink(symlinkPath)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 
-		os.Symlink(filePath, fmt.Sprintf("./plugins/%s/%s", pluginName, filename))
-
+		err = os.Symlink(filePath, symlinkPath)
+		if err != nil {
+			fmt.Println(err)
+		}
 		// TODO: Symlink new relic folder
 
 	}
