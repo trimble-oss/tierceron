@@ -25,10 +25,6 @@ func (rwc *TrcshZigReadCloser) Close() error {
 	return nil
 }
 
-// func (rwc *TrcshZigReadCloser) Seek(offset int64, whence int) (int64, error) {
-// 	return rwc.ReadSeeker.Seek(0, io.SeekStart)
-// }
-
 type trcshZigFile struct {
 	fs.Inode
 	rwc io.ReadCloser
