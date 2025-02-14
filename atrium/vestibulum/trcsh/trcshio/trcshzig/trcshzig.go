@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -62,7 +63,7 @@ func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]
 
 func ExecPlugin(pluginName string) error {
 	// TODO: How to specify jar file... -- deploy path/root for plugin in certify
-	zr, err := zip.OpenReader(fmt.Sprintf("./plugins/%s/", pluginName))
+	zr, err := zip.OpenReader(fmt.Sprintf("/usr/local/trcshk/plugins/%s/", pluginName))
 	if err != nil {
 		return err
 	}
@@ -78,16 +79,16 @@ func ExecPlugin(pluginName string) error {
 			if err != nil {
 				return err
 			}
-			// execCmd(zigPluginMap[pluginName], cmd.String())
+			execCmd(zigPluginMap[pluginName], cmd.String())
 		}
 	}
 	return nil
 }
 
-func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string) {
+func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string) error {
 	cmdTokens := strings.Fields(cmdMessage)
 	if len(cmdTokens) <= 1 {
-		return
+		return errors.New("Not enough params")
 	}
 	pid, err := syscall.ForkExec("/bin/true", nil, &syscall.ProcAttr{
 		Env:   os.Environ(),
@@ -97,7 +98,7 @@ func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string) {
 
 	if err != nil {
 		fmt.Println("Error forking process:", err)
-		os.Exit(1)
+		return err
 	}
 
 	if pid == 0 {
@@ -108,13 +109,6 @@ func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string) {
 		}
 	} else {
 		tzr.SetPid(uint32(pid))
-
-		// TODO: do we need to wait??? Idk...
-		_, err = syscall.Wait4(pid, nil, 0, nil)
-		if err != nil {
-			fmt.Println("Error waiting for the child process:", err)
-			os.Exit(1)
-		}
 	}
-
+	return nil
 }
