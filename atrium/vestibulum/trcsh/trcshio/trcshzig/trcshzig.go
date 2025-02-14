@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
 
@@ -26,10 +27,14 @@ func ZigInit(configContext *tccore.ConfigContext,
 		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
 	}
 	zigPluginMap[pluginName] = trcshzigfs.NewTrcshZigRoot(pluginFiles)
-	mntDir := "/usr/local/trcshk/plugins/zigfs"
+	mntDir := fmt.Sprintf("/usr/local/trcshk/plugins/zigfs/%s", pluginName)
+	if _, err := os.Stat(mntDir); os.IsNotExist(err) {
+		os.MkdirAll(mntDir, 0700)
+	}
+	exec.Command("fusermount", "-u", mntDir).Run()
 
 	server, err := fs.Mount(mntDir, zigPluginMap[pluginName], &fs.Options{
-		MountOptions: fuse.MountOptions{Debug: true},
+		MountOptions: fuse.MountOptions{Debug: false},
 	})
 	if err != nil {
 		configContext.Log.Printf("Error %v", err)

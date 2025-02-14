@@ -122,23 +122,6 @@ func (tzf *trcshZigFile) Read(ctx context.Context, fh fs.FileHandle, dest []byte
 	return fuse.ReadResultData(dest[:n]), 0
 }
 
-func (fh *trcshzigFileHandle) Read(ctx context.Context, dest []byte, off int64) (fuse.ReadResult, syscall.Errno) {
-	if seeker, ok := fh.rwc.(io.Seeker); ok {
-		if _, err := seeker.Seek(off, io.SeekStart); err != nil {
-			return nil, syscall.EIO
-		}
-	} else {
-		return nil, syscall.ENOTSUP
-	}
-
-	n, err := fh.rwc.Read(dest)
-	if err != nil && err != io.EOF {
-		return nil, syscall.EIO
-	}
-
-	return fuse.ReadResultData(dest[:n]), 0
-}
-
 func (fh *trcshzigFileHandle) Close() error {
 	return fh.rwc.Close()
 }
