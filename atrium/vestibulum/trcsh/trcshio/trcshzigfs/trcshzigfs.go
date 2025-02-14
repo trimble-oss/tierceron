@@ -53,7 +53,7 @@ func (tzr *TrcshZigRoot) OnAdd(ctx context.Context) {
 
 		p := &tzr.Inode
 		for _, component := range strings.Split(dir, "/") {
-			if len(component) == 0 {
+			if len(component) == 0 || component == "." {
 				continue
 			}
 			ch := p.GetChild(component)
