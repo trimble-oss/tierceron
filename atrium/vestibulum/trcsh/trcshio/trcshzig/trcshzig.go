@@ -1,88 +1,119 @@
 package trcshzig
 
-/*
-#cgo LDFLAGS: -lrt
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-
-// Declare memfd_create
-int memfd_create(const char *name, int flags);
-*/
-import "C"
 import (
+	"archive/zip"
+	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
-	"log"
+	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
-	"unsafe"
+
+	"github.com/hanwen/go-fuse/v2/fs"
+	"github.com/hanwen/go-fuse/v2/fuse"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio/trcshzigfs"
 )
 
-// Define MFD_CLOEXEC for Go
-const MFD_CLOEXEC = 1 << 0
-const MFD_ALLOW_SEALING = C.int(0x0002)
+var zigPluginMap map[string]*trcshzigfs.TrcshZigRoot
 
-const F_ADD_SEALS = 1032
-const F_SEAL_WRITE = 0x2
-const F_SEAL_SEAL = 0x4
-
-func createMemfd(filename string) (C.int, error) {
-	// Create an anonymous memory-backed file with the close-on-exec flag
-	fd := C.memfd_create(C.CString(filename), MFD_ALLOW_SEALING)
-	if fd < 0 {
-		return -1, fmt.Errorf("failed to create memfd")
+func ZigInit(configContext *tccore.ConfigContext,
+	pluginName string,
+	pluginFiles *map[string]interface{}) error {
+	if zigPluginMap == nil {
+		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
 	}
-	return fd, nil
-}
-
-func createMemfdSyscall() (uintptr, error) {
-	namePtr := unsafe.Pointer(&[]byte("my_shared_memory")[0])
-
-	// Create an anonymous memory-backed file with the close-on-exec flag
-	fd, _, errno := syscall.Syscall(279, uintptr(unsafe.Pointer(namePtr)), uintptr(MFD_CLOEXEC), uintptr(MFD_ALLOW_SEALING))
-	if errno > 0 {
-		return uintptr(0), fmt.Errorf("failed to create memfd")
+	zigPluginMap[pluginName] = trcshzigfs.NewTrcshZigRoot(pluginFiles)
+	mntDir := fmt.Sprintf("/usr/local/trcshk/plugins/zigfs/%s", pluginName)
+	if _, err := os.Stat(mntDir); os.IsNotExist(err) {
+		os.MkdirAll(mntDir, 0700)
 	}
-	return fd, nil
-}
+	exec.Command("fusermount", "-u", mntDir).Run()
 
-func WriteMemFile(configService map[string]interface{}, filename string) {
-	fd, err := createMemfd(filename)
+	server, err := fs.Mount(mntDir, zigPluginMap[pluginName], &fs.Options{
+		MountOptions: fuse.MountOptions{Debug: false},
+	})
 	if err != nil {
-		log.Fatalf("Error creating memfd: %v", err)
-	}
-	defer C.close(fd)
-
-	if data, ok := configService[filename].([]byte); ok {
-		dataLen := len(data)
-		C.ftruncate(fd, C.off_t(dataLen))
-
-		// Memory-map the file in the parent process
-		mem := C.mmap(nil, C.size_t(dataLen), C.PROT_READ|C.PROT_WRITE, C.MAP_SHARED, fd, 0)
-		if mem == C.MAP_FAILED {
-			log.Fatal("Failed to mmap memfd")
-		}
-		defer C.munmap(mem, C.size_t(dataLen))
-
-		// Write data into the memory file
-		memSlice := (*[1 << 30]byte)(mem)[:len(data):len(data)] // Adjust slice size dynamically
-		copy(memSlice, data)
-
-		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
-		filename = strings.Replace(filename, "./local_config/", "/", 1)
-
-		os.Symlink(filePath, fmt.Sprintf("/usr/local/trcshk/plugins/%s", filename))
+		configContext.Log.Printf("Error %v", err)
+		return err
 	}
 
+	// Serve the file system, until unmounted by calling fusermount -u
+	go server.Wait()
+
+	return nil
 }
 
-func exec(cmdMessage string) {
-	// cmd := exec.Command("java", cmdMessage)
-	// output, err := cmd.Output()
-	// if err != nil {
-	// 	log.Fatalf("Failed to execute Java process: %v", err)
-	// }
+// Add this to the kernel when running....
+// sudo setcap cap_sys_admin+ep /usr/bin/code
+func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string) error {
+
+	if _, ok := configService[filename].([]byte); ok {
+
+		// TODO: Figure out pathing and symlink for child process
+
+		// err = os.Symlink(filePath, symlinkPath)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// }
+		// TODO: Symlink new relic folder
+
+	}
+
+	return nil
+}
+
+func ExecPlugin(pluginName string) error {
+	// TODO: How to specify jar file... -- deploy path/root for plugin in certify
+	zr, err := zip.OpenReader(fmt.Sprintf("/usr/local/trcshk/plugins/%s/", pluginName))
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+	for _, file := range zr.File {
+		if strings.Contains(file.Name, "startup-command") {
+			r, err := file.Open()
+			if err != nil {
+				return err
+			}
+			var cmd bytes.Buffer
+			_, err = io.Copy(bufio.NewWriter(&cmd), r)
+			if err != nil {
+				return err
+			}
+			execCmd(zigPluginMap[pluginName], cmd.String())
+		}
+	}
+	return nil
+}
+
+func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string) error {
+	cmdTokens := strings.Fields(cmdMessage)
+	if len(cmdTokens) <= 1 {
+		return errors.New("Not enough params")
+	}
+	pid, err := syscall.ForkExec("/bin/true", nil, &syscall.ProcAttr{
+		Env:   os.Environ(),
+		Sys:   nil,
+		Files: []uintptr{uintptr(syscall.Stdin), uintptr(syscall.Stdout), uintptr(syscall.Stderr)},
+	})
+
+	if err != nil {
+		fmt.Println("Error forking process:", err)
+		return err
+	}
+
+	if pid == 0 {
+		err := syscall.Exec(cmdTokens[0], cmdTokens[1:], os.Environ())
+		if err != nil {
+			fmt.Println(err)
+			// log.Fatalf("Failed to execute Java process: %v", err)
+		}
+	} else {
+		tzr.SetPid(uint32(pid))
+	}
+	return nil
 }
