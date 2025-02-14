@@ -46,6 +46,9 @@ func (tzr *TrcshZigRoot) OnAdd(ctx context.Context) {
 	// we don't want parts of the tree to disappear when the
 	// kernel is short on memory, so we use persistent inodes.
 	for path, trcshZigFileBytes := range *tzr.zigFiles {
+		if path == "env" || path == "log" || path == "PluginEventChannelsMap" {
+			continue
+		}
 		dir, base := filepath.Split(path)
 
 		p := &tzr.Inode
@@ -63,7 +66,7 @@ func (tzr *TrcshZigRoot) OnAdd(ctx context.Context) {
 			p = ch
 		}
 
-		ch := p.NewPersistentInode(ctx, NewTrcshZigFileBytes(trcshZigFileBytes.(*[]byte), tzr), fs.StableAttr{})
+		ch := p.NewPersistentInode(ctx, NewTrcshZigFileBytes(trcshZigFileBytes.([]byte), tzr), fs.StableAttr{})
 		p.AddChild(base, ch, true)
 	}
 }
@@ -80,9 +83,9 @@ func (tzr *TrcshZigRoot) GetPid() uint32 {
 	return tzr.pid
 }
 
-func NewTrcshZigFileBytes(zigFileBytes *[]byte, tzr *TrcshZigRoot) *trcshZigFile {
+func NewTrcshZigFileBytes(zigFileBytes []byte, tzr *TrcshZigRoot) *trcshZigFile {
 	// TODO:... *zigFileBytes?
-	return &trcshZigFile{rwc: &TrcshZigReadWriteCloser{Buffer: bytes.NewBuffer(*zigFileBytes)}, tzr: tzr}
+	return &trcshZigFile{rwc: &TrcshZigReadWriteCloser{Buffer: bytes.NewBuffer(zigFileBytes)}, tzr: tzr}
 }
 
 func NewTrcshZigFileHandle(rwc io.ReadWriteCloser) *trcshzigFileHandle {

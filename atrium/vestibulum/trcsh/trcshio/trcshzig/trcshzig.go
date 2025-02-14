@@ -21,6 +21,9 @@ var zigPluginMap map[string]*trcshzigfs.TrcshZigRoot
 func ZigInit(configContext *tccore.ConfigContext,
 	pluginName string,
 	pluginFiles *map[string]interface{}) error {
+	if zigPluginMap == nil {
+		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
+	}
 	zigPluginMap[pluginName] = trcshzigfs.NewTrcshZigRoot(pluginFiles)
 	mntDir := "/usr/local/trcshk/plugins/zigfs"
 
@@ -75,7 +78,7 @@ func ExecPlugin(pluginName string) error {
 			if err != nil {
 				return err
 			}
-			execCmd(zigPluginMap[pluginName], cmd.String())
+			// execCmd(zigPluginMap[pluginName], cmd.String())
 		}
 	}
 	return nil
