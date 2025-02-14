@@ -52,7 +52,10 @@ require (
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
-require google.golang.org/genproto v0.0.0-20250207221924-e9438ea467c6 // indirect
+require (
+	github.com/hanwen/go-fuse/v2 v2.7.2 // indirect
+	google.golang.org/genproto v0.0.0-20250207221924-e9438ea467c6 // indirect
+)
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
