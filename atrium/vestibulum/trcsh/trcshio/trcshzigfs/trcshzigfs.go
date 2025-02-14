@@ -14,20 +14,24 @@ import (
 
 // trcshzigfs wraps an io.ReadWriteCloser
 type trcshzigFileHandle struct {
-	rwc io.ReadWriteCloser
+	rwc io.ReadCloser
 }
 
-type TrcshZigReadWriteCloser struct {
-	*bytes.Buffer
+type TrcshZigReadCloser struct {
+	io.ReadSeeker
 }
 
-func (rwc *TrcshZigReadWriteCloser) Close() error {
+func (rwc *TrcshZigReadCloser) Close() error {
 	return nil
 }
 
+// func (rwc *TrcshZigReadCloser) Seek(offset int64, whence int) (int64, error) {
+// 	return rwc.ReadSeeker.Seek(0, io.SeekStart)
+// }
+
 type trcshZigFile struct {
 	fs.Inode
-	rwc io.ReadWriteCloser
+	rwc io.ReadCloser
 	tzr *TrcshZigRoot
 }
 
@@ -85,10 +89,10 @@ func (tzr *TrcshZigRoot) GetPid() uint32 {
 
 func NewTrcshZigFileBytes(zigFileBytes []byte, tzr *TrcshZigRoot) *trcshZigFile {
 	// TODO:... *zigFileBytes?
-	return &trcshZigFile{rwc: &TrcshZigReadWriteCloser{Buffer: bytes.NewBuffer(zigFileBytes)}, tzr: tzr}
+	return &trcshZigFile{rwc: &TrcshZigReadCloser{ReadSeeker: bytes.NewReader(zigFileBytes)}, tzr: tzr}
 }
 
-func NewTrcshZigFileHandle(rwc io.ReadWriteCloser) *trcshzigFileHandle {
+func NewTrcshZigFileHandle(rwc io.ReadCloser) *trcshzigFileHandle {
 	return &trcshzigFileHandle{rwc: rwc}
 }
 
@@ -137,10 +141,6 @@ func (fh *trcshzigFileHandle) Read(ctx context.Context, dest []byte, off int64) 
 	}
 
 	return fuse.ReadResultData(dest[:n]), 0
-}
-
-func (fh *trcshzigFileHandle) Write(p []byte) (int, error) {
-	return fh.rwc.Write(p)
 }
 
 func (fh *trcshzigFileHandle) Close() error {
