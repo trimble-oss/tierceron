@@ -260,11 +260,11 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
-	trcshzig.ZigInit(configContextMap[pluginName], pluginName, properties)
+	mntDir, err := trcshzig.ZigInit(configContextMap[pluginName], pluginName, properties)
 
 	// Convert all properties to mem files....
 	for propKey, _ := range *properties {
-		trcshzig.WriteMemFile(configContextMap[pluginName], *properties, propKey, pluginName)
+		trcshzig.LinkMemFile(configContextMap[pluginName], *properties, propKey, pluginName, mntDir)
 	}
 	err = trcshzig.ExecPlugin(pluginName)
 	if err != nil {

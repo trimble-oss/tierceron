@@ -22,7 +22,7 @@ var zigPluginMap map[string]*trcshzigfs.TrcshZigRoot
 
 func ZigInit(configContext *tccore.ConfigContext,
 	pluginName string,
-	pluginFiles *map[string]interface{}) error {
+	pluginFiles *map[string]interface{}) (string, error) {
 	if zigPluginMap == nil {
 		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
 	}
@@ -38,18 +38,18 @@ func ZigInit(configContext *tccore.ConfigContext,
 	})
 	if err != nil {
 		configContext.Log.Printf("Error %v", err)
-		return err
+		return "", err
 	}
 
 	// Serve the file system, until unmounted by calling fusermount -u
 	go server.Wait()
 
-	return nil
+	return mntDir, nil
 }
 
 // Add this to the kernel when running....
 // sudo setcap cap_sys_admin+ep /usr/bin/code
-func WriteMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string) error {
+func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string, mntDir string) error {
 
 	if _, ok := configService[filename].([]byte); ok {
 

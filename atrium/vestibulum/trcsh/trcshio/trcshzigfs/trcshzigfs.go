@@ -46,7 +46,7 @@ func (tzr *TrcshZigRoot) OnAdd(ctx context.Context) {
 	// we don't want parts of the tree to disappear when the
 	// kernel is short on memory, so we use persistent inodes.
 	for path, trcshZigFileBytes := range *tzr.zigFiles {
-		if path == "env" || path == "log" || path == "PluginEventChannelsMap" {
+		if path == "env" || path == "log" || path == "certify" || path == "PluginEventChannelsMap" {
 			continue
 		}
 		dir, base := filepath.Split(path)
