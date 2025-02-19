@@ -27,7 +27,13 @@ func ZigInit(configContext *tccore.ConfigContext,
 		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
 	}
 	zigPluginMap[pluginName] = trcshzigfs.NewTrcshZigRoot(pluginFiles)
-	mntDir := fmt.Sprintf("/usr/local/trcshk/plugins/zigfs/%s", pluginName)
+	var mountDir string
+	if certifyMap, ok := (*pluginFiles)["certify"].(map[string]interface{}); ok {
+		if filePath, ok := certifyMap["trcdeployroot"].(string); ok {
+			mountDir = strings.Replace(filePath, pluginName, "", 1)
+		}
+	}
+	mntDir := fmt.Sprintf("%szigfs/%s", mountDir, pluginName)
 	if _, err := os.Stat(mntDir); os.IsNotExist(err) {
 		os.MkdirAll(mntDir, 0700)
 	}
@@ -54,11 +60,19 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	if _, ok := configService[filename].([]byte); ok {
 
 		// TODO: Figure out pathing and symlink for child process
-
-		// err = os.Symlink(filePath, symlinkPath)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// }
+		var filePath string
+		if certifyMap, ok := configService["certify"].(map[string]interface{}); ok {
+			if path, ok := certifyMap["trcdeployroot"].(string); ok {
+				filePath = path
+			}
+		}
+		filename = strings.Replace(filename, "./local_config/", "", 1)
+		filePath = fmt.Sprintf("%s/%s", mntDir, filename)
+		symlinkPath := fmt.Sprintf("%s/%s", mntDir, filename)
+		err := os.Symlink(filePath, symlinkPath)
+		if err != nil {
+			fmt.Println(err)
+		}
 		// TODO: Symlink new relic folder
 
 	}
@@ -66,9 +80,17 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	return nil
 }
 
-func ExecPlugin(pluginName string) error {
+func ExecPlugin(pluginName string, properties map[string]interface{}) error {
 	// TODO: How to specify jar file... -- deploy path/root for plugin in certify
-	zr, err := zip.OpenReader(fmt.Sprintf("/usr/local/trcshk/plugins/%s/", pluginName))
+	var filePath string
+	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
+		if rootPath, ok := certifyMap["trcdeployroot"].(string); ok {
+			if objectFile, ok := certifyMap["trccodebundle"].(string); ok {
+				filePath = fmt.Sprintf("%s/%s", rootPath, objectFile)
+			}
+		}
+	}
+	zr, err := zip.OpenReader(filePath)
 	if err != nil {
 		return err
 	}
