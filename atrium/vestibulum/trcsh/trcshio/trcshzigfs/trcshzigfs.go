@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -108,8 +109,11 @@ func getParentPID(pid uint32) (uint32, error) {
 		return 0, errors.New("unreadable stat file")
 	}
 
-	ppid, err := strconv.Atoi(fields[3])
+	ppid, err := strconv.ParseUint(fields[3], 10, 32)
 	if err != nil {
+		return 0, errors.New("unparsable ppid")
+	}
+	if ppid > math.MaxUint32 {
 		return 0, errors.New("unparsable ppid")
 	}
 
