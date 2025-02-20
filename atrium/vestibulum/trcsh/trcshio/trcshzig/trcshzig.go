@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
@@ -74,15 +73,12 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 		if err != nil {
 			fmt.Println(err)
 		}
-		// TODO: Symlink new relic folder
-
 	}
 
 	return nil
 }
 
 func ExecPlugin(pluginName string, properties map[string]interface{}, mntDir string) error {
-	// TODO: How to specify jar file... -- deploy path/root for plugin in certify
 	var filePath string
 	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
 		if rootPath, ok := certifyMap["trcdeployroot"].(string); ok {
@@ -126,8 +122,6 @@ func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) err
 	}
 
 	if pid == 0 {
-		time.Sleep(1000)
-		fmt.Fprintf(os.Stderr, "cmd: %v %v\n", cmdTokens[0], cmdTokens[1:])
 		err := syscall.Chdir(mntDir)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
@@ -138,7 +132,7 @@ func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) err
 			params[i] = strings.ReplaceAll(param, "\"", "")
 		}
 
-		err = syscall.Exec("/usr/bin/java", params, os.Environ())
+		err = syscall.Exec(cmdTokens[0], params, os.Environ())
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
 			return err
