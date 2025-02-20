@@ -1,88 +1,142 @@
 package trcshzig
 
-/*
-#cgo LDFLAGS: -lrt
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <stdlib.h>
-
-// Declare memfd_create
-int memfd_create(const char *name, int flags);
-*/
-import "C"
 import (
+	"archive/zip"
+	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
-	"log"
+	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"syscall"
-	"unsafe"
+
+	"github.com/hanwen/go-fuse/v2/fs"
+	"github.com/hanwen/go-fuse/v2/fuse"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio/trcshzigfs"
 )
 
-// Define MFD_CLOEXEC for Go
-const MFD_CLOEXEC = 1 << 0
-const MFD_ALLOW_SEALING = C.int(0x0002)
+var zigPluginMap map[string]*trcshzigfs.TrcshZigRoot
 
-const F_ADD_SEALS = 1032
-const F_SEAL_WRITE = 0x2
-const F_SEAL_SEAL = 0x4
-
-func createMemfd(filename string) (C.int, error) {
-	// Create an anonymous memory-backed file with the close-on-exec flag
-	fd := C.memfd_create(C.CString(filename), MFD_ALLOW_SEALING)
-	if fd < 0 {
-		return -1, fmt.Errorf("failed to create memfd")
+func ZigInit(configContext *tccore.ConfigContext,
+	pluginName string,
+	pluginFiles *map[string]interface{}) (string, error) {
+	if zigPluginMap == nil {
+		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
 	}
-	return fd, nil
-}
-
-func createMemfdSyscall() (uintptr, error) {
-	namePtr := unsafe.Pointer(&[]byte("my_shared_memory")[0])
-
-	// Create an anonymous memory-backed file with the close-on-exec flag
-	fd, _, errno := syscall.Syscall(279, uintptr(unsafe.Pointer(namePtr)), uintptr(MFD_CLOEXEC), uintptr(MFD_ALLOW_SEALING))
-	if errno > 0 {
-		return uintptr(0), fmt.Errorf("failed to create memfd")
-	}
-	return fd, nil
-}
-
-func WriteMemFile(configService map[string]interface{}, filename string) {
-	fd, err := createMemfd(filename)
-	if err != nil {
-		log.Fatalf("Error creating memfd: %v", err)
-	}
-	defer C.close(fd)
-
-	if data, ok := configService[filename].([]byte); ok {
-		dataLen := len(data)
-		C.ftruncate(fd, C.off_t(dataLen))
-
-		// Memory-map the file in the parent process
-		mem := C.mmap(nil, C.size_t(dataLen), C.PROT_READ|C.PROT_WRITE, C.MAP_SHARED, fd, 0)
-		if mem == C.MAP_FAILED {
-			log.Fatal("Failed to mmap memfd")
+	zigPluginMap[pluginName] = trcshzigfs.NewTrcshZigRoot(pluginFiles)
+	var mountDir string
+	if certifyMap, ok := (*pluginFiles)["certify"].(map[string]interface{}); ok {
+		if filePath, ok := certifyMap["trcdeployroot"].(string); ok {
+			mountDir = strings.Replace(filePath, pluginName, "", 1)
 		}
-		defer C.munmap(mem, C.size_t(dataLen))
+	}
+	mntDir := fmt.Sprintf("%szigfs/%s", mountDir, pluginName)
+	if _, err := os.Stat(mntDir); os.IsNotExist(err) {
+		os.MkdirAll(mntDir, 0700)
+	}
+	exec.Command("fusermount", "-u", mntDir).Run()
 
-		// Write data into the memory file
-		memSlice := (*[1 << 30]byte)(mem)[:len(data):len(data)] // Adjust slice size dynamically
-		copy(memSlice, data)
-
-		filePath := fmt.Sprintf("/proc/self/fd/%d", fd)
-		filename = strings.Replace(filename, "./local_config/", "/", 1)
-
-		os.Symlink(filePath, fmt.Sprintf("/usr/local/trcshk/plugins/%s", filename))
+	server, err := fs.Mount(mntDir, zigPluginMap[pluginName], &fs.Options{
+		MountOptions: fuse.MountOptions{Debug: false},
+	})
+	if err != nil {
+		configContext.Log.Printf("Error %v", err)
+		return "", err
 	}
 
+	// Serve the file system, until unmounted by calling fusermount -u
+	go server.Wait()
+
+	return mntDir, nil
 }
 
-func exec(cmdMessage string) {
-	// cmd := exec.Command("java", cmdMessage)
-	// output, err := cmd.Output()
-	// if err != nil {
-	// 	log.Fatalf("Failed to execute Java process: %v", err)
-	// }
+// Add this to the kernel when running....
+// sudo setcap cap_sys_admin+ep /usr/bin/code
+func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string, mntDir string) error {
+
+	if _, ok := configService[filename].([]byte); ok {
+
+		// TODO: Figure out pathing and symlink for child process
+		var filePath string
+		if certifyMap, ok := configService["certify"].(map[string]interface{}); ok {
+			if path, ok := certifyMap["trcdeployroot"].(string); ok {
+				filePath = path
+			}
+		}
+		filename = strings.Replace(filename, "./local_config/", "", 1)
+		filePath = fmt.Sprintf("%s/%s", filePath, filename)
+		symlinkPath := fmt.Sprintf("%s/%s", mntDir, filename)
+		err := os.Symlink(filePath, symlinkPath)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	return nil
+}
+
+func ExecPlugin(pluginName string, properties map[string]interface{}, mntDir string) error {
+	var filePath string
+	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
+		if rootPath, ok := certifyMap["trcdeployroot"].(string); ok {
+			if objectFile, ok := certifyMap["trccodebundle"].(string); ok {
+				filePath = fmt.Sprintf("%s/%s", rootPath, objectFile)
+			}
+		}
+	}
+	zr, err := zip.OpenReader(filePath)
+	if err != nil {
+		return err
+	}
+	defer zr.Close()
+	for _, file := range zr.File {
+		if strings.Contains(file.Name, "startup-command") {
+			r, err := file.Open()
+			if err != nil {
+				return err
+			}
+			var cmd bytes.Buffer
+			_, err = io.Copy(bufio.NewWriter(&cmd), r)
+			if err != nil {
+				return err
+			}
+			execCmd(zigPluginMap[pluginName], cmd.String(), mntDir)
+		}
+	}
+	return nil
+}
+
+func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) error {
+	cmdTokens := strings.Fields(cmdMessage)
+	if len(cmdTokens) <= 1 {
+		return errors.New("Not enough params")
+	}
+	tzr.SetPPid(uint32(os.Getpid()))
+	pid, _, errno := syscall.RawSyscall(syscall.SYS_FORK, 0, 0, 0)
+	if errno != 0 {
+		fmt.Printf("Error forking process: %d\n", errno)
+		return errors.New("fork failure")
+	}
+
+	if pid == 0 {
+		err := syscall.Chdir(mntDir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
+			return err
+		}
+		params := cmdTokens[1:]
+		for i, param := range params {
+			params[i] = strings.ReplaceAll(param, "\"", "")
+		}
+
+		err = syscall.Exec(cmdTokens[0], params, os.Environ())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
+			return err
+		}
+	}
+	return nil
 }
