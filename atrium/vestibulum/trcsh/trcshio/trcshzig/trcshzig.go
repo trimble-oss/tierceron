@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
@@ -80,7 +81,7 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	return nil
 }
 
-func ExecPlugin(pluginName string, properties map[string]interface{}) error {
+func ExecPlugin(pluginName string, properties map[string]interface{}, mntDir string) error {
 	// TODO: How to specify jar file... -- deploy path/root for plugin in certify
 	var filePath string
 	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
@@ -106,36 +107,42 @@ func ExecPlugin(pluginName string, properties map[string]interface{}) error {
 			if err != nil {
 				return err
 			}
-			execCmd(zigPluginMap[pluginName], cmd.String())
+			execCmd(zigPluginMap[pluginName], cmd.String(), mntDir)
 		}
 	}
 	return nil
 }
 
-func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string) error {
+func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) error {
 	cmdTokens := strings.Fields(cmdMessage)
 	if len(cmdTokens) <= 1 {
 		return errors.New("Not enough params")
 	}
-	pid, err := syscall.ForkExec("/bin/true", nil, &syscall.ProcAttr{
-		Env:   os.Environ(),
-		Sys:   nil,
-		Files: []uintptr{uintptr(syscall.Stdin), uintptr(syscall.Stdout), uintptr(syscall.Stderr)},
-	})
-
-	if err != nil {
-		fmt.Println("Error forking process:", err)
-		return err
+	tzr.SetPPid(uint32(os.Getpid()))
+	pid, _, errno := syscall.RawSyscall(syscall.SYS_FORK, 0, 0, 0)
+	if errno != 0 {
+		fmt.Printf("Error forking process: %d\n", errno)
+		return errors.New("fork failure")
 	}
 
 	if pid == 0 {
-		err := syscall.Exec(cmdTokens[0], cmdTokens[1:], os.Environ())
+		time.Sleep(1000)
+		fmt.Fprintf(os.Stderr, "cmd: %v %v\n", cmdTokens[0], cmdTokens[1:])
+		err := syscall.Chdir(mntDir)
 		if err != nil {
-			fmt.Println(err)
-			// log.Fatalf("Failed to execute Java process: %v", err)
+			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
+			return err
 		}
-	} else {
-		tzr.SetPid(uint32(pid))
+		params := cmdTokens[1:]
+		for i, param := range params {
+			params[i] = strings.ReplaceAll(param, "\"", "")
+		}
+
+		err = syscall.Exec("/usr/bin/java", params, os.Environ())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
+			return err
+		}
 	}
 	return nil
 }

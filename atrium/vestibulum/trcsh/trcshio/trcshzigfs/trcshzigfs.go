@@ -3,8 +3,12 @@ package trcshzigfs
 import (
 	"bytes"
 	"context"
+	"errors"
+	"fmt"
 	"io"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -35,7 +39,7 @@ type TrcshZigRoot struct {
 	fs.Inode
 
 	zigFiles *map[string]interface{}
-	pid      uint32
+	ppid     uint32
 }
 
 var _ = (fs.NodeOnAdder)((*TrcshZigRoot)(nil))
@@ -75,12 +79,12 @@ func NewTrcshZigRoot(zigFileMap *map[string]interface{}) *TrcshZigRoot {
 	return &TrcshZigRoot{zigFiles: zigFileMap}
 }
 
-func (tzr *TrcshZigRoot) SetPid(pid uint32) {
-	tzr.pid = pid
+func (tzr *TrcshZigRoot) SetPPid(ppid uint32) {
+	tzr.ppid = ppid
 }
 
-func (tzr *TrcshZigRoot) GetPid() uint32 {
-	return tzr.pid
+func (tzr *TrcshZigRoot) GetPPid() uint32 {
+	return tzr.ppid
 }
 
 func NewTrcshZigFileBytes(zigFileBytes []byte, tzr *TrcshZigRoot) *trcshZigFile {
@@ -92,13 +96,37 @@ func NewTrcshZigFileHandle(rwc io.ReadCloser) *trcshzigFileHandle {
 	return &trcshzigFileHandle{rwc: rwc}
 }
 
+func getParentPID(pid uint32) (uint32, error) {
+	statPath := fmt.Sprintf("/proc/%d/stat", pid)
+	statData, err := os.ReadFile(statPath)
+	if err != nil {
+		return 0, fmt.Errorf("no parent pid for pid: %d", pid)
+	}
+
+	fields := strings.Fields(string(statData))
+	if len(fields) < 4 {
+		return 0, errors.New("unreadable stat file")
+	}
+
+	ppid, err := strconv.Atoi(fields[3])
+	if err != nil {
+		return 0, errors.New("unparsable ppid")
+	}
+
+	return uint32(ppid), nil
+}
+
 func (fh *trcshZigFile) Open(ctx context.Context, flags uint32) (fs.FileHandle, uint32, syscall.Errno) {
 	caller, ok := fuse.FromContext(ctx)
 	if !ok {
 		return nil, 0, syscall.EACCES
 	}
-	pid := caller.Pid
-	if pid != fh.tzr.GetPid() {
+	ppid, err := getParentPID(caller.Pid)
+	if err != nil {
+		return nil, 0, syscall.EACCES
+	}
+
+	if ppid != fh.tzr.GetPPid() {
 		return nil, 0, syscall.EACCES
 	}
 
