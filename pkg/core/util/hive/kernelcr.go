@@ -15,6 +15,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
@@ -458,7 +459,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	wantedTokenName := "config_token_pluginany"
 	statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-	_, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
+	_, kernelmod, kernelvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
 		driverConfig.CoreConfig.TokenCache,
 		wantedTokenName,
 		driverConfig.CoreConfig.Log)
@@ -466,10 +467,20 @@ func (pluginHandler *PluginHandler) RunPlugin(
 		driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 		return
 	}
-	if statvault != nil {
-		defer statvault.Close()
+	if kernelvault != nil {
+		defer kernelvault.Close()
 	}
-	go pluginHandler.handle_dataflowstat(driverConfig, statmod, statvault)
+
+	pluginMap := map[string]interface{}{"pluginName": pluginHandler.Name}
+
+	certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
+	if err != nil {
+		fmt.Printf("Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
+		return
+	}
+	(*serviceConfig)["certify"] = certifyMap
+
+	go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, kernelvault)
 	go pluginHandler.receiver(driverConfig)
 	pluginHandler.Init(serviceConfig)
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
