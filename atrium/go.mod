@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium
 
-go 1.23.3
+go 1.24.0
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
@@ -35,6 +35,7 @@ require (
 	github.com/danieljoos/wincred v1.2.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
 	github.com/go-git/go-billy/v5 v5.6.1
+	github.com/hanwen/go-fuse/v2 v2.7.2
 	github.com/newrelic/go-agent/v3 v3.33.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -52,10 +53,7 @@ require (
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
-require (
-	github.com/hanwen/go-fuse/v2 v2.7.2 // indirect
-	google.golang.org/genproto v0.0.0-20250207221924-e9438ea467c6 // indirect
-)
+require google.golang.org/genproto v0.0.0-20250207221924-e9438ea467c6 // indirect
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
