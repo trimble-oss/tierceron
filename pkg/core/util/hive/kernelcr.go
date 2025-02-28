@@ -3,6 +3,7 @@ package hive
 import (
 	"crypto/x509"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"plugin"
@@ -21,6 +22,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -596,22 +599,90 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						}
 					}
 				} else {
-					// if pluginToolConfig["trcprojectservice"] == "trcshkubeservice" {
-					// 	// TODO: Pull all templates under path and feed them into configTemplate...
-					// 	configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
-					// 	if err != nil {
-					// 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-					// 		return
-					// 	}
-					// 	serviceConfig[path] = []byte(configuredTemplate)
-					// } else {
-					sc, ok := properties.GetRegionConfigValues(projServ[1], path)
-					if !ok {
-						driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
-						return
+					if pluginToolConfig["trctype"] == "trcshkubeservice" {
+						// TODO: Pull all templates under path and feed them into configTemplate...
+						// for _, restrictedMapping := range pluginRestrictedMappings {
+						envArg := "-env=dev"
+						restrictedMappingSub := append([]string{"", envArg}, paths[0])
+						ctl := "pluginrun"
+						flagset := flag.NewFlagSet(ctl, flag.ExitOnError)
+						flagset.String("env", "dev", "Environment to configure")
+
+						wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+						driverConfig.IsShellSubProcess = false
+						trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
+							driverConfig.CoreConfig.VaultAddressPtr,
+							&driverConfig.CoreConfig.Env,
+							new(string),
+							new(string),
+							&wantedTokenName,
+							flagset,
+							restrictedMappingSub,
+							driverConfig)
+
+						driverConfig.EndDir = "."
+						restrictedMappingConfig := []string{"", envArg}
+						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+						flagset.String("env", "dev", "Environment to configure")
+
+						// Get certs...
+						driverConfig.CoreConfig.WantCerts = true
+						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+							driverConfig.CoreConfig.VaultAddressPtr,
+							&driverConfig.CoreConfig.Env,
+							new(string),      // secretId
+							new(string),      // approleId
+							&wantedTokenName, // wantedTokenName
+							nil,              // regionPtr
+							flagset,
+							restrictedMappingConfig,
+							driverConfig)
+
+						if strings.HasPrefix(paths[0], "-templateFilter=") {
+							filter := paths[0][strings.Index(paths[0], "=")+1:]
+							filterParts := strings.Split(filter, ",")
+							for _, filterPart := range filterParts {
+								if !strings.HasPrefix(filterPart, "Common") {
+									restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
+									break
+								}
+							}
+						}
+
+						driverConfig.CoreConfig.WantCerts = false
+						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+						flagset.String("env", "dev", "Environment to configure")
+						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+							driverConfig.CoreConfig.VaultAddressPtr,
+							&driverConfig.CoreConfig.Env,
+							new(string),      // secretId
+							new(string),      // approleId
+							&wantedTokenName, // tokenName
+							nil,              // regionPtr
+							flagset,
+							restrictedMappingConfig,
+							driverConfig)
+
+						driverConfig.MemFs.ClearCache("./trc_templates")
+						driverConfig.MemFs.ClearCache("./deploy")
+						// serviceConfig := map[string]interface{}{}
+						driverConfig.MemFs.SerializeToMap(".", serviceConfig)
+						// }
+						driverConfig.IsShellSubProcess = true
+						// configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
+						// if err != nil {
+						// 	eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+						// 	return
+						// }
+						// serviceConfig[path] = []byte(configuredTemplate)
+					} else {
+						sc, ok := properties.GetRegionConfigValues(projServ[1], path)
+						if !ok {
+							driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+							return
+						}
+						serviceConfig[path] = &sc
 					}
-					serviceConfig[path] = &sc
-					// }
 				}
 			}
 			// Initialize channels
@@ -658,7 +729,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			currentStatTokenName := "config_token_pluginany"
 			statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-			_, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
+			_, kernelmod, kernelvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
 				driverConfig.CoreConfig.TokenCache,
 				currentStatTokenName,
 				driverConfig.CoreConfig.Log)
@@ -666,10 +737,30 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 				return
 			}
-			if statvault != nil {
-				defer statvault.Close()
+			if kernelvault != nil {
+				defer kernelvault.Close()
 			}
-			go pluginHandler.handle_dataflowstat(driverConfig, statmod, statvault)
+
+			pluginMap := map[string]interface{}{"pluginName": pluginHandler.Name}
+
+			certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
+			if err != nil {
+				fmt.Printf("Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
+				return
+			}
+			(serviceConfig)["certify"] = certifyMap
+			// _, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
+			// 	driverConfig.CoreConfig.TokenCache,
+			// 	currentStatTokenName,
+			// 	driverConfig.CoreConfig.Log)
+			// if err != nil {
+			// 	driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
+			// 	return
+			// }
+			// if statvault != nil {
+			// 	defer statvault.Close()
+			// }
+			go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, kernelvault)
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)

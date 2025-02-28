@@ -235,8 +235,8 @@ func GetConfigPaths(pluginName string) []string {
 	if pluginRestrictedMappings, ok := retrictedMappingsMap[pluginName]; ok {
 		for _, restrictedMapping := range pluginRestrictedMappings {
 			if strings.Contains(restrictedMapping[0], "-templateFilter=") {
-				pluginFilters := strings.Split(restrictedMapping[0], "-templateFilter=")
-				return pluginFilters
+				// pluginFilters := strings.Split(restrictedMapping[0], "-templateFilter=")
+				return restrictedMapping
 			}
 		}
 	}
