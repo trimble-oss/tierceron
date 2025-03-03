@@ -71,7 +71,7 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 		symlinkPath := fmt.Sprintf("%s/%s", mntDir, filename)
 		err := os.Symlink(filePath, symlinkPath)
 		if err != nil {
-			fmt.Println(err)
+			return err
 		}
 	}
 
