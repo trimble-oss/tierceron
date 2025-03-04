@@ -67,9 +67,15 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 			}
 		}
 		filename = strings.Replace(filename, "./local_config/", "", 1)
+		if strings.Contains(filename, "newrelic") {
+			filename = fmt.Sprintf("newrelic/%s", filename)
+		}
 		filePath = fmt.Sprintf("%s/%s", filePath, filename)
 		symlinkPath := fmt.Sprintf("%s/%s", mntDir, filename)
-		err := os.Symlink(filePath, symlinkPath)
+		if _, err := os.Lstat(filePath); err == nil {
+			syscall.Unlink(filePath)
+		}
+		err := os.Symlink(symlinkPath, filePath)
 		if err != nil {
 			return err
 		}

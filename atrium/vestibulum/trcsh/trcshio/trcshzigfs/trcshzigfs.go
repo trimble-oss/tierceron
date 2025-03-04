@@ -51,14 +51,17 @@ func (tzr *TrcshZigRoot) OnAdd(ctx context.Context) {
 	// we don't want parts of the tree to disappear when the
 	// kernel is short on memory, so we use persistent inodes.
 	for path, trcshZigFileBytes := range *tzr.zigFiles {
-		if path == "env" || path == "log" || path == "certify" || path == "PluginEventChannelsMap" || path == "" {
+		if path == "env" || path == "log" || path == "certify" || path == "PluginEventChannelsMap" {
 			continue
 		}
 		dir, base := filepath.Split(path)
+		if strings.Contains(path, "newrelic.yml") {
+			dir = fmt.Sprintf("%snewrelic", dir)
+		}
 
 		p := &tzr.Inode
 		for _, component := range strings.Split(dir, "/") {
-			if len(component) == 0 || component == "." {
+			if len(component) == 0 || component == "." || component == "local_config" {
 				continue
 			}
 			ch := p.GetChild(component)
