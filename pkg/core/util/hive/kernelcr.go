@@ -600,8 +600,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				} else {
 					if pluginToolConfig["trctype"] == "trcshkubeservice" {
-						// TODO: Pull all templates under path and feed them into configTemplate...
-						// for _, restrictedMapping := range pluginRestrictedMappings {
 						envArg := "-env=dev"
 						restrictedMappingSub := append([]string{"", envArg}, paths[0])
 						ctl := "pluginrun"
@@ -665,16 +663,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 						driverConfig.MemFs.ClearCache("./trc_templates")
 						driverConfig.MemFs.ClearCache("./deploy")
-						// serviceConfig := map[string]interface{}{}
 						driverConfig.MemFs.SerializeToMap(".", serviceConfig)
-						// }
 						driverConfig.IsShellSubProcess = true
-						// configuredTemplate, _, _, err := vcutils.ConfigTemplate(driverConfig, mod, path, true, projServ[0], projServ[1], false, true)
-						// if err != nil {
-						// 	eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-						// 	return
-						// }
-						// serviceConfig[path] = []byte(configuredTemplate)
 					} else {
 						sc, ok := properties.GetRegionConfigValues(projServ[1], path)
 						if !ok {
@@ -749,17 +739,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				return
 			}
 			(serviceConfig)["certify"] = certifyMap
-			// _, statmod, statvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
-			// 	driverConfig.CoreConfig.TokenCache,
-			// 	currentStatTokenName,
-			// 	driverConfig.CoreConfig.Log)
-			// if err != nil {
-			// 	driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
-			// 	return
-			// }
-			// if statvault != nil {
-			// 	defer statvault.Close()
-			// }
+
 			go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, kernelvault)
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)

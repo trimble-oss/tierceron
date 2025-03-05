@@ -62,7 +62,6 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 
 	if _, ok := configService[filename].([]byte); ok {
 
-		// TODO: Figure out pathing and symlink for child process
 		if filename == "./io/STDIO" {
 			return nil
 		}
