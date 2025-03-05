@@ -783,7 +783,9 @@ func CommonMain(envPtr *string,
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
-						pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshpluginservice" {
+							pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						}
 						pluginHandler.Signature = sha
 					}
 				} else {
