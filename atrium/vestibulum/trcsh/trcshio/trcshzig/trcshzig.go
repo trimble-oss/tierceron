@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -59,26 +60,37 @@ func ZigInit(configContext *tccore.ConfigContext,
 // Add this to the kernel when running....
 // sudo setcap cap_sys_admin+ep /usr/bin/code
 func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string, mntDir string) error {
+	trcdeployroot := ""
+	if certifyMap, ok := configService["certify"].(map[string]interface{}); ok {
+		if path, ok := certifyMap["trcdeployroot"].(string); ok {
+			trcdeployroot = path
+		} else {
+			return errors.New("missing required trcdeployroot")
+		}
+	} else {
+		return errors.New("missing required certify")
+	}
 
 	if _, ok := configService[filename].([]byte); ok {
 
 		if filename == "./io/STDIO" {
 			return nil
 		}
-		var filePath string
-		if certifyMap, ok := configService["certify"].(map[string]interface{}); ok {
-			if path, ok := certifyMap["trcdeployroot"].(string); ok {
-				filePath = path
-			}
-		}
+		filePath := trcdeployroot
 		filename = strings.Replace(filename, "./local_config/", "", 1)
 		if strings.Contains(filename, "newrelic") {
 			filename = fmt.Sprintf("newrelic/%s", filename)
 		}
 		filePath = fmt.Sprintf("%s/%s", filePath, filename)
 		symlinkPath := fmt.Sprintf("%s/%s", mntDir, filename)
+
 		if _, err := os.Lstat(filePath); err == nil {
 			syscall.Unlink(filePath)
+		} else {
+			configDir := filepath.Dir(filePath)
+			if _, err := os.Stat(configDir); os.IsNotExist(err) {
+				os.MkdirAll(configDir, 0700)
+			}
 		}
 		err := os.Symlink(symlinkPath, filePath)
 		if err != nil {

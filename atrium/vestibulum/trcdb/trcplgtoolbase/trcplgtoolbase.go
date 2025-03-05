@@ -624,6 +624,20 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
 		if pluginopts.BuildOptions.IsPluginHardwired() {
+			var deployRoot string
+			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
+			} else {
+				deployRoot = pluginToolConfig["trcdeployroot"].(string)
+			}
+			if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
+				err = os.MkdirAll(deployRoot, 0700)
+				if err != nil && !os.IsPermission(err) {
+					fmt.Println(err.Error())
+					fmt.Println("Could not prepare needed directory for deployment.")
+				}
+			}
+
 			fmt.Printf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string))
 			return nil
 		}
@@ -676,7 +690,7 @@ func CommonMain(envPtr *string,
 			if !pluginopts.BuildOptions.IsPluginHardwired() {
 				fmt.Printf("Deploying image to: %s\n", deployPath)
 				if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
-					err = os.MkdirAll(deployRoot, 0644)
+					err = os.MkdirAll(deployRoot, 0700)
 					if err != nil && !os.IsPermission(err) {
 						fmt.Println(err.Error())
 						fmt.Println("Could not prepare needed directory for deployment.")
@@ -684,7 +698,7 @@ func CommonMain(envPtr *string,
 					}
 				}
 				if rif, ok := pluginToolConfig["rawImageFile"]; ok {
-					err = os.WriteFile(deployPath, rif.([]byte), 0644)
+					err = os.WriteFile(deployPath, rif.([]byte), 0700)
 					if err != nil {
 						fmt.Println(err.Error())
 						fmt.Println("Image write failure.")
