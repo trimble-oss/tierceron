@@ -37,13 +37,16 @@ func ZigInit(configContext *tccore.ConfigContext,
 	if _, err := os.Stat(mntDir); os.IsNotExist(err) {
 		os.MkdirAll(mntDir, 0700)
 	}
-	exec.Command("fusermount", "-u", mntDir).Run()
+	err := exec.Command("fusermount", "-u", mntDir).Run()
+	if err != nil {
+		configContext.Log.Printf("Unmount command failed: %v\n", err)
+	}
 
 	server, err := fs.Mount(mntDir, zigPluginMap[pluginName], &fs.Options{
 		MountOptions: fuse.MountOptions{Debug: false},
 	})
 	if err != nil {
-		configContext.Log.Printf("Error %v", err)
+		configContext.Log.Printf("Error mounting file system: %v\n", err)
 		return "", err
 	}
 
@@ -60,6 +63,9 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	if _, ok := configService[filename].([]byte); ok {
 
 		// TODO: Figure out pathing and symlink for child process
+		if filename == "./io/STDIO" {
+			return nil
+		}
 		var filePath string
 		if certifyMap, ok := configService["certify"].(map[string]interface{}); ok {
 			if path, ok := certifyMap["trcdeployroot"].(string); ok {
@@ -77,6 +83,7 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 		}
 		err := os.Symlink(symlinkPath, filePath)
 		if err != nil {
+			configContext.Log.Printf("Unable to symlink file %s\n", filename)
 			return err
 		}
 	}
@@ -84,7 +91,7 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	return nil
 }
 
-func ExecPlugin(pluginName string, properties map[string]interface{}, mntDir string) error {
+func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properties map[string]interface{}, mntDir string) error {
 	var filePath string
 	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
 		if rootPath, ok := certifyMap["trcdeployroot"].(string); ok {
@@ -95,6 +102,7 @@ func ExecPlugin(pluginName string, properties map[string]interface{}, mntDir str
 	}
 	zr, err := zip.OpenReader(filePath)
 	if err != nil {
+		configContext.Log.Println("Error reading file.")
 		return err
 	}
 	defer zr.Close()
@@ -109,28 +117,33 @@ func ExecPlugin(pluginName string, properties map[string]interface{}, mntDir str
 			if err != nil {
 				return err
 			}
-			execCmd(zigPluginMap[pluginName], cmd.String(), mntDir)
+			err = execCmd(configContext, zigPluginMap[pluginName], cmd.String(), mntDir)
+			if err != nil {
+				configContext.Log.Printf("Error executing command for plugin %s: %v\n", pluginName, err)
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) error {
+func execCmd(configContext *tccore.ConfigContext, tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) error {
 	cmdTokens := strings.Fields(cmdMessage)
 	if len(cmdTokens) <= 1 {
+		configContext.Log.Println("Not enough params to exec command")
 		return errors.New("Not enough params")
 	}
 	tzr.SetPPid(uint32(os.Getpid()))
 	pid, _, errno := syscall.RawSyscall(syscall.SYS_FORK, 0, 0, 0)
 	if errno != 0 {
-		fmt.Printf("Error forking process: %d\n", errno)
+		configContext.Log.Printf("Error forking process: %d\n", errno)
 		return errors.New("fork failure")
 	}
 
 	if pid == 0 {
 		err := syscall.Chdir(mntDir)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
+			configContext.Log.Printf("Exec failed: %v\n", err)
 			return err
 		}
 		params := cmdTokens[1:]
@@ -140,7 +153,7 @@ func execCmd(tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) err
 
 		err = syscall.Exec(cmdTokens[0], params, os.Environ())
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Exec failed: %v\n", err)
+			configContext.Log.Printf("Exec failed: %v\n", err)
 			return err
 		}
 	}

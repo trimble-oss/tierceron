@@ -261,13 +261,17 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		return
 	}
 	mntDir, err := trcshzig.ZigInit(configContextMap[pluginName], pluginName, properties)
+	if err != nil {
+		(*properties)["log"].(*log.Logger).Printf("File system initialization error: %v\n", err)
+		return
+	}
 
 	// Convert all properties to mem files....
 	for propKey, _ := range *properties {
 		trcshzig.LinkMemFile(configContextMap[pluginName], *properties, propKey, pluginName, mntDir)
 	}
-	err = trcshzig.ExecPlugin(pluginName, *properties, mntDir)
-	if err != nil {
-		fmt.Println(err)
+	err = trcshzig.ExecPlugin(configContextMap[pluginName], pluginName, *properties, mntDir)
+	if err != nil && configContextMap[pluginName].Log != nil {
+		configContextMap[pluginName].Log.Printf("Unable to exec plugin %s\n", pluginName)
 	}
 }
