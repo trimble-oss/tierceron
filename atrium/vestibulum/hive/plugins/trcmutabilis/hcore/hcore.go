@@ -250,17 +250,16 @@ func PostInit(configContext *tccore.ConfigContext) {
 
 func Init(pluginName string, properties *map[string]interface{}) {
 	var err error
-
 	if configContextMap == nil {
 		configContextMap = map[string]*tccore.ConfigContext{}
 	}
 	configContextMap[pluginName], err = pluginlib.Init(pluginName, properties, PostInit)
-	if err != nil {
+	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
 	mntDir, err := trcshzig.ZigInit(configContextMap[pluginName], pluginName, properties)
-	if err != nil {
+	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("File system initialization error: %v\n", err)
 		return
 	}
