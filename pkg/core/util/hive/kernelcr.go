@@ -744,10 +744,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			go pluginHandler.receiver(driverConfig)
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-			*pluginHandler.ConfigContext.CmdSenderChan <- core.KernelCmd{
-				PluginName: pluginHandler.Name,
-				Command:    core.PLUGIN_EVENT_START,
-			}
+			go func(senderChan chan core.KernelCmd, pluginName string) {
+				senderChan <- core.KernelCmd{
+					PluginName: pluginName,
+					Command:    core.PLUGIN_EVENT_START,
+				}
+			}(*pluginHandler.ConfigContext.CmdSenderChan, pluginHandler.Name)
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 		}
 	}
