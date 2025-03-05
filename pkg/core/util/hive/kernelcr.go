@@ -229,7 +229,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 					continue
 				}
 
-				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature {
+				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature && servPh.Signature != "" {
 					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
 
 					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
@@ -396,7 +396,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 		return
 	}
 
-	if !pluginopts.BuildOptions.IsPluginHardwired() {
+	if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 		if pluginHandler.PluginMod == nil {
 			pluginHandler.ConfigContext.Log.Println("No plugin module set for initializing plugin service.")
 			return
@@ -515,8 +515,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		return
 	}
 	if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod == nil {
-		driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginHandler.Name)
-		return
+		if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshpluginservice" {
+			driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginHandler.Name)
+			return
+		}
 	}
 	var service string
 	if s, ok := driverConfig.DeploymentConfig["trcplugin"].(string); ok {
@@ -535,11 +537,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
 	if !pluginopts.BuildOptions.IsPluginHardwired() {
-		set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
-		if err == nil && set_prod != nil {
-			driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
-			setProd := set_prod.(func(bool))
-			setProd(prod.IsProd())
+		if pluginHandler.PluginMod != nil {
+			set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
+			if err == nil && set_prod != nil {
+				driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
+				setProd := set_prod.(func(bool))
+				setProd(prod.IsProd())
+			} else {
+				driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
+			}
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
 		}
@@ -571,7 +577,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 
 			var paths []string
-			if !pluginopts.BuildOptions.IsPluginHardwired() {
+			if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 				getConfigPaths, err := pluginHandler.PluginMod.Lookup("GetConfigPaths")
 				if err != nil {
 					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
@@ -581,7 +587,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				pluginConfigPaths := getConfigPaths.(func(string) []string)
 				paths = pluginConfigPaths(pluginHandler.Name)
 			} else {
-				paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
+				if s, ok := pluginToolConfig["trctype"].(string); pluginopts.BuildOptions.IsPluginHardwired() || (ok && s == "trcshkubeservice") {
+					paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
+					driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
+					return
+				}
 			}
 
 			serviceConfig := make(map[string]interface{})
@@ -860,21 +872,33 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) string {
 	var deployroot string
 	var service string
-	if s, ok := pluginToolConfig["trcplugin"].(string); ok {
-		driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
-		service = s
+	var ext = ".so"
+	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshkubeservice" {
+		if s, ok := pluginToolConfig["trccodebundle"].(string); ok {
+			driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
+			service = s
+			ext = ""
+		} else {
+			driverConfig.CoreConfig.Log.Println("Unable to load plugin path for service.")
+			return ""
+		}
 	} else {
-		driverConfig.CoreConfig.Log.Println("Unable to stop plugin service.")
-		return ""
+		if s, ok := pluginToolConfig["trcplugin"].(string); ok {
+			driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
+			service = s
+		} else {
+			driverConfig.CoreConfig.Log.Println("Unable to load plugin path for service.")
+			return ""
+		}
 	}
 	if d, ok := pluginToolConfig["trcdeployroot"].(string); ok {
 		driverConfig.CoreConfig.Log.Printf("Loading plugin deploy root for service: %s\n", d)
 		deployroot = d
 	} else {
-		driverConfig.CoreConfig.Log.Println("Unable to stop plugin service.")
+		driverConfig.CoreConfig.Log.Println("Unable to load plugin path for service.")
 		return ""
 	}
-	pluginPath := fmt.Sprintf("%s/%s%s", deployroot, service, ".so")
+	pluginPath := fmt.Sprintf("%s/%s%s", deployroot, service, ext)
 	return pluginPath
 }
 
