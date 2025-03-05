@@ -235,8 +235,7 @@ func GetConfigPaths(pluginName string) []string {
 	if pluginRestrictedMappings, ok := retrictedMappingsMap[pluginName]; ok {
 		for _, restrictedMapping := range pluginRestrictedMappings {
 			if strings.Contains(restrictedMapping[0], "-templateFilter=") {
-				pluginFilters := strings.Split(restrictedMapping[0], "-templateFilter=")
-				return pluginFilters
+				return restrictedMapping
 			}
 		}
 	}
@@ -251,23 +250,26 @@ func PostInit(configContext *tccore.ConfigContext) {
 
 func Init(pluginName string, properties *map[string]interface{}) {
 	var err error
-
 	if configContextMap == nil {
 		configContextMap = map[string]*tccore.ConfigContext{}
 	}
 	configContextMap[pluginName], err = pluginlib.Init(pluginName, properties, PostInit)
-	if err != nil {
+	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
 	mntDir, err := trcshzig.ZigInit(configContextMap[pluginName], pluginName, properties)
+	if err != nil && properties != nil && (*properties)["log"] != nil {
+		(*properties)["log"].(*log.Logger).Printf("File system initialization error: %v\n", err)
+		return
+	}
 
 	// Convert all properties to mem files....
 	for propKey, _ := range *properties {
 		trcshzig.LinkMemFile(configContextMap[pluginName], *properties, propKey, pluginName, mntDir)
 	}
-	err = trcshzig.ExecPlugin(pluginName, *properties, mntDir)
-	if err != nil {
-		fmt.Println(err)
+	err = trcshzig.ExecPlugin(configContextMap[pluginName], pluginName, *properties, mntDir)
+	if err != nil && configContextMap[pluginName].Log != nil {
+		configContextMap[pluginName].Log.Printf("Unable to exec plugin %s\n", pluginName)
 	}
 }
