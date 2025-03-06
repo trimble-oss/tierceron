@@ -266,7 +266,7 @@ replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-se
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => ./vestibulum/hive/plugins/trchealthcheck
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./vestibulum/hive/plugins/trcmutabilis
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./vestibulum/hive/plugins/trcmutabilis
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/hcore => ./vestibulum/hive/plugins/trcmutabilis/hcore
 
