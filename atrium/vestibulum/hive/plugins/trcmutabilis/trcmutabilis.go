@@ -8,7 +8,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/hcore"
+	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/hcore"
 	// Update package path as needed
 )
 

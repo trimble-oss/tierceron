@@ -39,7 +39,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.30.7
-	github.com/trimble-oss/tierceron-core/v2 v2.1.7
+	github.com/trimble-oss/tierceron-core/v2 v2.1.9
 	github.com/trimble-oss/tierceron-nute v1.0.6
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
@@ -52,7 +52,12 @@ require (
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70
 )
 
-require google.golang.org/genproto v0.0.0-20250207221924-e9438ea467c6 // indirect
+require (
+	github.com/hanwen/go-fuse/v2 v2.7.2 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis v0.0.0-20250306022310-2ab5d4bf8323 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20250306022310-2ab5d4bf8323 // indirect
+	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
+)
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0
@@ -140,12 +145,12 @@ require (
 	github.com/xtaci/kcp-go/v5 v5.6.16 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.31.0 // indirect
+	go.opentelemetry.io/otel/metric v1.32.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
-	golang.org/x/oauth2 v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250124145028-65684f501c47 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
+	golang.org/x/oauth2 v0.24.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250227231956-55c901821b1e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
@@ -167,8 +172,8 @@ require (
 	//	github.com/graphql-go/graphql     v0.0.0- // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/tevino/abool v1.2.0 // indirect
-	go.opentelemetry.io/otel v1.31.0 // indirect
-	go.opentelemetry.io/otel/trace v1.31.0 // indirect
+	go.opentelemetry.io/otel v1.32.0 // indirect
+	go.opentelemetry.io/otel/trace v1.32.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
 )
 
@@ -245,14 +250,14 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.19.0 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
-	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.4 // indirect
+	google.golang.org/grpc v1.70.0
+	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
@@ -268,6 +273,8 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealt
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./vestibulum/hive/plugins/trcmutabilis
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/hcore => ./vestibulum/hive/plugins/trcmutabilis/hcore
+
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk => ./vestibulum/hive/plugins/trcshtalk/trcshtalksdk
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./vestibulum/hive/plugins/trchealthcheck/hcore
 
