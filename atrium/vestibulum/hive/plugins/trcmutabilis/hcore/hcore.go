@@ -12,9 +12,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio/trcshzig"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/trcshio/trcshzig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -45,7 +44,7 @@ func receiverMutabile(configContext *tccore.ConfigContext, receive_chan *chan co
 			go configContext.Start(event.PluginName)
 		case event.Command == tccore.PLUGIN_EVENT_STOP:
 			go stop(event.PluginName)
-			sender <- errors.New("hello shutting down")
+			sender <- errors.New("mutabilis shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			//TODO
@@ -87,7 +86,7 @@ func send_dfstat(pluginName string) {
 			send_err(pluginName, err)
 			return
 		}
-		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+		tccore.SendDfStat(configContext, dfsctx, dfstat)
 	}
 }
 
@@ -111,7 +110,7 @@ func send_err(pluginName string, err error) {
 				func(msg string, err error) {
 					configContext.Log.Println(msg, err)
 				})
-			pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+			tccore.SendDfStat(configContext, dfsctx, dfstat)
 		}
 		*configContext.ErrorChan <- err
 	}
@@ -119,7 +118,7 @@ func send_err(pluginName string, err error) {
 
 func start(pluginName string) {
 	if configContextMap == nil {
-		fmt.Println("no config context initialized for healthcheck")
+		fmt.Println("no config context initialized for mutabilis")
 		return
 	}
 
@@ -194,17 +193,17 @@ func stop(pluginName string) {
 	configContext := configContextMap[pluginName]
 
 	if configContext != nil {
-		configContext.Log.Println("Healthcheck received shutdown message from kernel.")
+		configContext.Log.Println("Mutabilis received shutdown message from kernel.")
 		configContext.Log.Println("Stopping server")
 	}
 	if grpcServer != nil {
 		grpcServer.Stop()
 	} else {
-		fmt.Println("no server initialized for healthcheck")
+		fmt.Println("no server initialized for mutabilis")
 	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped server")
-		configContext.Log.Println("Stopped server for healthcheck.")
+		configContext.Log.Println("Stopped server for mutabilis.")
 		dfstat.UpdateDataFlowStatistic("System",
 			pluginName,
 			"Shutdown",
@@ -253,7 +252,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	if configContextMap == nil {
 		configContextMap = map[string]*tccore.ConfigContext{}
 	}
-	configContextMap[pluginName], err = pluginlib.Init(pluginName, properties, PostInit)
+	configContextMap[pluginName], err = tccore.InitPost(pluginName, properties, PostInit)
 	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return

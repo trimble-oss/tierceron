@@ -22,7 +22,7 @@ clean:
 	rm -f bin
 
 cleanmutabilissdk:
-	rm mutabilissdk/hellosdk_grpc.pb.go; rm mutabilissdk/hellosdk.pb.go
+	rm mutabilissdk/mutabilissdk_grpc.pb.go; rm mutabilissdk/mutabilissdk.pb.go
 
 mutabilissdk: */*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative mutabilissdk/mutabilissdk.proto
