@@ -12,9 +12,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio/trcshzig"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/trcshio/trcshzig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -87,7 +86,7 @@ func send_dfstat(pluginName string) {
 			send_err(pluginName, err)
 			return
 		}
-		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+		tccore.SendDfStat(configContext, dfsctx, dfstat)
 	}
 }
 
@@ -111,7 +110,7 @@ func send_err(pluginName string, err error) {
 				func(msg string, err error) {
 					configContext.Log.Println(msg, err)
 				})
-			pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+			tccore.SendDfStat(configContext, dfsctx, dfstat)
 		}
 		*configContext.ErrorChan <- err
 	}
@@ -253,7 +252,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	if configContextMap == nil {
 		configContextMap = map[string]*tccore.ConfigContext{}
 	}
-	configContextMap[pluginName], err = pluginlib.Init(pluginName, properties, PostInit)
+	configContextMap[pluginName], err = tccore.InitPost(pluginName, properties, PostInit)
 	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
