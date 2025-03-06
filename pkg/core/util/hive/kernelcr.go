@@ -612,17 +612,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				} else {
 					if pluginToolConfig["trctype"] == "trcshkubeservice" {
-						envArg := "-env=dev"
+						envArg := fmt.Sprintf("-env=%s", driverConfig.CoreConfig.EnvBasis)
 						restrictedMappingSub := append([]string{"", envArg}, paths[0])
 						ctl := "pluginrun"
 						flagset := flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
 
 						wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
-						driverConfig.IsShellSubProcess = false
-						trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
+						driverConfig.CoreConfig.CurrentTokenNamePtr = nil
+						trcsubbase.CommonMain(&driverConfig.CoreConfig.EnvBasis,
 							driverConfig.CoreConfig.VaultAddressPtr,
-							&driverConfig.CoreConfig.Env,
+							&driverConfig.CoreConfig.EnvBasis,
 							new(string),
 							new(string),
 							&wantedTokenName,
