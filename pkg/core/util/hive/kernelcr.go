@@ -612,7 +612,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				} else {
 					if pluginToolConfig["trctype"] == "trcshkubeservice" {
-						envArg := "-env=dev"
+						envArg := fmt.Sprintf("-env=%s", driverConfig.CoreConfig.EnvBasis)
 						restrictedMappingSub := append([]string{"", envArg}, paths[0])
 						ctl := "pluginrun"
 						flagset := flag.NewFlagSet(ctl, flag.ExitOnError)
