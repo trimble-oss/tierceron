@@ -35,7 +35,6 @@ require (
 	github.com/danieljoos/wincred v1.2.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
 	github.com/go-git/go-billy/v5 v5.6.1
-	github.com/hanwen/go-fuse/v2 v2.7.2
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
