@@ -163,11 +163,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		return nil
 	}
 	var err error
-	// Get current user's home directory
-	userHome, err := userHome(driverConfig.CoreConfig.Log)
-	if err != nil {
-		return err
-	}
 
 	// New values available for the cert file
 	if secretIDPtr != nil && len(*secretIDPtr) > 0 && appRoleIDPtr != nil && len(*appRoleIDPtr) > 0 {
@@ -176,7 +171,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	isProd := strings.Contains(*envPtr, "staging") || strings.Contains(*envPtr, "prod")
 
 	// If cert file exists obtain secretID and appRoleID
-	driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
 	if RefLength(appRoleConfigPtr) == 0 {
 		appRoleConfigPtr = new(string)
 		*appRoleConfigPtr = "config.yml"
@@ -186,13 +180,18 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			return errors.New("required azure deploy approle and secret are missing")
 		}
 		if !isProd {
+			// Get current user's home directory
+			userHome, err := userHome(driverConfig.CoreConfig.Log)
+			if err != nil {
+				return err
+			}
+			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
 			if _, err := os.Stat(userHome + "/.tierceron/" + *appRoleConfigPtr); !os.IsNotExist(err) {
 				exists = true
 				_, configErr := c.getConfig(driverConfig.CoreConfig.Log, *appRoleConfigPtr)
 				if configErr != nil {
 					return configErr
 				}
-
 				if addrPtr == nil || *addrPtr == "" {
 					*addrPtr = c.VaultHost
 				}
@@ -313,6 +312,13 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
 		} else {
+			// Get current user's home directory
+			userHome, err := userHome(driverConfig.CoreConfig.Log)
+			if err != nil {
+				return err
+			}
+			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
+
 			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
 			if appRoleIDPtr != nil && secretIDPtr != nil {
@@ -327,6 +333,12 @@ func AutoAuth(driverConfig *config.DriverConfig,
 
 		// Do not save IDs if overriding and no approle file exists
 		if !isProd && (!override || exists) && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
+			// Get current user's home directory
+			userHome, err := userHome(driverConfig.CoreConfig.Log)
+			if err != nil {
+				return err
+			}
+			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
 
 			// Create hidden folder
 			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
