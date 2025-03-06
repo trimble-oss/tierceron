@@ -16,7 +16,7 @@ import (
 	"github.com/hanwen/go-fuse/v2/fs"
 	"github.com/hanwen/go-fuse/v2/fuse"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio/trcshzigfs"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/trcshio/trcshzigfs"
 )
 
 var zigPluginMap map[string]*trcshzigfs.TrcshZigRoot

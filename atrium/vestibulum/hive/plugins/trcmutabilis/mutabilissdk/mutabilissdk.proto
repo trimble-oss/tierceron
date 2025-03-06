@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trchelloworld/hellosdk";
+option go_package = "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk";
 
-package hellosdk;
+package mutabilissdk;
 
 service Greeter {
   rpc SayHello (HelloRequest) returns (HelloReply) {}
