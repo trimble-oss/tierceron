@@ -619,10 +619,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						flagset.String("env", "dev", "Environment to configure")
 
 						wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
-						driverConfig.IsShellSubProcess = false
-						trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
+						driverConfig.CoreConfig.CurrentTokenNamePtr = nil
+						trcsubbase.CommonMain(&driverConfig.CoreConfig.EnvBasis,
 							driverConfig.CoreConfig.VaultAddressPtr,
-							&driverConfig.CoreConfig.Env,
+							&driverConfig.CoreConfig.EnvBasis,
 							new(string),
 							new(string),
 							&wantedTokenName,
