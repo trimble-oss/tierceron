@@ -59,4 +59,8 @@ ctl:
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
 
+cleancache:
+	go clean -cache
+	go clean -modcache
+
 all: api config seed x xlib pub sub
