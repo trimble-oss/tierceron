@@ -267,7 +267,8 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	for propKey, _ := range *properties {
 		trcshzig.LinkMemFile(configContextMap[pluginName], *properties, propKey, pluginName, mntDir)
 	}
-	err = trcshzig.ExecPlugin(configContextMap[pluginName], pluginName, *properties, mntDir)
+	pluginDir := fmt.Sprintf("/usr/local/trcshk/plugins/%s", pluginName)
+	err = trcshzig.ExecPlugin(configContextMap[pluginName], pluginName, *properties, pluginDir)
 	if err != nil && configContextMap[pluginName].Log != nil {
 		configContextMap[pluginName].Log.Printf("Unable to exec plugin %s\n", pluginName)
 	}
