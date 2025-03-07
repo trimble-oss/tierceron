@@ -102,7 +102,7 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	return nil
 }
 
-func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properties map[string]interface{}, mntDir string) error {
+func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properties map[string]interface{}, pluginDir string) error {
 	var filePath string
 	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
 		if rootPath, ok := certifyMap["trcdeployroot"].(string); ok {
@@ -128,7 +128,7 @@ func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properti
 			if err != nil {
 				return err
 			}
-			err = execCmd(configContext, zigPluginMap[pluginName], cmd.String(), mntDir)
+			err = execCmd(configContext, zigPluginMap[pluginName], cmd.String(), pluginDir)
 			if err != nil {
 				configContext.Log.Printf("Error executing command for plugin %s: %v\n", pluginName, err)
 				return err
@@ -138,7 +138,7 @@ func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properti
 	return nil
 }
 
-func execCmd(configContext *tccore.ConfigContext, tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, mntDir string) error {
+func execCmd(configContext *tccore.ConfigContext, tzr *trcshzigfs.TrcshZigRoot, cmdMessage string, pluginDir string) error {
 	cmdTokens := strings.Fields(cmdMessage)
 	if len(cmdTokens) <= 1 {
 		configContext.Log.Println("Not enough params to exec command")
@@ -152,9 +152,9 @@ func execCmd(configContext *tccore.ConfigContext, tzr *trcshzigfs.TrcshZigRoot, 
 	}
 
 	if pid == 0 {
-		err := syscall.Chdir(mntDir)
+		err := syscall.Chdir(pluginDir)
 		if err != nil {
-			configContext.Log.Printf("Exec failed: %v\n", err)
+			configContext.Log.Printf("Chdir failed: %s %v\n", pluginDir, err)
 			return err
 		}
 		params := cmdTokens[1:]
@@ -164,7 +164,7 @@ func execCmd(configContext *tccore.ConfigContext, tzr *trcshzigfs.TrcshZigRoot, 
 
 		err = syscall.Exec(cmdTokens[0], params, os.Environ())
 		if err != nil {
-			configContext.Log.Printf("Exec failed: %v\n", err)
+			configContext.Log.Printf("Exec failed: %s %v\n", cmdTokens[0], err)
 			return err
 		}
 	}
