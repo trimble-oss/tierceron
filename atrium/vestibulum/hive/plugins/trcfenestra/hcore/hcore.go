@@ -1,44 +1,26 @@
 package hcore
 
 import (
-	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
-	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hellosdk" // Update package path as needed
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib" // Update package path as needed
 	"gopkg.in/yaml.v2"
 )
 
-type server struct {
-	pb.UnimplementedGreeterServer
-}
-
 var configContext *tccore.ConfigContext
-var grpcServer *grpc.Server
 var sender chan error
 var serverAddr *string //another way to do this...
 var dfstat *tccore.TTDINode
-
-func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
-	log.Printf("Received: %v", in.GetName())
-	return &pb.HelloReply{Message: "Hello " + in.GetName()}, nil
-}
 
 const (
 	HELLO_CERT  = "./hello.crt"
@@ -74,7 +56,7 @@ func receiver(receive_chan *chan core.KernelCmd) {
 }
 
 func init() {
-	peerExe, err := os.Open("plugins/healthcheck.so")
+	peerExe, err := os.Open("plugins/fenestra.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
 		return
@@ -88,12 +70,12 @@ func init() {
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("HealthCheck Version: %s\n", sha)
+	fmt.Printf("Spiralis Version: %s\n", sha)
 }
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for healthcheck.")
+		fmt.Println("Dataflow Statistic channel not initialized properly for fenestra.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -107,7 +89,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for healthcheck.")
+		fmt.Println("Failure to send error message, error channel not initialized properly for fenestra.")
 		return
 	}
 	if dfstat != nil {
@@ -129,34 +111,14 @@ func send_err(err error) {
 	*configContext.ErrorChan <- err
 }
 
-func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
-	var err error
-
-	cert, err := tls.X509KeyPair(certBytes, keyBytes)
-	if err != nil {
-		log.Fatalf("Couldn't construct key pair: %v", err)
-	}
-	creds := credentials.NewServerTLSFromCert(&cert)
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		fmt.Println("Failed to listen:", err)
-		return nil, nil, err
-	}
-
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
-
-	return lis, grpcServer, nil
-}
-
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for healthcheck")
+		fmt.Println("no config context initialized for fenestra")
 		return
 	}
 	var config map[string]interface{}
-	var configCert []byte
-	var configKey []byte
+	// var configCert []byte
+	// var configKey []byte
 	var ok bool
 	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
@@ -167,63 +129,43 @@ func start(pluginName string) {
 			return
 		}
 	}
-	if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
-		if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
-			configContext.Log.Println("Missing config cert")
-			send_err(errors.New("Missing config cert"))
-			return
-		}
-	}
-	if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
-		if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
-			configContext.Log.Println("Missing config key")
-			send_err(errors.New("Missing config key"))
-			return
-		}
-	}
+	// if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
+	// 	if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+	// 		configContext.Log.Println("Missing config cert")
+	// 		send_err(errors.New("Missing config cert"))
+	// 		return
+	// 	}
+	// }
+	// if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
+	// 	if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+	// 		configContext.Log.Println("Missing config key")
+	// 		send_err(errors.New("Missing config key"))
+	// 		return
+	// 	}
+	// }
 
 	if config != nil {
 		if portInterface, ok := config["grpc_server_port"]; ok {
-			var healthcheckPort int
+			var fenestraPort int
 			if port, ok := portInterface.(int); ok {
-				healthcheckPort = port
+				fenestraPort = port
 			} else {
 				var err error
-				healthcheckPort, err = strconv.Atoi(portInterface.(string))
+				fenestraPort, err = strconv.Atoi(portInterface.(string))
 				if err != nil {
 					configContext.Log.Printf("Failed to process server port: %v", err)
 					send_err(err)
 					return
 				}
 			}
-			configContext.Log.Printf("Server listening on :%d\n", healthcheckPort)
-			lis, gServer, err := InitServer(healthcheckPort,
-				configCert,
-				configKey)
-			if err != nil {
-				configContext.Log.Printf("Failed to start server: %v", err)
-				send_err(err)
-				return
-			}
+			configContext.Log.Printf("Server listening on :%d\n", fenestraPort)
 			configContext.Log.Println("Starting server")
 
-			grpcServer = gServer
-			grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-			pb.RegisterGreeterServer(grpcServer, &server{})
-			// reflection.Register(grpcServer)
-			addr := lis.Addr().String()
-			serverAddr = &addr
-			configContext.Log.Printf("server listening at %v", lis.Addr())
-			go func(l net.Listener, cmd_send_chan *chan tccore.KernelCmd) {
+			go func(cmd_send_chan *chan tccore.KernelCmd) {
 				if cmd_send_chan != nil {
 					*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 				}
-				if err := grpcServer.Serve(l); err != nil {
-					configContext.Log.Println("Failed to serve:", err)
-					send_err(err)
-					return
-				}
-			}(lis, configContext.CmdSenderChan)
+			}(configContext.CmdSenderChan)
 			dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
 			dfstat.UpdateDataFlowStatistic("System",
 				pluginName,
@@ -252,14 +194,9 @@ func stop(pluginName string) {
 		configContext.Log.Println("Healthcheck received shutdown message from kernel.")
 		configContext.Log.Println("Stopping server")
 	}
-	if grpcServer != nil {
-		grpcServer.Stop()
-	} else {
-		fmt.Println("no server initialized for healthcheck")
-	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped server")
-		configContext.Log.Println("Stopped server for healthcheck.")
+		configContext.Log.Println("Stopped server for fenestra.")
 		dfstat.UpdateDataFlowStatistic("System",
 			pluginName,
 			"Shutdown",
@@ -274,7 +211,6 @@ func stop(pluginName string) {
 		send_dfstat()
 		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
 	}
-	grpcServer = nil
 	dfstat = nil
 }
 
