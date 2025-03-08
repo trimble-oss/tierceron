@@ -1,3 +1,7 @@
-#!/home/azuredeploy/bin/trcsh
-# Bootstrap trcpredeploy.trc.tmpl
+#!/bin/bash
 
+trcpub
+# Pulls image and certifies it with Tierceron for use.  trcsh agent only deploys certified images.
+trcplgtool -env=dev -certify -pluginName=trchelloworld -pluginType=trcshservice -sha256=bin/trchelloworld
+# Remotely applies deploy.trc template/script to agent registered to trchelloworld
+trcplgtool -env=dev -agentdeploy -pluginName=trchelloworld
