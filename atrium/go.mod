@@ -56,6 +56,8 @@ require (
 	github.com/hanwen/go-fuse/v2 v2.7.2 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis v0.0.0-20250306022310-2ab5d4bf8323 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20250306022310-2ab5d4bf8323 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250306022310-2ab5d4bf8323 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20250306022310-2ab5d4bf8323 // indirect
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
 )
 
@@ -277,6 +279,10 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutab
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk => ./vestibulum/hive/plugins/trcshtalk/trcshtalksdk
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./vestibulum/hive/plugins/trchealthcheck/hcore
+
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore => ./vestibulum/hive/plugins/trcfenestra/hcore
+
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore => ./vestibulum/hive/plugins/trcspiralis/hcore
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
