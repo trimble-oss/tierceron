@@ -2,8 +2,10 @@ package hcore
 
 import (
 	"crypto/sha256"
+	"embed"
 	"encoding/hex"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/fenestrabase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib" // Update package path as needed
 	"gopkg.in/yaml.v2"
 )
@@ -56,16 +59,16 @@ func receiver(receive_chan *chan core.KernelCmd) {
 }
 
 func init() {
-	peerExe, err := os.Open("plugins/fenestra.so")
+	peerLib, err := os.Open("plugins/fenestra.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
 		return
 	}
 
-	defer peerExe.Close()
+	defer peerLib.Close()
 
 	h := sha256.New()
-	if _, err := io.Copy(h, peerExe); err != nil {
+	if _, err := io.Copy(h, peerLib); err != nil {
 		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
@@ -117,8 +120,8 @@ func start(pluginName string) {
 		return
 	}
 	var config map[string]interface{}
-	// var configCert []byte
-	// var configKey []byte
+	var configCert []byte
+	var configKey []byte
 	var ok bool
 	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
@@ -129,20 +132,35 @@ func start(pluginName string) {
 			return
 		}
 	}
-	// if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
-	// 	if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
-	// 		configContext.Log.Println("Missing config cert")
-	// 		send_err(errors.New("Missing config cert"))
-	// 		return
-	// 	}
-	// }
-	// if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
-	// 	if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
-	// 		configContext.Log.Println("Missing config key")
-	// 		send_err(errors.New("Missing config key"))
-	// 		return
-	// 	}
-	// }
+	if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
+		if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+			configContext.Log.Println("Missing config cert")
+			send_err(errors.New("Missing config cert"))
+			return
+		}
+	}
+	if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
+		if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+			configContext.Log.Println("Missing config key")
+			send_err(errors.New("Missing config key"))
+			return
+		}
+	}
+	callerCreds := flag.String("CREDS", "", "Credentials of caller")
+	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
+	headless := flag.Bool("headless", false, "Run headless")
+	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
+	envPtr := flag.String("env", "QA", "Environment to configure")
+	flag.Parse()
+
+	fenestrabase.CommonMain(embed.FS{},
+		embed.FS{},
+		embed.FS{},
+		callerCreds,    // For ipc
+		insecure,       // Run server without tls
+		headless,       // fake data
+		serverheadless, // No gui?
+		envPtr)
 
 	if config != nil {
 		if portInterface, ok := config["grpc_server_port"]; ok {
