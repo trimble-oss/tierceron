@@ -1,3 +1,13 @@
-go 1.24.0
+go 1.24.1
 
 use ./atrium
+
+use ./atrium/vestibulum/hive/plugins/trcfenestra
+
+use ./atrium/vestibulum/hive/plugins/trcspiralis
+
+use ./atrium/vestibulum/hive/plugins/trcshtalk
+
+use ./atrium/vestibulum/hive/plugins/trcmutabilis
+
+use ./atrium/vestibulum/trcchatproxy

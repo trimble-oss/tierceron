@@ -56,8 +56,8 @@ require (
 	github.com/hanwen/go-fuse/v2 v2.7.2 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis v0.0.0-20250306022310-2ab5d4bf8323 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20250306022310-2ab5d4bf8323 // indirect
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-00010101000000-d1fac691 // indirect
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-00010101000000-d1fac691 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250308202752-dc4d2b9d457d // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20250308202752-dc4d2b9d457d // indirect
 	google.golang.org/genproto v0.0.0-20250303144028-a0af3efb3deb // indirect
 )
 
