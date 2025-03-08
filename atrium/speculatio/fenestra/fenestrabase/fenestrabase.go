@@ -17,8 +17,6 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
-var worldCompleteChan chan bool
-
 func OutsideClone(custosWorldApp *custosworld.CustosWorldApp, childId int64, concreteElement *mashupsdk.MashupDetailedElement) {
 	custosWorldApp.FyneWidgetElements["Outside"].MashupDetailedElement.Copy(concreteElement)
 }
@@ -71,5 +69,4 @@ func CommonMain(logoIcon embed.FS,
 	// Initialize the main window.
 	custosWorld.InitMainWindow()
 
-	<-worldCompleteChan
 }

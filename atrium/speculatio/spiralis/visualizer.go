@@ -32,4 +32,6 @@ func main() {
 		insecure,
 		custos,
 		headless)
+
+	<-worldCompleteChan
 }

@@ -25,8 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 )
 
-var worldCompleteChan chan bool
-
 func CommonMain(
 	mashupCert embed.FS,
 	mashupKey embed.FS,
@@ -172,6 +170,4 @@ func CommonMain(
 
 	// Initialize the main window.
 	go worldApp.InitMainWindow()
-
-	<-worldCompleteChan
 }

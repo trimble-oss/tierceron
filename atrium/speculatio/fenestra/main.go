@@ -38,4 +38,6 @@ func main() {
 		headless,
 		serverheadless,
 		envPtr)
+
+	<-worldCompleteChan
 }
