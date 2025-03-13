@@ -196,8 +196,8 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/trimble-oss/tierceron v1.30.7 h1:bWkJe0FQtB9vMQK1Jo5xj1VsRO08f8E7ZOkc2T5sPao=
 github.com/trimble-oss/tierceron v1.30.7/go.mod h1:DPGTOQ9KmUQypLgsnEs8cbchakdGVI+b0uWB4b1TSJo=
-github.com/trimble-oss/tierceron-core/v2 v2.1.9 h1:fTo1pj0shu9/aVGiTXgWWc881Zbf2ZzknExF+wtCRyg=
-github.com/trimble-oss/tierceron-core/v2 v2.1.9/go.mod h1:pvmq/44tdcXHl6gJUCivL87YKN99jz/SdiRPu+9sPg8=
+github.com/trimble-oss/tierceron-core/v2 v2.1.10 h1:CTx4AuzhlZcjw+PDOwoMPSthn6C2YxfYre5q4on7/uk=
+github.com/trimble-oss/tierceron-core/v2 v2.1.10/go.mod h1:Aovjx/FAt//s301HotSYv/IWAsYeyOA22ckAy91HXeI=
 github.com/trimble-oss/tierceron-nute v1.0.6 h1:BtyTlkDpvOJABamLR1yhS+tYx+GLxElLgLUMdPZc9Hw=
 github.com/trimble-oss/tierceron-nute v1.0.6/go.mod h1:oTn/FSHa+kWAwErJWTQ/w8iRdjiCmE7wSiuSVJnngdY=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20250313174217-e5487aaeca35 h1:UWOFnyLZw21MXVNb1i6o5UKBcThKMKVI07el3Dj434s=
