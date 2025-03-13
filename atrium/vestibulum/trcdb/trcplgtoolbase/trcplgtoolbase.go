@@ -720,21 +720,30 @@ func CommonMain(envPtr *string,
 						explodedWarPath := strings.TrimSuffix(deployPath, ".war")
 						fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
 						if _, err := os.Stat(explodedWarPath); err == nil {
-							if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-								archiveDirPath := filepath.Join(deployRoot, "archive")
-								fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
-								err := os.MkdirAll(archiveDirPath, 0700)
+							archiveDirPath := filepath.Join(deployRoot, "archive")
+							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
+							err := os.MkdirAll(archiveDirPath, 0700)
+							if err == nil {
+								currentTime := time.Now()
+								formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
+								archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), "archive", formattedTime)
+								fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
+								err := os.MkdirAll(archiveRoot, 0700)
 								if err == nil {
-									currentTime := time.Now()
-									formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
-									archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive", formattedTime)
-									fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
-									err := os.MkdirAll(archiveRoot, 0700)
-									if err == nil {
-										archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
-										archivePath = strings.TrimSuffix(archivePath, ".war")
-										fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
-										os.Rename(explodedWarPath, archivePath)
+									archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
+									archivePath = strings.TrimSuffix(archivePath, ".war")
+									fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
+									os.Rename(explodedWarPath, archivePath)
+								}
+							}
+							if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok && deploySubPath != "" {
+								oldArchiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive")
+								fmt.Printf("Removing old version of archive directory: %s\n", oldArchiveRoot)
+								if _, err = os.Stat(oldArchiveRoot); err == nil {
+									err = os.RemoveAll(oldArchiveRoot)
+									if err != nil {
+										fmt.Println(err.Error())
+										fmt.Println("Could not remove previous version of archive directory for deployment.")
 									}
 								}
 							}
