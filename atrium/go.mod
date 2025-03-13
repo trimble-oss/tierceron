@@ -1,6 +1,7 @@
 module github.com/trimble-oss/tierceron/atrium
 
 go 1.24.0
+
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
 	github.com/dolthub/go-mysql-server v0.12.0

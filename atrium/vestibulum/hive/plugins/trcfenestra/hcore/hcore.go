@@ -152,6 +152,12 @@ func start(pluginName string) {
 	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
 	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
+	if configCert != nil {
+
+	}
+	if configKey != nil {
+
+	}
 
 	fenestrabase.CommonMain(embed.FS{},
 		embed.FS{},
