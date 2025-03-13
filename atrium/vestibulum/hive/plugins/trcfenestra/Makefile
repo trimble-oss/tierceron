@@ -28,5 +28,5 @@ hellosdk: */*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative hellosdk/hellosdk.proto
 
 pluginfenestra:
-	go build -buildmode=plugin -trimpath -o="./fenestra.so" -tags "tc azrcr memonly kernel" trcfenestra.go
+	go build -buildmode=plugin -trimpath -o="./fenestra.so" -tags "insecure fyneboot argosystub tc azrcr memonly kernel" trcfenestra.go
 
