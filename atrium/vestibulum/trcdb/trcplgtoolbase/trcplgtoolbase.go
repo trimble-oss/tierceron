@@ -736,17 +736,6 @@ func CommonMain(envPtr *string,
 									os.Rename(explodedWarPath, archivePath)
 								}
 							}
-							if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok && deploySubPath != "" {
-								oldArchiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string), "archive")
-								fmt.Printf("Removing old version of archive directory: %s\n", oldArchiveRoot)
-								if _, err = os.Stat(oldArchiveRoot); err == nil {
-									err = os.RemoveAll(oldArchiveRoot)
-									if err != nil {
-										fmt.Println(err.Error())
-										fmt.Println("Could not remove previous version of archive directory for deployment.")
-									}
-								}
-							}
 						}
 					}
 				}
