@@ -244,6 +244,7 @@ func CommonMain(envPtr *string,
 		case "trcshservice": // A trcshservice managed microservice
 		case "trcshkubeservice":
 		case "trcshpluginservice":
+		case "trcshmutabilispraefecto":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
