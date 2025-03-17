@@ -720,6 +720,9 @@ func CommonMain(envPtr *string,
 						explodedWarPath := strings.TrimSuffix(deployPath, ".war")
 						fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
 						if _, err := os.Stat(explodedWarPath); err == nil {
+							if depRoot, ok := pluginToolConfig["trcdeployroot"]; ok {
+								deployRoot = depRoot.(string)
+							}
 							archiveDirPath := filepath.Join(deployRoot, "archive")
 							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
 							err := os.MkdirAll(archiveDirPath, 0700)
