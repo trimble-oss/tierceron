@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
@@ -57,7 +58,8 @@ func (msdk *FlumeHandler) TweakStates(elementStateBundle *mashupsdk.MashupElemen
 func (msdk *FlumeHandler) ResetStates() {
 }
 
-func (msdk *FlumeHandler) TweakStatesByMotiv(mashupsdk.Motiv) {
+func (msdk *FlumeHandler) TweakStatesByMotiv(detailedElementBundle *mashupsdk.Motiv) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (msdk *FlumeHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {
