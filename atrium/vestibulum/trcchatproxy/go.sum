@@ -183,8 +183,8 @@ github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsT
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/trimble-oss/tierceron v1.30.7 h1:bWkJe0FQtB9vMQK1Jo5xj1VsRO08f8E7ZOkc2T5sPao=
 github.com/trimble-oss/tierceron v1.30.7/go.mod h1:DPGTOQ9KmUQypLgsnEs8cbchakdGVI+b0uWB4b1TSJo=
-github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda h1:aDN/07KBM+aqxqt+5Ty3rbXZyNVT4+P1va0/wb8ByKg=
-github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda/go.mod h1:9d0O4NDikXUlHTTOMjIOONJ9JRqgI0c4BdD6icPtVBA=
+github.com/trimble-oss/tierceron-nute v1.0.8 h1:QIxRToG6zHC/G/us903kWCuB7FrBssMhgNyBxXoyo94=
+github.com/trimble-oss/tierceron-nute v1.0.8/go.mod h1:wsobLPMuiDHGtJgYwpMDJVxGHHvLSjvvC0V85NCtcz8=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=
 go.opencensus.io v0.24.0 h1:y73uSU6J157QMP2kn2r30vwW1A2W2WFwSCGnAVxeaD0=
 go.opencensus.io v0.24.0/go.mod h1:vNK8G9p7aAivkbmorf4v+7Hgx+Zs0yY+0fOtgBfjQKo=
