@@ -30,9 +30,13 @@ func main() {
 	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
 
-	fenestrabase.CommonMain(logoIcon,
-		mashupCert,
-		mashupKey,
+	logoIconBytes, _ := logoIcon.ReadFile("logo.png")
+	mashupCertBytes, _ := mashupCert.ReadFile("tls/mashup.crt")
+	mashupKeyBytes, _ := mashupKey.ReadFile("tls/mashup.key")
+
+	fenestrabase.CommonMain(logoIconBytes,
+		mashupCertBytes,
+		mashupKeyBytes,
 		callerCreds,
 		insecure,
 		headless,

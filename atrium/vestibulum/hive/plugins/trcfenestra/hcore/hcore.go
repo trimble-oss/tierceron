@@ -2,7 +2,6 @@ package hcore
 
 import (
 	"crypto/sha256"
-	"embed"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -152,16 +151,10 @@ func start(pluginName string) {
 	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
 	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
-	if configCert != nil {
 
-	}
-	if configKey != nil {
-
-	}
-
-	fenestrabase.CommonMain(embed.FS{},
-		embed.FS{},
-		embed.FS{},
+	fenestrabase.CommonMain([]byte{},
+		configCert,
+		configKey,
 		callerCreds,    // For ipc
 		insecure,       // Run server without tls
 		headless,       // fake data
