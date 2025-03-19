@@ -5,7 +5,6 @@ package fenestrabase
 
 // World is a basic gomobile app.
 import (
-	"embed"
 	"log"
 	"os"
 
@@ -21,9 +20,9 @@ func OutsideClone(custosWorldApp *custosworld.CustosWorldApp, childId int64, con
 	custosWorldApp.FyneWidgetElements["Outside"].MashupDetailedElement.Copy(concreteElement)
 }
 
-func CommonMain(logoIcon embed.FS,
-	mashupCert embed.FS,
-	mashupKey embed.FS,
+func CommonMain(logoIconBytes []byte,
+	mashupCertBytes []byte,
+	mashupKeyBytes []byte,
 	callerCreds *string,
 	insecure *bool,
 	headless *bool,
@@ -37,7 +36,7 @@ func CommonMain(logoIcon embed.FS,
 	logger := log.New(fenestraLog, "[fenestra]", log.LstdFlags)
 	log.SetOutput(fenestraLog)
 
-	mashupsdk.InitCertKeyPair(mashupCert, mashupKey)
+	mashupsdk.InitCertKeyPairBytes(mashupCertBytes, mashupKeyBytes)
 	var DetailedElements []*mashupsdk.MashupDetailedElement
 
 	if *headless {
@@ -59,7 +58,6 @@ func CommonMain(logoIcon embed.FS,
 
 	custosWorld.Title = "Tierceron Topology Discovery Interface"
 	custosWorld.MainWindowSize = fyne.NewSize(800, 100)
-	logoIconBytes, _ := logoIcon.ReadFile("logo.png")
 	custosWorld.Icon = fyne.NewStaticResource("Logo", logoIconBytes)
 
 	if !custosWorld.Headless {
