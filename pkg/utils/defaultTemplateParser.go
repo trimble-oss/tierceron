@@ -9,6 +9,18 @@ import (
 // {{or .<key> "<value>"}}
 const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
+func TrimDotsAfterLastSlash(s string) string {
+	lastSlash := strings.LastIndex(s, "/")
+	if lastSlash == -1 {
+		return s
+	}
+	nextDot := strings.Index(s[lastSlash:], ".")
+	if nextDot == -1 {
+		return s
+	}
+	return s[:lastSlash+nextDot]
+}
+
 // Parse Extracts default values as key-value pairs from template files.
 // Before being uploaded, the service and filename will be appended so the uploaded value will be
 // <Service>.<Filename>.<Key>
