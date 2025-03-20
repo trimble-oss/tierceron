@@ -72,7 +72,6 @@ func CommonMain(envPtr *string,
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
 	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
-	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
 	pushImagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
 	pushAliasPtr := flagset.String("pushAlias", "", "Image name:tag to push to registry, separated by commas (eg: egg:plant,egg:salad,egg:bar).")
@@ -83,6 +82,7 @@ func CommonMain(envPtr *string,
 
 	// defineService flags...
 	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
+	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
 	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
