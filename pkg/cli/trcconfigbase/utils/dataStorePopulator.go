@@ -414,7 +414,10 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 	var err error
 
 	if mod.SecretDictionary == nil {
+		envCurrent := mod.Env
+		mod.Env = mod.EnvBasis
 		mod.SecretDictionary, err = mod.List("templates", config.Log)
+		mod.Env = envCurrent
 	}
 	secrets := mod.SecretDictionary
 	var innerService string
@@ -525,7 +528,10 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 }
 
 func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
+	envCurrent := mod.Env
+	mod.Env = mod.EnvBasis
 	secrets, err := mod.List(mod.TemplatePath, logger)
+	mod.Env = envCurrent
 	if err != nil {
 		return err
 	} else if secrets != nil {
