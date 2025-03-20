@@ -12,7 +12,11 @@ const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 func TrimDotsAfterLastSlash(s string) string {
 	lastSlash := strings.LastIndex(s, "/")
 	if lastSlash == -1 {
-		return s
+		nextDot := strings.Index(s, ".")
+		if nextDot == -1 {
+			return s
+		}
+		return s[:nextDot]
 	}
 	nextDot := strings.Index(s[lastSlash:], ".")
 	if nextDot == -1 {
