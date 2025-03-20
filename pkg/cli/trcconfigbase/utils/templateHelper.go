@@ -117,8 +117,8 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		} else if len(relativeTemplatePathParts) == 0 {
 			driverConfig.CoreConfig.Log.Println("Unable to find any relative template path.")
 		}
-		templatePathParts := strings.Split(relativeTemplatePathParts[1], ".") //Windows debug here
-		modifier.TemplatePath = "templates" + templatePathParts[0]
+		templatePathTrimmed := eUtils.TrimDotsAfterLastSlash(relativeTemplatePathParts[1])
+		modifier.TemplatePath = "templates" + templatePathTrimmed
 	} else {
 		driverConfig.CoreConfig.Log.Println("Configuring cert")
 	}
