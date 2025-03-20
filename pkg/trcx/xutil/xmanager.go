@@ -127,7 +127,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 		}
 	}
 
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") && mod.Version != "0" { //If version isn't latest or is a flag
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") && mod != nil && mod.Version != "0" { //If version isn't latest or is a flag
 		var noCertPaths []string
 		var certPaths []string
 		for _, templatePath := range templatePaths { //Separate cert vs normal paths
@@ -349,7 +349,9 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 		templatePaths = iFilterTemplatePaths
 	}
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
-		mod.Release()
+		if mod != nil {
+			mod.Release()
+		}
 	}
 
 	// Configure each template in directory
