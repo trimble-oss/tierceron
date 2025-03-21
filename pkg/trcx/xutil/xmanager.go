@@ -230,7 +230,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	}
 
 	commonPaths := []string{}
-	tokenNameEnv := fmt.Sprintf("config_token_%s", env)
+	tokenNameEnv := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenNameEnv), "") && commonPathFound {
 		var commonMod *helperkv.Modifier
 		var err error
@@ -244,6 +244,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			envVersion = append(envVersion, "0")
 		}
 		commonMod.Env = envVersion[0]
+		commonMod.EnvBasis = eUtils.GetEnvBasis(commonMod.Env)
 		commonMod.Version = envVersion[1]
 		driverConfig.CoreConfig.Env = envVersion[0] + "_" + envVersion[1]
 		commonMod.Version = commonMod.Version + "***X-Mode"
@@ -383,9 +384,9 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			project, service, _, tp = eUtils.GetProjectService(dc, tp)
 			useCache := true
 
-			if !utils.RefEqualsAny(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", env)), []string{"", "novault"}) {
+			if !utils.RefEqualsAny(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))), []string{"", "novault"}) {
 				var err error
-				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", env)), dc.CoreConfig.VaultAddressPtr, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
+				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))), dc.CoreConfig.VaultAddressPtr, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
 				goMod.Env = dc.CoreConfig.Env
 				if err != nil {
 					if useCache && goMod != nil {
@@ -397,6 +398,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				}
 
 				goMod.Env = env
+				goMod.EnvBasis = eUtils.GetEnvBasis(env)
 				goMod.Version = version
 				goMod.ProjectIndex = dc.ProjectSections
 				if len(goMod.ProjectIndex) > 0 {
@@ -407,8 +409,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				}
 
 				relativeTemplatePathParts := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(dc.StartDir)+"_templates")
-				templatePathParts := strings.Split(relativeTemplatePathParts[1], ".")
-				goMod.TemplatePath = "templates" + templatePathParts[0]
+				goMod.TemplatePath = "templates" + eUtils.TrimDotsAfterLastSlash(relativeTemplatePathParts[1])
 
 				cds = new(vcutils.ConfigDataStore)
 				goMod.Version = goMod.Version + "***X-Mode"

@@ -117,9 +117,10 @@ func CommonMain(ctx config.ProcessContext,
 		ConfigWg:             sync.WaitGroup{},
 		Mutex:                &sync.Mutex{},
 	}
+	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-		tokenName := fmt.Sprintf("config_token_%s", *envPtr)
+		tokenName := fmt.Sprintf("config_token_%s", envBasis)
 		tokenNamePtr = &tokenName
 	}
 	driverConfigBase := &config.DriverConfig{
@@ -139,8 +140,6 @@ func CommonMain(ctx config.ProcessContext,
 	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"x]", log.LstdFlags)
 	driverConfigBase.CoreConfig.Log = logger
-
-	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	Yellow := "\033[33m"
 	Reset := "\033[0m"
@@ -739,7 +738,7 @@ skipDiff:
 				var servicesWanted []string
 				if !*noVaultPtr {
 					appconfigrolePtr := new(string)
-					*tokenNameEnvPtr = fmt.Sprintf("config_token_%s", *envPtr)
+					*tokenNameEnvPtr = fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 
 					authErr := eUtils.AutoAuth(&config.DriverConfig{
 						CoreConfig: &core.CoreConfig{
