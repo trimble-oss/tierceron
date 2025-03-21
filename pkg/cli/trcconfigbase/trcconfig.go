@@ -256,15 +256,19 @@ func CommonMain(envDefaultPtr *string,
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+		if *wantCertsPtr {
+			// Cannot have different certs per env-x instance.  Use basis.
+			*envPtr = eUtils.GetEnvBasis(*envPtr)
+		}
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: &core.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
 			NoVault:    *noVaultPtr,
 		}
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-			tokenName := fmt.Sprintf("config_token_%s", *envPtr)
+			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
@@ -331,7 +335,7 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
-			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
 			autoErr := eUtils.AutoAuth(driverConfigBase,
 				secretIDPtr,
 				appRoleIDPtr,
