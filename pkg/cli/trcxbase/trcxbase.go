@@ -767,7 +767,8 @@ skipDiff:
 					}
 				} else if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", *envPtr))) == 0 {
 					token := "novault"
-					driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
+					envBasis := eUtils.GetEnvBasis(*envPtr)
+					driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), &token)
 				}
 				if len(envVersion) >= 2 { //Put back env+version together
 					*envPtr = envVersion[0] + "_" + envVersion[1]
