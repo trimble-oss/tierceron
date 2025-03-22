@@ -56,11 +56,7 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		path = "templates/" + project + "/" + templateFile + "/template-file"
 	} else {
 		if driverConfig.ZeroConfig && mod.TemplatePath != "" && !driverConfig.CoreConfig.WantCerts {
-			lastDotIndex := strings.LastIndex(templateFile, ".")
-			if lastDotIndex > 0 {
-				mod.TemplatePath = mod.TemplatePath + templateFile[lastDotIndex:]
-			}
-
+			mod.TemplatePath = eUtils.TrimDotsAfterLastSlash(templateFile)
 			path = mod.TemplatePath + "/template-file"
 		} else {
 			path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"

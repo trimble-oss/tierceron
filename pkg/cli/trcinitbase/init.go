@@ -157,7 +157,8 @@ func CommonMain(envPtr *string,
 		driverConfigBase.CoreConfig.Insecure = false
 		driverConfigBase.CoreConfig.Log = logger
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-			tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
+			envBasis := eUtils.GetEnvBasis(*envPtr)
+			tokenName := fmt.Sprintf("config_token_%s_unrestricted", envBasis)
 			tokenNamePtr = &tokenName
 		} else if eUtils.RefLength(tokenPtr) == 0 {
 			fmt.Println("-token cannot be empty.")
