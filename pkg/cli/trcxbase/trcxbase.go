@@ -117,6 +117,10 @@ func CommonMain(ctx config.ProcessContext,
 		ConfigWg:             sync.WaitGroup{},
 		Mutex:                &sync.Mutex{},
 	}
+	if envPtr == nil {
+		env := "dev"
+		envPtr = &env
+	}
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
@@ -380,15 +384,8 @@ skipDiff:
 		}
 	}
 
-	var env string
-	if envPtr != nil {
-		env = *envPtr
-		if strings.Contains(*envPtr, "_") && len(configCtx.EnvSlice) == 1 {
-			env = configCtx.EnvSlice[0]
-		}
-	}
-	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env)))) == 0) && !*noVaultPtr {
-		fmt.Printf("Missing required auth token for env: %s\n", env)
+	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0) && !*noVaultPtr {
+		fmt.Printf("Missing required auth token for env: %s\n", envBasis)
 		os.Exit(1)
 	}
 
@@ -434,7 +431,7 @@ skipDiff:
 				} else {
 					baseEnv = configCtx.EnvSlice[0]
 				}
-				if !*noVaultPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", *envPtr))) == 0 {
+				if !*noVaultPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0 {
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					appconfigrolePtr := new(string)
 
@@ -458,7 +455,7 @@ skipDiff:
 
 			recursivePathBuilder = func(testMod *kv.Modifier, pGen string, dynamicPathParts []string) {
 				if len(dynamicPathParts) == 0 {
-					if !*noVaultPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", *envPtr))) == 0 {
+					if !*noVaultPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0 {
 						appconfigrolePtr := new(string)
 
 						authErr := eUtils.AutoAuth(&config.DriverConfig{
@@ -764,7 +761,7 @@ skipDiff:
 							eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 						}
 					}
-				} else if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", *envPtr))) == 0 {
+				} else if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0 {
 					token := "novault"
 					envBasis := eUtils.GetEnvBasis(*envPtr)
 					driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), &token)

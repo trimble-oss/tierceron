@@ -90,12 +90,13 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	}
 	env := envVersion[0]
 	version := envVersion[1]
+	envBasis := eUtils.GetEnvBasis(env)
 
 	var tokenName string
 	if eUtils.RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) > 0 {
 		tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
 	} else {
-		tokenName = fmt.Sprintf("config_token_%s", env)
+		tokenName = fmt.Sprintf("config_token_%s", envBasis)
 	}
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenName), "novault") {
 		var err error
@@ -384,9 +385,9 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			project, service, _, tp = eUtils.GetProjectService(dc, tp)
 			useCache := true
 
-			if !utils.RefEqualsAny(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))), []string{"", "novault"}) {
+			if !utils.RefEqualsAny(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis)), []string{"", "novault"}) {
 				var err error
-				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))), dc.CoreConfig.VaultAddressPtr, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
+				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis)), dc.CoreConfig.VaultAddressPtr, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
 				goMod.Env = dc.CoreConfig.Env
 				if err != nil {
 					if useCache && goMod != nil {
@@ -398,11 +399,10 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				}
 
 				goMod.Env = env
-				goMod.EnvBasis = eUtils.GetEnvBasis(env)
+				goMod.EnvBasis = dc.CoreConfig.EnvBasis
 				goMod.Version = version
 				goMod.ProjectIndex = dc.ProjectSections
 				if len(goMod.ProjectIndex) > 0 {
-					goMod.EnvBasis = strings.Split(dc.CoreConfig.EnvBasis, "_")[0]
 					goMod.SectionKey = dc.SectionKey
 					goMod.SectionName = dc.SectionName
 					goMod.SubSectionValue = dc.SubSectionValue
