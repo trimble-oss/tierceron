@@ -168,7 +168,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if secretIDPtr != nil && len(*secretIDPtr) > 0 && appRoleIDPtr != nil && len(*appRoleIDPtr) > 0 {
 		override = true
 	}
-	isProd := strings.Contains(*envPtr, "staging") || strings.Contains(*envPtr, "prod")
+	isProd := envPtr != nil && (strings.Contains(*envPtr, "staging") || strings.Contains(*envPtr, "prod"))
 
 	// If cert file exists obtain secretID and appRoleID
 	if RefLength(appRoleConfigPtr) == 0 {

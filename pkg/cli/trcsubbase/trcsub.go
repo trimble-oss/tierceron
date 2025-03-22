@@ -74,8 +74,14 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 
 	flagset.Parse(argLines[1:])
 	if envPtr == nil {
-		envPtr = envDefaultPtr
+		if envDefaultPtr != nil {
+			envPtr = envDefaultPtr
+		} else {
+			env := "dev"
+			envPtr = &env
+		}
 	}
+	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*projectInfoPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
 		fmt.Printf("Must specify either -projectInfo, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
@@ -109,7 +115,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		driverConfigBase.CoreConfig.Log = logger
 		driverConfigBase.EndDir = *endDirPtr
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+			tokenName := fmt.Sprintf("config_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
@@ -128,13 +134,13 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 
 	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
 
-	wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+	wantedTokenName := fmt.Sprintf("config_token_%s", envBasis)
 	autoErr := eUtils.AutoAuth(driverConfigBase,
 		secretIDPtr,
 		appRoleIDPtr,
 		&wantedTokenName,
 		&tokenPtr, // Token matching currentTokenNamePtr
-		envPtr,
+		&envBasis,
 		addrPtr,
 		envCtxPtr,
 		appRoleConfigPtr,
@@ -144,7 +150,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		return autoErr
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr), addrPtr, *envPtr, driverConfigBase.CoreConfig.Regions, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr), addrPtr, envBasis, driverConfigBase.CoreConfig.Regions, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
@@ -153,7 +159,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		driverConfigBase.CoreConfig.Log.Println("Failure to init to vault")
 		return err
 	}
-	mod.Env = *envPtr
+	mod.Env = envBasis
 
 	if len(*pluginNamePtr) > 0 {
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", *pluginNamePtr))

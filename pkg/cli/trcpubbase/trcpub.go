@@ -68,6 +68,11 @@ func CommonMain(envPtr *string,
 	} else {
 		flagset.Parse(nil)
 	}
+	if envPtr == nil {
+		env := "dev"
+		envPtr = &env
+	}
+	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
@@ -87,7 +92,7 @@ func CommonMain(envPtr *string,
 		driverConfigBase.CoreConfig.Insecure = false
 		driverConfigBase.CoreConfig.Log = logger
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-			tokenName := fmt.Sprintf("vault_pub_token_%s", *envPtr)
+			tokenName := fmt.Sprintf("vault_pub_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
@@ -103,10 +108,10 @@ func CommonMain(envPtr *string,
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, &envBasis, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
 	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
-	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
+	if envPtr != nil && len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
@@ -121,12 +126,12 @@ func CommonMain(envPtr *string,
 		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("vault_pub_token_%s", *envPtr)), addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("vault_pub_token_%s", envBasis)), addrPtr, envBasis, nil, true, driverConfigBase.CoreConfig.Log)
 	if mod != nil {
 		defer mod.Release()
 	}
 	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
-	mod.Env = *envPtr
+	mod.Env = envBasis
 
 	warn, err := il.UploadTemplateDirectory(driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
