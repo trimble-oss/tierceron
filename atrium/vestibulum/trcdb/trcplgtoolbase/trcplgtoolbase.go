@@ -799,6 +799,9 @@ func CommonMain(envPtr *string,
 	} else if *certifyImagePtr {
 		//Certify Image
 		carrierCertify := false
+		// Certification always operates on env basis.
+		mod.EnvBasis = driverConfig.CoreConfig.EnvBasis
+		mod.Env = mod.EnvBasis
 		if ptc, ok := pluginToolConfig["trcplugin"].(string); ok && strings.Contains(ptc, "carrier") {
 			fmt.Println("Skipping checking for existing image due to carrier deployment.")
 			carrierCertify = true
