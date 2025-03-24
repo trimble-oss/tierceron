@@ -9,16 +9,16 @@ import (
 // {{or .<key> "<value>"}}
 const pattern string = `{{or \.([^"]+) "([^"]+)"}}`
 
-func TrimDotsAfterLastSlash(s string) string {
+func TrimDotsAfterLastSlash(s string) (string, int) {
 	lastSlash := strings.LastIndex(s, "/")
 	if lastSlash == -1 {
 		lastSlash = 0
 	}
 	nextDot := strings.Index(s[lastSlash:], ".")
 	if nextDot == -1 {
-		return s
+		return s, nextDot
 	}
-	return s[:lastSlash+nextDot]
+	return s[:lastSlash+nextDot], lastSlash + nextDot
 }
 
 // Parse Extracts default values as key-value pairs from template files.

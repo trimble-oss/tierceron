@@ -26,6 +26,11 @@ import (
 func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, templatePath string) (string, error) {
 	// Get template data from information in request.
 	//  ./trc_templates/Project/Service/configfile.yml.tmpl
+	defer func(m *helperkv.Modifier, envOrig string) {
+		m.Env = envOrig
+	}(mod, mod.Env)
+	mod.Env = mod.EnvBasis
+
 	project, service, serviceIndex, templateFile := eUtils.GetProjectService(driverConfig, templatePath)
 
 	// templateFile currently has full path, but we don't want all that...  Scrub it down.
@@ -42,7 +47,7 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		if strings.HasSuffix(templateFile, ".yml") {
 			templateFile = templateFile[0 : len(templateFile)-len(".yml")]
 		} else {
-			lastDotIndex := strings.LastIndex(templateFile, ".")
+			_, lastDotIndex := eUtils.TrimDotsAfterLastSlash(templateFile)
 			if lastDotIndex > 0 {
 				templateFile = templateFile[0:lastDotIndex]
 			}
@@ -56,7 +61,10 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		path = "templates/" + project + "/" + templateFile + "/template-file"
 	} else {
 		if driverConfig.ZeroConfig && mod.TemplatePath != "" && !driverConfig.CoreConfig.WantCerts {
-			mod.TemplatePath = eUtils.TrimDotsAfterLastSlash(templateFile)
+			_, lastDotIndex := eUtils.TrimDotsAfterLastSlash(templateFile)
+			if lastDotIndex != -1 {
+				mod.TemplatePath = mod.TemplatePath + templateFile[lastDotIndex:]
+			}
 			path = mod.TemplatePath + "/template-file"
 		} else {
 			path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
@@ -113,7 +121,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		} else if len(relativeTemplatePathParts) == 0 {
 			driverConfig.CoreConfig.Log.Println("Unable to find any relative template path.")
 		}
-		templatePathTrimmed := eUtils.TrimDotsAfterLastSlash(relativeTemplatePathParts[1])
+		templatePathTrimmed, _ := eUtils.TrimDotsAfterLastSlash(relativeTemplatePathParts[1])
 		modifier.TemplatePath = "templates" + templatePathTrimmed
 	} else {
 		driverConfig.CoreConfig.Log.Println("Configuring cert")
