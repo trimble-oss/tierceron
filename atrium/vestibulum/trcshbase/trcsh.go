@@ -982,7 +982,7 @@ func roleBasedRunner(
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 			// itdev, staging, and prod always key off TRC_ENV stored in trcshDriverConfig.DriverConfig.CoreConfig.Env.
 			envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
-			tokenName = "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.Env
+			tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
 		}
 		err = trcconfigbase.CommonMain(&envDefaultPtr, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &gTrcshConfig.EnvContext, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 	case "trcsub":
