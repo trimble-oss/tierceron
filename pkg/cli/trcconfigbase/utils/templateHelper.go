@@ -47,7 +47,7 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		if strings.HasSuffix(templateFile, ".yml") {
 			templateFile = templateFile[0 : len(templateFile)-len(".yml")]
 		} else {
-			lastDotIndex := strings.LastIndex(templateFile, ".")
+			_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
 			if lastDotIndex > 0 {
 				templateFile = templateFile[0:lastDotIndex]
 			}
@@ -61,7 +61,7 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		path = "templates/" + project + "/" + templateFile + "/template-file"
 	} else {
 		if driverConfig.ZeroConfig && mod.TemplatePath != "" && !driverConfig.CoreConfig.WantCerts {
-			_, lastDotIndex := eUtils.TrimDotsAfterLastSlash(templateFile)
+			_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
 			if lastDotIndex != -1 {
 				mod.TemplatePath = mod.TemplatePath + templateFile[lastDotIndex:]
 			}
@@ -121,7 +121,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		} else if len(relativeTemplatePathParts) == 0 {
 			driverConfig.CoreConfig.Log.Println("Unable to find any relative template path.")
 		}
-		templatePathTrimmed, _ := eUtils.TrimDotsAfterLastSlash(relativeTemplatePathParts[1])
+		templatePathTrimmed, _ := eUtils.TrimLastDotAfterLastSlash(relativeTemplatePathParts[1])
 		modifier.TemplatePath = "templates" + templatePathTrimmed
 	} else {
 		driverConfig.CoreConfig.Log.Println("Configuring cert")
