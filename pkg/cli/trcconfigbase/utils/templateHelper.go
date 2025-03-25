@@ -42,16 +42,9 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		templateFile = splitDir[len(splitDir)-1]
 	}
 
-	if strings.Contains(templateFile, ".tmpl") {
-		templateFile = templateFile[0 : len(templateFile)-len(".tmpl")]
-		if strings.HasSuffix(templateFile, ".yml") {
-			templateFile = templateFile[0 : len(templateFile)-len(".yml")]
-		} else {
-			_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
-			if lastDotIndex > 0 {
-				templateFile = templateFile[0:lastDotIndex]
-			}
-		}
+	_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
+	if lastDotIndex > 0 {
+		templateFile = templateFile[0:lastDotIndex]
 	}
 
 	var path string
@@ -61,10 +54,6 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		path = "templates/" + project + "/" + templateFile + "/template-file"
 	} else {
 		if driverConfig.ZeroConfig && mod.TemplatePath != "" && !driverConfig.CoreConfig.WantCerts {
-			_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
-			if lastDotIndex != -1 {
-				mod.TemplatePath = mod.TemplatePath + templateFile[lastDotIndex:]
-			}
 			path = mod.TemplatePath + "/template-file"
 		} else {
 			path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
