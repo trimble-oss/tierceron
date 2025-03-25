@@ -409,7 +409,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				}
 
 				relativeTemplatePathParts := strings.Split(tp, coreopts.BuildOptions.GetFolderPrefix(dc.StartDir)+"_templates")
-				templateTrimmed, _ := eUtils.TrimDotsAfterLastSlash(relativeTemplatePathParts[1])
+				templateTrimmed, _ := eUtils.TrimLastDotAfterLastSlash(relativeTemplatePathParts[1])
 				goMod.TemplatePath = "templates" + templateTrimmed
 
 				cds = new(vcutils.ConfigDataStore)
