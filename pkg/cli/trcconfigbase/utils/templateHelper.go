@@ -47,7 +47,7 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		if strings.HasSuffix(templateFile, ".yml") {
 			templateFile = templateFile[0 : len(templateFile)-len(".yml")]
 		} else {
-			_, lastDotIndex := eUtils.TrimDotsAfterLastSlash(templateFile)
+			lastDotIndex := strings.LastIndex(templateFile, ".")
 			if lastDotIndex > 0 {
 				templateFile = templateFile[0:lastDotIndex]
 			}
