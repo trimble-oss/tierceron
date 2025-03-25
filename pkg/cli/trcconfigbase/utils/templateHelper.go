@@ -42,9 +42,6 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		templateFile = splitDir[len(splitDir)-1]
 	}
 
-	if strings.Contains(templateFile, "hibernate.cfg") {
-		fmt.Println("Here.")
-	}
 	_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
 	if lastDotIndex > 0 {
 		templateFile = templateFile[0:lastDotIndex]
