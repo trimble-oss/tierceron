@@ -54,15 +54,9 @@ func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 	return nil, err
 }
 
-func GetTlsConfig(certName string) (*tls.Config, error) {
-	// I don't think we're doing this right...?.?
-	// Comment out for now...
+func GetTlsConfigFromCertBytes(certBytes []byte) (*tls.Config, error) {
 	rootCertPool := x509.NewCertPool()
-	pem, err := ReadServerCert(certName)
-	if err != nil {
-		return nil, err
-	}
-	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+	if ok := rootCertPool.AppendCertsFromPEM(certBytes); !ok {
 		return nil, errors.New("couldn't append certs to root")
 	}
 	// clientCert := make([]tls.Certificate, 0, 1)
@@ -75,6 +69,16 @@ func GetTlsConfig(certName string) (*tls.Config, error) {
 		RootCAs: rootCertPool,
 		//		Certificates: clientCert,
 	}, nil
+}
+
+func GetTlsConfig(certName string) (*tls.Config, error) {
+	// I don't think we're doing this right...?.?
+	// Comment out for now...
+	pem, err := ReadServerCert(certName)
+	if err != nil {
+		return nil, err
+	}
+	return GetTlsConfigFromCertBytes(pem)
 }
 
 func initCertificates() {

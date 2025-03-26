@@ -147,7 +147,8 @@ func LoadBaseTemplate(driverConfig *config.DriverConfig, templateResult *extract
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(driverConfig.CoreConfig, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
+		servicePath := fmt.Sprintf("%s/%s", service, service)
+		cds.Init(driverConfig.CoreConfig, goMod, true, true, project, commonPaths, servicePath) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	var errSeed error

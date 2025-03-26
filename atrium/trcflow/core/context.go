@@ -861,7 +861,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tfContext *TrcFlowContext,
 // Open a database connection to the provided source using provided
 // source configurations.
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tfContext *TrcFlowContext, dbUrl string, username string, sourceDBConfig map[string]interface{}) (*sql.DB, error) {
-	return trcdbutil.OpenDirectConnection(tfmContext.DriverConfig.CoreConfig, dbUrl,
+	return trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, dbUrl,
 		username,
 		coreopts.BuildOptions.DecryptSecretConfig(sourceDBConfig, sourceDatabaseConnectionsMap[tfContext.RemoteDataSource["dbsourceregion"].(string)]))
 }
@@ -931,7 +931,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					retryCount := 0
 					eUtils.LogInfo(driverConfig.CoreConfig, "Obtaining resource connections for : "+flow.ServiceName()+"-"+region)
 				retryConnectionAccess:
-					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig.CoreConfig, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig, tfContext.GoMod, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), sDC["dbsourcepassword"].(string))
 					if err != nil && err.Error() != "incorrect URL format" {
 						if retryCount < 3 && err != nil && dbsourceConn == nil {
 							retryCount = retryCount + 1

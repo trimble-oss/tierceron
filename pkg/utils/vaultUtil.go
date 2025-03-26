@@ -211,6 +211,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 			TokenCache:          tokenCache,
 			VaultAddressPtr:     RefMap(pluginConfig, "vaddress"),
 			Env:                 pluginConfig["env"].(string),
+			EnvBasis:            GetEnvBasis(pluginConfig["env"].(string)),
 			Regions:             regions,
 			ExitOnFailure:       exitOnFailure,
 			Log:                 trcdbEnvLogger,
