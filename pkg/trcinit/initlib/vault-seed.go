@@ -698,6 +698,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 	for len(mapStack) > 0 {
 		current := mapStack[0]
 		mapStack = mapStack[1:] // Pop the top value
+
 		writeVals := writeCollection{path: current.path, data: map[string]interface{}{}}
 		hasLeafNodes := false // Flag to signify this map had values to write
 
@@ -741,6 +742,9 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 		if hasLeafNodes { // Save all writable values in the current path
 			writeStack = append(writeStack, writeVals)
 		}
+	}
+	if len(writeStack) == 0 {
+		return nil // Nothing to write.
 	}
 
 	tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)

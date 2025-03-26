@@ -42,9 +42,11 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		templateFile = splitDir[len(splitDir)-1]
 	}
 
-	_, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
+	templateTrimmed, lastDotIndex := eUtils.TrimLastDotAfterLastSlash(templateFile)
 	if lastDotIndex > 0 {
 		templateFile = templateFile[0:lastDotIndex]
+	} else {
+		templateFile = templateTrimmed
 	}
 
 	var path string

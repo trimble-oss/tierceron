@@ -187,16 +187,19 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 
 	addr := pluginConfig["vaddress"].(string)
 	addrPtr := &addr
+	currentTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(pluginConfig["env"].(string)))
 
 	driverConfigBasis := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
-			Regions:         emptySlice,
-			TokenCache:      cache.NewTokenCache(fmt.Sprintf("config_token_%s", pluginConfig["env"].(string)), eUtils.RefMap(pluginConfig, "tokenptr")),
-			VaultAddressPtr: addrPtr,
-			Insecure:        true, // Always local...
-			Env:             pluginConfig["env"].(string),
-			ExitOnFailure:   false,
-			Log:             driverConfig.CoreConfig.Log,
+			Regions:             emptySlice,
+			CurrentTokenNamePtr: &currentTokenName,
+			TokenCache:          cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr")),
+			VaultAddressPtr:     addrPtr,
+			Insecure:            true, // Always local...
+			Env:                 pluginConfig["env"].(string),
+			EnvBasis:            eUtils.GetEnvBasis(pluginConfig["env"].(string)),
+			ExitOnFailure:       false,
+			Log:                 driverConfig.CoreConfig.Log,
 		},
 	}
 

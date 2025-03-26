@@ -296,13 +296,24 @@ func Parse(config *core.CoreConfig, cds *vcutils.ConfigDataStore,
 			defaultSecret)
 
 		if cds != nil {
-			for _, region := range cds.Regions {
+			if len(cds.Regions) > 0 {
+				for _, region := range cds.Regions {
+					parseAndSetSection(cds,
+						secretSection,
+						"super-secrets",
+						service,
+						keyPath,
+						keyName+"~"+region,
+						secret,
+						defaultSecret)
+				}
+			} else {
 				parseAndSetSection(cds,
 					secretSection,
 					"super-secrets",
 					service,
 					keyPath,
-					keyName+"~"+region,
+					keyName,
 					secret,
 					defaultSecret)
 			}

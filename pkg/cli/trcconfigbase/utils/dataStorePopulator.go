@@ -77,6 +77,10 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
+			if strings.HasSuffix(path, servicesWanted[i]) {
+				foundWantedService = true
+				break
+			}
 			splitService := strings.Split(servicesWanted[i], ".")
 			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true
@@ -552,9 +556,12 @@ func getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathName string, 
 		//add paths
 		slicey := secrets.Data["keys"].([]interface{})
 		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
-			pathList = append(pathList, pathName)
 			if isDir {
+				pathList = append(pathList, pathName)
 				pathList = append(pathList, strings.TrimRight(pathName, "/"))
+			} else {
+				pathList = append(pathList, strings.TrimRight(pathName, "/"))
+
 			}
 		} else {
 			dirMap := map[string]bool{}
