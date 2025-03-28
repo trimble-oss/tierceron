@@ -21,7 +21,11 @@ import (
 
 // OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.
 func OpenDirectConnection(driverConfig *config.DriverConfig,
-	goMod *helperkv.Modifier, url string, username string, password string) (*sql.DB, error) {
+	goMod *helperkv.Modifier,
+	url string,
+	username string,
+	passwordFunc func() (string, error)) (*sql.DB, error) {
+
 	driver, server, port, dbname, certName, err := validator.ParseURL(driverConfig.CoreConfig, url)
 
 	if err != nil {
@@ -72,6 +76,10 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 		}
 	}
 
+	password, passErr := passwordFunc()
+	if passErr != nil {
+		return nil, passErr
+	}
 	switch driver {
 	case "mysql", "mariadb":
 		if len(port) == 0 {
