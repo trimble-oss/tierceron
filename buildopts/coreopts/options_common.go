@@ -136,8 +136,8 @@ func GetSyncedTables() []string {
 //     encrypted password found within the source database configuration.
 //
 // returns: the decrypted password to be used in establishing a database connection.
-func DecryptSecretConfig(sourceDatabaseConfigs map[string]interface{}, config map[string]interface{}) string {
-	return ""
+func DecryptSecretConfig(sourceDatabaseConfigs map[string]interface{}, config map[string]interface{}) (string, error) {
+	return "", nil
 }
 
 // Utlized to provide Data Flow Statistics components: database name in which the DFS resides and the index
