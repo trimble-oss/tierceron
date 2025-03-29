@@ -1,0 +1,4 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=spiralis -pluginType=trcshpluginservice -sha256=spiralis.so
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -agentdeploy -pluginName=spiralis

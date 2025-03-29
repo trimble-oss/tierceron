@@ -1,0 +1,4 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=fenestra -pluginType=trcshpluginservice -sha256=fenestra.so
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -agentdeploy -pluginName=fenestra

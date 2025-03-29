@@ -39,8 +39,6 @@ cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 eliasnaur.com/font v0.0.0-20230308162249-dd43949cb42d h1:ARo7NCVvN2NdhLlJE9xAbKweuI9L6UgfTbYb0YwPacY=
 eliasnaur.com/font v0.0.0-20230308162249-dd43949cb42d/go.mod h1:OYVuxibdk9OSLX8vAqydtRPP87PyTFcT9uH3MlEGBQA=
-fyne.io/fyne/v2 v2.5.2 h1:eSyGTmSkv10yAdAeHpDet6u2KkKxOGFc14kQu81We7Q=
-fyne.io/fyne/v2 v2.5.2/go.mod h1:26gqPDvtaxHeyct+C0BBjuGd2zwAJlPkUGSBrb+d7Ug=
 fyne.io/systray v1.11.0 h1:D9HISlxSkx+jHSniMBR6fCFOUjk1x/OOOJLa9lJYAKg=
 fyne.io/systray v1.11.0/go.mod h1:RVwqP9nYMo7h5zViCBHri2FgjXF7H2cub7MAq4NSoLs=
 gioui.org v0.8.0 h1:QV5p5JvsmSmGiIXVYOKn6d9YDliTfjtLlVf5J+BZ9Pg=
@@ -322,6 +320,7 @@ github.com/mitchellh/reflectwalk v1.0.0/go.mod h1:mSTlrgnPZtwu0c4WaC2kGObEpuNDbx
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
+github.com/mrjrieke/fyne/v2 v2.5.2-1 h1:v7oR85WrBisswpz6FcMmDV8elDyEwwAjtcfNeil75kw=
 github.com/mrjrieke/fyne/v2 v2.5.2-1/go.mod h1:26gqPDvtaxHeyct+C0BBjuGd2zwAJlPkUGSBrb+d7Ug=
 github.com/neelance/astrewrite v0.0.0-20160511093645-99348263ae86/go.mod h1:kHJEU3ofeGjhHklVoIGuVj85JJwZ6kWPaJwCIxgnFmo=
 github.com/neelance/sourcemap v0.0.0-20200213170602-2833bce08e4c/go.mod h1:Qr6/a/Q4r9LP1IltGz7tA7iOK1WonHEYhu1HRBA7ZiM=
