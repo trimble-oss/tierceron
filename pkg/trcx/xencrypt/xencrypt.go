@@ -35,7 +35,7 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 	}
 
 	for valField, valFound := range valFieldMap {
-		if !valFound {
+		if valField != "encryptionSecret" && !valFound {
 			return errors.New("This field does not exist in this seed file: " + valField)
 		}
 	}
@@ -45,7 +45,8 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 
 func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 	var encryptionSecretField = "encryptionSecret"
-	if slices.Contains(driverConfig.Trcxe, encryptionSecretField) {
+
+	if slices.ContainsFunc(driverConfig.Trcxe, func(s string) bool { return strings.Contains(s, encryptionSecretField) }) {
 		var input, validateInput string
 		fmt.Printf("Enter desired value for '%s': \n", encryptionSecretField)
 		fmt.Scanln(&input)

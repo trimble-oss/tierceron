@@ -566,7 +566,9 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 	}
 
 	if len(driverConfig.Trcxe) > 1 { //Validate first then replace fields
-		driverConfig.ProjectSections = projectSectionTemp
+		if len(projectSectionTemp) > 0 {
+			driverConfig.ProjectSections = projectSectionTemp
+		}
 		valValidateError := xencrypt.FieldValidator(driverConfig.Trcxe[0]+","+driverConfig.Trcxe[1], secretCombinedSection, valueCombinedSection)
 		if valValidateError != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, valValidateError, false)
