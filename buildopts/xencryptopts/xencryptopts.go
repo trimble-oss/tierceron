@@ -6,6 +6,10 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
+func SetEncryptionSecret(encryptionSecret string) error {
+	return errors.New("not implemented")
+}
+
 // MakeNewEncryption is a function that returns a new encryption key and a new encryption salt
 func MakeNewEncryption() (string, string, error) {
 	return "", "", errors.New("not implemented")

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
@@ -42,11 +43,9 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 	return nil
 }
 
-var encryptSecret = ""
-
 func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 	var encryptionSecretField = "encryptionSecret"
-	if len(driverConfig.Trcxe) > 2 {
+	if slices.Contains(driverConfig.Trcxe, encryptionSecretField) {
 		var input, validateInput string
 		fmt.Printf("Enter desired value for '%s': \n", encryptionSecretField)
 		fmt.Scanln(&input)
@@ -55,7 +54,10 @@ func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 		if validateInput != input {
 			return errors.New("Entered values for '" + encryptionSecretField + "' do not match, exiting...")
 		}
-		encryptSecret = input
+		if setEncryptErr := xencryptopts.BuildOptions.SetEncryptionSecret(input); setEncryptErr != nil {
+			fmt.Printf("Entering encryptionSecret directly not supported\n")
+			return setEncryptErr
+		}
 	} else {
 		tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 
@@ -69,11 +71,13 @@ func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 			return readErr
 		}
 		if data == nil {
-			return errors.New("Encryption secret could not be found.")
+			return errors.New("encryption secret could not be found")
 		}
 
 		if encrypSec, ok := data["encryptionSecret"].(string); ok && encrypSec != "" {
-			encryptSecret = encrypSec
+			if setEncryptErr := xencryptopts.BuildOptions.SetEncryptionSecret(encrypSec); setEncryptErr != nil {
+				return setEncryptErr
+			}
 		}
 	}
 	return nil

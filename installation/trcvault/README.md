@@ -50,6 +50,11 @@ The following creates roles for deploy and azuredeploy.
 trcinit -rotateTokens -approle=deploy -namespace=agent -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
 ```
 
+The following creates roles for deploy and hivekernel.
+```
+trcinit -rotateTokens -approle=hivekernel -namespace=agent -addr=https://<vaulthost:vaultport> -token=$VAULTOKEN
+```
+
 ## Update roles
 ```
 trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
