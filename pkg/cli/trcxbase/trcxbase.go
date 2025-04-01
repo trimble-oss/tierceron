@@ -1,7 +1,6 @@
 package trcxbase
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -78,7 +77,7 @@ func CommonMain(ctx config.ProcessContext,
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 
-	fileAddrPtr := flagset.String("seedpath", "", "Path for seed file")
+	seedPathPtr := flagset.String("seedpath", "", "Path for seed file")
 	fieldsPtr := flagset.String("fields", "", "Fields to enter")
 	encryptedPtr := flagset.String("encrypted", "", "Fields to encrypt")
 	readOnlyPtr := flagset.Bool("readonly", false, "Fields to encrypt")
@@ -181,10 +180,10 @@ func CommonMain(ctx config.ProcessContext,
 	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
-	} else if (len(*fieldsPtr) == 0) && len(*fileAddrPtr) != 0 {
+	} else if (len(*fieldsPtr) == 0) && len(*seedPathPtr) != 0 {
 		fmt.Println("The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
 		os.Exit(1)
-	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*fileAddrPtr) == 0) {
+	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*seedPathPtr) == 0) {
 		fmt.Println("The -encrypted flag must be used with -seedPath flag if -readonly is used")
 		os.Exit(1)
 	} else {
@@ -207,42 +206,15 @@ func CommonMain(ctx config.ProcessContext,
 
 	trcxe := false
 	sectionSlice := []string{""}
-	if len(*fileAddrPtr) != 0 { //Checks if seed file exists & figured out if index/restricted
+	if len(*seedPathPtr) != 0 { //Checks if seed file exists & figured out if index/restricted
 		trcxe = true
-		directorySplit := strings.Split(*fileAddrPtr, "/")
-		indexed := false
-		if !*noVaultPtr {
-			pwd, _ := os.Getwd()
-			fileIndex, fileErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Index/" + *fileAddrPtr + "_seed.yml")
-			if fileIndex != nil {
-				defer fileIndex.Close()
-			}
-			if errors.Is(fileErr, os.ErrNotExist) {
-				fileRestricted, fileRErr := os.Open(pwd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + *envPtr + "/Restricted/" + *fileAddrPtr + "_seed.yml")
-				if fileRestricted != nil {
-					defer fileRestricted.Close()
-				}
-				if errors.Is(fileRErr, os.ErrNotExist) {
-					fmt.Println("Specified seed file could not be found.")
-					os.Exit(1)
-				}
-			} else {
-				indexed = true
-			}
-		} else {
-			indexed = true
-		}
+		directorySplit := strings.Split(*seedPathPtr, "/")
 
-		if indexed {
-			if len(directorySplit) >= 3 { //Don't like this, will change later
-				*eUtils.IndexedPtr = directorySplit[0]
-				*eUtils.IndexNameFilterPtr = directorySplit[1]
-				*eUtils.IndexValueFilterPtr = directorySplit[2]
-				sectionSlice = strings.Split(*eUtils.IndexValueFilterPtr, ",")
-			}
-		} else {
-			fmt.Println("Not supported for restricted section.")
-			os.Exit(1)
+		if len(directorySplit) >= 3 { //Don't like this, will change later
+			*eUtils.IndexedPtr = directorySplit[0]
+			*eUtils.IndexNameFilterPtr = directorySplit[1]
+			*eUtils.IndexValueFilterPtr = directorySplit[2]
+			sectionSlice = strings.Split(*eUtils.IndexValueFilterPtr, ",")
 		}
 	}
 
