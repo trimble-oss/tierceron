@@ -9,6 +9,7 @@ import (
 	"plugin"
 	"reflect"
 	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -90,7 +91,11 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		return
 	}
 	var mod *kv.Modifier
-
+	pHID, err := strconv.Atoi(pH.Id)
+	if err != nil {
+		driverConfig.CoreConfig.Log.Println("Unsupported id of handler attempting to start dynamic reloading.")
+		return
+	}
 	for {
 		if mod == nil {
 			var err error
@@ -191,7 +196,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 								driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert expiration: %s\n", s)
 							}
 						}
-					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
+					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) && pHID == 0 {
 						response := fmt.Sprintf("Cert %s expiring in %.2f hours.", k, timeDiff.Hours())
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
 							Name:        &pH.Name,
@@ -201,7 +206,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 						}
 						tiNow := time.Now()
 						v.lastUpdate = &tiNow
-					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour*24) {
+					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour*24) && pHID == 0 {
 						daysLeft := timeDiff.Hours() / 24.0
 						response := fmt.Sprintf("Cert %s expiring in %d days.", k, int(daysLeft))
 						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
@@ -214,7 +219,6 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 						v.lastUpdate = &tiNow
 					}
 				}
-
 			}
 		}
 		if pH.KernelCtx != nil &&
@@ -935,6 +939,11 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 	}
 	if globalCertCache == nil {
 		driverConfig.CoreConfig.Log.Printf("No cert information to broadcast\n")
+		return
+	}
+	pHID, err := strconv.Atoi(pluginHandler.Id)
+	if err != nil || pHID != 0 {
+		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for kernel id: %s\n", pluginHandler.Id)
 		return
 	}
 	response := ""
