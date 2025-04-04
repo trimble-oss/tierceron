@@ -91,10 +91,15 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		return
 	}
 	var mod *kv.Modifier
-	pHID, err := strconv.Atoi(pH.Id)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Println("Setting default handler id for dynamic reloading.")
-		pHID = 0
+	pHID := 0
+	pHIDs := strings.Split(pH.Id, "-")
+	if len(pHIDs) > 0 {
+		id, err := strconv.Atoi(pHIDs[len(pHIDs)-1])
+		if err != nil {
+			driverConfig.CoreConfig.Log.Println("Setting default handler id for dynamic reloading.")
+		} else {
+			pHID = id
+		}
 	}
 	for {
 		if mod == nil {
@@ -941,9 +946,15 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		driverConfig.CoreConfig.Log.Printf("No cert information to broadcast\n")
 		return
 	}
-	pHID, err := strconv.Atoi(pluginHandler.Id)
-	if err != nil {
-		pHID = 0
+	pHID := 0
+	pHIDs := strings.Split(pluginHandler.Id, "-")
+	if len(pHIDs) > 0 {
+		id, err := strconv.Atoi(pHIDs[len(pHIDs)-1])
+		if err != nil {
+			driverConfig.CoreConfig.Log.Println("Setting default handler id for initial broadcasting.")
+		} else {
+			pHID = id
+		}
 	}
 	if pHID != 0 {
 		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for kernel id: %s\n", pluginHandler.Id)
