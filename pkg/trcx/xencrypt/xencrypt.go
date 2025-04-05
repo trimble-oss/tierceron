@@ -46,7 +46,10 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 	var encryptionSecretField = "encryptionSecret"
 
-	if slices.ContainsFunc(driverConfig.Trcxe, func(s string) bool { return strings.Contains(s, encryptionSecretField) }) {
+	if slices.ContainsFunc(driverConfig.Trcxe,
+		func(s string) bool {
+			return driverConfig.NoVault || strings.Contains(s, encryptionSecretField) // Novault requires manual entry of encryptionSecret
+		}) {
 		var input, validateInput string
 		fmt.Printf("Enter desired value for '%s': \n", encryptionSecretField)
 		fmt.Scanln(&input)
