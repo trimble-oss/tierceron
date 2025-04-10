@@ -10,4 +10,6 @@ use ./atrium/vestibulum/hive/plugins/trcshtalk
 
 use ./atrium/vestibulum/hive/plugins/trcmutabilis
 
+use ./atrium/vestibulum/hive/plugins/trcvico
+
 use ./atrium/vestibulum/trcchatproxy

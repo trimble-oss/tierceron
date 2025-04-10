@@ -21,7 +21,6 @@ require (
 )
 
 require (
-	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible
@@ -32,6 +31,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.2
 	github.com/docker/docker v26.1.5+incompatible
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/graphql-go/graphql v0.8.1
 	github.com/trimble-oss/tierceron-core/v2 v2.1.10
 	github.com/trimble-oss/tierceron-hat v1.2.9
@@ -71,7 +71,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -133,6 +132,8 @@ require (
 )
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.26
+
+//replace github.com/square/go-jose.v2 => ../go-jose
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
 
