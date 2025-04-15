@@ -14,6 +14,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/data"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/fenestrabase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib" // Update package path as needed
 	"gopkg.in/yaml.v2"
@@ -24,10 +26,17 @@ var sender chan error
 var serverAddr *string //another way to do this...
 var dfstat *tccore.TTDINode
 
+var DetailedElements []*mashupsdk.MashupDetailedElement
+
 const (
 	HELLO_CERT  = "./hello.crt"
 	HELLO_KEY   = "./hellokey.key"
 	COMMON_PATH = "./config.yml"
+)
+
+const (
+	FENESTRA_START = iota
+	FENESTRA_QUERY
 )
 
 func templateIfy(configKey string) string {
@@ -51,6 +60,8 @@ func receiver(receive_chan *chan core.KernelCmd) {
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			//TODO
+		case event.Command == FENESTRA_QUERY:
+
 		default:
 			//TODO
 		}
@@ -72,7 +83,8 @@ func init() {
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("Spiralis Version: %s\n", sha)
+
+	fmt.Printf("Fenestra Version: %s\n", sha)
 }
 
 func send_dfstat() {
@@ -229,6 +241,20 @@ func stop(pluginName string) {
 		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
 	}
 	dfstat = nil
+}
+
+func SetConfigContext(cc *tccore.ConfigContext) {
+	configContext = cc
+	// TODO: pull these two from ConfigContext
+	insecure := false
+	headless := false
+
+	if headless {
+		DetailedElements = data.GetHeadlessData(&insecure, configContext.Log)
+	} else {
+		DetailedElements = data.GetData(&insecure, configContext.Log, &configContext.Env)
+	}
+
 }
 
 func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
