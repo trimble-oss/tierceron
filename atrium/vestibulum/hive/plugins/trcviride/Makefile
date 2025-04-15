@@ -12,7 +12,7 @@ GOBIN ?= ./bin
 help:
 	@echo "Please use \`make <ROOT>' where <ROOT> is one of"
 	@echo "  dependencies to go install the dependencies"
-	@echo "  hellocustosworld   to build best example of nute usage"
+	@echo "  pluginvico   to build best example of vico usage"
 	@echo "  test         to run unittests"
 
 depend:
@@ -21,12 +21,6 @@ depend:
 clean:
 	rm -f bin
 
-cleanhellosdk:
-	rm hellosdk/hellosdk_grpc.pb.go; rm hellosdk/hellosdk.pb.go
-
-hellosdk: */*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative hellosdk/hellosdk.proto
-
-fenestra:
-	go build -buildmode=plugin -trimpath -o="./fenestra.so" -tags "insecure fyneboot argosystub tc azrcr memonly kernel" trcfenestra.go
+viride:
+	go build -buildmode=plugin -trimpath -o="./viride.so" -tags "tc azrcr memonly kernel" trcviride.go
 

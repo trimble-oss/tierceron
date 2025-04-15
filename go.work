@@ -12,4 +12,8 @@ use ./atrium/vestibulum/hive/plugins/trcmutabilis
 
 use ./atrium/vestibulum/hive/plugins/trcvico
 
+use ./atrium/vestibulum/hive/plugins/trcrosea
+
+use ./atrium/vestibulum/hive/plugins/trcviride
+
 use ./atrium/vestibulum/trcchatproxy
