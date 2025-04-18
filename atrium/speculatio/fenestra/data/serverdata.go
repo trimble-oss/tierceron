@@ -16,7 +16,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 var maxTime int64
