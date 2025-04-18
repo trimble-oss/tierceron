@@ -219,6 +219,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			defer imageFile.Close()
 			if _, err := io.Copy(sha256, imageFile); err != nil {
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not sha256 image from file system for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
+				return err
 			}
 
 			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
@@ -243,13 +244,16 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if downloadErr != nil {
 			eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Could not get download image for env: %s and plugin %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, downloadErr.Error()), false)
 			vaultPluginSignature["imagesha256"] = "invalidurl"
+			return downloadErr
 		}
 		if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
+			logger.Printf("PluginDeployFlow updating new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName)
 			err = os.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 			vaultPluginSignature["rawImageFile"] = nil
 
 			if err != nil {
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not write out download image for env: %s and plugin %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, downloadErr.Error()), false)
+				return err
 			}
 
 			if vaultPluginSignature["trctype"] == "agent" {
@@ -288,6 +292,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			pluginCopied = true
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, fmt.Sprintf("Image has been copied for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName))
 		} else {
+			logger.Printf("mismatched")
 			imgsha := "notlatest or notfound"
 			if _, okImg := vaultPluginSignature["imagesha256"]; okImg {
 				imgsha = vaultPluginSignature["imagesha256"].(string)
@@ -434,7 +439,7 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
 				}
 				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, driverConfig.CoreConfig.Log, hostRegion, pluginName)
-				if err != nil {
+				if statusUpdateErr != nil {
 					return statusUpdateErr
 				}
 
