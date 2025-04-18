@@ -23,7 +23,7 @@ import (
 
 	dfssql "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/flowsql"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 var PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"

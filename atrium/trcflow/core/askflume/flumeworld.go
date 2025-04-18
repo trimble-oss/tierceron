@@ -3,7 +3,7 @@ package askflume
 import (
 	"log"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
 	"google.golang.org/api/chat/v1"
 )

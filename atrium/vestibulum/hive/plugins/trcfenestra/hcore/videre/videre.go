@@ -8,7 +8,7 @@ import (
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
 )

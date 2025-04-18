@@ -14,8 +14,8 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/twitchtv/twirp v5.12.1+incompatible // indirect
 	github.com/xo/dburl v0.9.0 // indirect
-	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/sys v0.30.0
+	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/sys v0.31.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -39,8 +39,9 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v0.0.0-00010101000000-000000000000
-	github.com/trimble-oss/tierceron-core/v2 v2.1.10
-	github.com/trimble-oss/tierceron-nute v1.0.8
+	github.com/trimble-oss/tierceron-core/v2 v2.2.0
+	github.com/trimble-oss/tierceron-nute v1.0.9
+	github.com/trimble-oss/tierceron-nute-core v1.0.2
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
@@ -250,10 +251,10 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.36.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
-	golang.org/x/text v0.22.0
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/term v0.30.0 // indirect
+	golang.org/x/text v0.23.0
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/grpc v1.71.0

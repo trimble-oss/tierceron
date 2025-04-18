@@ -36,7 +36,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"

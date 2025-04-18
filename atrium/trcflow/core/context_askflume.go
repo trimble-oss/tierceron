@@ -4,7 +4,7 @@
 package core
 
 import (
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 type AskFlumeMessage struct {
