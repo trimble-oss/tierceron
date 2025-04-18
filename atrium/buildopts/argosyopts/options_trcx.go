@@ -9,7 +9,7 @@ import (
 	"strconv"
 
 	util "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	//	"time"
 )
