@@ -19,9 +19,9 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/spiralis/ttdirender"
 
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/g3nd/g3nworld"
 	"github.com/trimble-oss/tierceron-nute/g3nd/worldg3n/g3nrender"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 )
 

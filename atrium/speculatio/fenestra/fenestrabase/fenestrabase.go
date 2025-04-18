@@ -12,8 +12,8 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/trcRenderers"
 
 	"fyne.io/fyne/v2"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/custos/custosworld"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 func OutsideClone(custosWorldApp *custosworld.CustosWorldApp, childId int64, concreteElement *mashupsdk.MashupDetailedElement) {

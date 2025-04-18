@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 // This is currently a stub version of processing a DialogFlow query

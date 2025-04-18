@@ -13,8 +13,8 @@ import (
 
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/custos/custosworld"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 type SearchRenderer struct {
