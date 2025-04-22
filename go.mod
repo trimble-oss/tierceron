@@ -2,8 +2,6 @@ module github.com/trimble-oss/tierceron
 
 go 1.24.1
 
-toolchain go1.24.2
-
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dolthub/go-mysql-server v0.12.0
