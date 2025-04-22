@@ -240,6 +240,9 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
 	pluginName := cursoropts.BuildOptions.GetPluginName(false)
+	if len(pluginName) == 0 {
+		pluginName = pluginConfig["plugin"].(string)
+	}
 	certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 	if err != nil {
 		fmt.Printf("Error reading data from vault: %s\n", err)
@@ -275,11 +278,11 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 		}
 		sha := hex.EncodeToString(h.Sum(nil))
 		if certifyMap["trcsha256"].(string) == sha {
-			logger.Println("Validated drone")
+			logger.Println("Self validation complete")
 			return true, nil
 		} else {
-			logger.Printf("Error obtaining authorization components from drone: %s\n", errors.New("missing certification"))
-			return false, errors.New("missing certification from drone")
+			logger.Printf("Error obtaining authorization components: %s\n", errors.New("missing certification"))
+			return false, errors.New("missing certification")
 		}
 	}
 	logger.Printf("Missing certification from Vault")

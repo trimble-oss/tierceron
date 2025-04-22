@@ -288,9 +288,19 @@ func NewAgentConfig(addressPtr *string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
 	initNewTrcsh bool,
+	isShellRunner bool,
 	logger *log.Logger,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
 
+	if isShellRunner {
+		return &AgentConfigs{Env: &env}, &TrcShConfig{
+			IsShellRunner:   isShellRunner,
+			Env:             env,
+			EnvContext:      env,
+			VaultAddressPtr: addressPtr,
+			TokenCache:      tokenCache,
+		}, nil
+	}
 	agentTokenPtr := tokenCache.GetToken(agentTokenName)
 	if agentTokenPtr == nil {
 		logger.Println("trcsh Failed to bootstrap")

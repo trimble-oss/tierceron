@@ -161,21 +161,29 @@ func SubDeployScript(
 }
 
 // Gets list of supported deployers for current environment.
-func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*bool) ([]string, error) {
+func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...*bool) ([]string, error) {
 	isDrone := false
-	if len(dronePtr) > 0 {
-		isDrone = *dronePtr[0]
+	isShellRunner := false
+	if len(exeTypeFlags) > 0 {
+		isDrone = *exeTypeFlags[0]
+		if len(exeTypeFlags) > 1 {
+			isShellRunner = *exeTypeFlags[1]
+		}
 	}
 	// Swapping in project root...
-	configRoleSlice := strings.Split(*trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr, ":")
-	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-	approle := "config.yml"
 	tokenPtr := new(string)
-	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
-	if autoErr != nil {
-		fmt.Println("Missing auth components.")
-		return nil, autoErr
+	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	if !isShellRunner {
+		configRoleSlice := strings.Split(*trcshDriverConfig.DriverConfig.CoreConfig.AppRoleConfigPtr, ":")
+		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+		approle := "config.yml"
+		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &configRoleSlice[1], &configRoleSlice[0], &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, &mergedEnvBasis, &approle, false)
+		if autoErr != nil {
+			fmt.Println("Missing auth components.")
+			return nil, autoErr
+		}
+	} else {
+		tokenName = *trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr
 	}
 
 	mod, err := helperkv.NewModifier(trcshDriverConfig.DriverConfig.CoreConfig.Insecure, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(tokenName), trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.Regions, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
@@ -200,7 +208,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 	}
 	deploymentList := []string{}
 	var machineID string
-	if isDrone && !kernelopts.BuildOptions.IsKernel() {
+	if isDrone && !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 		machineID = coreopts.BuildOptions.GetMachineID()
 		if len(machineID) == 0 {
 			return nil, errors.New("unable to access id of machine")
@@ -218,7 +226,11 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 			if deploymentConfigErr != nil || deploymentConfig == nil {
 				continue
 			}
-			if isDrone {
+			if _, ok := deploymentConfig["trctype"]; !ok {
+				continue
+			}
+
+			if isDrone && !isShellRunner {
 				var valid_id string
 				if deployerids, ok := deploymentConfig["trcdeployerids"]; ok {
 					if ids, ok := deployerids.(string); ok {
@@ -251,6 +263,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, dronePtr ...*boo
 				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" {
 					deploymentList = append(deploymentList, deployment)
 				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_id) > 0 && valid_id == machineID {
+					deploymentList = append(deploymentList, deployment)
+				}
+			} else {
+				if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" {
 					deploymentList = append(deploymentList, deployment)
 				}
 			}
