@@ -4,7 +4,10 @@
 package pluginopts
 
 import (
+	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
+	rcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore"
+	score "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore"
 )
 
 // IsPluginHardwired - Override to hardwire plugins into the kernel for debugging.
@@ -17,6 +20,12 @@ func GetConfigPaths(pluginName string) []string {
 	switch pluginName {
 	case "trchelloworld":
 		return hccore.GetConfigPaths(pluginName)
+	case "fenestra":
+		fcore.GetConfigPaths(pluginName)
+	case "spiralis":
+		score.GetConfigPaths(pluginName)
+	case "rosea":
+		rcore.GetConfigPaths(pluginName)
 	}
 	return []string{}
 }
@@ -26,10 +35,26 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	switch pluginName {
 	case "trchelloworld":
 		hccore.Init(pluginName, properties)
+	case "fenestra":
+		fcore.Init(pluginName, properties)
+	case "spiralis":
+		score.Init(pluginName, properties)
+	case "rosea":
+		rcore.Init(pluginName, properties)
 	}
 }
 
 // GetPluginMessages - Override plugin messages
-func GetPluginMessages(string) []string {
+func GetPluginMessages(pluginName string) []string {
+	switch pluginName {
+	case "trchelloworld":
+		return hccore.GetPluginMessages(pluginName)
+	case "fenestra":
+		return fcore.GetPluginMessages(pluginName)
+	case "spiralis":
+		return score.GetPluginMessages(pluginName)
+	case "rosea":
+		return rcore.GetPluginMessages(pluginName)
+	}
 	return []string{}
 }

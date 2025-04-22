@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -292,7 +293,42 @@ func CommonMain(envDefaultPtr *string,
 		var pluginCompleteChan chan bool
 		<-pluginCompleteChan
 
-		// TODO: run the plugin...
+	case "edit":
+		tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
+		driverConfig := config.DriverConfig{
+			CoreConfig: &core.CoreConfig{
+				IsShell:             true, // Pretent to be shell to keep things in memory
+				TokenCache:          cache.NewTokenCache(tokenName, tokenPtr),
+				ExitOnFailure:       true,
+				CurrentTokenNamePtr: &tokenName,
+				VaultAddressPtr:     addrPtr,
+				EnvBasis:            *envPtr,
+				Env:                 *envPtr,
+				Log:                 logger,
+			},
+			SecretMode:        true,
+			ZeroConfig:        true,
+			SubOutputMemCache: true,
+			ReadMemCache:      true,
+			OutputMemCache:    true,
+			MemFs:             trcshMemFs.NewTrcshMemFs(),
+		}
+		configMap := map[string]interface{}{
+			"plugin_name": "trcctl",
+			"token_name":  tokenName,
+			"vault_token": *tokenPtr,
+			"vault_addr":  *addrPtr,
+			"agent_env":   *envPtr,
+			"deployments": "fenestra,rosea,spiralis",
+			"region":      "west",
+		}
+
+		err := trcshbase.CommonMain(envPtr, addrPtr, nil, nil, nil, flagset, os.Args, &configMap, &driverConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+
 	case "x":
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, envCtxPtr, nil, flagset, os.Args)

@@ -7,7 +7,11 @@ import (
 
 	buildloadopts "github.com/trimble-oss/tierceron/buildopts"
 	coreloadopts "github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	cursorloadopts "github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	deployloadopts "github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	kernelloadopts "github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	pluginloadopts "github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	tcloadopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
@@ -31,6 +35,8 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	kernelopts.NewOptionsBuilder(kernelloadopts.LoadOptions())
+	cursoropts.NewOptionsBuilder(cursorloadopts.LoadOptions())
 	pluginopts.NewOptionsBuilder(pluginloadopts.LoadOptions())
 	buildopts.NewOptionsBuilder(buildloadopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreloadopts.LoadOptions())

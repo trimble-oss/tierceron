@@ -64,7 +64,7 @@ func main() {
 		},
 	}
 
-	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
+	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}

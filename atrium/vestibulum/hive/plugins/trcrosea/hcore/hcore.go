@@ -216,3 +216,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		return
 	}
 }
+
+func GetPluginMessages(pluginName string) []string {
+	return []string{}
+}
