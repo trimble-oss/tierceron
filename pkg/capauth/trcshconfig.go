@@ -1,11 +1,14 @@
 package capauth
 
 import (
+	"fmt"
+
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 type TrcShConfig struct {
+	IsShellRunner   bool
 	Env             string
 	EnvContext      string // Current env context...
 	VaultAddressPtr *string
@@ -23,7 +26,11 @@ func (trcshConfig *TrcShConfig) IsValid(agentConfigs *AgentConfigs) bool {
 			eUtils.RefLength(trcshConfig.KubeConfigPtr) > 0 &&
 			eUtils.RefLength(trcshConfig.VaultAddressPtr) > 0
 	} else {
-		// Agent
-		return eUtils.RefLength(trcshConfig.ConfigRolePtr) > 0 && eUtils.RefLength(trcshConfig.VaultAddressPtr) > 0
+		if trcshConfig.IsShellRunner && trcshConfig.TokenCache != nil && trcshConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_unrestricted", trcshConfig.Env)) != nil {
+			return true
+		} else {
+			// Agent
+			return eUtils.RefLength(trcshConfig.ConfigRolePtr) > 0 && eUtils.RefLength(trcshConfig.VaultAddressPtr) > 0
+		}
 	}
 }
