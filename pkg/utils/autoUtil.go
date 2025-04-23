@@ -136,13 +136,16 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var appRoleIDPtr *string
 	var secretIDPtr *string
 	addrPtr := driverConfig.CoreConfig.TokenCache.VaultAddressPtr
+	if addrPtr == nil {
+		addrPtr = new(string)
+	}
 	appRoleSecretSlice := driverConfig.CoreConfig.TokenCache.GetRoleStr(roleEntityPtr)
 	if appRoleSecretSlice != nil && len(*appRoleSecretSlice) == 2 {
 		appRoleIDPtr = &(*appRoleSecretSlice)[0]
 		secretIDPtr = &(*appRoleSecretSlice)[1]
 	} else {
-		appRoleIDPtr = nil
-		secretIDPtr = nil
+		appRoleIDPtr = new(string)
+		secretIDPtr = new(string)
 	}
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
@@ -203,6 +206,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				}
 				if addrPtr == nil || *addrPtr == "" {
 					*addrPtr = c.VaultHost
+					driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 				}
 
 				if RefLength(tokenPtr) == 0 || *wantedTokenNamePtr != *driverConfig.CoreConfig.CurrentTokenNamePtr {
@@ -393,7 +397,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	//if using appRole
-	if *secretIDPtr != "" || *appRoleIDPtr != "" || *wantedTokenNamePtr != "" {
+	if *secretIDPtr != "" && *appRoleIDPtr != "" && *wantedTokenNamePtr != "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
@@ -462,7 +466,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	}
 
-	if len(*wantedTokenNamePtr) > 0 {
+	if len(*wantedTokenNamePtr) > 0 && RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
 		}

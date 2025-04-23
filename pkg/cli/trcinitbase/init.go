@@ -13,6 +13,7 @@ import (
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -46,6 +47,15 @@ func CommonMain(envPtr *string,
 	argLines []string,
 	driverConfig *config.DriverConfig) {
 
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &core.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	var newPtr *bool = defaultFalse()
 	var seedPtr *string = defaultEmpty()
 	var shardPtr *string = defaultEmpty()
@@ -71,6 +81,7 @@ func CommonMain(envPtr *string,
 	var roleEntityPtr *string = defaultEmpty()
 	var devPtr *bool = defaultFalse()
 	var tokenPtr *string = defaultEmpty()
+	var addrPtr *string = defaultEmpty()
 
 	if flagset == nil {
 		PrintVersion()
@@ -107,6 +118,7 @@ func CommonMain(envPtr *string,
 		dynamicPathPtr = flagset.String("dynamicPath", "", "Seed a specific directory in vault.")
 		nestPtr = flagset.Bool("nest", false, "Seed a specific directory in vault.")
 		devPtr = flagset.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 		tokenPtr = flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	}
 
@@ -129,6 +141,7 @@ func CommonMain(envPtr *string,
 	} else {
 		flagset.Parse(nil)
 	}
+	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {

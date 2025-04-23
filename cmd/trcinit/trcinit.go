@@ -38,12 +38,11 @@ func main() {
 	}
 
 	envPtr := flagset.String("env", "dev", "Environment to be seeded")
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
-			TokenCache:    cache.NewTokenCacheEmpty(addrPtr),
+			TokenCache:    cache.NewTokenCacheEmpty(),
 		},
 	}
 

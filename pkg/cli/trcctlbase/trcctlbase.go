@@ -21,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -41,12 +42,23 @@ func CommonMain(envDefaultPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) error {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &core.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	var envPtr *string = nil
 	var envCtxPtr *string = new(string)
 	var logFilePtr *string = nil
+	var addrPtr *string = nil
 
 	if flagset == nil {
 		fmt.Println("Version: " + "1.36")
@@ -66,9 +78,12 @@ func CommonMain(envDefaultPtr *string,
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	} else {
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
 	}
+	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+
 	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
 		return logErr

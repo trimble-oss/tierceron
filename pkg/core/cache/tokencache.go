@@ -15,10 +15,13 @@ type TokenCache struct {
 	cache           *cmap.ConcurrentMap[string, *string]   // tokenKey, *token
 }
 
-func NewTokenCacheEmpty(vaptr *string) *TokenCache {
+func NewTokenCacheEmpty(varVaptr ...*string) *TokenCache {
 	ccmap := cmap.New[*string]()
-	tc := &TokenCache{cache: &ccmap}
-	tc.SetVaultAddress(vaptr)
+	rmap := cmap.New[*[]string]()
+	tc := &TokenCache{rcache: &rmap, cache: &ccmap}
+	if len(varVaptr) > 0 {
+		tc.SetVaultAddress(varVaptr[0])
+	}
 	return tc
 }
 

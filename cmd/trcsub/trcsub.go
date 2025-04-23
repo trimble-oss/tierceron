@@ -15,7 +15,6 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -42,20 +41,13 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
-			TokenCache:    cache.NewTokenCacheEmpty(addrPtr),
+			TokenCache:    cache.NewTokenCacheEmpty(),
 		},
-	}
-	if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
-		roleSlice := []string{*appRoleIDPtr, *secretIDPtr}
-		driverConfig.CoreConfig.TokenCache.AddRole("pub", &roleSlice)
 	}
 
 	err := trcsubbase.CommonMain(envPtr, nil, tokenNamePtr, flagset, os.Args, &driverConfig)

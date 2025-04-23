@@ -50,9 +50,6 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 
 	logger, logErr := trcshbase.CreateLogFile()
 	if logErr != nil {
@@ -62,13 +59,9 @@ func main() {
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
-			TokenCache:    cache.NewTokenCacheEmpty(addrPtr),
+			TokenCache:    cache.NewTokenCacheEmpty(),
 			Log:           logger,
 		},
-	}
-	if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
-		roleSlice := []string{*appRoleIDPtr, *secretIDPtr}
-		driverConfig.CoreConfig.TokenCache.AddRole("config", &roleSlice)
 	}
 
 	err := trcshbase.CommonMain(envPtr, nil, flagset, os.Args, nil, &driverConfig)

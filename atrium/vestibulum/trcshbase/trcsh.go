@@ -314,6 +314,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
 	projectServiceFlagPtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
 	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	isShellRunner := (configMap != nil)
 
 	// Initialize the token cache
@@ -348,6 +349,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	}()
 
 	flagset.Parse(argLines[1:])
+	driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
 	if kernelopts.BuildOptions.IsKernel() {
 		dronePtr = new(bool)

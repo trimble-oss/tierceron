@@ -10,6 +10,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -32,10 +34,21 @@ func CommonMain(envPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &core.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	var tokenPtr *string = nil
+	var addrPtr *string = nil
 	if flagset == nil {
 		PrintVersion()
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -51,6 +64,7 @@ func CommonMain(envPtr *string,
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	dirPtr := flagset.String("dir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
@@ -63,6 +77,12 @@ func CommonMain(envPtr *string,
 		flagset.Parse(argLines[1:])
 	} else {
 		flagset.Parse(nil)
+	}
+	if eUtils.RefLength(addrPtr) > 0 {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	} else {
+		fmt.Printf("Please set the addr flag\n")
+		os.Exit(-1)
 	}
 	if envPtr == nil {
 		env := "dev"
