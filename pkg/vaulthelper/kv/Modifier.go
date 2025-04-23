@@ -99,7 +99,11 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, tokenName string, env string, useCache bool) (*Modifier, error) {
 	return NewModifier(coreConfig.Insecure,
 		coreConfig.TokenCache.GetToken(tokenName),
-		coreConfig.VaultAddressPtr, env, coreConfig.Regions, useCache, coreConfig.Log)
+		coreConfig.TokenCache.VaultAddressPtr,
+		env,
+		coreConfig.Regions,
+		useCache,
+		coreConfig.Log)
 }
 
 // NewModifier Constructs a new modifier struct and connects to the vault

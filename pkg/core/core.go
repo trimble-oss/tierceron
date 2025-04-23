@@ -11,14 +11,13 @@ type CoreConfig struct {
 	IsShell bool // If tool running in shell.
 
 	// Vault Configurations...
-	Insecure            bool
-	CurrentTokenNamePtr *string // Pointer to one of the tokens in the cache...  changes depending on context.
-	TokenCache          *cache.TokenCache
-	AppRoleConfigPtr    *string
-	VaultAddressPtr     *string
-	EnvBasis            string // dev,QA, etc....
-	Env                 string // dev-1, dev-2, etc...
-	Regions             []string
+	Insecure             bool
+	CurrentTokenNamePtr  *string // Pointer to one of the tokens in the cache...  changes depending on context.
+	CurrentRoleEntityPtr *string // Pointer to one of the roles in the cache...  changes depending on context.
+	TokenCache           *cache.TokenCache
+	EnvBasis             string // dev,QA, etc....
+	Env                  string // dev-1, dev-2, etc...
+	Regions              []string
 
 	DynamicPathFilter string // Seeds from a specific path.
 	WantCerts         bool

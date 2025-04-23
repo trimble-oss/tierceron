@@ -26,6 +26,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcctlbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -61,11 +62,11 @@ func main() {
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(addrPtr),
 		},
 	}
 
 	err := trcctlbase.CommonMain(envPtr,
-		addrPtr,
 		pluginNamePtr,
 		tokenPtr,
 		uploadCertPtr,

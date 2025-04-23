@@ -47,6 +47,13 @@ func RefLength(src *string) int {
 	return len(*src)
 }
 
+func RefSliceLength(src *[]string) int {
+	if src == nil {
+		return 0
+	}
+	return len(*src)
+}
+
 func RefString(src *string) *string {
 	if src == nil {
 		return nil
