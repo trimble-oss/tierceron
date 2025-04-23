@@ -106,7 +106,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 			var err error
 			driverConfig.CoreConfig.Log.Println("")
 			pluginConfig := make(map[string]interface{})
-			pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+			pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 			currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
 			pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
@@ -467,7 +467,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	go pluginHandler.handle_errors(driverConfig)
 	statPluginConfig := make(map[string]interface{})
-	statPluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+	statPluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 	wantedTokenName := "config_token_pluginany"
 	statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
@@ -538,7 +538,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
 	pluginConfig := make(map[string]interface{})
-	pluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+	pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 	if len(driverConfig.CoreConfig.Regions) > 0 {
 		pluginConfig["regions"] = driverConfig.CoreConfig.Regions
 	}
@@ -630,10 +630,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 						driverConfig.CoreConfig.CurrentTokenNamePtr = nil
 						trcsubbase.CommonMain(&driverConfig.CoreConfig.EnvBasis,
-							driverConfig.CoreConfig.VaultAddressPtr,
 							&driverConfig.CoreConfig.EnvBasis,
-							new(string),
-							new(string),
 							&wantedTokenName,
 							flagset,
 							restrictedMappingSub,
@@ -647,10 +644,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						// Get certs...
 						driverConfig.CoreConfig.WantCerts = true
 						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-							driverConfig.CoreConfig.VaultAddressPtr,
 							&driverConfig.CoreConfig.Env,
-							new(string),      // secretId
-							new(string),      // approleId
 							&wantedTokenName, // wantedTokenName
 							nil,              // regionPtr
 							flagset,
@@ -672,10 +666,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
 						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-							driverConfig.CoreConfig.VaultAddressPtr,
 							&driverConfig.CoreConfig.Env,
-							new(string),      // secretId
-							new(string),      // approleId
 							&wantedTokenName, // tokenName
 							nil,              // regionPtr
 							flagset,
@@ -736,7 +727,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handle_errors(driverConfig)
 			statPluginConfig := make(map[string]interface{})
-			statPluginConfig["vaddress"] = *driverConfig.CoreConfig.VaultAddressPtr
+			statPluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 			currentStatTokenName := "config_token_pluginany"
 			statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 

@@ -93,7 +93,9 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
 	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		cache.NewTokenCache("config_token_pluginany",
+			eUtils.RefMap(pluginConfig, "tokenptr"),
+			eUtils.RefMap(pluginConfig, "vaddress")),
 		"config_token_pluginany", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if vault != nil {
 		defer vault.Close()

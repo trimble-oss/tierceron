@@ -2,6 +2,7 @@ package cache
 
 import (
 	"errors"
+	"strings"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
@@ -9,21 +10,95 @@ import (
 )
 
 type TokenCache struct {
-	cache *cmap.ConcurrentMap[string, *string] // tokenKey, *token
+	VaultAddressPtr *string                                // Vault address
+	rcache          *cmap.ConcurrentMap[string, *[]string] // role name, role/secret
+	cache           *cmap.ConcurrentMap[string, *string]   // tokenKey, *token
 }
 
-func NewTokenCacheEmpty() *TokenCache {
+func NewTokenCacheEmpty(varVaptr ...*string) *TokenCache {
 	ccmap := cmap.New[*string]()
-	return &TokenCache{cache: &ccmap}
+	rmap := cmap.New[*[]string]()
+	tc := &TokenCache{rcache: &rmap, cache: &ccmap}
+	if len(varVaptr) > 0 {
+		tc.SetVaultAddress(varVaptr[0])
+	}
+	return tc
 }
 
-func NewTokenCache(tokenKey string, token *string) *TokenCache {
+func NewTokenCache(tokenKey string, token *string, vaptr *string) *TokenCache {
 	if token == nil || len(*token) == 0 {
-		return NewTokenCacheEmpty()
+		return NewTokenCacheEmpty(vaptr)
 	}
 	ccmap := cmap.New[*string]()
 	ccmap.Set(tokenKey, token)
-	return &TokenCache{cache: &ccmap}
+	rmap := cmap.New[*[]string]()
+	tc := &TokenCache{rcache: &rmap, cache: &ccmap}
+	tc.SetVaultAddress(vaptr)
+	return tc
+}
+
+func (tc *TokenCache) SetVaultAddress(vaptr *string) error {
+	if vaptr == nil || len(*vaptr) == 0 {
+		return errors.New("Vault address nil or empty")
+	}
+	if memonly.IsMemonly() {
+		memprotectopts.MemProtect(nil, vaptr)
+	}
+	tc.VaultAddressPtr = vaptr
+	return nil
+}
+
+func (tc *TokenCache) AddRoleStr(roleKey string, role *string) error {
+	if len(roleKey) == 0 {
+		return errors.New("key cannot be empty")
+	}
+	if role == nil || len(*role) == 0 {
+		return errors.New("role nil or empty")
+	}
+	if memonly.IsMemonly() {
+		memprotectopts.MemProtect(nil, role)
+	}
+
+	roleSlice := strings.Split(*role, ":")
+	return tc.AddRole(roleKey, &roleSlice)
+}
+
+func (tc *TokenCache) AddRole(roleKey string, roleSlice *[]string) error {
+	if len(roleKey) == 0 {
+		return errors.New("key cannot be empty")
+	}
+	if roleSlice == nil || len(*roleSlice) == 0 {
+		return errors.New("role nil or empty")
+	}
+	if memonly.IsMemonly() {
+		for i := range len(*roleSlice) {
+			memprotectopts.MemProtect(nil, &(*roleSlice)[i])
+		}
+	}
+	tc.rcache.Set(roleKey, roleSlice)
+	return nil
+}
+
+func (tc *TokenCache) GetRole(roleKey string) *[]string {
+	return tc.GetRoleStr(&roleKey)
+}
+
+func (tc *TokenCache) GetRoleWithDefault(roleKey string, defaultRole string) *[]string {
+	return tc.GetRoleStr(&roleKey)
+}
+
+func (tc *TokenCache) GetRoleStr(roleKey *string) *[]string {
+	if roleKey == nil {
+		return nil
+	}
+	if tc.rcache == nil {
+		return nil
+	}
+	if role, ok := tc.rcache.Get(*roleKey); ok {
+		return role
+	} else {
+		return nil
+	}
 }
 
 func (tc *TokenCache) AddToken(tokenKey string, token *string) error {

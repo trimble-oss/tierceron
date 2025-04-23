@@ -16,7 +16,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -79,10 +78,7 @@ func PrintVersion() {
 }
 
 func CommonMain(envDefaultPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
@@ -136,6 +132,8 @@ func CommonMain(envDefaultPtr *string,
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+
 	var versionInfoPtr *bool
 	var diffPtr *bool
 
@@ -202,6 +200,8 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
+	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
@@ -221,7 +221,7 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("* is not available as an environment suffix")
 	}
 
-	var appRoleConfigPtr *string
+	var currentRoleEntityPtr *string
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
@@ -234,7 +234,7 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		currentRoleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		if driverConfigBase.FileFilter != nil {
 			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}
@@ -261,21 +261,26 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = eUtils.GetEnvBasis(*envPtr)
 		}
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: &core.CoreConfig{
+				Env:           *envPtr,
+				TokenCache:    driverConfig.CoreConfig.TokenCache,
+				ExitOnFailure: true,
+				Insecure:      *insecurePtr,
+				Log:           logger},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
 			NoVault:    *noVaultPtr,
 		}
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
-		appRoleConfigPtr = new(string)
-		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+		currentRoleEntityPtr = new(string)
 	}
 
 	//Dont allow these combinations of flags
@@ -337,14 +342,11 @@ func CommonMain(envDefaultPtr *string,
 		if !*noVaultPtr {
 			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
 			autoErr := eUtils.AutoAuth(driverConfigBase,
-				secretIDPtr,
-				appRoleIDPtr,
 				&wantedTokenName,
 				&tokenPtr,
 				envPtr,
-				addrPtr,
 				envCtxPtr,
-				appRoleConfigPtr,
+				currentRoleEntityPtr,
 				*pingPtr)
 			if autoErr != nil {
 				if isShell {
@@ -457,7 +459,7 @@ func CommonMain(envDefaultPtr *string,
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")
@@ -481,16 +483,15 @@ func CommonMain(envDefaultPtr *string,
 
 			driverConfig := config.DriverConfig{
 				CoreConfig: &core.CoreConfig{
-					IsShell:         isShell,
-					Insecure:        *insecurePtr,
-					TokenCache:      driverConfigBase.CoreConfig.TokenCache,
-					VaultAddressPtr: addrPtr,
-					Env:             *envPtr,
-					EnvBasis:        eUtils.GetEnvBasis(*envPtr),
-					Regions:         regions,
-					WantCerts:       *wantCertsPtr,
-					ExitOnFailure:   driverConfigBase.CoreConfig.ExitOnFailure,
-					Log:             driverConfigBase.CoreConfig.Log,
+					IsShell:       isShell,
+					Insecure:      *insecurePtr,
+					TokenCache:    driverConfigBase.CoreConfig.TokenCache,
+					Env:           *envPtr,
+					EnvBasis:      eUtils.GetEnvBasis(*envPtr),
+					Regions:       regions,
+					WantCerts:     *wantCertsPtr,
+					ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
+					Log:           driverConfigBase.CoreConfig.Log,
 				},
 				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 				SecretMode:        *secretMode,
@@ -534,16 +535,15 @@ func CommonMain(envDefaultPtr *string,
 		}
 		dConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
-				IsShell:         isShell,
-				WantCerts:       *wantCertsPtr,
-				Insecure:        *insecurePtr,
-				TokenCache:      driverConfigBase.CoreConfig.TokenCache,
-				VaultAddressPtr: addrPtr,
-				Env:             *envPtr,
-				EnvBasis:        eUtils.GetEnvBasis(*envPtr),
-				Regions:         regions,
-				ExitOnFailure:   driverConfigBase.CoreConfig.ExitOnFailure,
-				Log:             driverConfigBase.CoreConfig.Log,
+				IsShell:       isShell,
+				WantCerts:     *wantCertsPtr,
+				Insecure:      *insecurePtr,
+				TokenCache:    driverConfigBase.CoreConfig.TokenCache,
+				Env:           *envPtr,
+				EnvBasis:      eUtils.GetEnvBasis(*envPtr),
+				Regions:       regions,
+				ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
+				Log:           driverConfigBase.CoreConfig.Log,
 			},
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 			SecretMode:        *secretMode,

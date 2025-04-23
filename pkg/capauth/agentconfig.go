@@ -281,8 +281,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	return penseProtect, nil
 }
 
-func NewAgentConfig(addressPtr *string,
-	tokenCache *cache.TokenCache,
+func NewAgentConfig(tokenCache *cache.TokenCache,
 	agentTokenName string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
@@ -293,12 +292,12 @@ func NewAgentConfig(addressPtr *string,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
 
 	if isShellRunner {
+		tokenCache.SetVaultAddress(tokenCache.VaultAddressPtr)
 		return &AgentConfigs{Env: &env}, &TrcShConfig{
-			IsShellRunner:   isShellRunner,
-			Env:             env,
-			EnvContext:      env,
-			VaultAddressPtr: addressPtr,
-			TokenCache:      tokenCache,
+			IsShellRunner: isShellRunner,
+			Env:           env,
+			EnvContext:    env,
+			TokenCache:    tokenCache,
 		}, nil
 	}
 	agentTokenPtr := tokenCache.GetToken(agentTokenName)
@@ -312,7 +311,7 @@ func NewAgentConfig(addressPtr *string,
 		fmt.Printf(".")
 	}
 
-	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, addressPtr, env, nil, true, nil)
+	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, tokenCache.VaultAddressPtr, env, nil, true, nil)
 	if modErr != nil {
 		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
@@ -416,9 +415,8 @@ func NewAgentConfig(addressPtr *string,
 		trcshConfig.VaultAddressPtr = &vaddress
 		return agentconfig, trcshConfig, nil
 		// End Chewbacca
-
 		var penseError error
-		trcshConfig.ConfigRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
+		bambooRole, penseError := agentconfig.RetryingPenseFeatherQuery("configrole")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
@@ -427,8 +425,9 @@ func NewAgentConfig(addressPtr *string,
 		} else {
 			fmt.Printf(".")
 		}
+		tokenCache.AddRoleStr("bamboo", bambooRole)
 
-		trcshConfig.VaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+		vaultAddressPtr, penseError := agentconfig.RetryingPenseFeatherQuery("caddress")
 		if penseError != nil {
 			return nil, nil, penseError
 		}
@@ -437,6 +436,7 @@ func NewAgentConfig(addressPtr *string,
 		} else {
 			fmt.Printf(".")
 		}
+		tokenCache.SetVaultAddress(vaultAddressPtr)
 
 		if kernelopts.BuildOptions.IsKernel() && tokenCache.GetToken("config_token_pluginany") == nil {
 			tokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("token")

@@ -21,7 +21,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
@@ -33,10 +32,7 @@ import (
 )
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
@@ -135,7 +131,7 @@ func CommonMain(envPtr *string,
 			tokenNamePtr = new(string)
 			*tokenNamePtr = fmt.Sprintf("config_token_plugin%s", *envPtr)
 		}
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	} else {
 		err := flagset.Parse(argLines)
@@ -259,7 +255,7 @@ func CommonMain(envPtr *string,
 	// 	*regionPtr = ""
 	// }
 
-	var appRoleConfigPtr *string
+	var currentRoleEntityPtr *string
 	var trcshDriverConfigBase *capauth.TrcshDriverConfig
 	if trcshDriverConfig != nil {
 		trcshDriverConfigBase = trcshDriverConfig
@@ -278,7 +274,7 @@ func CommonMain(envPtr *string,
 			} else {
 				trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 			}
-			appRoleConfigPtr = trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfigPtr
+			currentRoleEntityPtr = trcshDriverConfigBase.DriverConfig.CoreConfig.CurrentRoleEntityPtr
 			*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
 		}
 
@@ -288,7 +284,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if eUtils.RefLength(trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
-		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, false)
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, false)
 		if autoErr != nil {
 			eUtils.LogErrorMessage(trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
@@ -305,7 +301,7 @@ func CommonMain(envPtr *string,
 		return errors.New("could not find plugin config")
 	}
 	pluginConfig["env"] = *envPtr
-	pluginConfig["vaddress"] = *addrPtr
+	pluginConfig["vaddress"] = *trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr
 	if trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr) != nil {
 		pluginConfig["tokenptr"] = trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
 	}
@@ -388,7 +384,7 @@ func CommonMain(envPtr *string,
 		if len(*certPathPtr) > 0 {
 			apimError = trccertmgmtbase.CommonMain(certPathPtr, driverConfig, mod)
 		} else {
-			apimError = trcapimgmtbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, driverConfig, mod)
+			apimError = trcapimgmtbase.CommonMain(envPtr, nil, tokenNamePtr, regionPtr, startDirPtr, driverConfig, mod)
 		}
 		if apimError != nil {
 			fmt.Println(apimError.Error())
@@ -556,7 +552,7 @@ func CommonMain(envPtr *string,
 
 	//Define Service Image
 	if *defineServicePtr {
-		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+		fmt.Printf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
@@ -827,7 +823,7 @@ func CommonMain(envPtr *string,
 				fmt.Println("Valid image found.")
 			}
 			//SHA MATCHES
-			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+			fmt.Printf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.

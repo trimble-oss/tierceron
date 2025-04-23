@@ -45,10 +45,10 @@ func main() {
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
-			TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", env), tokenPtr),
+			TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", env), tokenPtr, &addr),
 			ExitOnFailure: true,
 		},
 	}
 
-	trcinitbase.CommonMain(&env, &addr, nil, nil, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
+	trcinitbase.CommonMain(&env, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
 }

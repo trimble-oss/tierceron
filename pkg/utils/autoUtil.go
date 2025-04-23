@@ -121,14 +121,11 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 
 // AutoAuth attempts to authenticate a user.
 func AutoAuth(driverConfig *config.DriverConfig,
-	secretIDPtr *string, // Optional if token provided.
-	appRoleIDPtr *string, // Optional if token provided.
 	wantedTokenNamePtr *string,
 	tokenProvidedPtr **string,
 	envPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	appRoleConfigPtr *string,
+	roleEntityPtr *string,
 	ping bool) error {
 	// Declare local variables
 	var override bool
@@ -136,6 +133,20 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var c cert
 	var v *sys.Vault
 
+	var appRoleIDPtr *string
+	var secretIDPtr *string
+	addrPtr := driverConfig.CoreConfig.TokenCache.VaultAddressPtr
+	if addrPtr == nil {
+		addrPtr = new(string)
+	}
+	appRoleSecretSlice := driverConfig.CoreConfig.TokenCache.GetRoleStr(roleEntityPtr)
+	if appRoleSecretSlice != nil && len(*appRoleSecretSlice) == 2 {
+		appRoleIDPtr = &(*appRoleSecretSlice)[0]
+		secretIDPtr = &(*appRoleSecretSlice)[1]
+	} else {
+		appRoleIDPtr = new(string)
+		secretIDPtr = new(string)
+	}
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*wantedTokenNamePtr)
@@ -150,8 +161,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 	if RefLength(tokenPtr) != 0 &&
 		!RefEquals(addrPtr, "") &&
-		!RefEquals(appRoleConfigPtr, "deployauth") &&
-		!RefEquals(appRoleConfigPtr, "hivekernel") &&
+		!RefEquals(roleEntityPtr, "deployauth") &&
+		!RefEquals(roleEntityPtr, "hivekernel") &&
 		(driverConfig.CoreConfig.CurrentTokenNamePtr == nil && wantedTokenNamePtr != nil ||
 			// Accept provided token if:
 			// 1. current nil, wanted not nil.
@@ -171,9 +182,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	isProd := envPtr != nil && (strings.Contains(*envPtr, "staging") || strings.Contains(*envPtr, "prod"))
 
 	// If cert file exists obtain secretID and appRoleID
-	if RefLength(appRoleConfigPtr) == 0 {
-		appRoleConfigPtr = new(string)
-		*appRoleConfigPtr = "config.yml"
+	var roleFile string
+	if RefLength(roleEntityPtr) == 0 {
+		roleEntityPtr = new(string)
+		roleFile = "config.yml"
 	}
 	if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
 		if driverConfig.IsShellSubProcess {
@@ -186,14 +198,15 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				return err
 			}
 			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
-			if _, err := os.Stat(userHome + "/.tierceron/" + *appRoleConfigPtr); !os.IsNotExist(err) {
+			if _, err := os.Stat(userHome + "/.tierceron/" + roleFile); !os.IsNotExist(err) {
 				exists = true
-				_, configErr := c.getConfig(driverConfig.CoreConfig.Log, *appRoleConfigPtr)
+				_, configErr := c.getConfig(driverConfig.CoreConfig.Log, roleFile)
 				if configErr != nil {
 					return configErr
 				}
 				if addrPtr == nil || *addrPtr == "" {
 					*addrPtr = c.VaultHost
+					driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 				}
 
 				if RefLength(tokenPtr) == 0 || *wantedTokenNamePtr != *driverConfig.CoreConfig.CurrentTokenNamePtr {
@@ -231,7 +244,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override || RefEquals(appRoleConfigPtr, "deployauth") || RefEquals(appRoleConfigPtr, "hivekernel") {
+		if override || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
 			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
@@ -307,7 +320,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if (override && !exists) || RefEquals(appRoleConfigPtr, "deployauth") || RefEquals(appRoleConfigPtr, "hivekernel") {
+		} else if (override && !exists) || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
 			if !driverConfig.CoreConfig.IsShell {
 				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
@@ -332,7 +345,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !isProd && (!override || exists) && !RefEquals(appRoleConfigPtr, "deployauth") && !RefEquals(appRoleConfigPtr, "hivekernel") {
+		if !isProd && (!override || exists) && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
 			// Get current user's home directory
 			userHome, err := userHome(driverConfig.CoreConfig.Log)
 			if err != nil {
@@ -384,7 +397,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	//if using appRole
-	if *secretIDPtr != "" || *appRoleIDPtr != "" || *wantedTokenNamePtr != "" {
+	if *secretIDPtr != "" && *appRoleIDPtr != "" && *wantedTokenNamePtr != "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
@@ -396,7 +409,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		// if driverConfig.CoreConfig.IsShell && RefLength(tokenNamePtr) > 0 && *tokenNamePtr != "pluginany" {
 		// 	goto skipswitch
 		// }
-		switch *appRoleConfigPtr {
+		switch *roleEntityPtr {
 		case "configpub.yml":
 			tokenNamePrefix = "vault_pub"
 		case "configdeploy.yml":
@@ -453,7 +466,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	}
 
-	if len(*wantedTokenNamePtr) > 0 {
+	if len(*wantedTokenNamePtr) > 0 && RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 {
 		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
 		}
@@ -476,7 +489,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 		mod.EnvBasis = "bamboo"
 		mod.Env = "bamboo"
-		switch *appRoleConfigPtr {
+		switch *roleEntityPtr {
 		case "configpub.yml":
 			mod.EnvBasis = "pub"
 			mod.Env = "pub"

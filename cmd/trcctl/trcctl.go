@@ -26,6 +26,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcctlbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -56,16 +57,15 @@ func main() {
 	prodPtr := flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
 	flagset.Bool("pluginInfo", false, "Lists all plugins")
 	flagset.Bool("novault", false, "Don't pull configuration data from vault.")
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(),
 		},
 	}
 
 	err := trcctlbase.CommonMain(envPtr,
-		addrPtr,
 		pluginNamePtr,
 		tokenPtr,
 		uploadCertPtr,

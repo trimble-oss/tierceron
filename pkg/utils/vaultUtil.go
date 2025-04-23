@@ -24,7 +24,7 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 	}
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod begins..")
 
-	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddressPtr, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
+	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.VaultAddressPtr, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 	if err != nil {
 		LogInfo(driverConfig.CoreConfig, "Failure to connect to vault..")
 		LogErrorObject(driverConfig.CoreConfig, err, false)
@@ -202,6 +202,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 		trcdbEnvLogger.Println("Missing required env")
 		return nil, nil, nil, errors.New("missing required env")
 	}
+	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
@@ -209,7 +210,6 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 			CurrentTokenNamePtr: &currentTokenName,
 			TokenCache:          tokenCache,
-			VaultAddressPtr:     RefMap(pluginConfig, "vaddress"),
 			Env:                 pluginConfig["env"].(string),
 			EnvBasis:            GetEnvBasis(pluginConfig["env"].(string)),
 			Regions:             regions,
@@ -255,7 +255,7 @@ func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *conf
 
 		driverConfig.CoreConfig.WantCerts = false
 		driverConfig.CoreConfig.Insecure = !exitOnFailure // Plugin has exitOnFailure=false ...  always local, so this is ok...
-		driverConfig.CoreConfig.VaultAddressPtr = RefMap(pluginConfig, "vaddress")
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
 		driverConfig.CoreConfig.Env = pluginConfig["env"].(string)
 		driverConfig.CoreConfig.EnvBasis = GetEnvBasis(pluginConfig["env"].(string))
 		driverConfig.CoreConfig.Regions = regions

@@ -20,7 +20,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -132,7 +131,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
 		trcshConfig.TokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
 	} else {
-		trcshConfig.TokenCache = cache.NewTokenCacheEmpty()
+		return nil, errors.New("trcsh auth: missing required auth component")
 	}
 	var err error
 
@@ -166,18 +165,18 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	if trcshConfig.KubeConfigPtr != nil {
 		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
 	}
+	var vaultAddressPtr *string
 
 	if featherCtx != nil {
-		trcshConfig.VaultAddressPtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+		vaultAddressPtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
-		trcshConfig.VaultAddressPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+		vaultAddressPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
 	}
 	if err != nil {
 		return trcshConfig, err
 	}
-
-	memprotectopts.MemProtect(nil, trcshConfig.VaultAddressPtr)
+	memprotectopts.MemProtect(nil, vaultAddressPtr)
 
 	if err != nil {
 		var addrPort string
@@ -191,34 +190,34 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			return trcshConfig, err
 		}
 		vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
-		trcshConfig.VaultAddressPtr = &vAddr
-
+		vaultAddressPtr = &vAddr
 		trcshDriverConfig.DriverConfig.CoreConfig.Env = env
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 	}
 
-	trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr = trcshConfig.VaultAddressPtr
-	memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr)
+	memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 
+	var configRolePtr *string
 	if featherCtx != nil {
-		trcshConfig.ConfigRolePtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
+		configRolePtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
 	} else {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
-		trcshConfig.ConfigRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
+		configRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
 	}
 	if err != nil {
 		return trcshConfig, err
 	}
-
-	memprotectopts.MemProtect(nil, trcshConfig.ConfigRolePtr)
+	memprotectopts.MemProtect(nil, configRolePtr)
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
 
 	if featherCtx == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
-		trcshConfig.PubRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
+		pubRolePtr, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.PubRolePtr)
+		memprotectopts.MemProtect(nil, pubRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
 	}
 
 	if featherCtx == nil {

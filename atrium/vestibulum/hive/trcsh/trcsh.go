@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -49,9 +50,6 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 
 	logger, logErr := trcshbase.CreateLogFile()
 	if logErr != nil {
@@ -60,11 +58,13 @@ func main() {
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
-			Log: logger,
+			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(),
+			Log:           logger,
 		},
 	}
 
-	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, nil, &driverConfig)
+	err := trcshbase.CommonMain(envPtr, nil, flagset, os.Args, nil, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}
