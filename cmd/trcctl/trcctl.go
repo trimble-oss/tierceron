@@ -57,12 +57,11 @@ func main() {
 	prodPtr := flagset.Bool("prod", false, "Prod only seeds vault with staging environment")
 	flagset.Bool("pluginInfo", false, "Lists all plugins")
 	flagset.Bool("novault", false, "Don't pull configuration data from vault.")
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
-			TokenCache:    cache.NewTokenCacheEmpty(addrPtr),
+			TokenCache:    cache.NewTokenCacheEmpty(),
 		},
 	}
 

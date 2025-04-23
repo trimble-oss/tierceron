@@ -132,6 +132,8 @@ func CommonMain(envDefaultPtr *string,
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+
 	var versionInfoPtr *bool
 	var diffPtr *bool
 
@@ -198,6 +200,8 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
+	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
@@ -257,12 +261,18 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = eUtils.GetEnvBasis(*envPtr)
 		}
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: &core.CoreConfig{
+				Env:           *envPtr,
+				TokenCache:    driverConfig.CoreConfig.TokenCache,
+				ExitOnFailure: true,
+				Insecure:      *insecurePtr,
+				Log:           logger},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
 			NoVault:    *noVaultPtr,
 		}
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
@@ -271,7 +281,6 @@ func CommonMain(envDefaultPtr *string,
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		currentRoleEntityPtr = new(string)
-		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
 	//Dont allow these combinations of flags

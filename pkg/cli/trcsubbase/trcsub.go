@@ -11,6 +11,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -33,11 +35,22 @@ func CommonMain(envDefaultPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) error {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &core.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
+	var addrPtr *string = nil
 
 	if flagset == nil {
 		fmt.Println("Version: " + "1.6")
@@ -58,6 +71,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
@@ -71,6 +85,7 @@ func CommonMain(envDefaultPtr *string,
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
 	flagset.Parse(argLines[1:])
+
 	if envPtr == nil {
 		if envDefaultPtr != nil {
 			envPtr = envDefaultPtr
@@ -117,7 +132,9 @@ func CommonMain(envDefaultPtr *string,
 			tokenNamePtr = &tokenName
 		}
 		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
-		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+		if eUtils.RefLength(addrPtr) > 0 {
+			driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		}
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
@@ -127,8 +144,6 @@ func CommonMain(envDefaultPtr *string,
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
 		return err
 	}
-
-	fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 
 	wantedTokenName := fmt.Sprintf("config_token_%s", envBasis)
 	autoErr := eUtils.AutoAuth(driverConfigBase,
@@ -142,6 +157,7 @@ func CommonMain(envDefaultPtr *string,
 		fmt.Println("Missing auth components.")
 		return autoErr
 	}
+	fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
 		*tokenNamePtr,
