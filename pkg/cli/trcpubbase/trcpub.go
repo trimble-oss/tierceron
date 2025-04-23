@@ -10,7 +10,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -28,10 +27,7 @@ func PrintVersion() {
 // Vault automatically encodes the file into base64
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
@@ -60,7 +56,7 @@ func CommonMain(envPtr *string,
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
-	appRoleConfigPtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
+	roleEntityPtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
 	if driverConfig == nil || !driverConfig.IsShellSubProcess {
@@ -78,8 +74,9 @@ func CommonMain(envPtr *string,
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		if eUtils.RefLength(driverConfigBase.CoreConfig.AppRoleConfigPtr) > 0 {
-			appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+
+		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
+			roleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		}
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -95,20 +92,20 @@ func CommonMain(envPtr *string,
 			tokenName := fmt.Sprintf("vault_pub_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
-		if eUtils.RefLength(driverConfigBase.CoreConfig.AppRoleConfigPtr) > 0 {
-			appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
+			roleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		} else {
 			appRole := "configpub.yml"
-			appRoleConfigPtr = &appRole
+			roleEntityPtr = &appRole
 		}
 
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, &envBasis, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, &envBasis, envCtxPtr, roleEntityPtr, *pingPtr)
 	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
 	if envPtr != nil && len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
@@ -119,14 +116,17 @@ func CommonMain(envPtr *string,
 	}
 
 	if driverConfig != nil && driverConfig.CoreConfig.IsShell {
-		driverConfig.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *addrPtr)
+		driverConfig.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 		driverConfig.CoreConfig.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	} else {
-		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+		fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("vault_pub_token_%s", envBasis)), addrPtr, envBasis, nil, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
+		fmt.Sprintf("vault_pub_token_%s", envBasis),
+		envBasis,
+		true)
 	if mod != nil {
 		defer mod.Release()
 	}

@@ -100,7 +100,9 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	}
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenName), "novault") {
 		var err error
-		mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.GetToken(tokenName), driverConfig.CoreConfig.VaultAddressPtr, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+		mod, err = helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig,
+			tokenName,
+			env, true)
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, driverConfig.CoreConfig.ExitOnFailure)
 		}
@@ -387,7 +389,11 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 			if !utils.RefEqualsAny(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis)), []string{"", "novault"}) {
 				var err error
-				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis)), dc.CoreConfig.VaultAddressPtr, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
+				goMod, err = helperkv.NewModifierFromCoreConfig(
+					dc.CoreConfig,
+					fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis),
+					env,
+					useCache)
 				goMod.Env = dc.CoreConfig.Env
 				if err != nil {
 					if useCache && goMod != nil {
@@ -516,7 +522,10 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	// Add special auth section.
 	if driverConfig.GenAuth {
 		if mod != nil {
-			authMod, authErr := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), driverConfig.CoreConfig.VaultAddressPtr, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+			authMod, authErr := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig,
+				fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis),
+				env,
+				true)
 			eUtils.LogAndSafeExit(driverConfig.CoreConfig, authErr.Error(), -1)
 
 			connInfo, err := authMod.ReadData("apiLogins/meta")

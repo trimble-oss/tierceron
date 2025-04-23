@@ -45,7 +45,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
 	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 		"config_token_pluginany", logger)
 	if vault != nil {
 		defer vault.Close()
@@ -105,7 +105,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
 	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 		"config_token_pluginany", logger)
 	carrierDriverConfig.SubSectionValue = pluginName
 	if err != nil {

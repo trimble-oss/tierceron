@@ -10,6 +10,7 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -86,21 +87,20 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 
 // Returns an array of mashup detailed elements populated with each Tenant's data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
+	addressPtr := new(string)
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
 			Insecure:      *insecure,
 			Log:           logger,
 		},
 	}
-	secretID := ""
-	appRoleID := ""
 	tokenPtr := new(string)
-	addressPtr := new(string)
-	approleconfig := new(string)
+	currentRoleEntityPtr := new(string)
 	empty := ""
 
-	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, &empty, &tokenPtr, envPtr, addressPtr, nil, approleconfig, false)
+	autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
 	eUtils.CheckError(driverConfig.CoreConfig, autoErr, true)
 
 	mod, modErr := helperkv.NewModifier(*insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_protected", driverConfig.CoreConfig.EnvBasis)), addressPtr, *envPtr, nil, true, logger)

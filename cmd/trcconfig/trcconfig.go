@@ -14,6 +14,8 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -45,10 +47,15 @@ func main() {
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(addrPtr),
 		},
 	}
+	if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
+		roleSlice := []string{*appRoleIDPtr, *secretIDPtr}
+		driverConfig.CoreConfig.TokenCache.AddRole("pub", &roleSlice)
+	}
 
-	err := trcconfigbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, flagset, os.Args, &driverConfig)
+	err := trcconfigbase.CommonMain(envPtr, nil, tokenNamePtr, regionPtr, flagset, os.Args, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}

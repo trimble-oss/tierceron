@@ -313,7 +313,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 					*envPtr = "dev"
 				}
 				for _, tokenName := range tokenNameSlice {
-					var roleCheckStr *string
+					var roleCheckPtr *string
 					tokenKey := ""
 					switch tokenName {
 					case "ctoken", "token", "pubrole", "configrole", "kubeconfig":
@@ -324,7 +324,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 					}
 
 					if r, rvOk := tokenMap[tokenKey].(*string); rvOk {
-						roleCheckStr = r
+						roleCheckPtr = r
 					} else {
 						return tokenMap, fmt.Errorf("missing field: %s", tokenName)
 					}
@@ -332,40 +332,42 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 					switch tokenName {
 					case "pubrole":
 						currentTokenName := fmt.Sprintf("vault_pub_token_%s", *envPtr)
-						approleconfigPtr := new(string)
-						*approleconfigPtr = "configpub.yml"
+						currentRoleEntityPtr := new(string)
+						*currentRoleEntityPtr = "configpub.yml"
 
 						token := new(string)
-						pubRoleSlice := strings.Split(*roleCheckStr, ":")
+						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
+						tokenCache.AddRoleStr("pub", roleCheckPtr)
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &core.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
-								TokenCache:          cache.NewTokenCacheEmpty(),
+								TokenCache:          tokenCache,
 								Insecure:            false,
 								Log:                 logger,
 							},
-						}, &pubRoleSlice[1], &pubRoleSlice[0], &currentTokenName, &token, envPtr, &caddrCheck, nil, approleconfigPtr, false)
+						}, &currentTokenName, &token, envPtr, nil, currentRoleEntityPtr, false)
 						if verr != nil {
 							return nil, fmt.Errorf("invalid field: %s", tokenName)
 						}
 
 					case "configrole":
 						currentTokenName := fmt.Sprintf("config_token_%s", *envPtr)
-						approleconfigPtr := new(string)
-						*approleconfigPtr = "config.yml"
+						currentRoleEntityPtr := new(string)
+						*currentRoleEntityPtr = "config.yml"
 
 						token := new(string)
-						configRoleSlice := strings.Split(*roleCheckStr, ":")
+						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
+						tokenCache.AddRoleStr("bamboo", roleCheckPtr)
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &core.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
-								TokenCache:          cache.NewTokenCacheEmpty(),
+								TokenCache:          tokenCache,
 								Insecure:            false,
 								Log:                 logger,
 							},
-						}, &configRoleSlice[1], &configRoleSlice[0], &currentTokenName, &token, envPtr, &caddrCheck, nil, approleconfigPtr, false)
+						}, &currentTokenName, &token, envPtr, nil, currentRoleEntityPtr, false)
 						if verr != nil {
 							return nil, fmt.Errorf("field validation error: %s", tokenName)
 						}
@@ -696,7 +698,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			pluginConfig["regions"] = []string{hostRegion}
 			currentTokenName := "config_token_pluginany"
 			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig,
-				cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+				cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 				currentTokenName, logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")

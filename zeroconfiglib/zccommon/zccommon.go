@@ -29,7 +29,7 @@ func ConfigCertLibHelper(token string,
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			WantCerts:  wantCerts,
-			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token),
+			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token, &address),
 			Insecure:   true,
 			Log:        logger,
 		},

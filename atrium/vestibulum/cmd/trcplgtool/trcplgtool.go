@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
@@ -22,6 +23,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This executable automates the cerification of a plugin docker image.
@@ -68,17 +70,22 @@ func main() {
 	trcshDriveConfigPtr := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
-				ExitOnFailure:    true,
-				Insecure:         false,
-				Log:              logger,
-				AppRoleConfigPtr: new(string),
+				ExitOnFailure:        true,
+				Insecure:             false,
+				Log:                  logger,
+				CurrentRoleEntityPtr: new(string),
+				TokenCache:           cache.NewTokenCacheEmpty(addrPtr),
 			},
 			IsShellSubProcess: false,
 			StartDir:          []string{""},
 		},
 	}
+	if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
+		roleSlice := []string{*appRoleIDPtr, *secretIDPtr}
+		trcshDriveConfigPtr.DriverConfig.CoreConfig.TokenCache.AddRole("bamboo", &roleSlice)
+	}
 
-	err := plgtbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, flagset, os.Args, trcshDriveConfigPtr)
+	err := plgtbase.CommonMain(envPtr, nil, tokenNamePtr, regionPtr, flagset, os.Args, trcshDriveConfigPtr)
 	if err != nil {
 		os.Exit(1)
 	}

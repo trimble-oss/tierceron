@@ -11,7 +11,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -28,9 +27,8 @@ func PrintVersion() {
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
+func CommonMain(envDefaultPtr *string,
+	envCtxPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
@@ -88,7 +86,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
 	var driverConfigBase *config.DriverConfig
-	var appRoleConfigPtr *string
+	var currentRoleEntityPtr *string
 
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
@@ -96,7 +94,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
-		appRoleConfigPtr = driverConfig.CoreConfig.AppRoleConfigPtr
+		currentRoleEntityPtr = driverConfig.CoreConfig.CurrentRoleEntityPtr
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -118,10 +116,8 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
-
-		appRoleConfigPtr = new(string)
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
@@ -132,25 +128,24 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		return err
 	}
 
-	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+	fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 
 	wantedTokenName := fmt.Sprintf("config_token_%s", envBasis)
 	autoErr := eUtils.AutoAuth(driverConfigBase,
-		secretIDPtr,
-		appRoleIDPtr,
 		&wantedTokenName,
 		&tokenPtr, // Token matching currentTokenNamePtr
 		&envBasis,
-		addrPtr,
 		envCtxPtr,
-		appRoleConfigPtr,
+		currentRoleEntityPtr,
 		*pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr), addrPtr, envBasis, driverConfigBase.CoreConfig.Regions, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
+		*tokenNamePtr,
+		envBasis, true)
 	if mod != nil {
 		defer mod.Release()
 	}

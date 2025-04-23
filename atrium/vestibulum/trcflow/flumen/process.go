@@ -44,7 +44,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var err error
 
 	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 		"config_token_pluginany", logger)
 	if err != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
@@ -66,7 +66,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		pluginConfig["exitOnFailure"] = true
 
 		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig,
-			cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+			cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 			"config_token_pluginany", logger)
 		if err != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
@@ -185,16 +185,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	// 4. Create config for vault for queries to vault.
 	emptySlice := []string{""}
 
-	addr := pluginConfig["vaddress"].(string)
-	addrPtr := &addr
 	currentTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(pluginConfig["env"].(string)))
 
 	driverConfigBasis := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			Regions:             emptySlice,
 			CurrentTokenNamePtr: &currentTokenName,
-			TokenCache:          cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr")),
-			VaultAddressPtr:     addrPtr,
+			TokenCache:          cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 			Insecure:            true, // Always local...
 			Env:                 pluginConfig["env"].(string),
 			EnvBasis:            eUtils.GetEnvBasis(pluginConfig["env"].(string)),

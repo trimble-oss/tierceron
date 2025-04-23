@@ -567,7 +567,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			pluginConfig["tokenptr"] = tokenEnvMap["ctokenptr"]
 			pluginConfig["regions"] = []string{hostRegion}
 			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig,
-				cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+				cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 				"config_token_pluginany", logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")
