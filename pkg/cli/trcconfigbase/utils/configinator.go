@@ -149,9 +149,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		Cyan = ""
 	}*/
 	//Should check if driverConfig is nil here...
-	tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+	tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
-	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
@@ -176,7 +176,8 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		}
 	}
 	versionData := make(map[string]interface{})
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetTokenStr(tokenNamePtr), "novault") {
+		// Chewbacca: break here...
 		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {

@@ -365,6 +365,10 @@ func CommonMain(envDefaultPtr *string,
 			}
 		} else {
 			token := "novault"
+			if utils.RefLength(addrPtr) == 0 {
+				eUtils.ReadAuthParts(driverConfigBase, false)
+			}
+			driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr = addrPtr
 			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 		}
 
@@ -538,15 +542,16 @@ func CommonMain(envDefaultPtr *string,
 		}
 		dConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
-				IsShell:       isShell,
-				WantCerts:     *wantCertsPtr,
-				Insecure:      *insecurePtr,
-				TokenCache:    driverConfigBase.CoreConfig.TokenCache,
-				Env:           *envPtr,
-				EnvBasis:      eUtils.GetEnvBasis(*envPtr),
-				Regions:       regions,
-				ExitOnFailure: driverConfigBase.CoreConfig.ExitOnFailure,
-				Log:           driverConfigBase.CoreConfig.Log,
+				IsShell:             isShell,
+				WantCerts:           *wantCertsPtr,
+				Insecure:            *insecurePtr,
+				TokenCache:          driverConfigBase.CoreConfig.TokenCache,
+				CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
+				Env:                 *envPtr,
+				EnvBasis:            eUtils.GetEnvBasis(*envPtr),
+				Regions:             regions,
+				ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
+				Log:                 driverConfigBase.CoreConfig.Log,
 			},
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 			SecretMode:        *secretMode,
