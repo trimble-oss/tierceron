@@ -363,12 +363,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	projectServicePtr = projectServiceFlagPtr
 
 	if !*dronePtr && !isShellRunner {
-		if driverConfigPtr.CoreConfig.TokenCache.GetRole("azurerole") == nil {
+		if driverConfigPtr.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
 			deploy_role := os.Getenv("DEPLOY_ROLE")
 			deploy_secret := os.Getenv("DEPLOY_SECRET")
 			if len(deploy_role) > 0 && len(deploy_secret) > 0 {
 				azureDeployRole := []string{deploy_role, deploy_secret}
-				driverConfigPtr.CoreConfig.TokenCache.AddRole("azurerole", &azureDeployRole)
+				driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 			}
 		}
 
@@ -472,7 +472,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 						}
 						if len(app_sec[0]) > 0 && len(app_sec[1]) > 0 {
 							azureDeployRole := []string{app_sec[0], app_sec[1]}
-							driverConfigPtr.CoreConfig.TokenCache.AddRole("azurerole", &azureDeployRole)
+							driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 						}
 					}
 				} else {
@@ -484,7 +484,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					}
 					if len(app_sec[0]) > 0 && len(app_sec[1]) > 0 {
 						azureDeployRole := []string{app_sec[0], app_sec[1]}
-						driverConfigPtr.CoreConfig.TokenCache.AddRole("azurerole", &azureDeployRole)
+						driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 					}
 				}
 
@@ -503,7 +503,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					}
 					if len(app_sec[0]) > 0 && len(app_sec[1]) > 0 {
 						azureDeployRole := []string{app_sec[0], app_sec[1]}
-						driverConfigPtr.CoreConfig.TokenCache.AddRole("azurerole", &azureDeployRole)
+						driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 					}
 				}
 			}
@@ -686,7 +686,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				var cred *wincred.GenericCredential
 				if useRole {
 					cred = wincred.NewGenericCredential("AGENT_ROLE")
-					role := driverConfigPtr.CoreConfig.TokenCache.GetRole("azurerole")
+					role := driverConfigPtr.CoreConfig.TokenCache.GetRole("hivekernel")
 					cred.CredentialBlob = []byte((*role)[0] + ":" + (*role)[1])
 					err := cred.Write()
 					if err != nil {
@@ -788,14 +788,18 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			deploymentShardsSet[str] = struct{}{}
 		}
 
-		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
+		if eUtils.IsWindows() || kernelopts.BuildOptions.IsKernel() {
 			for _, serviceDeployment := range serviceDeployments {
 				if _, ok := deploymentShardsSet[serviceDeployment]; ok {
 					deployments = append(deployments, serviceDeployment)
-					kernelPluginHandler.AddKernelPlugin(serviceDeployment, trcshDriverConfig.DriverConfig)
+					if kernelPluginHandler != nil {
+						kernelPluginHandler.AddKernelPlugin(serviceDeployment, trcshDriverConfig.DriverConfig)
+					}
 				}
 			}
-			kernelPluginHandler.InitPluginStatus(trcshDriverConfig.DriverConfig)
+			if kernelPluginHandler != nil {
+				kernelPluginHandler.InitPluginStatus(trcshDriverConfig.DriverConfig)
+			}
 		}
 
 		deploymentsCDL := strings.Join(deployments, ",")
