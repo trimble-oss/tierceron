@@ -365,6 +365,10 @@ func CommonMain(envDefaultPtr *string,
 			}
 		} else {
 			token := "novault"
+			if utils.RefLength(addrPtr) == 0 {
+				eUtils.ReadAuthParts(driverConfigBase, false)
+			}
+			driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr = addrPtr
 			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 		}
 

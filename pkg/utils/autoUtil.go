@@ -130,22 +130,18 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	// Declare local variables
 	var override bool
 	var exists bool
-	var c cert
 	var v *sys.Vault
 
-	var appRoleIDPtr *string
-	var secretIDPtr *string
+	var appRoleSecret *[]string
 	addrPtr := driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 	if addrPtr == nil {
 		addrPtr = new(string)
 	}
-	appRoleSecretSlice := driverConfig.CoreConfig.TokenCache.GetRoleStr(roleEntityPtr)
-	if appRoleSecretSlice != nil && len(*appRoleSecretSlice) == 2 {
-		appRoleIDPtr = &(*appRoleSecretSlice)[0]
-		secretIDPtr = &(*appRoleSecretSlice)[1]
-	} else {
-		appRoleIDPtr = new(string)
-		secretIDPtr = new(string)
+	appRoleSecret = driverConfig.CoreConfig.TokenCache.GetRoleStr(roleEntityPtr)
+	if appRoleSecret == nil {
+		appRoleSecret = new([]string)
+		(*appRoleSecret) = append((*appRoleSecret), "")
+		(*appRoleSecret) = append((*appRoleSecret), "")
 	}
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
@@ -176,52 +172,33 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var err error
 
 	// New values available for the cert file
-	if secretIDPtr != nil && len(*secretIDPtr) > 0 && appRoleIDPtr != nil && len(*appRoleIDPtr) > 0 {
+	if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
 		override = true
 	}
-	isProd := envPtr != nil && (strings.Contains(*envPtr, "staging") || strings.Contains(*envPtr, "prod"))
 
 	// If cert file exists obtain secretID and appRoleID
-	var roleFile string
+	var cEnvCtx string
 	if RefLength(roleEntityPtr) == 0 {
 		roleEntityPtr = new(string)
-		roleFile = "config.yml"
 	}
-	if appRoleIDPtr == nil || len(*appRoleIDPtr) == 0 || secretIDPtr == nil || len(*secretIDPtr) == 0 {
+	if len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0 {
 		if driverConfig.IsShellSubProcess {
 			return errors.New("required azure deploy approle and secret are missing")
 		}
-		if !isProd {
-			// Get current user's home directory
-			userHome, err := userHome(driverConfig.CoreConfig.Log)
-			if err != nil {
-				return err
-			}
-			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
-			if _, err := os.Stat(userHome + "/.tierceron/" + roleFile); !os.IsNotExist(err) {
-				exists = true
-				_, configErr := c.getConfig(driverConfig.CoreConfig.Log, roleFile)
-				if configErr != nil {
-					return configErr
-				}
-				if addrPtr == nil || *addrPtr == "" {
-					*addrPtr = c.VaultHost
-					driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
-				}
+		var errAuth error
+		readAuthParts := !override && (RefLength(tokenPtr) == 0 ||
+			!RefEquals(driverConfig.CoreConfig.CurrentTokenNamePtr, *wantedTokenNamePtr))
 
-				if RefLength(tokenPtr) == 0 || *wantedTokenNamePtr != *driverConfig.CoreConfig.CurrentTokenNamePtr {
-					if !override {
-						LogInfo(driverConfig.CoreConfig, "Obtaining auth credentials.")
-						if c.SecretID != "" && secretIDPtr != nil {
-							*secretIDPtr = c.SecretID
-						}
-						if c.ApproleID != "" && appRoleIDPtr != nil {
-							*appRoleIDPtr = c.ApproleID
-						}
-					}
-				}
-			} else {
-				driverConfig.CoreConfig.Log.Printf("Invalid home directory %v ", err)
+		exists, cEnvCtx, errAuth = ReadAuthParts(driverConfig, readAuthParts)
+		if errAuth != nil {
+			return errAuth
+		} else {
+			appRoleSecretFromCert := driverConfig.CoreConfig.TokenCache.GetRoleStr(driverConfig.CoreConfig.CurrentRoleEntityPtr)
+			if RefLength(addrPtr) == 0 {
+				addrPtr = driverConfig.CoreConfig.TokenCache.VaultAddressPtr
+			}
+			if appRoleSecretFromCert != nil {
+				appRoleSecret = appRoleSecretFromCert
 			}
 		}
 	}
@@ -232,8 +209,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		(envPtr == nil || len(*envPtr) == 0) {
 		envPtr = envCtxPtr
 	} else {
-		if (envPtr == nil || len(*envPtr) == 0) && c.EnvCtx != "" {
-			envPtr = &c.EnvCtx
+		if (envPtr == nil || len(*envPtr) == 0) && cEnvCtx != "" {
+			envPtr = &cEnvCtx
 		}
 	}
 
@@ -249,7 +226,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			if !isProd {
+			if !driverConfig.CoreConfig.IsProd() {
 				LogInfo(driverConfig.CoreConfig, "No cert file found, please enter config IDs")
 			} else {
 				LogInfo(driverConfig.CoreConfig, "Please enter config IDs")
@@ -264,22 +241,22 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 
 			if RefLength(tokenPtr) == 0 {
-				if RefLength(secretIDPtr) != 0 {
-					secretID = *secretIDPtr
-				} else if secretIDPtr != nil {
+				if len((*appRoleSecret)[1]) > 0 {
+					secretID = (*appRoleSecret)[1]
+				} else {
 					LogInfo(driverConfig.CoreConfig, "secretID: ")
 					scanner.Scan()
 					secretID = scanner.Text()
-					*secretIDPtr = secretID
+					(*appRoleSecret)[1] = secretID
 				}
 
-				if RefLength(appRoleIDPtr) != 0 {
-					approleID = *appRoleIDPtr
-				} else if appRoleIDPtr != nil {
+				if len((*appRoleSecret)[0]) > 0 {
+					secretID = (*appRoleSecret)[1]
+				} else {
 					LogInfo(driverConfig.CoreConfig, "approleID: ")
 					scanner.Scan()
 					approleID = scanner.Text()
-					*appRoleIDPtr = approleID
+					(*appRoleSecret)[0] = secretID
 				}
 			}
 
@@ -315,8 +292,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		// Get dump
 		if override && exists {
 			certConfigData := "vaultHost: " + *addrPtr + "\n"
-			if appRoleIDPtr != nil && secretIDPtr != nil {
-				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
+			if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
+				certConfigData = certConfigData + "approleID: " + (*appRoleSecret)[0] + "\nsecretID: " + (*appRoleSecret)[1]
 			}
 
 			dump = []byte(certConfigData)
@@ -334,8 +311,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 
 			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
 			certConfigData := "vaultHost: " + vaultHost + "\n"
-			if appRoleIDPtr != nil && secretIDPtr != nil {
-				certConfigData = certConfigData + "approleID: " + *appRoleIDPtr + "\nsecretID: " + *secretIDPtr
+			if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
+				certConfigData = certConfigData + "approleID: " + (*appRoleSecret)[0] + "\nsecretID: " + (*appRoleSecret)[1]
 			}
 
 			if envCtxPtr != nil {
@@ -345,7 +322,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !isProd && (!override || exists) && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
+		if !driverConfig.CoreConfig.IsProd() && (!override || exists) && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
 			// Get current user's home directory
 			userHome, err := userHome(driverConfig.CoreConfig.Log)
 			if err != nil {
@@ -370,9 +347,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 
 		// Set config IDs
 		if !override {
-			if secretIDPtr != nil && appRoleIDPtr != nil {
-				*secretIDPtr = secretID
-				*appRoleIDPtr = approleID
+			if len(approleID) > 0 && len(secretID) > 0 {
+				role := []string{approleID, secretID}
+				driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &role)
 			}
 		}
 	} else {
@@ -391,13 +368,13 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	}
 
-	if secretIDPtr == nil || appRoleIDPtr == nil {
+	if len((*appRoleSecret)[0]) == 0 || len((*appRoleSecret)[1]) == 0 {
 		// Vaultinit and vaultx may take this path.
 		return nil
 	}
 
 	//if using appRole
-	if *secretIDPtr != "" && *appRoleIDPtr != "" && *wantedTokenNamePtr != "" {
+	if len((*appRoleSecret)[0]) > 0 || len((*appRoleSecret)[1]) > 0 && *wantedTokenNamePtr != "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
@@ -449,9 +426,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	skipswitch:
 		//check that none are empty
-		if *secretIDPtr == "" {
+		if len((*appRoleSecret)[1]) == 0 {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required secretID", 1)
-		} else if *appRoleIDPtr == "" {
+		} else if len((*appRoleSecret)[0]) == 0 {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required appRoleID", 1)
 		} else if *wantedTokenNamePtr == "" {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required tokenName", 1)
@@ -467,15 +444,15 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	if len(*wantedTokenNamePtr) > 0 && RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 {
-		if len(*appRoleIDPtr) == 0 || len(*secretIDPtr) == 0 {
+		if len((*appRoleSecret)[0]) == 0 || len((*appRoleSecret)[1]) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
 		}
 
-		if len(*appRoleIDPtr) != 36 || len(*secretIDPtr) != 36 {
-			return fmt.Errorf("unexpected approle len = %d and secret len = %d --> expecting 36", len(*appRoleIDPtr), len(*secretIDPtr))
+		if len((*appRoleSecret)[0]) != 36 || len((*appRoleSecret)[1]) != 36 {
+			return fmt.Errorf("unexpected approle len = %d and secret len = %d --> expecting 36", len((*appRoleSecret)[0]), len((*appRoleSecret)[1]))
 		}
 
-		roleToken, err := v.AppRoleLogin(*appRoleIDPtr, *secretIDPtr)
+		roleToken, err := v.AppRoleLogin((*appRoleSecret)[0], (*appRoleSecret)[0])
 		if err != nil {
 			return err
 		}
@@ -524,4 +501,42 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")
 	return nil
+}
+
+func ReadAuthParts(driverConfig *config.DriverConfig,
+	readAuthParts bool) (bool, string, error) {
+	exists := false
+	var c cert
+	if !driverConfig.CoreConfig.IsProd() {
+		// Get current user's home directory
+		userHome, err := userHome(driverConfig.CoreConfig.Log)
+		roleFile := "config.yml"
+		if err != nil {
+			return false, "", err
+		}
+		driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
+		if _, err := os.Stat(userHome + "/.tierceron/" + roleFile); !os.IsNotExist(err) {
+			exists = true
+			_, configErr := c.getConfig(driverConfig.CoreConfig.Log, roleFile)
+			if configErr != nil {
+				return false, "", configErr
+			}
+			if RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
+				driverConfig.CoreConfig.TokenCache.SetVaultAddress(&c.VaultHost)
+			}
+
+			if readAuthParts {
+				LogInfo(driverConfig.CoreConfig, "Obtaining auth credentials.")
+				if c.ApproleID != "" && c.SecretID != "" {
+					role := []string{c.ApproleID, c.SecretID}
+					bambooRole := "bamboo"
+					driverConfig.CoreConfig.CurrentRoleEntityPtr = &bambooRole
+					driverConfig.CoreConfig.TokenCache.AddRole(bambooRole, &role)
+				}
+			}
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Invalid home directory %v ", err)
+		}
+	}
+	return exists, c.EnvCtx, nil
 }
