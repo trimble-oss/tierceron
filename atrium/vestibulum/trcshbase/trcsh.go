@@ -424,7 +424,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				}
 				if len(app_sec[0]) > 0 && len(app_sec[1]) > 0 {
 					azureDeployRole := []string{app_sec[0], app_sec[1]}
-					driverConfigPtr.CoreConfig.TokenCache.AddRole("azurerole", &azureDeployRole)
+					driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 				}
 			} else {
 				useRole = false
@@ -1250,20 +1250,19 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		// gTrcshConfig = &capauth.TrcShConfig{Env: "dev",
 		// 	EnvContext:    "dev",
 		// 	TokenCache:    trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
-		// 	ConfigRolePtr: &configRole,
-		// 	PubRolePtr:    &pubRole,
 		// 	KubeConfigPtr: &kc,
 		// }
 		// vAddr := os.Getenv("VAULT_ADDR")
-		// trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr = &vAddr
-		// gTrcshConfig.VaultAddressPtr = trcshDriverConfig.DriverConfig.CoreConfig.VaultAddressPtr
+		// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(&vAddr)
 		// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", &pluginAny)
+		// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", &configRole)
+		// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", &pubRole)
 		//	Chewbacca: end scrub
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
 
 		trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		deployTokenPtr := new(string)
-		authTokenEnv := "azuredeploy"
+		authTokenEnv := "hivekernel"
 		currentRoleEntity := "deployauth"
 		if gAgentConfig != nil && gAgentConfig.AgentToken != nil {
 			deployTokenPtr = gAgentConfig.AgentToken

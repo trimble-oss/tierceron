@@ -21,11 +21,11 @@ func GetConfigPaths(pluginName string) []string {
 	case "trchelloworld":
 		return hccore.GetConfigPaths(pluginName)
 	case "fenestra":
-		fcore.GetConfigPaths(pluginName)
+		return fcore.GetConfigPaths(pluginName)
 	case "spiralis":
-		score.GetConfigPaths(pluginName)
+		return score.GetConfigPaths(pluginName)
 	case "rosea":
-		rcore.GetConfigPaths(pluginName)
+		return rcore.GetConfigPaths(pluginName)
 	}
 	return []string{}
 }
@@ -48,7 +48,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 func GetPluginMessages(pluginName string) []string {
 	switch pluginName {
 	case "trchelloworld":
-		return hccore.GetPluginMessages(pluginName)
+		//		return hccore.GetPluginMessages(pluginName)
 	case "fenestra":
 		return fcore.GetPluginMessages(pluginName)
 	case "spiralis":
