@@ -99,6 +99,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
+	var addrPtr *string = nil
 
 	if flagset == nil {
 		PrintVersion() // For trcsh
@@ -117,6 +118,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
@@ -132,7 +134,6 @@ func CommonMain(envDefaultPtr *string,
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 
 	var versionInfoPtr *bool
 	var diffPtr *bool
@@ -200,7 +201,9 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
-	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	if eUtils.RefLength(addrPtr) > 0 {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	}
 
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
