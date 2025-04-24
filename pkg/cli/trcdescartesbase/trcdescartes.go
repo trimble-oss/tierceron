@@ -8,19 +8,17 @@ import (
 	"os"
 	"strings"
 
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
-)
-
-var STARTDIR_DEFAULT string
-
-var (
-	ENDDIR_DEFAULT = "."
 )
 
 func PrintVersion() {
@@ -29,6 +27,7 @@ func PrintVersion() {
 
 func CommonMain(envDefaultPtr *string,
 	addrPtr *string,
+	pluginNamePtr *string,
 	envCtxPtr *string,
 	secretIDPtr *string,
 	appRoleIDPtr *string,
@@ -40,7 +39,6 @@ func CommonMain(envDefaultPtr *string,
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
-	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
 	// configCtx := &config.ConfigContext{
 	// 	ResultMap:     make(map[string]*string),
@@ -71,8 +69,6 @@ func CommonMain(envDefaultPtr *string,
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
 	}
-	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
-	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
@@ -83,7 +79,19 @@ func CommonMain(envDefaultPtr *string,
 	if driverConfig != nil {
 		isShell = driverConfig.CoreConfig.IsShell
 	}
+	var cmd string
+	if len(argLines) > 1 && !strings.HasPrefix(argLines[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
+		cmd = argLines[1]
+		cmdSplit := strings.Split(cmd, " ")
+		if len(cmdSplit) >= 2 {
+			fmt.Println("Invalid arguments - only 1 non flag argument available at a time.")
+			return errors.New("Invalid arguments - only 1 non flag argument available at a time.")
+		}
 
+		if len(argLines) > 2 {
+			argLines = argLines[1:]
+		}
+	}
 	if driverConfig == nil || !isShell {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
@@ -106,18 +114,21 @@ func CommonMain(envDefaultPtr *string,
 					}
 					*envPtr = envArgs[1]
 				}
+			} else if strings.HasPrefix(args, "-pluginName") {
+				pluginArgs := strings.Split(args, "=")
+				if len(pluginArgs) > 1 {
+					if envPtr == nil {
+						plugin := ""
+						pluginNamePtr = &plugin
+					}
+					*pluginNamePtr = pluginArgs[1]
+				}
 			}
 		}
 		flagset.Parse(nil)
 	}
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
-	}
-	if !isShell {
-		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required template folder: " + *startDirPtr)
-			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
-		}
 	}
 
 	if strings.Contains(*envPtr, "*") {
@@ -129,14 +140,6 @@ func CommonMain(envDefaultPtr *string,
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
-		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
-			// Honor inputs if provided...
-			driverConfigBase.EndDir = *endDirPtr
-		}
-		if len(driverConfigBase.StartDir) == 0 || len(driverConfigBase.StartDir[0]) == 0 || *startDirPtr != STARTDIR_DEFAULT {
-			// Bad inputs... use default.
-			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
-		}
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 		appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
 
@@ -149,8 +152,6 @@ func CommonMain(envDefaultPtr *string,
 			logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 			driverConfigBase.CoreConfig.Log = logger
 			driverConfigBase.CoreConfig.Insecure = *insecurePtr
-			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
-			driverConfigBase.EndDir = *endDirPtr
 			driverConfigBase.NoVault = *noVaultPtr
 		}
 	} else {
@@ -158,8 +159,6 @@ func CommonMain(envDefaultPtr *string,
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		driverConfigBase = &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
-			StartDir:   append([]string{}, *startDirPtr),
-			EndDir:     *endDirPtr,
 			NoVault:    *noVaultPtr,
 		}
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
@@ -215,5 +214,134 @@ func CommonMain(envDefaultPtr *string,
 		*envPtr = envVersion[0] + "_0"
 	}
 
+	switch cmd {
+	case "train":
+		//		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+		tokenName := "config_token_pluginany"
+		driverConfig.CoreConfig.TokenCache = cache.NewTokenCache(tokenName, tokenPtr)
+		driverConfig.CoreConfig.CurrentTokenNamePtr = &tokenName
+		// driverConfig := config.DriverConfig{
+		// 	CoreConfig: &core.CoreConfig{
+		// 		IsShell:             true, // Pretent to be shell to keep things in memory
+		// 		TokenCache:          cache.NewTokenCache(tokenName, tokenPtr),
+		// 		ExitOnFailure:       true,
+		// 		CurrentTokenNamePtr: &tokenName,
+		// 		VaultAddressPtr:     addrPtr,
+		// 		EnvBasis:            *envPtr,
+		// 		Env:                 *envPtr,
+		// 		// Log:                 logger,
+		// 	},
+		// 	SecretMode:        true,
+		// 	ZeroConfig:        true,
+		// 	SubOutputMemCache: true,
+		// 	ReadMemCache:      true,
+		// 	OutputMemCache:    true,
+		// }
+		if len(*pluginNamePtr) == 0 {
+			fmt.Printf("Must specify either -pluginName flag \n")
+			return errors.New("Must specify either -pluginName flag \n")
+		}
+
+		os.Mkdir(*pluginNamePtr, 0700)
+		os.Chdir(*pluginNamePtr)
+		fmt.Printf("%s\n", *pluginNamePtr)
+		flagset = flag.NewFlagSet(cmd, flag.ExitOnError)
+		GetPluginData(driverConfig, flagset, pluginNamePtr, cmd, envCtxPtr)
+		os.Chdir("..")
+		var pluginCompleteChan chan bool
+		<-pluginCompleteChan
+
+		// TODO: run the plugin...
+	case "test":
+		fmt.Println("yay!")
+	}
+
 	return nil
+}
+
+func GetPluginData(driverConfig *config.DriverConfig, flagset *flag.FlagSet, pluginNamePtr *string, ctl string, envCtxPtr *string) {
+	retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
+
+	if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
+		for _, restrictedMapping := range pluginRestrictedMappings {
+			restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+
+			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+
+			trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
+				driverConfig.CoreConfig.VaultAddressPtr,
+				envCtxPtr,
+				new(string),
+				new(string),
+				&wantedTokenName,
+				flagset,
+				restrictedMappingSub,
+				driverConfig)
+
+			driverConfig.EndDir = "."
+			restrictedMappingConfig := []string{"", os.Args[1]}
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+
+			// Get certs...
+			driverConfig.CoreConfig.WantCerts = true
+			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+				driverConfig.CoreConfig.VaultAddressPtr,
+				envCtxPtr,
+				new(string),      // secretId
+				new(string),      // approleId
+				&wantedTokenName, // wantedTokenName
+				nil,              // regionPtr
+				flagset,
+				restrictedMappingConfig,
+				driverConfig)
+
+			if strings.HasPrefix(restrictedMapping[0], "-templateFilter=") {
+				filter := restrictedMapping[0][strings.Index(restrictedMapping[0], "=")+1:]
+				filterParts := strings.Split(filter, ",")
+				for _, filterPart := range filterParts {
+					if !strings.HasPrefix(filterPart, "Common") {
+						restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
+						break
+					}
+				}
+			}
+
+			driverConfig.CoreConfig.WantCerts = false
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+				driverConfig.CoreConfig.VaultAddressPtr,
+				envCtxPtr,
+				new(string),      // secretId
+				new(string),      // approleId
+				&wantedTokenName, // tokenName
+				nil,              // regionPtr
+				flagset,
+				restrictedMappingConfig,
+				driverConfig)
+
+			driverConfig.MemFs.ClearCache("./trc_templates")
+			driverConfig.MemFs.ClearCache("./deploy")
+			serviceConfig := map[string]interface{}{}
+			driverConfig.MemFs.SerializeToMap(".", serviceConfig)
+			pluginRestart := make(chan tccore.KernelCmd)
+			chatReceiverChan := make(chan *tccore.ChatMsg)
+			pluginHandler := &hive.PluginHandler{
+				Name: *pluginNamePtr,
+				ConfigContext: &tccore.ConfigContext{
+					Log: driverConfig.CoreConfig.Log,
+				},
+				KernelCtx: &hive.KernelCtx{
+					PluginRestartChan: &pluginRestart,
+				},
+			}
+
+			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig, &chatReceiverChan)
+		}
+	} else {
+		fmt.Printf("Plugin not registered with trcdescartes.\n")
+	}
 }

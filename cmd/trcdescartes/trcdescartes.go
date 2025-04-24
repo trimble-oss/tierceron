@@ -37,6 +37,7 @@ func main() {
 	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
+	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
 	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
 	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
@@ -48,7 +49,7 @@ func main() {
 		},
 	}
 
-	err := trcdescartesbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, flagset, os.Args, &driverConfig)
+	err := trcdescartesbase.CommonMain(envPtr, addrPtr, pluginNamePtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, flagset, os.Args, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}
