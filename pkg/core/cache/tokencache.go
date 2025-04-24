@@ -126,6 +126,10 @@ func (tc *TokenCache) GetToken(tokenKey string) *string {
 	}
 }
 
+func (tc *TokenCache) GetTokenStr(tokenKeyPtr *string) *string {
+	return tc.GetToken(*tokenKeyPtr)
+}
+
 func (tc *TokenCache) Clear() {
 	tc.cache.Clear()
 }

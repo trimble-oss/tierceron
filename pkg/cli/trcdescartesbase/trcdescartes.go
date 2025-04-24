@@ -138,7 +138,6 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
 
 		if driverConfigBase.CoreConfig.Log == nil {
 			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -166,7 +165,7 @@ func CommonMain(envDefaultPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr)
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		appRoleConfigPtr = new(string)
@@ -179,12 +178,9 @@ func CommonMain(envDefaultPtr *string,
 	if !*noVaultPtr {
 		wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
 		autoErr := eUtils.AutoAuth(driverConfigBase,
-			secretIDPtr,
-			appRoleIDPtr,
 			&wantedTokenName,
 			&tokenPtr,
 			envPtr,
-			addrPtr,
 			envCtxPtr,
 			appRoleConfigPtr,
 			*pingPtr)

@@ -1,7 +1,9 @@
 package core
 
 import (
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 )
@@ -23,4 +25,13 @@ type CoreConfig struct {
 	WantCerts         bool
 	ExitOnFailure     bool // Exit on a failure or try to continue
 	Log               *log.Logger
+}
+
+func (cc *CoreConfig) GetCurrentToken(tokenPattern string) *string {
+	tokenPrefix := fmt.Sprintf(tokenPattern, cc.EnvBasis)
+	if strings.HasPrefix(*cc.CurrentTokenNamePtr, tokenPrefix) {
+		return cc.CurrentTokenNamePtr
+	} else {
+		return &tokenPrefix
+	}
 }
