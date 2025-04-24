@@ -411,8 +411,8 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 		// TODO: Chewbacca -- Local debug
 		configRole := os.Getenv("CONFIG_ROLE")
 		vaddress := os.Getenv("VAULT_ADDR")
-		trcshConfig.ConfigRolePtr = &configRole
-		trcshConfig.VaultAddressPtr = &vaddress
+		tokenCache.AddRoleStr("bamboo", &configRole)
+		tokenCache.SetVaultAddress(&vaddress)
 		return agentconfig, trcshConfig, nil
 		// End Chewbacca
 		var penseError error
