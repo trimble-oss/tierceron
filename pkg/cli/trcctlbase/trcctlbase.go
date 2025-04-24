@@ -301,8 +301,14 @@ func CommonMain(envDefaultPtr *string,
 			"deployments": "fenestra,rosea,spiralis",
 			"region":      "west",
 		}
-
-		err := trcshbase.CommonMain(envPtr, nil, flagset, os.Args, &configMap, &driverConfig)
+		trcshArgs := []string{}
+		for i := 0; i < len(os.Args); i++ {
+			if !strings.HasPrefix(os.Args[i], "-token=") {
+				trcshArgs = append(trcshArgs, os.Args[i])
+			}
+		}
+		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+		err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &driverConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err

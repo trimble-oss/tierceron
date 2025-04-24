@@ -150,7 +150,7 @@ func MountPluginFileSystem(
 		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
 	}
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 	deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
 	if trcIndex := strings.Index(deployTrcPath, ".trc"); trcIndex > 0 {
@@ -160,7 +160,7 @@ func MountPluginFileSystem(
 	trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
 
 	return trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
-		&mergedEnvBasis, &tokenName, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
+		&mergedEnvBasis, tokenNamePtr, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
 }
 
 // Gets list of supported deployers for current environment.

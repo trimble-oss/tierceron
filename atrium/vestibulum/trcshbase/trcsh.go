@@ -126,7 +126,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	//Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
 	var err error
-	if len(logger) == 0 && driverConfigPtr == nil && driverConfigPtr.CoreConfig.Log == nil {
+	if len(logger) == 0 && (driverConfigPtr == nil || driverConfigPtr.CoreConfig.Log == nil) {
 		providedLogger, err = CreateLogFile()
 		if err != nil {
 			return nil, err
@@ -188,7 +188,7 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 // Logging of deployer activities..
 func deployerEmote(featherCtx *cap.FeatherContext, ctlFlapMode []byte, msg string) {
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] != cap.MODE_PERCH && msg != captiplib.MSG_PERCH_AND_GAZE {
-		featherCtx.Log.Printf(msg + "\n")
+		featherCtx.Log.Printf("%s\n", msg)
 	}
 }
 
@@ -1317,10 +1317,10 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		// Chewbacca: Continue shellRunner
 		if kernelopts.BuildOptions.IsKernel() || gTrcshConfig.IsShellRunner {
 			pluginMap := map[string]interface{}{"pluginName": deployment}
-			tokenName := fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+			tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
 			if autoErr != nil {
 				fmt.Printf("Kernel Missing auth components: %s.\n", deployment)
 				return
@@ -1328,7 +1328,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 			mod, err := helperkv.NewModifierFromCoreConfig(
 				trcshDriverConfig.DriverConfig.CoreConfig,
-				tokenName,
+				*tokenNamePtr,
 				mergedEnvBasis, true)
 			if mod != nil {
 				defer mod.Release()
@@ -1386,8 +1386,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		if strings.Contains(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-") {
 			envConfig = trcshDriverConfig.DriverConfig.CoreConfig.Env
 		}
-		tokenName := fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-		configErr := trcconfigbase.CommonMain(&envConfig, &mergedEnvBasis, &tokenName, &region, nil, []string{"trcsh"}, trcshDriverConfig.DriverConfig)
+		tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+		configErr := trcconfigbase.CommonMain(&envConfig, &mergedEnvBasis, tokenNamePtr, &region, nil, []string{"trcsh"}, trcshDriverConfig.DriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
@@ -1596,7 +1596,7 @@ collaboratorReRun:
 			}
 		}
 	}
-	if *dronePtr {
+	if *dronePtr && !gTrcshConfig.IsShellRunner {
 		completeOnce := false
 		for {
 			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
