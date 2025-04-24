@@ -175,21 +175,21 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 	}
 	// Swapping in project root...
 	tokenPtr := new(string)
-	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 	if !isShellRunner {
 		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		roleEntity := "config.yml"
-		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &roleEntity, false)
+		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &roleEntity, false)
 		if autoErr != nil {
 			fmt.Println("Missing auth components.")
 			return nil, autoErr
 		}
 	} else {
-		tokenName = *trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr
+		tokenNamePtr = trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr
 	}
 
 	mod, err := helperkv.NewModifierFromCoreConfig(trcshDriverConfig.DriverConfig.CoreConfig,
-		tokenName,
+		*tokenNamePtr,
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
 		true)
 	if mod != nil {
