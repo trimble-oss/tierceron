@@ -330,9 +330,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
 			defer wg.Done()
 
-			tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+			tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
-			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
 			mod.Env = driverConfig.CoreConfig.Env
 			mod.Version = version
 			//check for template_files directory here
