@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
@@ -23,7 +22,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 // This executable automates the cerification of a plugin docker image.
@@ -49,40 +47,20 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
-	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
-	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
-
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log" {
-		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "plgtool.log"
-	}
-	f, errLog := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if errLog != nil {
-		fmt.Printf("Could not open logfile: %s\n", *logFilePtr)
-		os.Exit(1)
-	}
-
-	logger := log.New(f, "[INIT]", log.LstdFlags)
 
 	trcshDriveConfigPtr := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
 				ExitOnFailure:        true,
 				Insecure:             false,
-				Log:                  logger,
 				CurrentRoleEntityPtr: new(string),
-				TokenCache:           cache.NewTokenCacheEmpty(addrPtr),
+				TokenCache:           cache.NewTokenCacheEmpty(),
 			},
 			IsShellSubProcess: false,
 			StartDir:          []string{""},
 		},
-	}
-	if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
-		roleSlice := []string{*appRoleIDPtr, *secretIDPtr}
-		trcshDriveConfigPtr.DriverConfig.CoreConfig.TokenCache.AddRole("bamboo", &roleSlice)
 	}
 
 	err := plgtbase.CommonMain(envPtr, nil, tokenNamePtr, regionPtr, flagset, os.Args, trcshDriveConfigPtr)
