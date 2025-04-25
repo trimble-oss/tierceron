@@ -744,7 +744,7 @@ func CommonMain(envPtr *string,
 			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
 			if trcshDriverConfigBase.FeatherCtx != nil {
 				fmt.Printf("%s\n", errMessage)
-				trcshDriverConfigBase.FeatherCtx.Log.Printf(errMessage)
+				trcshDriverConfigBase.FeatherCtx.Log.Print(errMessage)
 			} else {
 				fmt.Printf("%s\n", errMessage)
 			}

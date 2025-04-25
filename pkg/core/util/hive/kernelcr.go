@@ -542,7 +542,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	if len(driverConfig.CoreConfig.Regions) > 0 {
 		pluginConfig["regions"] = driverConfig.CoreConfig.Regions
 	}
-	currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+	currentTokenName := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
 	if !pluginopts.BuildOptions.IsPluginHardwired() {
@@ -562,7 +562,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
 		driverConfig.CoreConfig.TokenCache,
-		currentTokenName,
+		*currentTokenName,
 		driverConfig.CoreConfig.Log)
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
@@ -627,11 +627,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						flagset := flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
 
-						wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
-						driverConfig.CoreConfig.CurrentTokenNamePtr = nil
+						wantedTokenName := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 						trcsubbase.CommonMain(&driverConfig.CoreConfig.EnvBasis,
 							&driverConfig.CoreConfig.EnvBasis,
-							&wantedTokenName,
+							wantedTokenName,
 							flagset,
 							restrictedMappingSub,
 							driverConfig)
@@ -645,8 +644,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = true
 						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 							&driverConfig.CoreConfig.Env,
-							&wantedTokenName, // wantedTokenName
-							nil,              // regionPtr
+							wantedTokenName, // wantedTokenName
+							nil,             // regionPtr
 							flagset,
 							restrictedMappingConfig,
 							driverConfig)
@@ -667,8 +666,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						flagset.String("env", "dev", "Environment to configure")
 						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 							&driverConfig.CoreConfig.Env,
-							&wantedTokenName, // tokenName
-							nil,              // regionPtr
+							wantedTokenName, // tokenName
+							nil,             // regionPtr
 							flagset,
 							restrictedMappingConfig,
 							driverConfig)
