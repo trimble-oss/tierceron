@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
+	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
@@ -82,13 +83,17 @@ func CommonMain(envDefaultPtr *string,
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
 	}
-	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
 	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
 		return logErr
 	}
-	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+	driverConfig.CoreConfig.Log = log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+	if utils.RefLength(addrPtr) == 0 {
+		eUtils.ReadAuthParts(driverConfig, false)
+	} else {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	}
 
 	var ctl string
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
@@ -247,7 +252,7 @@ func CommonMain(envDefaultPtr *string,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,
 				Env:                 *envPtr,
-				Log:                 logger,
+				Log:                 driverConfig.CoreConfig.Log,
 			},
 			SecretMode:        true,
 			ZeroConfig:        true,
@@ -281,7 +286,7 @@ func CommonMain(envDefaultPtr *string,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,
 				Env:                 *envPtr,
-				Log:                 logger,
+				Log:                 driverConfig.CoreConfig.Log,
 			},
 			SecretMode:        true,
 			ZeroConfig:        true,

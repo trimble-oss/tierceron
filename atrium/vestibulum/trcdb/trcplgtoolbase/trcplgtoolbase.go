@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,6 +26,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
+	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
@@ -42,6 +44,7 @@ func CommonMain(envPtr *string,
 
 	var flagEnvPtr *string
 	var tokenPtr *string
+	var addrPtr *string
 	// Main functions are as follows:
 	if flagset == nil {
 		fmt.Println("Version: " + "1.05")
@@ -57,6 +60,7 @@ func CommonMain(envPtr *string,
 		}
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
@@ -98,6 +102,7 @@ func CommonMain(envPtr *string,
 	// NewRelic flags...
 	newrelicAppNamePtr := flagset.String("newRelicAppName", "", "App name for New Relic")
 	newrelicLicenseKeyPtr := flagset.String("newRelicLicenseKey", "", "License key for New Relic")
+	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 
 	certifyInit := false
 
@@ -143,6 +148,22 @@ func CommonMain(envPtr *string,
 			return err
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+	}
+	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log" {
+		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "plgtool.log"
+	}
+	f, errLog := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	if errLog != nil {
+		fmt.Printf("Could not open logfile: %s\n", *logFilePtr)
+		os.Exit(1)
+	}
+
+	trcshDriverConfig.DriverConfig.CoreConfig.Log = log.New(f, "[INIT]", log.LstdFlags)
+
+	if utils.RefLength(addrPtr) == 0 {
+		eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
+	} else {
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
 
 	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
@@ -241,6 +262,7 @@ func CommonMain(envPtr *string,
 		case "trcshkubeservice":
 		case "trcshpluginservice":
 		case "trcshmutabilispraefecto":
+		case "trcshcmdtoolplugin":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
