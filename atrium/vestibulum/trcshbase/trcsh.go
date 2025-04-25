@@ -986,7 +986,11 @@ func roleBasedRunner(
 	switch control {
 	case "trcplgtool":
 		envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
-		tokenName = "config_token_pluginany"
+		if gTrcshConfig.IsShellRunner {
+			tokenName = *trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+		} else {
+			tokenName = "config_token_pluginany"
+		}
 		if kernelopts.BuildOptions.IsKernel() {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig, kernelPluginHandler)
 		} else {
