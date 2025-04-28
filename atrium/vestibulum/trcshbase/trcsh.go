@@ -755,6 +755,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if err != nil {
 			fmt.Printf("Problem initializing mod: %s\n", err)
 			driverConfigPtr.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+			os.Exit(124)
 		}
 		if vault != nil {
 			defer vault.Close()
