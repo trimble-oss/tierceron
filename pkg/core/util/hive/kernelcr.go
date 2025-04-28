@@ -596,7 +596,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				pluginConfigPaths := getConfigPaths.(func(string) []string)
 				paths = pluginConfigPaths(pluginHandler.Name)
 			} else {
-				if s, ok := pluginToolConfig["trctype"].(string); pluginopts.BuildOptions.IsPluginHardwired() || (ok && s == "trcshkubeservice") {
+				if s, ok := pluginToolConfig["trctype"].(string); pluginopts.BuildOptions.IsPluginHardwired() || (ok && (s == "trcshkubeservice") || (s == "trcshcmdtoolplugin")) {
 					paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
