@@ -304,12 +304,12 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	}
 	var certbytes []byte
 	var keybytes []byte
-	if cert, ok := (*properties)[HELLO_CERT]; ok {
-		certbytes = cert.([]byte)
+	if cert, ok := (*properties)[HELLO_CERT].([]byte); ok && len(cert) > 0 {
+		certbytes = cert
 		(*configContext.ConfigCerts)[HELLO_CERT] = certbytes
 	}
-	if key, ok := (*properties)[HELLO_KEY]; ok {
-		keybytes = key.([]byte)
+	if key, ok := (*properties)[HELLO_CERT].([]byte); ok && len(key) > 0 {
+		keybytes = key
 		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
 	}
 	if _, ok := (*properties)[COMMON_PATH]; !ok {

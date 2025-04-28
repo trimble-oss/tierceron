@@ -128,15 +128,17 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for rosea")
 		return
 	}
-	var config map[string]interface{}
+	var config *map[string]interface{}
 	var ok bool
-	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
-		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
-		err := yaml.Unmarshal(configBytes, &config)
-		if err != nil {
-			configContext.Log.Println("Missing common configs")
-			send_err(err)
-			return
+	if len(*configContext.Config) > 0 {
+		if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]interface{}); !ok {
+			configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
+			err := yaml.Unmarshal(configBytes, &config)
+			if err != nil {
+				configContext.Log.Println("Missing common configs")
+				send_err(err)
+				return
+			}
 		}
 	}
 
