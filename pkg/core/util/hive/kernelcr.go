@@ -728,6 +728,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			statPluginConfig := make(map[string]interface{})
 			statPluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 			currentStatTokenName := "config_token_pluginany"
+			if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshcmdtoolplugin") {
+				cmdToken := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+				currentStatTokenName = *cmdToken
+			}
 			statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
 			_, kernelmod, kernelvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
