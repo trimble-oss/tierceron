@@ -449,7 +449,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				dc,
 				&tfContext,
 				flowopts.BuildOptions.ProcessFlowController,
-				vaultDatabaseConfig,
+				vaultDatabaseConfig, // unused.
 				sourceDatabaseConnectionsMap,
 				enhancementFlow,
 				flowcore.TableEnrichFlow,
@@ -476,7 +476,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 					dc,
 					&tfContext,
 					flowopts.BuildOptions.ProcessTestFlowController,
-					vaultDatabaseConfig,
+					vaultDatabaseConfig, // unused..
 					sourceDatabaseConnectionsMap,
 					testFlow,
 					flowcore.TableTestFlow,

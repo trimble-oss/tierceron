@@ -7,6 +7,7 @@ import (
 
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
 )
 
 // GetAdditionalFlows - override to provide a list of additional business logic based flows.
@@ -31,15 +32,18 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 
 // Process a test flow.
 func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return errors.New("Flow not implemented.")
+	return errors.New("flow not implemented")
 }
 
 // ProcessFlowController - override to provide a custom flow controller.  You will need a custom
 // flow controller if you define any additional flows other than the default flows:
 // 1. DataFlowStatConfigurationsFlow
-// 2. AskFlumeFlow
 func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
-	return nil
+	switch trcFlowContext.Flow {
+	case flowcore.DataFlowStatConfigurationsFlow:
+		return flows.ProcessDataFlowStatConfigurations(tfmContext, trcFlowContext)
+	}
+	return errors.New("flow not implemented")
 }
 
 // GetFlowDatabaseName - override to provide a custom flow database name.

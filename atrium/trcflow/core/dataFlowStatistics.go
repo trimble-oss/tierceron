@@ -12,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -294,7 +295,15 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	return &aFleet, nil
 }
 
-func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
+func DeliverStatistic(tfmContext *TrcFlowMachineContext,
+	tfContext *TrcFlowContext,
+	mod *kv.Modifier,
+	dfs *tccore.TTDINode,
+	id string,
+	indexPath string,
+	idName string,
+	logger *log.Logger,
+	vaultWriteBack bool) {
 	//TODO : Write Statistic to vault
 	dfs.FinishStatisticLog()
 	dsc, _, err := dfs.GetDeliverStatCtx()
@@ -330,7 +339,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []FlowNameType{FlowNameType("DataFlowStatistics")}, "")
+				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType("DataFlowStatistics")}, "")
 				if !changed {
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.

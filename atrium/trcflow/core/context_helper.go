@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
@@ -205,8 +206,9 @@ func getStatisticInsertChangeQuery(databaseName string, changeTable string, idCo
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tfContext *TrcFlowContext, idCol string, indexColumnNames interface{}) ([][]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext tcflow.FlowContext, idCol string, indexColumnNames interface{}) ([][]interface{}, error) {
 	var changedEntriesQuery string
+	tfContext := tcflowContext.(*TrcFlowContext)
 
 	changesLock.Lock()
 	changedEntriesQuery = getStatisticChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, indexColumnNames)
@@ -233,12 +235,13 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tfCo
 
 // vaultPersistPushRemoteChanges - Persists any local mysql changes to vault and pushed any changes to a remote data source.
 func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
-	tfContext *TrcFlowContext,
+	tcflowContext tcflow.FlowContext,
 	identityColumnName string,
 	indexColumnNames interface{},
 	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}, []string) error) error {
+	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, map[string]interface{}, []string) error) error {
+	tfContext := tcflowContext.(*TrcFlowContext)
 
 	var matrixChangedEntries [][]interface{}
 	var removeErr error
