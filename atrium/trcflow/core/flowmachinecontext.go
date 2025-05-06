@@ -781,7 +781,7 @@ func (tfmContext *TrcFlowMachineContext) GetDbConn(tcflowContext tcflow.FlowCont
 		})
 }
 
-func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext tcflow.FlowContext, region string, regionSource map[string]interface{}) (*sql.DB, error) {
+func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext tcflow.FlowContext, region string) (*sql.DB, error) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	sqlConn := tfContext.RemoteDataSource["connection"].(*sql.DB)
 	if sqlConn == nil {
