@@ -241,12 +241,17 @@ func (tfContext *TrcFlowContext) GetFlowUpdate(currentFlowState tcflow.CurrentFl
 	}
 }
 
-func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribute string) interface{} {
+func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(region string, dataSourceAttribute string) interface{} {
 	if tfContext.RemoteDataSource == nil {
 		return nil
 	}
-	if remoteDataSourceAttribute, ok := tfContext.RemoteDataSource[dataSourceAttribute]; ok {
-		return remoteDataSourceAttribute
+	if len(region) == 0 {
+		region = "west"
+	}
+	if remoteDataSource, ok := tfContext.RemoteDataSource[region].(map[string]interface{}); ok {
+		if remoteDataSourceAttribute, ok := remoteDataSource[dataSourceAttribute]; ok {
+			return remoteDataSourceAttribute
+		}
 	}
 	return nil
 }

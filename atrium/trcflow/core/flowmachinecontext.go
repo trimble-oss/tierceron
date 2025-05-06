@@ -325,7 +325,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext tcflow.Flo
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, map[string]interface{}, []string) error,
+	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, []string) error,
 	sqlState bool) {
 
 	tfContext := tcflowContext.(*TrcFlowContext)
@@ -379,7 +379,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, map[string]interface{}, []string) error,
+	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, []string) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
 
@@ -463,7 +463,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext tcflow.Flo
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, map[string]interface{}, []string) error,
+	flowPushRemote func(tcflow.FlowContext, map[string]interface{}, []string) error,
 	sqlState bool) {
 
 	tfContext := tcflowContext.(*TrcFlowContext)
@@ -824,7 +824,6 @@ func (tfmContext *TrcFlowMachineContext) SetEncryptionSecret() {
 }
 
 func (tfmContext *TrcFlowMachineContext) ProcessFlow(
-	flowContext tcflow.FlowConfigContext,
 	tcflowContext tcflow.FlowContext,
 	processFlowController func(tfmContext tcflow.FlowMachineContext, tfContext tcflow.FlowContext) error,
 	vaultDatabaseConfig map[string]interface{}, // TODO: actually use this to set up a mysql facade.

@@ -351,7 +351,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
 			tfmFlumeContext.ProcessFlow(
-				dc,
 				tcfContext,
 				FlumenProcessFlowController,
 				vaultDatabaseConfig,
@@ -413,7 +412,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			tfContext.FlowSourceAlias = harbingeropts.BuildOptions.GetDatabaseName()
 
 			tfmContext.ProcessFlow(
-				dc,
 				&tfContext,
 				flowopts.BuildOptions.ProcessFlowController,
 				vaultDatabaseConfig,
@@ -446,7 +444,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}
 
 			tfmContext.ProcessFlow(
-				dc,
 				&tfContext,
 				flowopts.BuildOptions.ProcessFlowController,
 				vaultDatabaseConfig, // unused.
@@ -473,7 +470,6 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				}
 
 				tfmc.ProcessFlow(
-					dc,
 					&tfContext,
 					flowopts.BuildOptions.ProcessTestFlowController,
 					vaultDatabaseConfig, // unused..

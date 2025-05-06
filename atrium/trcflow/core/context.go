@@ -14,6 +14,7 @@ import (
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/core/flow"
 )
 
 type FlowType int64
@@ -27,7 +28,7 @@ var sourceDatabaseConnectionsMap map[string]map[string]interface{}
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
 
 const (
-	TableSyncFlow FlowType = iota
+	TableSyncFlow flowcore.FlowType = iota
 	TableEnrichFlow
 	TableTestFlow
 )
