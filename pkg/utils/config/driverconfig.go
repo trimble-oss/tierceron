@@ -10,7 +10,6 @@ import (
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron/pkg/core"
 )
@@ -107,14 +106,6 @@ type DriverConfig struct {
 
 	DeploymentConfig         map[string]interface{} // For trcsh to indicate which deployment to work on
 	DeploymentCtlMessageChan chan string
-}
-
-func (driverConfig *DriverConfig) LogErrorMessage(errorMessage string, exit bool) {
-	eUtils.LogErrorMessage(driverConfig.CoreConfig, errorMessage, exit)
-}
-
-func (driverConfig *DriverConfig) LogInfo(message string) {
-	eUtils.LogInfo(driverConfig.CoreConfig, message)
 }
 
 // ConfigControl Setup initializes the directory structures in preparation for parsing templates.
