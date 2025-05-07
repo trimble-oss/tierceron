@@ -1,7 +1,7 @@
 package testopts
 
 import (
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
 func GetAdditionalTestFlows() []flowcore.FlowNameType {
@@ -12,7 +12,7 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 	return []flowcore.FlowNameType{}
 }
 
-func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	return nil
 }
 

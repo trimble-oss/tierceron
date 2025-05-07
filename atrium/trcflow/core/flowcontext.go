@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -30,9 +31,9 @@ type TrcFlowContext struct {
 	// from vault.
 	CustomSeedTrcDb func(*TrcFlowMachineContext, *TrcFlowContext) error
 
-	FlowSource        string       // The name of the flow source identified by project.
-	FlowSourceAlias   string       // May be a database name
-	Flow              FlowNameType // May be a table name.
+	FlowSource        string                // The name of the flow source identified by project.
+	FlowSourceAlias   string                // May be a database name
+	Flow              flowcore.FlowNameType // May be a table name.
 	ChangeIdKey       string
 	FlowPath          string
 	FlowData          interface{}
@@ -63,6 +64,17 @@ func (tfContext *TrcFlowContext) IsRestart() bool {
 
 func (tfContext *TrcFlowContext) SetRestart(restart bool) {
 	tfContext.Restart = restart
+}
+
+func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
+	go func() {
+		tfContext.ContextNotifyChan <- true
+	}()
+}
+
+func (tfContext *TrcFlowContext) WaitFlowLoaded() {
+	<-tfContext.ContextNotifyChan
+	<-tfContext.ContextNotifyChan
 }
 
 func (tfContext *TrcFlowContext) FlowLocker() {

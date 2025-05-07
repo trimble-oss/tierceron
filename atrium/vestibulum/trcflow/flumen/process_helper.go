@@ -6,10 +6,11 @@ import (
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
@@ -32,18 +33,20 @@ func getInsertChangeQuery(databaseName string, changeTable string, id string) st
 	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
 }
 
-func FlumenProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+func FlumenProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+	trcTfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
+	trcFlowContext := tfContext.(*trcflowcore.TrcFlowContext)
 
 	switch trcFlowContext.Flow {
 	case TierceronControllerFlow:
-		return ProcessTierceronFlows(tfmContext, trcFlowContext)
+		return ProcessTierceronFlows(trcTfmContext, trcFlowContext)
 	}
 
 	return errors.New("Table not implemented.")
 }
 
-func seedVaultFromChanges(tfmContext *flowcore.TrcFlowMachineContext,
-	tfContext *flowcore.TrcFlowContext,
+func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
+	tfContext *trcflowcore.TrcFlowContext,
 	vaultAddressPtr *string,
 	identityColumnName string,
 	vaultIndexColumnName string,

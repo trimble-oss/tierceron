@@ -14,14 +14,11 @@ import (
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	flowcore "github.com/trimble-oss/tierceron-core/v2/core/flow"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-type FlowType int64
-type FlowNameType string
-
-var DataFlowStatConfigurationsFlow FlowNameType = "DataFlowStatistics"
-var AskFlumeFlow FlowNameType = "AskFlumeFlow"
+var DataFlowStatConfigurationsFlow flowcore.FlowNameType = "DataFlowStatistics"
+var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
 
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]interface{}
@@ -54,16 +51,9 @@ func getDeleteTrigger(databaseName string, tableName string, idColumnName string
 		` END;`
 }
 
-func (fnt FlowNameType) TableName() string {
-	return string(fnt)
-}
-
-func (fnt FlowNameType) ServiceName() string {
-	return string(fnt)
-}
 func TriggerChangeChannel(table string) {
 	for _, tfmContext := range tfmContextMap {
-		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
 			notificationFlowChannel.Bcast(true)
 			return
 		}
@@ -75,7 +65,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		// If changIds identified, manually trigger a change.
 		if table != "" {
 			for changeIdKey, changeIdValue := range changeIds {
-				if tfContext, tfContextOk := tfmContext.FlowMap[FlowNameType(table)]; tfContextOk {
+				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
 					if tfContext.ChangeIdKey == changeIdKey {
 						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
 						bindings := map[string]sqle.Expression{
@@ -86,7 +76,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 					}
 				}
 			}
-			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[FlowNameType(table)]; notificationChannelOk {
+			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
 				notificationFlowChannel.Bcast(true)
 				continue
 			}

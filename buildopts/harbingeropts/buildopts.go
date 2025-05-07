@@ -1,7 +1,7 @@
 package harbingeropts
 
 import (
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -13,7 +13,7 @@ type OptionsBuilder struct {
 	GetDatabaseName  func() string
 	BuildInterface   func(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext interface{}, vaultDatabaseConfig map[string]interface{}, serverListener interface{}) error
 	BuildTableGrant  func(tableName string) (string, error)
-	TableGrantNotify func(tfmContext *flowcore.TrcFlowMachineContext, tableName string)
+	TableGrantNotify func(tfmContext flowcore.FlowMachineContext, tableName string)
 }
 
 func LoadOptions() Option {

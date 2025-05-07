@@ -3,7 +3,8 @@ package flumen
 import (
 	"errors"
 
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
 	"time"
 
@@ -68,7 +69,7 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 	return tfFlow
 }
 
-func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
+func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
 		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
@@ -101,7 +102,7 @@ func sendUpdates(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore
 	}
 }
 
-func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) ([]map[string]interface{}, error) {
+func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) ([]map[string]interface{}, error) {
 	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan flowcorehelper.CurrentFlowState); ok {
 		if flowControllerMap == nil {
 			return nil, errors.New("Channel map for flow controller was nil.")
@@ -110,7 +111,7 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
 		if tfmContext.FlowControllerInit { //Sending off listener for state updates
-			go func(tfmc *flowcore.TrcFlowMachineContext, tfc *flowcore.TrcFlowContext, fcmap map[string]chan flowcorehelper.CurrentFlowState) {
+			go func(tfmc *trcflowcore.TrcFlowMachineContext, tfc *trcflowcore.TrcFlowContext, fcmap map[string]chan flowcorehelper.CurrentFlowState) {
 				for {
 					select {
 					case tierceronFlowName, ok := <-tfmContext.FlowControllerUpdateAlert:
@@ -144,7 +145,7 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 				return nil, errors.New("Receiver map channel for flow controller was nil.")
 			}
 			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
-				go func(currentReceiver chan flowcorehelper.FlowStateUpdate, tfmc *flowcore.TrcFlowMachineContext) {
+				go func(currentReceiver chan flowcorehelper.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
 					for {
 						select {
 						case x, ok := <-currentReceiver:
@@ -166,7 +167,7 @@ func tierceronFlowImport(tfmContext *flowcore.TrcFlowMachineContext, tfContext *
 
 // Only pull from vault on init
 // Listen to a change channel ->
-func ProcessTierceronFlows(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
+func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
 

@@ -195,7 +195,7 @@ require (
 	github.com/fyne-io/gl-js v0.0.0-20220119005834-d2da28d9ccfe // indirect
 	github.com/fyne-io/glfw-js v0.0.0-20240101223322-6e1efdc71b7a // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
 	github.com/go-text/typesetting v0.2.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
@@ -251,7 +251,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
@@ -271,6 +271,8 @@ require (
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
 //replace github.com/square/go-jose.v2 => ../../go-jose
+
+replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.26
 
@@ -292,7 +294,7 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
-// replace github.com/trimble-oss/tierceron-core => ../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
 
 replace github.com/trimble-oss/tierceron => ../
 

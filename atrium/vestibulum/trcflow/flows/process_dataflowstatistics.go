@@ -8,9 +8,10 @@ import (
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
@@ -80,7 +81,7 @@ func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 	})
 }
 
-func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
+func dataFlowStatPullRemote(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
 	tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
 	tenantListData, tenantListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log)
 	if tenantListErr != nil {
@@ -165,7 +166,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 
 	tfContext.FlowLock.Lock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfmContext.PermissionChan <- flowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
+		tfmContext.PermissionChan <- trcflowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
 		tfContext.Init = false
 	}
 	tfContext.FlowLock.Unlock()
@@ -173,7 +174,7 @@ func dataFlowStatPullRemote(tfmContext *flowcore.TrcFlowMachineContext, tfContex
 	return nil
 }
 
-func prepareDataFlowChangeTable(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) {
+func prepareDataFlowChangeTable(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
 	tfmContext.GetTableModifierLock().Lock()
 	changeTableName := tfContext.Flow.TableName() + "_Changes"
 	tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
@@ -183,7 +184,7 @@ func prepareDataFlowChangeTable(tfmContext *flowcore.TrcFlowMachineContext, tfCo
 		{Name: flowcoreopts.DataflowTestStateCodeColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
 		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 	}),
-		flowcore.TableCollationIdGen(changeTableName),
+		trcflowcore.TableCollationIdGen(changeTableName),
 	)
 	if changeTableErr != nil {
 		tfmContext.Log("Error creating ninja change table", changeTableErr)
@@ -192,22 +193,25 @@ func prepareDataFlowChangeTable(tfmContext *flowcore.TrcFlowMachineContext, tfCo
 	tfmContext.GetTableModifierLock().Unlock()
 }
 
-func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) error {
-	tfmContext.AddTableSchema(getDataFlowStatisticsSchema(tfContext.Flow.TableName()), tfContext)
-	prepareDataFlowChangeTable(tfmContext, tfContext) //Change table needs to be set again due to composite key - different from other tables
-	tfContext.FlowLock.Lock()
-	tfContext.ReadOnly = false //Change this to false for writeback***
-	tfContext.FlowState = <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState)
-	tfContext.FlowState.SyncFilter = "N/A"
-	tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
+func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+	trctfContext := tfContext.(*trcflowcore.TrcFlowContext)
+	trctfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
+
+	tfmContext.AddTableSchema(getDataFlowStatisticsSchema(trctfContext.Flow.TableName()), trctfContext)
+	prepareDataFlowChangeTable(trctfmContext, trctfContext) //Change table needs to be set again due to composite key - different from other tables
+	trctfContext.FlowLock.Lock()
+	trctfContext.ReadOnly = false //Change this to false for writeback***
+	trctfContext.FlowState = <-trctfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState)
+	trctfContext.FlowState.SyncFilter = "N/A"
+	trctfContext.CustomSeedTrcDb = dataFlowStatPullRemote
 
 	/*if tfContext.FlowState.State != 1 && tfContext.FlowState.State != 2 {
 		tfmContext.PermissionChan <- tfContext.Flow.TableName()
 		tfContext.Init = false
 	}*/
 
-	tfContext.FlowLock.Unlock()
-	stateUpdateChannel := tfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
+	trctfContext.FlowLock.Unlock()
+	stateUpdateChannel := trctfContext.RemoteDataSource["flowStateReceiver"].(chan flowcorehelper.FlowStateUpdate)
 
 	go func(tfs flowcorehelper.CurrentFlowState, sL *sync.Mutex, sPC chan flowcorehelper.FlowStateUpdate) {
 		sL.Lock()
@@ -215,28 +219,28 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 		sL.Unlock()
 		for {
 			select {
-			case stateUpdate := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
+			case stateUpdate := <-trctfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
 				stateUpdate.SyncFilter = "N/A"
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
 				} else if previousState.SyncMode == "refreshingDaily" && stateUpdate.SyncMode != "refreshEnd" && stateUpdate.State == 2 && int(previousState.State) != coreopts.BuildOptions.PreviousStateCheck(int(stateUpdate.State)) {
-					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+					sPC <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: trctfContext.FlowState.FlowAlias}
 					break
 				} else if int(previousState.State) != coreopts.BuildOptions.PreviousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
-					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+					sPC <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: strconv.Itoa(int(previousState.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: stateUpdate.SyncMode, FlowAlias: trctfContext.FlowState.FlowAlias}
 					continue
 				}
 				previousState = stateUpdate
 				sL.Lock()
-				tfContext.FlowState = stateUpdate
+				trctfContext.FlowState = stateUpdate
 				sL.Unlock()
 			}
 		}
-	}(tfContext.FlowState, tfContext.FlowLock, stateUpdateChannel)
+	}(trctfContext.FlowState, trctfContext.FlowLock, stateUpdateChannel)
 
-	tfContext.Init = true
+	trctfContext.Init = true
 
-	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
+	sqlIngestInterval := trctfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source
 		// Only pull if ingest interval is set to > 0 value.
@@ -245,78 +249,78 @@ func ProcessDataFlowStatConfigurations(tfmContext *flowcore.TrcFlowMachineContex
 			select {
 			case <-time.After(time.Millisecond * afterTime):
 				afterTime = sqlIngestInterval
-				tfContext.FlowLock.Lock()
-				if tfContext.FlowState.State == 3 {
-					tfContext.FlowLock.Unlock()
-					tfmContext.PermissionChan <- flowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.FlowState.State}
-					if tfContext.CancelContext != nil {
-						tfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
+				trctfContext.FlowLock.Lock()
+				if trctfContext.FlowState.State == 3 {
+					trctfContext.FlowLock.Unlock()
+					trctfmContext.PermissionChan <- trcflowcore.PermissionUpdate{TableName: trctfContext.Flow.TableName(), CurrentState: trctfContext.FlowState.State}
+					if trctfContext.CancelContext != nil {
+						trctfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
 						var baseTableTemplate extract.TemplateResultData
-						trcvutils.LoadBaseTemplate(tfmContext.DriverConfig, &baseTableTemplate, tfContext.GoMod, tfContext.FlowSource, tfContext.Flow.ServiceName(), tfContext.FlowPath)
-						tfContext.FlowData = &baseTableTemplate
+						trcvutils.LoadBaseTemplate(trctfmContext.DriverConfig, &baseTableTemplate, trctfContext.GoMod, trctfContext.FlowSource, trctfContext.Flow.ServiceName(), trctfContext.FlowPath)
+						trctfContext.FlowData = &baseTableTemplate
 					}
 					tfmContext.Log("DataFlowStatistics flow is being stopped...", nil)
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "0", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: "0", SyncFilter: trctfContext.FlowState.SyncFilter, SyncMode: trctfContext.FlowState.SyncMode, FlowAlias: trctfContext.FlowState.FlowAlias}
 					continue
-				} else if tfContext.FlowState.State == 0 {
-					tfContext.FlowLock.Unlock()
+				} else if trctfContext.FlowState.State == 0 {
+					trctfContext.FlowLock.Unlock()
 					tfmContext.Log("DataFlowStatistics flow is currently offline...", nil)
-					if tfContext.FlowState.SyncMode == "refreshingDaily" {
+					if trctfContext.FlowState.SyncMode == "refreshingDaily" {
 						refresh = true
-						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "1", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: "1", SyncFilter: trctfContext.FlowState.SyncFilter, SyncMode: trctfContext.FlowState.SyncMode, FlowAlias: trctfContext.FlowState.FlowAlias}
 					}
 					continue
-				} else if tfContext.FlowState.State == 1 {
-					tfContext.FlowLock.Unlock()
+				} else if trctfContext.FlowState.State == 1 {
+					trctfContext.FlowLock.Unlock()
 					tfmContext.Log("DataFlowStatistics flow is restarting...", nil)
-					tfContext.Init = true
-					tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "truncate " + tfContext.FlowSourceAlias + "." + tfContext.Flow.TableName()}, nil, false, "DELETE", nil, "")
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: tfContext.FlowState.SyncMode, FlowAlias: tfContext.FlowState.FlowAlias}
+					trctfContext.Init = true
+					tfmContext.CallDBQuery(trctfContext, map[string]interface{}{"TrcQuery": "truncate " + trctfContext.FlowSourceAlias + "." + trctfContext.Flow.TableName()}, nil, false, "DELETE", nil, "")
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: trctfContext.FlowState.SyncFilter, SyncMode: trctfContext.FlowState.SyncMode, FlowAlias: trctfContext.FlowState.FlowAlias}
 					continue
-				} else if tfContext.FlowState.State == 2 {
-					tfContext.FlowLock.Unlock()
-					if tfContext.Init {
-						go tfmContext.SyncTableCycle(tfContext, flowcoreopts.DataflowTestNameColumn, []string{flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn, flowcoreopts.DataflowTestNameColumn}, GetDataflowStatIndexedPathExt, nil, false)
+				} else if trctfContext.FlowState.State == 2 {
+					trctfContext.FlowLock.Unlock()
+					if trctfContext.Init {
+						go tfmContext.SyncTableCycle(trctfContext, flowcoreopts.DataflowTestNameColumn, []string{flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn, flowcoreopts.DataflowTestNameColumn}, GetDataflowStatIndexedPathExt, nil, false)
 					}
 				} else {
-					tfContext.FlowLock.Unlock()
+					trctfContext.FlowLock.Unlock()
 					tfmContext.Log("Ignoring invalid flow.", nil)
 					continue
 				}
 
-				tfContext.FlowLock.Lock()
-				if strings.HasPrefix(tfContext.FlowState.SyncMode, "refresh") { //This is to refresh from vault - different from pulling/pushing.
-					refreshSuffix, _ := strings.CutPrefix(tfContext.FlowState.SyncMode, "refresh")
-					if tfContext.FlowState.SyncMode == "refreshingDaily" {
+				trctfContext.FlowLock.Lock()
+				if strings.HasPrefix(trctfContext.FlowState.SyncMode, "refresh") { //This is to refresh from vault - different from pulling/pushing.
+					refreshSuffix, _ := strings.CutPrefix(trctfContext.FlowState.SyncMode, "refresh")
+					if trctfContext.FlowState.SyncMode == "refreshingDaily" {
 						if !refresh { //This is for if trcdb loads up in "refreshingDaily" -> need to kick off refresh again.
-							KickOffTimedRefresh(tfContext, stateUpdateChannel, "Daily")
+							KickOffTimedRefresh(trctfContext, stateUpdateChannel, "Daily")
 						}
-					} else if !KickOffTimedRefresh(tfContext, stateUpdateChannel, refreshSuffix) {
-						tfmContext.Log("DataFlowStatistics has an invalid refresh timing"+flowcorehelper.SyncCheck(tfContext.FlowState.SyncMode)+".", nil)
-						tfContext.FlowState.SyncMode = "InvalidRefreshMode"
-						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "InvalidRefreshMode", FlowAlias: tfContext.FlowState.FlowAlias}
+					} else if !KickOffTimedRefresh(trctfContext, stateUpdateChannel, refreshSuffix) {
+						tfmContext.Log("DataFlowStatistics has an invalid refresh timing"+flowcorehelper.SyncCheck(trctfContext.FlowState.SyncMode)+".", nil)
+						trctfContext.FlowState.SyncMode = "InvalidRefreshMode"
+						stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: trctfContext.FlowState.SyncFilter, SyncMode: "InvalidRefreshMode", FlowAlias: trctfContext.FlowState.FlowAlias}
 					}
 				}
-				tfContext.FlowLock.Unlock()
+				trctfContext.FlowLock.Unlock()
 
-				tfContext.FlowLock.Lock()
-				if tfContext.FlowState.SyncMode == "pullonce" {
-					tfContext.FlowState.SyncMode = "pullsynccomplete"
-					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "pullsynccomplete", FlowAlias: tfContext.FlowState.FlowAlias}
+				trctfContext.FlowLock.Lock()
+				if trctfContext.FlowState.SyncMode == "pullonce" {
+					trctfContext.FlowState.SyncMode = "pullsynccomplete"
+					stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: trctfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: trctfContext.FlowState.SyncFilter, SyncMode: "pullsynccomplete", FlowAlias: trctfContext.FlowState.FlowAlias}
 				}
-				tfContext.FlowLock.Unlock()
+				trctfContext.FlowLock.Unlock()
 
-				tfContext.FlowLock.Lock()
-				tfmContext.Log("DataFlowStatistics is running and checking for changes"+flowcorehelper.SyncCheck(tfContext.FlowState.SyncMode)+".", nil)
-				tfContext.FlowLock.Unlock()
+				trctfContext.FlowLock.Lock()
+				tfmContext.Log("DataFlowStatistics is running and checking for changes"+flowcorehelper.SyncCheck(trctfContext.FlowState.SyncMode)+".", nil)
+				trctfContext.FlowLock.Unlock()
 			}
 		}
 	}
-	tfContext.CancelContext()
+	trctfContext.CancelContext()
 	return nil
 }
 
-func KickOffTimedRefresh(tfContext *flowcore.TrcFlowContext, stateUpdateChannel chan flowcorehelper.FlowStateUpdate, timing string) bool {
+func KickOffTimedRefresh(tfContext *trcflowcore.TrcFlowContext, stateUpdateChannel chan flowcorehelper.FlowStateUpdate, timing string) bool {
 	switch { //Always at midnight
 	case timing == "Daily":
 		stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias}
@@ -325,7 +329,7 @@ func KickOffTimedRefresh(tfContext *flowcore.TrcFlowContext, stateUpdateChannel 
 		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
 		//midnight := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), now.Minute(), now.Second()+3, 0, loc)
 		timeTilMidnight := midnight.Sub(now)
-		go func(tfc *flowcore.TrcFlowContext, tilMidnight time.Duration) {
+		go func(tfc *trcflowcore.TrcFlowContext, tilMidnight time.Duration) {
 			refresh = true
 			time.Sleep(tilMidnight)
 			refreshTime := time.Duration(time.Second * 0)

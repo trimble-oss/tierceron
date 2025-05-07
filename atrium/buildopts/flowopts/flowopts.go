@@ -5,7 +5,8 @@ import (
 	"errors"
 	"log"
 
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
 )
@@ -31,17 +32,18 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
 }
 
 // Process a test flow.
-func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, trcFlowContext flowcore.FlowContext) error {
 	return errors.New("flow not implemented")
 }
 
 // ProcessFlowController - override to provide a custom flow controller.  You will need a custom
 // flow controller if you define any additional flows other than the default flows:
 // 1. DataFlowStatConfigurationsFlow
-func ProcessFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+	trcFlowContext := tfContext.(*trcflowcore.TrcFlowContext)
 	switch trcFlowContext.Flow {
-	case flowcore.DataFlowStatConfigurationsFlow:
-		return flows.ProcessDataFlowStatConfigurations(tfmContext, trcFlowContext)
+	case trcflowcore.DataFlowStatConfigurationsFlow:
+		return flows.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
 	}
 	return errors.New("flow not implemented")
 }
@@ -60,8 +62,8 @@ type AskFlumeResponse struct {
 
 // ProcessAskFlumeEventMapper - override to provide a custom AskFlumeEventMapper processor.
 // This processor is used to map AskFlumeMessage events to a custom query.
-func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage, tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *flowcore.AskFlumeMessage {
-	var msg *flowcore.AskFlumeMessage
+func ProcessAskFlumeEventMapper(askFlumeContext *trcflowcore.AskFlumeContext, query *trcflowcore.AskFlumeMessage, tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) *trcflowcore.AskFlumeMessage {
+	var msg *trcflowcore.AskFlumeMessage
 
 	sql_query := make(map[string]interface{})
 
@@ -80,14 +82,14 @@ func ProcessAskFlumeEventMapper(askFlumeContext *flowcore.AskFlumeContext, query
 			log.Printf("error encoding result from trcdb: %v", err)
 		}
 		if len(rows) > 0 {
-			msg = &flowcore.AskFlumeMessage{
+			msg = &trcflowcore.AskFlumeMessage{
 				Id:      query.Id,
 				Type:    query.Message,
 				Message: string(encoded_rows),
 			}
 			break
 		} else {
-			msg = &flowcore.AskFlumeMessage{
+			msg = &trcflowcore.AskFlumeMessage{
 				Id:      query.Id,
 				Type:    "No results",
 				Message: string(encoded_rows),
