@@ -253,10 +253,51 @@ func (tfContext *TrcFlowContext) GetFlowUpdate(currentFlowState flowcore.Current
 	}
 }
 
-func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribute string) interface{} {
+func (tfContext *TrcFlowContext) GetDataSourceRegions(filtered bool) []string {
+	filterSyncRegions := []string{}
+	if filtered {
+		if tfContext.FlowSyncModeMatchAny([]string{"push", "pull"}) {
+			syncMode := strings.TrimPrefix(strings.TrimPrefix(tfContext.GetFlowSyncMode(), "pull"), "push")
+			if syncMode != "once" {
+				if len(syncMode) > 0 {
+					if strings.Contains(syncMode, ",") {
+						filterSyncRegions = strings.Split(syncMode, ",")
+					} else {
+						filterSyncRegions = []string{syncMode}
+					}
+				}
+			}
+		}
+	}
+	if len(filterSyncRegions) > 0 {
+		filteredRegions := []string{}
+		for _, region := range tfContext.DataSourceRegions {
+			for _, filterRegion := range filterSyncRegions {
+				if strings.Contains(region, filterRegion) {
+					filteredRegions = append(filteredRegions, region)
+				}
+			}
+		}
+		return filteredRegions
+	} else {
+		return tfContext.DataSourceRegions
+	}
+}
+
+func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribute string, regions ...string) interface{} {
 	if tfContext.RemoteDataSource == nil {
 		return nil
 	}
+	if len(regions) > 0 {
+		if regionSource, ok := tfContext.RemoteDataSource[regions[0]].(map[string]interface{}); ok {
+			if remoteDataSourceAttribute, ok := regionSource[dataSourceAttribute]; ok {
+				return remoteDataSourceAttribute
+			} else {
+				return nil
+			}
+		}
+	}
+
 	if remoteDataSourceAttribute, ok := tfContext.RemoteDataSource[dataSourceAttribute]; ok {
 		return remoteDataSourceAttribute
 	}
