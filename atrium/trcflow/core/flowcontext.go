@@ -8,16 +8,16 @@ import (
 	"sync"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
 type TrcFlowContext struct {
-	RemoteDataSource map[string]interface{}
-	GoMod            *helperkv.Modifier
-	Vault            *sys.Vault
+	DataSourceRegions []string
+	RemoteDataSource  map[string]interface{}
+	GoMod             *helperkv.Modifier
+	Vault             *sys.Vault
 
 	// Recommended not to store contexts, but because we
 	// are working with flows, this is a different pattern.
@@ -48,7 +48,7 @@ type TrcFlowContext struct {
 	Log               *log.Logger
 }
 
-var _ tcflow.FlowContext = (*TrcFlowContext)(nil)
+var _ flowcore.FlowContext = (*TrcFlowContext)(nil)
 
 func (tfContext *TrcFlowContext) IsInit() bool {
 	return tfContext.Init
@@ -143,21 +143,21 @@ func (tfContext *TrcFlowContext) SetChangeFlowName(changeFlowName string) {
 	tfContext.ChangeFlowName = changeFlowName
 }
 
-func (tfContext *TrcFlowContext) GetFlowState() tcflow.CurrentFlowState {
+func (tfContext *TrcFlowContext) GetFlowState() flowcore.CurrentFlowState {
 	return tfContext.FlowState
 }
 
-func (tfContext *TrcFlowContext) SetFlowState(flowState tcflow.CurrentFlowState) {
+func (tfContext *TrcFlowContext) SetFlowState(flowState flowcore.CurrentFlowState) {
 	tfContext.FlowLocker()
 	tfContext.FlowState = flowState.(flowcorehelper.CurrentFlowState)
 	tfContext.FlowUnlocker()
 }
 
-func (tfContext *TrcFlowContext) GetPreviousFlowState() tcflow.CurrentFlowState {
+func (tfContext *TrcFlowContext) GetPreviousFlowState() flowcore.CurrentFlowState {
 	return tfContext.PreviousFlowState
 }
 
-func (tfContext *TrcFlowContext) SetPreviousFlowState(flowState tcflow.CurrentFlowState) {
+func (tfContext *TrcFlowContext) SetPreviousFlowState(flowState flowcore.CurrentFlowState) {
 	tfContext.FlowLocker()
 	tfContext.PreviousFlowState = flowState.(flowcorehelper.CurrentFlowState)
 	tfContext.FlowUnlocker()
@@ -167,7 +167,7 @@ func (tfContext *TrcFlowContext) GetFlowStateState() int64 {
 	return tfContext.FlowState.State
 }
 
-func (tfContext *TrcFlowContext) SetFlowData(flowData tcflow.TemplateData) {
+func (tfContext *TrcFlowContext) SetFlowData(flowData flowcore.TemplateData) {
 	tfContext.FlowData = flowData
 }
 
@@ -197,7 +197,7 @@ func (tfContext *TrcFlowContext) GetFlowName() string {
 	return tfContext.Flow.TableName()
 }
 
-func (tfContext *TrcFlowContext) NewFlowStateUpdate(state string, syncMode string) tcflow.FlowStateUpdate {
+func (tfContext *TrcFlowContext) NewFlowStateUpdate(state string, syncMode string) flowcore.FlowStateUpdate {
 	return flowcorehelper.FlowStateUpdate{
 		FlowName:    tfContext.GetFlowName(),
 		StateUpdate: state,
@@ -207,12 +207,12 @@ func (tfContext *TrcFlowContext) NewFlowStateUpdate(state string, syncMode strin
 	}
 }
 
-func (tfContext *TrcFlowContext) GetCurrentFlowStateUpdateByDataSource(dataSource string) chan tcflow.CurrentFlowState {
+func (tfContext *TrcFlowContext) GetCurrentFlowStateUpdateByDataSource(dataSource string) chan flowcore.CurrentFlowState {
 	if tfContext.RemoteDataSource == nil {
 		return nil
 	}
 	if flowStateController, ok := tfContext.RemoteDataSource[dataSource]; ok {
-		return flowStateController.(chan tcflow.CurrentFlowState)
+		return flowStateController.(chan flowcore.CurrentFlowState)
 	}
 	return nil
 }
@@ -226,23 +226,23 @@ func (tfContext *TrcFlowContext) UpdateFlowStateByDataSource(dataSource string) 
 	}
 }
 
-func (tfContext *TrcFlowContext) PushState(dataSource string, flowStateUpdate tcflow.FlowStateUpdate) {
+func (tfContext *TrcFlowContext) PushState(dataSource string, flowStateUpdate flowcore.FlowStateUpdate) {
 	if tfContext.RemoteDataSource == nil {
 		return
 	}
 	if flowStateReceiver, ok := tfContext.RemoteDataSource[dataSource]; ok {
-		flowStateReceiver.(chan tcflow.FlowStateUpdate) <- flowStateUpdate
+		flowStateReceiver.(chan flowcore.FlowStateUpdate) <- flowStateUpdate
 	}
 }
 
-func (tfContext *TrcFlowContext) GetUpdatePermission() tcflow.PermissionUpdate {
+func (tfContext *TrcFlowContext) GetUpdatePermission() flowcore.PermissionUpdate {
 	return PermissionUpdate{
 		TableName:    tfContext.GetFlowName(),
 		CurrentState: tfContext.GetFlowStateState(),
 	}
 }
 
-func (tfContext *TrcFlowContext) GetFlowUpdate(currentFlowState tcflow.CurrentFlowState) tcflow.FlowStateUpdate {
+func (tfContext *TrcFlowContext) GetFlowUpdate(currentFlowState flowcore.CurrentFlowState) flowcore.FlowStateUpdate {
 	cfs := currentFlowState.(flowcorehelper.CurrentFlowState)
 	return flowcorehelper.FlowStateUpdate{
 		FlowName:    tfContext.GetFlowName(),

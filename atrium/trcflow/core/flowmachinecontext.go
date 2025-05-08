@@ -336,7 +336,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(flowcore.FlowContext, map[string]interface{}, []string) error,
+	flowPushRemote func(flowcore.FlowContext, map[string]interface{}) error,
 	sqlState bool) {
 
 	tfContext := tcflowContext.(*TrcFlowContext)
@@ -390,7 +390,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(flowcore.FlowContext, map[string]interface{}, []string) error,
+	flowPushRemote func(flowcore.FlowContext, map[string]interface{}) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool) {
 
@@ -474,7 +474,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	identityColumnName string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(flowcore.FlowContext, map[string]interface{}, []string) error,
+	flowPushRemote func(flowcore.FlowContext, map[string]interface{}) error,
 	sqlState bool) {
 
 	tfContext := tcflowContext.(*TrcFlowContext)
@@ -913,6 +913,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					}
 					tfmContext.LogInfo("Obtained resource connection for : " + flow.TableName() + "-" + region)
 					tfContext.RemoteDataSource["region-"+region].(map[string]interface{})["connection"] = dbsourceConn
+					tfContext.DataSourceRegions = append(tfContext.DataSourceRegions, region)
 
 					if region == "west" { //Sets west as default connection for non-region controlled flows.
 						tfContext.RemoteDataSource["connection"] = dbsourceConn
