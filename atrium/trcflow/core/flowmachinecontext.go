@@ -29,6 +29,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
+	"github.com/trimble-oss/tierceron/pkg/core/util"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	xencrypt "github.com/trimble-oss/tierceron/pkg/trcx/xencrypt"
@@ -582,6 +583,26 @@ func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tcflowContext flowcor
 	tfmContext.Log("Could not find channel for flow.", nil)
 
 	return nil
+}
+
+func (tfmContext *TrcFlowMachineContext) GetAuthExtended(getExtensionAuthComponents func(config map[string]interface{}) map[string]interface{}, refresh bool) (map[string]interface{}, error) {
+	if tfmContext.ExtensionAuthData != nil && !refresh {
+		return tfmContext.ExtensionAuthData, nil
+	}
+	var authErr error
+	driverConfig := tfmContext.ExtensionAuthDataReloader["config"].(*config.DriverConfig)
+	extensionAuthComponents := getExtensionAuthComponents(tfmContext.ExtensionAuthDataReloader["identityConfig"].(map[string]interface{}))
+	httpClient, err := helperkv.CreateHTTPClient(false, extensionAuthComponents["authDomain"].(string), driverConfig.CoreConfig.Env, false)
+	if httpClient != nil {
+		defer httpClient.CloseIdleConnections()
+	}
+	if err != nil {
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+		return nil, err
+	}
+	tfmContext.ExtensionAuthData, _, authErr = util.GetJSONFromClientByPost(driverConfig.CoreConfig, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
+
+	return tfmContext.ExtensionAuthData, authErr
 }
 
 // Make a call on Call back to insert or update using the provided query.
