@@ -326,10 +326,11 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 
 	go func(tfCtx *TrcFlowContext, sPC chan flowcore.CurrentFlowState) {
 		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) //does get need locking...
-		previousState := tfCtx.GetPreviousFlowState()
+		previousState := tfContext.PreviousFlowState
 		for {
 			select {
-			case stateUpdate := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController"):
+			case stateUpdateI := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController"):
+				stateUpdate := stateUpdateI.(flowcorehelper.CurrentFlowState)
 				if syncMode != "" {
 					stateUpdate.SyncMode = syncMode
 				}
