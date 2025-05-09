@@ -165,7 +165,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI interface{}
 				tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: 2, SyncMode: "nosync", SyncFilter: ""})
 			} else {
 				select {
-				case newFlowState := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcorehelper.CurrentFlowState):
+				case newFlowState := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcore.CurrentFlowState):
 					tfContext.SetFlowState(newFlowState)
 					tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
 					if tfContext.GetFlowStateState() != 2 {

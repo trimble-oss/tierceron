@@ -104,7 +104,11 @@ func (tfContext *TrcFlowContext) FlowSyncModeMatch(syncMode string, startsWith b
 	}
 	if startsWith {
 		if len(syncMode) > 0 && len(tfContext.FlowState.SyncMode) > 0 {
-			if syncMode == tfContext.FlowState.SyncMode[0:len(syncMode)] {
+			syncMatchModeLen := len(syncMode)
+			if syncMatchModeLen > len(tfContext.FlowState.SyncMode) {
+				syncMatchModeLen = len(tfContext.FlowState.SyncMode)
+			}
+			if syncMode == tfContext.FlowState.SyncMode[0:syncMatchModeLen] {
 				return true
 			} else {
 				return false
@@ -231,12 +235,12 @@ func (tfContext *TrcFlowContext) NewFlowStateUpdate(state string, syncMode strin
 	}
 }
 
-func (tfContext *TrcFlowContext) GetCurrentFlowStateUpdateByDataSource(dataSource string) chan flowcore.CurrentFlowState {
+func (tfContext *TrcFlowContext) GetCurrentFlowStateUpdateByDataSource(dataSource string) interface{} {
 	if tfContext.RemoteDataSource == nil {
 		return nil
 	}
 	if flowStateController, ok := tfContext.RemoteDataSource[dataSource]; ok {
-		return flowStateController.(chan flowcore.CurrentFlowState)
+		return flowStateController
 	}
 	return nil
 }
@@ -246,9 +250,14 @@ func (tfContext *TrcFlowContext) UpdateFlowStateByDataSource(dataSource string) 
 		return
 	}
 	if flowStateController, ok := tfContext.RemoteDataSource[dataSource]; ok {
-		tfContext.FlowStateLock.Lock()
-		tfContext.FlowState = <-flowStateController.(chan flowcorehelper.CurrentFlowState)
-		tfContext.FlowStateLock.Unlock()
+		select {
+		case newState := <-flowStateController.(chan flowcore.CurrentFlowState):
+			tfContext.FlowStateLock.Lock()
+			tfContext.FlowState = newState.(flowcorehelper.CurrentFlowState)
+			tfContext.FlowStateLock.Unlock()
+			return
+
+		}
 	}
 }
 
@@ -343,21 +352,21 @@ func (tfContext *TrcFlowContext) GetLogger() *log.Logger {
 	return tfContext.Log
 }
 
-func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.CurrentFlowState {
+func (tfContext *TrcFlowContext) TransitionState(syncMode string) {
 	tfContext.UpdateFlowStateByDataSource("flowStateController")
 	if syncMode != "" {
 		tfContext.SetFlowSyncMode(syncMode)
 	}
 	stateUpdateChannel := tfContext.GetCurrentFlowStateUpdateByDataSource("flowStateReceiver")
 
-	go func(tfCtx *TrcFlowContext, sPC chan flowcore.CurrentFlowState) {
+	go func(tfCtx *TrcFlowContext, sPC interface{}) {
 		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) //does get need locking...
 		for {
 			tfCtx.PreviousFlowStateLock.RLock()
 			previousState := tfCtx.PreviousFlowState
 			tfCtx.PreviousFlowStateLock.RUnlock()
 			select {
-			case stateUpdateI := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController"):
+			case stateUpdateI := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController").(chan flowcore.CurrentFlowState):
 				stateUpdate := stateUpdateI.(flowcorehelper.CurrentFlowState)
 				if syncMode != "" {
 					stateUpdate.SyncMode = syncMode
@@ -365,10 +374,10 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
 				} else if previousState.SyncMode == "refreshingDaily" && stateUpdate.SyncMode != "refreshEnd" && stateUpdate.State == 2 && int(previousState.State) != coreopts.BuildOptions.PreviousStateCheck(int(stateUpdate.State)) {
-					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfCtx.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: tfCtx.GetFlowStateAlias()}
+					sPC.(chan flowcore.FlowStateUpdate) <- flowcorehelper.FlowStateUpdate{FlowName: tfCtx.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: tfCtx.GetFlowStateAlias()}
 					break
 				} else if int(previousState.State) != previousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
-					sPC <- tfCtx.NewFlowStateUpdate(strconv.Itoa(int(previousState.State)), tfCtx.GetFlowSyncMode())
+					sPC.(chan flowcore.FlowStateUpdate) <- tfCtx.NewFlowStateUpdate(strconv.Itoa(int(previousState.State)), tfCtx.GetFlowSyncMode())
 					continue
 				}
 				tfCtx.SetPreviousFlowState(stateUpdate)
@@ -377,7 +386,7 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 		}
 	}(tfContext, stateUpdateChannel)
 
-	return stateUpdateChannel
+	return
 }
 
 func previousStateCheck(currentState int) int {

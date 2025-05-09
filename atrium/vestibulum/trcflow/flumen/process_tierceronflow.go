@@ -69,7 +69,7 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 	return tfFlow
 }
 
-func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext, flowControllerMap map[string]chan flowcorehelper.CurrentFlowState, tierceronFlowName string) {
+func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext, flowControllerMap map[string]chan flowcore.CurrentFlowState, tierceronFlowName string) {
 	var rows [][]interface{}
 	if tierceronFlowName != "" {
 		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
@@ -90,7 +90,7 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
 					if syncFilterMsg, ok := tfFlow["syncFilter"].(string); ok {
 						if flowAliasMsg, ok := tfFlow["flowAlias"].(string); ok {
-							go func(sc chan flowcorehelper.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
+							go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
 								tfmContext.Log("Queuing state change: "+fId, nil)
 								sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
 							}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId, flowAliasMsg)
@@ -103,7 +103,7 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 }
 
 func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) ([]map[string]interface{}, error) {
-	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan flowcorehelper.CurrentFlowState); ok {
+	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan flowcore.CurrentFlowState); ok {
 		if flowControllerMap == nil {
 			return nil, errors.New("Channel map for flow controller was nil.")
 		}
@@ -111,7 +111,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
 		if tfmContext.FlowControllerInit { //Sending off listener for state updates
-			go func(tfmc *trcflowcore.TrcFlowMachineContext, tfc *trcflowcore.TrcFlowContext, fcmap map[string]chan flowcorehelper.CurrentFlowState) {
+			go func(tfmc *trcflowcore.TrcFlowMachineContext, tfc *trcflowcore.TrcFlowContext, fcmap map[string]chan flowcore.CurrentFlowState) {
 				for {
 					select {
 					case tierceronFlowName, ok := <-tfmContext.FlowControllerUpdateAlert:
