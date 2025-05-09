@@ -9,6 +9,7 @@ import (
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
@@ -352,9 +353,9 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 	go func(tfCtx *TrcFlowContext, sPC chan flowcore.CurrentFlowState) {
 		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) //does get need locking...
 		for {
-			tfContext.PreviousFlowStateLock.RLock()
-			previousState := tfContext.PreviousFlowState
-			tfContext.PreviousFlowStateLock.RUnlock()
+			tfCtx.PreviousFlowStateLock.RLock()
+			previousState := tfCtx.PreviousFlowState
+			tfCtx.PreviousFlowStateLock.RUnlock()
 			select {
 			case stateUpdateI := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController"):
 				stateUpdate := stateUpdateI.(flowcorehelper.CurrentFlowState)
@@ -363,11 +364,14 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 				}
 				if previousState.State == stateUpdate.State && previousState.SyncMode == stateUpdate.SyncMode && previousState.SyncFilter == stateUpdate.SyncFilter && previousState.FlowAlias == stateUpdate.FlowAlias {
 					continue
+				} else if previousState.SyncMode == "refreshingDaily" && stateUpdate.SyncMode != "refreshEnd" && stateUpdate.State == 2 && int(previousState.State) != coreopts.BuildOptions.PreviousStateCheck(int(stateUpdate.State)) {
+					sPC <- flowcorehelper.FlowStateUpdate{FlowName: tfCtx.Flow.TableName(), StateUpdate: strconv.Itoa(int(stateUpdate.State)), SyncFilter: stateUpdate.SyncFilter, SyncMode: previousState.SyncMode, FlowAlias: tfCtx.GetFlowStateAlias()}
+					break
 				} else if int(previousState.State) != previousStateCheck(int(stateUpdate.State)) && stateUpdate.State != previousState.State {
 					sPC <- tfCtx.NewFlowStateUpdate(strconv.Itoa(int(previousState.State)), tfCtx.GetFlowSyncMode())
 					continue
 				}
-				tfContext.SetPreviousFlowState(stateUpdate)
+				tfCtx.SetPreviousFlowState(stateUpdate)
 				tfCtx.SetFlowState(stateUpdate)
 			}
 		}
