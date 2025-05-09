@@ -67,7 +67,7 @@ func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(t
 	changesLock.Lock()
 	changedEntriesQuery = getCompositeChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, indexColumnNames)
 
-	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.FlowLock)
+	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
 	if err != nil {
 		eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 		return nil, err
@@ -76,7 +76,7 @@ func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(t
 		indexColumnValues := []string{}
 		indexColumnValues = append(indexColumnValues, changedEntry[0].(string))
 		indexColumnValues = append(indexColumnValues, changedEntry[1].(string))
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getCompositeDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, indexColumnNames, indexColumnValues), tfContext.FlowLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getCompositeDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, indexColumnNames, indexColumnValues), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
@@ -98,14 +98,14 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	changedEntriesQuery = getChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
 	//}
 
-	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.FlowLock)
+	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
 	if err != nil {
 		eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 		return nil, err
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId), tfContext.FlowLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
@@ -213,7 +213,7 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 	changesLock.Lock()
 	changedEntriesQuery = getStatisticChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, indexColumnNames)
 
-	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.FlowLock)
+	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
 	if err != nil {
 		eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 		return nil, err
@@ -223,7 +223,7 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 		indexColumnValues := []string{}
 		indexColumnValues = append(indexColumnValues, changedEntry[1].(string))
 		indexColumnValues = append(indexColumnValues, changedEntry[2].(string))
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, idColVal, indexColumnNames, indexColumnValues), tfContext.FlowLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, idColVal, indexColumnNames, indexColumnValues), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
@@ -279,7 +279,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
-		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery, tfContext.FlowLock)
+		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery, tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			continue
@@ -323,7 +323,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			}
 
 			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]interface{}) (string, []string, [][]interface{}, error) {
-				return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.FlowLock)
+				return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.QueryLock)
 			})
 			if indexPathErr != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, indexPathErr, false)
@@ -358,19 +358,19 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 		//Use trigger to make another table
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]interface{}) (string, []string, [][]interface{}, error) {
-			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.FlowLock)
+			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.QueryLock)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			// Re-inject into changes because it might not be here yet...
 			if !strings.Contains(indexPath, "PublicIndex") {
-				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId), tfContext.FlowLock)
+				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId), tfContext.QueryLock)
 				if err != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 				}
 			} else {
 				if len(changedEntry) == 3 { //Maybe there is a better way to do this, but this works for now.
-					_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedEntry[0], changedEntry[1], changedEntry[2]), tfContext.FlowLock)
+					_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedEntry[0], changedEntry[1], changedEntry[2]), tfContext.QueryLock)
 					if err != nil {
 						eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 					}
@@ -396,7 +396,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			if seedError != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, seedError, false)
 				// Re-inject into changes because it might not be here yet...
-				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.FlowLock)
+				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.QueryLock)
 				if err != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 				}

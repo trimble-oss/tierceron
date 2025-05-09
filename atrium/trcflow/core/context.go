@@ -71,7 +71,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 						bindings := map[string]sqle.Expression{
 							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						}
-						_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.FlowLock)
+						_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.QueryLock)
 						break
 					}
 				}

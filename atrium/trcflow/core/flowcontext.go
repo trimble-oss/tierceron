@@ -31,21 +31,23 @@ type TrcFlowContext struct {
 	// from vault.
 	CustomSeedTrcDb func(*TrcFlowMachineContext, *TrcFlowContext) error
 
-	FlowSource        string                // The name of the flow source identified by project.
-	FlowSourceAlias   string                // May be a database name
-	Flow              flowcore.FlowNameType // May be a table name.
-	ChangeIdKey       string
-	FlowPath          string
-	FlowData          interface{}
-	ChangeFlowName    string // Change flow table name.
-	FlowState         flowcorehelper.CurrentFlowState
-	PreviousFlowState flowcorehelper.CurrentFlowState // Temporary storage for previous state
-	FlowLock          *sync.Mutex                     //This is for sync concurrent changes to FlowState
-	Restart           bool
-	Init              bool
-	ReadOnly          bool
-	DataFlowStatistic FakeDFStat
-	Log               *log.Logger
+	FlowSource            string                // The name of the flow source identified by project.
+	FlowSourceAlias       string                // May be a database name
+	Flow                  flowcore.FlowNameType // May be a table name.
+	ChangeIdKey           string
+	FlowPath              string
+	FlowData              interface{}
+	ChangeFlowName        string // Change flow table name.
+	FlowState             flowcorehelper.CurrentFlowState
+	FlowStateLock         *sync.RWMutex                   //This is for sync concurrent changes to FlowState
+	PreviousFlowState     flowcorehelper.CurrentFlowState // Temporary storage for previous state
+	PreviousFlowStateLock *sync.RWMutex
+	QueryLock             *sync.Mutex
+	Restart               bool
+	Init                  bool
+	ReadOnly              bool
+	DataFlowStatistic     FakeDFStat
+	Log                   *log.Logger
 }
 
 var _ flowcore.FlowContext = (*TrcFlowContext)(nil)
@@ -77,19 +79,9 @@ func (tfContext *TrcFlowContext) WaitFlowLoaded() {
 	<-tfContext.ContextNotifyChan
 }
 
-func (tfContext *TrcFlowContext) FlowLocker() {
-	if tfContext.FlowLock != nil {
-		tfContext.FlowLock.Lock()
-	}
-}
-
-func (tfContext *TrcFlowContext) FlowUnlocker() {
-	if tfContext.FlowLock != nil {
-		tfContext.FlowLock.Unlock()
-	}
-}
-
 func (tfContext *TrcFlowContext) FlowSyncModeMatchAny(syncModes []string) bool {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 
 	if tfContext.FlowState.SyncMode == "" {
 		return false
@@ -103,6 +95,9 @@ func (tfContext *TrcFlowContext) FlowSyncModeMatchAny(syncModes []string) bool {
 }
 
 func (tfContext *TrcFlowContext) FlowSyncModeMatch(syncMode string, startsWith bool) bool {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
+
 	if tfContext.FlowState.SyncMode == "" {
 		return false
 	}
@@ -124,18 +119,32 @@ func (tfContext *TrcFlowContext) FlowSyncModeMatch(syncMode string, startsWith b
 	return false
 }
 func (tfContext *TrcFlowContext) GetFlowSyncMode() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	return tfContext.FlowState.SyncMode
 }
 
+func (tfContext *TrcFlowContext) GetFlowStateAlias() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
+	return tfContext.FlowState.FlowAlias
+}
+
 func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
 	tfContext.FlowState.SyncMode = syncMode
 }
 
 func (tfContext *TrcFlowContext) GetFlowSourceAlias() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	return tfContext.FlowState.FlowAlias
 }
 
 func (tfContext *TrcFlowContext) SetFlowSourceAlias(flowSourceAlias string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
 	tfContext.FlowState.FlowAlias = flowSourceAlias
 }
 
@@ -144,26 +153,32 @@ func (tfContext *TrcFlowContext) SetChangeFlowName(changeFlowName string) {
 }
 
 func (tfContext *TrcFlowContext) GetFlowState() flowcore.CurrentFlowState {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	return tfContext.FlowState
 }
 
 func (tfContext *TrcFlowContext) SetFlowState(flowState flowcore.CurrentFlowState) {
-	tfContext.FlowLocker()
+	tfContext.FlowStateLock.Lock()
 	tfContext.FlowState = flowState.(flowcorehelper.CurrentFlowState)
-	tfContext.FlowUnlocker()
+	tfContext.FlowStateLock.Unlock()
 }
 
 func (tfContext *TrcFlowContext) GetPreviousFlowState() flowcore.CurrentFlowState {
+	tfContext.PreviousFlowStateLock.RLock()
+	defer tfContext.PreviousFlowStateLock.RUnlock()
 	return tfContext.PreviousFlowState
 }
 
 func (tfContext *TrcFlowContext) SetPreviousFlowState(flowState flowcore.CurrentFlowState) {
-	tfContext.FlowLocker()
+	tfContext.PreviousFlowStateLock.Lock()
 	tfContext.PreviousFlowState = flowState.(flowcorehelper.CurrentFlowState)
-	tfContext.FlowUnlocker()
+	tfContext.PreviousFlowStateLock.Unlock()
 }
 
 func (tfContext *TrcFlowContext) GetFlowStateState() int64 {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	return tfContext.FlowState.State
 }
 
@@ -172,6 +187,8 @@ func (tfContext *TrcFlowContext) SetFlowData(flowData flowcore.TemplateData) {
 }
 
 func (tfContext *TrcFlowContext) HasFlowSyncFilters() bool {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	if strings.TrimSpace(tfContext.FlowState.SyncFilter) == "" || tfContext.FlowState.SyncFilter == "n/a" {
 		return false
 	}
@@ -179,9 +196,13 @@ func (tfContext *TrcFlowContext) HasFlowSyncFilters() bool {
 }
 
 func (tfContext *TrcFlowContext) GetFlowStateSyncFilterRaw() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	return tfContext.FlowState.SyncFilter
 }
 func (tfContext *TrcFlowContext) GetFlowSyncFilters() []string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	if tfContext.FlowState.SyncFilter == "" {
 		return nil
 	}
@@ -198,6 +219,8 @@ func (tfContext *TrcFlowContext) GetFlowName() string {
 }
 
 func (tfContext *TrcFlowContext) NewFlowStateUpdate(state string, syncMode string) flowcore.FlowStateUpdate {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
 	return flowcorehelper.FlowStateUpdate{
 		FlowName:    tfContext.GetFlowName(),
 		StateUpdate: state,
@@ -222,7 +245,9 @@ func (tfContext *TrcFlowContext) UpdateFlowStateByDataSource(dataSource string) 
 		return
 	}
 	if flowStateController, ok := tfContext.RemoteDataSource[dataSource]; ok {
+		tfContext.FlowStateLock.Lock()
 		tfContext.FlowState = <-flowStateController.(chan flowcorehelper.CurrentFlowState)
+		tfContext.FlowStateLock.Unlock()
 	}
 }
 
@@ -326,8 +351,10 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 
 	go func(tfCtx *TrcFlowContext, sPC chan flowcore.CurrentFlowState) {
 		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) //does get need locking...
-		previousState := tfContext.PreviousFlowState
 		for {
+			tfContext.PreviousFlowStateLock.RLock()
+			previousState := tfContext.PreviousFlowState
+			tfContext.PreviousFlowStateLock.RUnlock()
 			select {
 			case stateUpdateI := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController"):
 				stateUpdate := stateUpdateI.(flowcorehelper.CurrentFlowState)
@@ -340,7 +367,7 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) chan flowcore.
 					sPC <- tfCtx.NewFlowStateUpdate(strconv.Itoa(int(previousState.State)), tfCtx.GetFlowSyncMode())
 					continue
 				}
-				previousState = stateUpdate
+				tfContext.SetPreviousFlowState(stateUpdate)
 				tfCtx.SetFlowState(stateUpdate)
 			}
 		}
