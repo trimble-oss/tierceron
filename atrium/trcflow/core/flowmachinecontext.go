@@ -147,14 +147,14 @@ func (tfmContext *TrcFlowMachineContext) Init(
 }
 
 func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI interface{}, tcflowContext flowcore.FlowContext) {
-	tableSchema := tableSchemaI.(*sqle.PrimaryKeySchema)
+	tableSchema := tableSchemaI.(sqle.PrimaryKeySchema)
 	tfContext := tcflowContext.(*TrcFlowContext)
 	tableName := tfContext.Flow.TableName()
 	// Create table if necessary.
 	tfmContext.GetTableModifierLock().Lock()
 	if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, tableName); !ok {
 		//	ii. Init database and tables in local mysql engine instance.
-		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, *tableSchema, TableCollationIdGen(tableName))
+		err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, tableName, tableSchema, TableCollationIdGen(tableName))
 		tfmContext.GetTableModifierLock().Unlock()
 
 		if err != nil {
@@ -187,9 +187,9 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI interface{}
 }
 
 func (tfmContext *TrcFlowMachineContext) CreateTable(name string, schemaI interface{}, collationI interface{}) error {
-	schema := schemaI.(*sqle.PrimaryKeySchema)
+	schema := schemaI.(sqle.PrimaryKeySchema)
 	collation := collationI.(sqle.CollationID)
-	return tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, name, *schema, collation)
+	return tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, name, schema, collation)
 }
 
 // Set up call back to enable a trigger to track
