@@ -196,7 +196,7 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 	tfmContext.AddTableSchema(getDataFlowStatisticsSchema(trctfContext.Flow.TableName()), trctfContext)
 	prepareDataFlowChangeTable(trctfmContext, trctfContext) //Change table needs to be set again due to composite key - different from other tables
 	trctfContext.ReadOnly = false                           //Change this to false for writeback***
-	stateUpdateChannel := trctfContext.TransitionState("N/A")
+	trctfContext.TransitionState("N/A")
 	trctfContext.Init = true
 
 	sqlIngestInterval := trctfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
@@ -217,20 +217,20 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 						trctfContext.FlowData = &baseTableTemplate
 					}
 					tfmContext.Log("DataFlowStatistics flow is being stopped...", nil)
-					stateUpdateChannel <- tfContext.NewFlowStateUpdate("0", tfContext.GetFlowSyncMode())
+					tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("0", tfContext.GetFlowSyncMode()))
 					continue
 				} else if trctfContext.GetFlowStateState() == 0 {
 					tfmContext.Log("DataFlowStatistics flow is currently offline...", nil)
 					if trctfContext.FlowState.SyncMode == "refreshingDaily" {
 						refresh = true
-						stateUpdateChannel <- tfContext.NewFlowStateUpdate("1", tfContext.GetFlowSyncMode())
+						tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("1", tfContext.GetFlowSyncMode()))
 					}
 					continue
 				} else if trctfContext.GetFlowStateState() == 1 {
 					tfmContext.Log("DataFlowStatistics flow is restarting...", nil)
 					trctfContext.Init = true
 					tfmContext.CallDBQuery(trctfContext, map[string]interface{}{"TrcQuery": "truncate " + trctfContext.FlowSourceAlias + "." + trctfContext.Flow.TableName()}, nil, false, "DELETE", nil, "")
-					stateUpdateChannel <- trctfContext.NewFlowStateUpdate("2", tfContext.GetFlowSyncMode())
+					tfContext.PushState("flowStateReceiver", trctfContext.NewFlowStateUpdate("2", tfContext.GetFlowSyncMode()))
 					continue
 				} else if trctfContext.GetFlowStateState() == 2 {
 					if trctfContext.Init {
@@ -250,12 +250,12 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 					} else if !KickOffTimedRefresh(trctfContext, refreshSuffix) {
 						tfmContext.Log("DataFlowStatistics has an invalid refresh timing"+flowcorehelper.SyncCheck(trctfContext.FlowState.SyncMode)+".", nil)
 						trctfContext.FlowState.SyncMode = "InvalidRefreshMode"
-						stateUpdateChannel <- trctfContext.NewFlowStateUpdate("2", "InvalidRefreshMode")
+						tfContext.PushState("flowStateReceiver", trctfContext.NewFlowStateUpdate("2", "InvalidRefreshMode"))
 					}
 				}
 
 				if trctfContext.GetFlowSyncMode() == "pullonce" {
-					stateUpdateChannel <- trctfContext.NewFlowStateUpdate("2", "pullsynccomplete")
+					tfContext.PushState("flowStateReceiver", trctfContext.NewFlowStateUpdate("2", "pullsynccomplete"))
 				}
 
 				tfmContext.Log("DataFlowStatistics is running and checking for changes"+flowcorehelper.SyncCheck(trctfContext.GetFlowSyncMode())+".", nil)
@@ -267,10 +267,9 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 }
 
 func KickOffTimedRefresh(tfContext *trcflowcore.TrcFlowContext, timing string) bool {
-	stateUpdateChannel := tfContext.GetCurrentFlowStateUpdateByDataSource("flowStateReceiver")
 	switch { //Always at midnight
 	case timing == "Daily":
-		stateUpdateChannel <- flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias}
+		tfContext.PushState("flowStateReceiver", flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias})
 		loc, _ := time.LoadLocation("America/Los_Angeles")
 		now := time.Now().In(loc)
 		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)
@@ -287,7 +286,7 @@ func KickOffTimedRefresh(tfContext *trcflowcore.TrcFlowContext, timing string) b
 					return
 				case <-time.After(refreshTime):
 					tfContext.Log.Println("Daily Refresh Triggered - refreshing DFS")
-					stateUpdateChannel <- tfc.NewFlowStateUpdate("3", "refreshingDaily")
+					tfContext.PushState("flowStateReceiver", tfc.NewFlowStateUpdate("3", "refreshingDaily"))
 					refreshTime = time.Duration(time.Hour * 24)
 				}
 
@@ -296,7 +295,7 @@ func KickOffTimedRefresh(tfContext *trcflowcore.TrcFlowContext, timing string) b
 	case timing == "End":
 		endRefreshChan <- true
 		refresh = false
-		stateUpdateChannel <- tfContext.NewFlowStateUpdate("2", "refreshEnded")
+		tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("2", "refreshEnded"))
 	case timing == "Ended":
 		for len(endRefreshChan) > 0 {
 			<-endRefreshChan
