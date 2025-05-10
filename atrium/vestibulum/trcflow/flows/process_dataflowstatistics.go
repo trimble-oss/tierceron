@@ -183,7 +183,7 @@ func prepareDataFlowChangeTable(tfmContext *trcflowcore.TrcFlowMachineContext, t
 		trcflowcore.TableCollationIdGen(changeTableName),
 	)
 	if changeTableErr != nil {
-		tfmContext.Log("Error creating ninja change table", changeTableErr)
+		tfmContext.Log("Error creating dfs change table", changeTableErr)
 	}
 	tfmContext.CreateDataFlowTableTriggers(tfContext, flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn, GetDataFlowInsertTrigger, GetDataFlowUpdateTrigger, GetDataFlowDeleteTrigger)
 	tfmContext.GetTableModifierLock().Unlock()

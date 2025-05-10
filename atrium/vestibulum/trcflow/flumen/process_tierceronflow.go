@@ -140,16 +140,17 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 			return nil, errors.New("Alert channel for flow controller is wrong type.")
 		}
 
-		if flowStateReceiverMap, ok := tfContext.RemoteDataSource["flowStateReceiverMap"].(map[string]chan flowcorehelper.FlowStateUpdate); ok {
+		if flowStateReceiverMap, ok := tfContext.RemoteDataSource["flowStateReceiverMap"].(map[string]chan flowcore.FlowStateUpdate); ok {
 			if flowStateReceiverMap == nil {
 				return nil, errors.New("Receiver map channel for flow controller was nil.")
 			}
 			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
-				go func(currentReceiver chan flowcorehelper.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
+				go func(currentReceiver chan flowcore.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
 					for {
 						select {
-						case x, ok := <-currentReceiver:
+						case xi, ok := <-currentReceiver:
 							if ok {
+								x := xi.(flowcorehelper.FlowStateUpdate)
 								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.FlowNameType(flowcorehelper.TierceronFlowConfigurationTableName)}, "")
 							}
 						}
