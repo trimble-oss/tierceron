@@ -15,10 +15,11 @@ import (
 )
 
 type TrcFlowContext struct {
-	DataSourceRegions []string
-	RemoteDataSource  map[string]interface{}
-	GoMod             *helperkv.Modifier
-	Vault             *sys.Vault
+	FlowDefinitionContext *flowcore.FlowDefinitionContext
+	DataSourceRegions     []string
+	RemoteDataSource      map[string]interface{}
+	GoMod                 *helperkv.Modifier
+	Vault                 *sys.Vault
 
 	// Recommended not to store contexts, but because we
 	// are working with flows, this is a different pattern.
@@ -63,6 +64,14 @@ func (tfContext *TrcFlowContext) SetInit(init bool) {
 
 func (tfContext *TrcFlowContext) IsRestart() bool {
 	return tfContext.Restart
+}
+
+func (tfContext *TrcFlowContext) SetFlowDefinitionContext(flowDefinitionContext *flowcore.FlowDefinitionContext) {
+	tfContext.FlowDefinitionContext = flowDefinitionContext
+}
+
+func (tfContext *TrcFlowContext) GetFlowDefinitionContext() *flowcore.FlowDefinitionContext {
+	return tfContext.FlowDefinitionContext
 }
 
 func (tfContext *TrcFlowContext) SetRestart(restart bool) {
