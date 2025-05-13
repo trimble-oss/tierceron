@@ -49,7 +49,7 @@ type TrcFlowContext struct {
 	Init                  bool
 	ReadOnly              bool
 	DataFlowStatistic     FakeDFStat
-	Log                   *log.Logger
+	Logger                *log.Logger
 }
 
 var _ flowcore.FlowContext = (*TrcFlowContext)(nil)
@@ -350,7 +350,15 @@ func (tfContext *TrcFlowContext) CancelTheContext() bool {
 }
 
 func (tfContext *TrcFlowContext) GetLogger() *log.Logger {
-	return tfContext.Log
+	return tfContext.Logger
+}
+
+func (tfContext *TrcFlowContext) Log(msg string, err error) {
+	if err != nil {
+		tfContext.Logger.Printf("%s %s\n", msg, err.Error())
+	} else {
+		tfContext.Logger.Printf("%s\n", msg)
+	}
 }
 
 func (tfContext *TrcFlowContext) TransitionState(syncMode string) {

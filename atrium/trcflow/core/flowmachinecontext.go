@@ -999,7 +999,7 @@ func (tfmContext *TrcFlowMachineContext) DeliverTheStatistic(
 	idName string,
 	vaultWriteBack bool) {
 	tfContext := tcflowContext.(*TrcFlowContext)
-	DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfs, id, indexPath, idName, tfContext.Log, vaultWriteBack)
+	DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfs, id, indexPath, idName, tfContext.Logger, vaultWriteBack)
 }
 
 func (tfmContext *TrcFlowMachineContext) LoadBaseTemplate(

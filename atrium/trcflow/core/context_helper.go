@@ -338,7 +338,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 					}
 				}
 
-				deleteMap, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Log)
+				deleteMap, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Logger)
 				if deleteErr != nil || deleteMap != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("Unable to process a delete query for "+tfContext.Flow.TableName()), false)
 				}
