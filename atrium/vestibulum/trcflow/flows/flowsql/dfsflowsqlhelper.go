@@ -4,10 +4,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 )
 
-func GetDataFlowStatisticInsert(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticInsert(statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+	tenantId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
+	tenantId = strings.ReplaceAll(tenantId, "/", "")
+	return GetDataFlowStatisticInsertById(tenantId, statisticData, dbName, tableName)
+}
+
+func GetDataFlowStatisticInsertById(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
 	tenantId = strings.ReplaceAll(tenantId, "/", "")
 	sqlstr := map[string]interface{}{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + flowcoreopts.DataflowTestNameColumn + `, ` + flowcoreopts.DataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
@@ -31,7 +38,13 @@ func GetDataFlowStatisticLM(tenantId string, statisticData map[string]interface{
 	return sqlstr
 }
 
-func GetDataFlowStatisticUpdate(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticUpdate(statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+	tenantId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
+	tenantId = strings.ReplaceAll(tenantId, "/", "")
+	return GetDataFlowStatisticUpdateById(tenantId, statisticData, dbName, tableName)
+}
+
+func GetDataFlowStatisticUpdateById(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
 	tenantId = strings.ReplaceAll(tenantId, "/", "")
 	sqlstr := map[string]interface{}{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + flowcoreopts.DataflowTestNameColumn + `, ` + flowcoreopts.DataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
@@ -64,4 +77,9 @@ func DataFlowStatisticsSparseArrayToMap(dfs []interface{}) map[string]interface{
 	m := make(map[string]interface{})
 	m["lastModified"] = dfs[0] //This is for lastModified comparison -> not used in table or queries
 	return m
+}
+
+func GetDataFlowStatisticFilterFieldFromConfig(tableConfig interface{}) string {
+	dfsNode := tableConfig.(*core.TTDINode)
+	return dfsNode.Name
 }

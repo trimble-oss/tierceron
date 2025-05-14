@@ -339,7 +339,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType("DataFlowStatistics")}, "")
+				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType("DataFlowStatistics")}, "")
 				if !changed {
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.
