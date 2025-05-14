@@ -79,7 +79,9 @@ func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
 	})
 }
 
-func dataFlowStatPullRemote(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
+func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI flowcore.FlowContext) error {
+	tfmContext := tfmContextI.(*trcflowcore.TrcFlowMachineContext)
+	tfContext := tfContextI.(*trcflowcore.TrcFlowContext)
 	tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
 	tenantListData, tenantListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log)
 	if tenantListErr != nil {
@@ -170,7 +172,7 @@ func dataFlowStatPullRemote(tfmContext *trcflowcore.TrcFlowMachineContext, tfCon
 	return nil
 }
 
-func prepareDataFlowChangeTable(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
+func CreateTableTriggers(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
 	tfmContext.GetTableModifierLock().Lock()
 	changeTableName := tfContext.Flow.TableName() + "_Changes"
 	tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
@@ -190,6 +192,32 @@ func prepareDataFlowChangeTable(tfmContext *trcflowcore.TrcFlowMachineContext, t
 }
 
 func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+	if tfContext.GetFlowDefinitionContext() == nil {
+		flowDefinitionContext := &flowcore.FlowDefinitionContext{
+			GetTableConfigurationById:   GetTenantById,
+			GetTableConfigurations:      lib.GetTenantConfigurations,
+			CreateTableTriggers:         CreateTableTriggers,
+			GetTableMap:                 lib.GetTenantMap,
+			GetTableFromMap:             lib.GetTenantFromMap,
+			GetFilterFieldFromConfig:    lib.GetTenantConfigurationFilterFieldFromConfig,
+			GetTableMapFromArray:        dfssql.GetDataFlowStatisticsFromArray,
+			GetTableConfigurationInsert: dfssql.GetDataFlowStatisticUpdate,
+			GetTableConfigurationUpdate: dfssql.GetDataFlowStatisticUpdate,
+			ApplyDependencies:           UpdateEnterprise,
+			GetTableSchema:              getTenantSchema,
+			GetIndexedPathExt:           getIndexedPathExt,
+			GetTableIndexColumnName:     getTenantConfigIdColumnName,
+		}
+		tfContext.SetFlowDefinitionContext(flowDefinitionContext)
+		tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
+		tfContext.SetCustomSeedTrcdbFunc(dataFlowStatPullRemote)
+	}
+
+	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+}
+
+func rocessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+
 	trctfContext := tfContext.(*trcflowcore.TrcFlowContext)
 	trctfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
 

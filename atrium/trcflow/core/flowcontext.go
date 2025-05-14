@@ -31,7 +31,7 @@ type TrcFlowContext struct {
 	// I flow is complex enough, it can define
 	// it's own method for loading TrcDb
 	// from vault.
-	CustomSeedTrcDb func(*TrcFlowMachineContext, *TrcFlowContext) error
+	CustomSeedTrcDb func(flowcore.FlowMachineContext, flowcore.FlowContext) error
 
 	FlowSource            string                // The name of the flow source identified by project.
 	FlowSourceAlias       string                // May be a database name
@@ -64,6 +64,10 @@ func (tfContext *TrcFlowContext) SetInit(init bool) {
 
 func (tfContext *TrcFlowContext) IsRestart() bool {
 	return tfContext.Restart
+}
+
+func (tfContext *TrcFlowContext) SetCustomSeedTrcdbFunc(customSeedTrcdb func(flowcore.FlowMachineContext, flowcore.FlowContext) error) {
+	tfContext.CustomSeedTrcDb = customSeedTrcdb
 }
 
 func (tfContext *TrcFlowContext) SetFlowDefinitionContext(flowDefinitionContext *flowcore.FlowDefinitionContext) {

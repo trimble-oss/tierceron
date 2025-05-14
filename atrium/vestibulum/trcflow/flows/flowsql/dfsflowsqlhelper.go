@@ -46,7 +46,7 @@ func GetDataFlowStatisticUpdate(tenantId string, statisticData map[string]interf
 	return sqlstr
 }
 
-func DataFlowStatisticsArrayToMap(dfs []interface{}) map[string]interface{} {
+func GetDataFlowStatisticsFromArray(dfs []interface{}) map[string]interface{} {
 	m := make(map[string]interface{})
 	m[flowcoreopts.DataflowTestNameColumn] = dfs[0]
 	m[flowcoreopts.DataflowTestIdColumn] = dfs[1]
