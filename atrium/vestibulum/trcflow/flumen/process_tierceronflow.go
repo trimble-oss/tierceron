@@ -170,9 +170,9 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 // Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
-	tfmContext.CreateTableTriggers(tfContext, tierceronFlowIdColumnName)
+	tfmContext.CreateTableTriggers(tfContext, []string{tierceronFlowIdColumnName})
 
-	tfmContext.SyncTableCycle(tfContext, tierceronFlowIdColumnName, []string{tierceronFlowIdColumnName}, GetTierceronFlowConfigurationIndexedPathExt, nil, false)
+	tfmContext.SyncTableCycle(tfContext, []string{tierceronFlowIdColumnName}, []string{tierceronFlowIdColumnName}, GetTierceronFlowConfigurationIndexedPathExt, nil, false)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.

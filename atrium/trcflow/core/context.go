@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
@@ -30,25 +31,67 @@ const (
 	TableTestFlow
 )
 
-func getUpdateTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
-		` END;`
+func getUpdateTrigger(databaseName string, tableName string, idColumnNames []string) string {
+	if len(idColumnNames) == 0 {
+		return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, current_timestamp());` +
+			` END;`
+	} else if len(idColumnNames) == 2 {
+		return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, current_timestamp());` +
+			` END;`
+	} else if len(idColumnNames) == 3 {
+		return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, new.` + idColumnNames[2] + `, current_timestamp());` +
+			` END;`
+	} else {
+		return ""
+	}
 }
 
-func getInsertTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcInsertTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnName + `, current_timestamp());` +
-		` END;`
+func getInsertTrigger(databaseName string, tableName string, idColumnNames []string) string {
+	if len(idColumnNames) == 1 {
+		return `CREATE TRIGGER tcInsertTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, current_timestamp());` +
+			` END;`
+	} else if len(idColumnNames) == 2 {
+		return `CREATE TRIGGER tcInsertTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, current_timestamp());` +
+			` END;`
+	} else if len(idColumnNames) == 3 {
+		return `CREATE TRIGGER tcInsertTrigger AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, new.` + idColumnNames[2] + `, current_timestamp());` +
+			` END;`
+	} else {
+		return ""
+	}
 }
 
-func getDeleteTrigger(databaseName string, tableName string, idColumnName string) string {
-	return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnName + `, current_timestamp());` +
-		` END;`
+func getDeleteTrigger(databaseName string, tableName string, idColumnNames []string) string {
+	if len(idColumnNames) == 0 {
+		return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, current_timestamp());` +
+			` END;`
+	} else if len(idColumnNames) == 2 {
+		return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, old.` + idColumnNames[1] + `, current_timestamp());` +
+			` END;`
+	} else if len(idColumnNames) == 3 {
+		return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
+			` BEGIN` +
+			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, old.` + idColumnNames[1] + `, old.` + idColumnNames[2] + `, current_timestamp());` +
+			` END;`
+	} else {
+		return ""
+	}
 }
 
 func TriggerChangeChannel(table string) {
@@ -66,7 +109,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		if table != "" {
 			for changeIdKey, changeIdValue := range changeIds {
 				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
-					if tfContext.ChangeIdKey == changeIdKey {
+					if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
 						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
 						bindings := map[string]sqle.Expression{
 							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),

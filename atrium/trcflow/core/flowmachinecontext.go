@@ -195,12 +195,12 @@ func (tfmContext *TrcFlowMachineContext) CreateTable(name string, schemaI interf
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowcore.FlowContext,
-	identityColumnName string) {
+	identityColumnNames []string) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	tfmContext.GetTableModifierLock().Lock()
 
 	// Workaround triggers not firing: 9/30/2022
-	tfContext.ChangeIdKey = identityColumnName
+	tfContext.ChangeIdKeys = identityColumnNames
 
 	//Create triggers
 	var updTrigger sqle.TriggerDefinition
@@ -223,9 +223,9 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowc
 		}
 	}
 	if !triggerExist {
-		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), identityColumnName)
-		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), identityColumnName)
-		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), identityColumnName)
+		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), identityColumnNames)
+		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), identityColumnNames)
+		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.Flow.TableName(), identityColumnNames)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
@@ -333,7 +333,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flow
 //
 //	data sources.
 func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.FlowContext,
-	identityColumnName string,
+	identityColumnNames []string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]interface{}) error,
@@ -353,7 +353,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 		case <-flowChangedChannel.Ch:
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
-				identityColumnName,
+				identityColumnNames,
 				indexColumnNames,
 				mysqlPushEnabled,
 				getIndexedPathExt,
@@ -363,7 +363,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.Flow), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
 				tfContext,
-				identityColumnName,
+				identityColumnNames,
 				indexColumnNames,
 				mysqlPushEnabled,
 				getIndexedPathExt,
@@ -372,7 +372,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 				tfmContext.Log(fmt.Sprintf("Restarting flow: %s", tfContext.Flow), nil)
 				// Reload table from vault...
 				go tfmContext.SyncTableCycle(tfContext,
-					identityColumnName,
+					identityColumnNames,
 					indexColumnNames,
 					getIndexedPathExt,
 					flowPushRemote,
@@ -387,7 +387,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 
 // Seeds TrcDb from vault...  useful during init.
 func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContext,
-	identityColumnName string,
+	identityColumnName []string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]interface{}) error,
@@ -471,7 +471,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 }
 
 func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.FlowContext,
-	identityColumnName string,
+	identityColumnNames []string,
 	indexColumnNames interface{},
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]interface{}) error,
@@ -526,7 +526,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		flowPushRemote = nil
 	}
 	if !tfContext.Restart {
-		go tfmContext.seedTrcDbCycle(tfContext, identityColumnName, indexColumnNames, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
+		go tfmContext.seedTrcDbCycle(tfContext, identityColumnNames, indexColumnNames, getIndexedPathExt, flowPushRemote, true, seedInitComplete)
 	} else {
 		seedInitComplete <- true
 	}
@@ -566,7 +566,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		tfmContext.Log("Unexpected flow state: "+tfContext.Flow.TableName(), nil)
 	}
 
-	go tfmContext.seedVaultCycle(tfContext, identityColumnName, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
+	go tfmContext.seedVaultCycle(tfContext, identityColumnNames, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
 }
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tcflowContext flowcore.FlowContext) <-chan interface{} {

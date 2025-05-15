@@ -61,7 +61,7 @@ func getCompositeDeleteChangeQuery(databaseName string, changeTable string, inde
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCol string, indexColumnNames interface{}) ([][]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCols []string, indexColumnNames interface{}) ([][]interface{}, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
@@ -115,33 +115,49 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	return matrixChangedEntries, nil
 }
 
-func getStatisticChangeIdQuery(databaseName string, changeTable string, idCol string, indexColumnNames interface{}) string {
-	return fmt.Sprintf("SELECT %s, %s, %s FROM %s.%s", idCol, indexColumnNames.([]string)[0], indexColumnNames.([]string)[1], databaseName, changeTable)
+func getStatisticChangeIdQuery(databaseName string, changeTable string, idCols []string, indexColumnNames interface{}) string {
+	if len(idCols) == 1 {
+		return fmt.Sprintf("SELECT %s, %s, %s FROM %s.%s", idCols[0], indexColumnNames.([]string)[0], indexColumnNames.([]string)[1], databaseName, changeTable)
+	} else if len(idCols) == 2 {
+		return fmt.Sprintf("SELECT %s, %s FROM %s.%s", idCols[0], idCols[1], databaseName, changeTable)
+	} else if len(idCols) == 3 {
+		return fmt.Sprintf("SELECT %s, %s, %s FROM %s.%s", idCols[0], idCols[1], idCols[2], databaseName, changeTable)
+	} else {
+		return fmt.Sprintf("SELECT %s FROM %s.%s", idCols[0], databaseName, changeTable)
+	}
 }
 
-func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCol string, idColVal interface{}, indexColumnNames interface{}, indexColumnValues interface{}) string {
+func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCols []string, idColVal interface{}, indexColumnNames interface{}, indexColumnValues interface{}) string {
 	if first, second, third := idColVal.(string), indexColumnValues.([]string)[0], indexColumnValues.([]string)[1]; first != "" && second != "" && third != "" {
-		return fmt.Sprintf("DELETE FROM %s.%s WHERE %s='%s' AND %s='%s' AND %s='%s'", databaseName, changeTable, idCol, idColVal, indexColumnNames.([]string)[0], indexColumnValues.([]string)[0], indexColumnNames.([]string)[1], indexColumnValues.([]string)[1])
+		return fmt.Sprintf("DELETE FROM %s.%s WHERE %s='%s' AND %s='%s' AND %s='%s'", databaseName, changeTable, idCols[0], idColVal, indexColumnNames.([]string)[0], indexColumnValues.([]string)[0], indexColumnNames.([]string)[1], indexColumnValues.([]string)[1])
 	}
 	return ""
 }
 
-func removeElementFromSlice(slice []string, s string) ([]string, string) {
+func removeElementFromSlice(slice []string, ss []string) ([]string, string) {
 	for k, v := range slice {
-		if slice[k] == s {
-			removedVal := slice[k]
-			return append(slice[:k], slice[k+1:]...), removedVal
+		for _, s := range ss {
+			if slice[k] == s {
+				removedVal := slice[k]
+				return append(slice[:k], slice[k+1:]...), removedVal
+			}
+			slice[k] = v
 		}
-		slice[k] = v
 	}
 	return slice, ""
 }
 
-func removeElementFromSliceInterface(slice []interface{}, s string) ([]interface{}, interface{}) {
+func removeElementFromSliceInterface(slice []interface{}, ss []string) ([]interface{}, interface{}) {
 	indexFound := -1
-	for k, v := range slice {
-		if valueStr, sOk := v.(string); sOk && valueStr == s {
-			indexFound = k
+	for _, v := range slice {
+		indexFound = 0
+		for _, s := range ss {
+			if valueStr, sOk := v.(string); !sOk || valueStr != s {
+				indexFound = -1
+				break
+			}
+		}
+		if indexFound != -1 {
 			break
 		}
 	}
@@ -159,21 +175,41 @@ func removeElementFromSliceInterface(slice []interface{}, s string) ([]interface
 	return *sp, removedVal
 }
 
-func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumn string, indexColumnNames interface{}, indexColumnValues interface{}) (string, error) {
+func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumns []string, indexColumnNames interface{}, indexColumnValues interface{}) (string, error) {
 	if indexColumnNamesSlice, iOk := indexColumnNames.([]string); iOk {
 		if indexColumnValuesSlice, iOk := indexColumnValues.([]interface{}); iOk {
 			var query string
 			var removedVal interface{}
 			var removedValName string
-			if valueStr, sOk := indexColumnValuesSlice[0].(string); sOk {
-				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumn, valueStr)
-				if indexColumnValuesSlice, removedVal = removeElementFromSliceInterface(indexColumnValuesSlice, valueStr); removedVal != nil { //this logic is for dfs...names & values appear out of order in slices at this point but is needed for previous step.
-					indexColumnNamesSlice, removedValName = removeElementFromSlice(indexColumnNamesSlice, idColumn) //							 may need to revist if a table has 3 identifiying column names (none currently).
+			if valueSliceStr, sOk := indexColumnValuesSlice[0].([]string); sOk {
+				if len(idColumns) == 1 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumns[0], valueSliceStr[0])
+				} else if len(idColumns) == 2 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s' AND %s='%s'", databaseName, changeTable, idColumns[0], valueSliceStr[0], idColumns[1], valueSliceStr[1])
+				} else if len(idColumns) == 3 {
+					// TODO: test...
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s' AND %s='%s' AND %s='%s'", databaseName, changeTable, idColumns[0], valueSliceStr[0], idColumns[1], valueSliceStr[1], idColumns[2], valueSliceStr[2])
+				}
+				if indexColumnValuesSlice, removedVal = removeElementFromSliceInterface(indexColumnValuesSlice, valueSliceStr); removedVal != nil { //this logic is for dfs...names & values appear out of order in slices at this point but is needed for previous step.
+
+					indexColumnNamesSlice, removedValName = removeElementFromSlice(indexColumnNamesSlice, idColumns) //							 may need to revist if a table has 3 identifiying column names (none currently).
 				}
 			} else if valueInt, viOK := indexColumnValuesSlice[0].(int64); viOK {
-				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumn, valueInt)
+				if len(idColumns) == 1 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumns[0], valueInt)
+				} else if len(idColumns) == 2 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d' AND %s='%d'", databaseName, changeTable, idColumns[0], valueInt, idColumns[1], indexColumnValuesSlice[1])
+				} else if len(idColumns) == 3 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d' AND %s='%d' AND %s='%d'", databaseName, changeTable, idColumns[0], valueInt, idColumns[1], indexColumnValuesSlice[1], idColumns[2], indexColumnValuesSlice[2])
+				}
 			} else if valueInt, vIntOK := indexColumnValuesSlice[0].(int); vIntOK {
-				query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumn, valueInt)
+				if len(idColumns) == 1 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, idColumns[0], valueInt)
+				} else if len(idColumns) == 2 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d' AND %s='%d'", databaseName, changeTable, idColumns[0], valueInt, idColumns[1], indexColumnValuesSlice[1])
+				} else if len(idColumns) == 3 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d' AND %s='%d' AND %s='%d'", databaseName, changeTable, idColumns[0], valueInt, idColumns[1], indexColumnValuesSlice[1], idColumns[2], indexColumnValuesSlice[2])
+				}
 			} else {
 				panic("Error - Unsupported type for index column - add support for new type.")
 			}
@@ -206,12 +242,12 @@ func getStatisticInsertChangeQuery(databaseName string, changeTable string, idCo
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext tcflow.FlowContext, idCol string, indexColumnNames interface{}) ([][]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext tcflow.FlowContext, idCols []string, indexColumnNames interface{}) ([][]interface{}, error) {
 	var changedEntriesQuery string
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	changesLock.Lock()
-	changedEntriesQuery = getStatisticChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, indexColumnNames)
+	changedEntriesQuery = getStatisticChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCols, indexColumnNames)
 
 	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
 	if err != nil {
@@ -223,7 +259,7 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 		indexColumnValues := []string{}
 		indexColumnValues = append(indexColumnValues, changedEntry[1].(string))
 		indexColumnValues = append(indexColumnValues, changedEntry[2].(string))
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCol, idColVal, indexColumnNames, indexColumnValues), tfContext.QueryLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCols, idColVal, indexColumnNames, indexColumnValues), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
@@ -236,7 +272,7 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 // vaultPersistPushRemoteChanges - Persists any local mysql changes to vault and pushed any changes to a remote data source.
 func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	tcflowContext tcflow.FlowContext,
-	identityColumnName string,
+	identityColumnNames []string,
 	indexColumnNames interface{},
 	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
@@ -248,13 +284,13 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 	if indexColumnNamesSlice, colOK := indexColumnNames.([]string); colOK {
 		if len(indexColumnNamesSlice) == 3 { // TODO: Coercion???
-			matrixChangedEntries, removeErr = tfmContext.removeStatisticChangedTableEntries(tfContext, identityColumnName, indexColumnNames)
+			matrixChangedEntries, removeErr = tfmContext.removeStatisticChangedTableEntries(tfContext, identityColumnNames, indexColumnNames)
 			if removeErr != nil {
 				tfmContext.Log("Failure to scrub table entries.", removeErr)
 				return removeErr
 			}
 		} else if len(indexColumnNamesSlice) == 2 { // TODO: Coercion???
-			matrixChangedEntries, removeErr = tfmContext.removeCompositeKeyChangedTableEntries(tfContext, identityColumnName, indexColumnNames)
+			matrixChangedEntries, removeErr = tfmContext.removeCompositeKeyChangedTableEntries(tfContext, identityColumnNames, indexColumnNames)
 			if removeErr != nil {
 				tfmContext.Log("Failure to scrub table entries.", removeErr)
 				return removeErr
@@ -273,7 +309,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		var changedTableQuery string
 		var changedId interface{}
 		var changeTableError error
-		changedTableQuery, changeTableError = getStatisticChangedByIdQuery(tfContext.FlowSourceAlias, tfContext.Flow.TableName(), identityColumnName, indexColumnNames, changedEntry)
+		changedTableQuery, changeTableError = getStatisticChangedByIdQuery(tfContext.FlowSourceAlias, tfContext.Flow.TableName(), identityColumnNames, indexColumnNames, changedEntry)
 		if changeTableError != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, changeTableError, false)
 			continue
@@ -383,8 +419,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue //This case is for when SEC row can't find a matching tenant
 		}
 
-		if identityColumnName == "flowName" {
-			if alert, ok := rowDataMap[identityColumnName].(string); ok {
+		if len(identityColumnNames) > 0 && identityColumnNames[0] == "flowName" {
+			if alert, ok := rowDataMap[identityColumnNames[0]].(string); ok {
 				if tfmContext.FlowControllerUpdateAlert != nil {
 					tfmContext.FlowControllerUpdateAlert <- alert
 				}
