@@ -26,6 +26,10 @@ const flowGroupName = "Ninja"
 var refresh = false
 var endRefreshChan = make(chan bool, 1)
 
+func getDataFlowStatisticsIndexColumnNames() []string {
+	return []string{flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestStateCodeColumn}
+}
+
 func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
 	tenantIndexPath, _ := coreopts.BuildOptions.GetDFSPathName()
 	if _, ok := rowDataMap[flowcoreopts.DataflowTestIdColumn].(string); ok {
@@ -206,7 +210,7 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 			ApplyDependencies:           nil, //not pushing remote
 			GetTableSchema:              getDataFlowStatisticsSchema,
 			GetIndexedPathExt:           GetDataflowStatIndexedPathExt,
-			GetTableIndexColumnNames:    nil, //TODO: Chewbacca
+			GetTableIndexColumnNames:    getDataFlowStatisticsIndexColumnNames,
 		}
 		tfContext.SetFlowDefinitionContext(flowDefinitionContext)
 		tfContext.SetCustomSeedTrcdbFunc(dataFlowStatPullRemote)
