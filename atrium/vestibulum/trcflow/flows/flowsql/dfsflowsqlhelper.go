@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 )
 
@@ -80,6 +79,7 @@ func DataFlowStatisticsSparseArrayToMap(dfs []interface{}) map[string]interface{
 }
 
 func GetDataFlowStatisticFilterFieldFromConfig(tableConfig interface{}) string {
-	dfsNode := tableConfig.(*core.TTDINode)
-	return dfsNode.Name
+	// Not pulling or pushing to remote
+	// dfsNode := tableConfig.(*core.TTDINode)
+	return "" //dfsNode.Name
 }

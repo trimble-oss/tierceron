@@ -14,8 +14,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
-	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
-	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 
 	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	dfssql "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/flowsql"
@@ -66,7 +64,7 @@ func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 strin
 		` END;`
 }
 
-func getDataFlowStatisticsSchema(tableName string) sqle.PrimaryKeySchema {
+func getDataFlowStatisticsSchema(tableName string) interface{} {
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true}, //composite key
 		{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true},
@@ -135,10 +133,10 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 									//dfgroup to table
 									if len(rows) == 0 {
 										if strings.Contains(flowGroup.(string), flowGroupName) {
-											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "") //true gets ninja tested time inside statisticToMap
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "") //true gets ninja tested time inside statisticToMap
 										} else {
 											statMap := dfstat.StatisticToMap()
-											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "")
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "")
 										}
 									} else {
 										statMap := dfstat.StatisticToMap()
@@ -146,7 +144,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 											if coreopts.BuildOptions.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsSparseArrayToMap(value)) { //If equal-> do nothing
 												continue
 											} else { //If not equal -> update
-												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdate(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType(tfContext.Flow.TableName())}, "")
+												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdateById(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType(tfContext.Flow.TableName())}, "")
 											}
 										}
 									}
@@ -154,7 +152,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 							} else {
 								if len(dfGroup.MashupDetailedElement.Data) > 0 {
 									dfgStatMap := dfGroup.StatisticToMap()
-									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(tenantId.(string), dfgStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType(tfContext.Flow.TableName())}, "")
+									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfgStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType(tfContext.Flow.TableName())}, "")
 								}
 							}
 						}
@@ -172,7 +170,9 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 	return nil
 }
 
-func CreateTableTriggers(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
+func CreateTableTriggers(tfmContextI flowcore.FlowMachineContext, tfContextI flowcore.FlowContext) {
+	tfmContext := tfmContextI.(*core.TrcFlowMachineContext)
+	tfContext := tfContextI.(*core.TrcFlowContext)
 	tfmContext.GetTableModifierLock().Lock()
 	changeTableName := tfContext.Flow.TableName() + "_Changes"
 	tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
@@ -194,104 +194,25 @@ func CreateTableTriggers(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	if tfContext.GetFlowDefinitionContext() == nil {
 		flowDefinitionContext := &flowcore.FlowDefinitionContext{
-			GetTableConfigurationById:   GetTenantById,
-			GetTableConfigurations:      lib.GetTenantConfigurations,
+			GetTableConfigurationById:   nil, //not pulling from remote
+			GetTableConfigurations:      nil, //not pulling from remote
 			CreateTableTriggers:         CreateTableTriggers,
-			GetTableMap:                 lib.GetTenantMap,
-			GetTableFromMap:             lib.GetTenantFromMap,
-			GetFilterFieldFromConfig:    lib.GetTenantConfigurationFilterFieldFromConfig,
+			GetTableMap:                 nil, //not pulling from remote
+			GetTableFromMap:             nil, //not pulling from remote
+			GetFilterFieldFromConfig:    nil, //not pushing remote
 			GetTableMapFromArray:        dfssql.GetDataFlowStatisticsFromArray,
-			GetTableConfigurationInsert: dfssql.GetDataFlowStatisticUpdate,
+			GetTableConfigurationInsert: dfssql.GetDataFlowStatisticInsert,
 			GetTableConfigurationUpdate: dfssql.GetDataFlowStatisticUpdate,
-			ApplyDependencies:           UpdateEnterprise,
-			GetTableSchema:              getTenantSchema,
-			GetIndexedPathExt:           getIndexedPathExt,
-			GetTableIndexColumnName:     getTenantConfigIdColumnName,
+			ApplyDependencies:           nil, //not pushing remote
+			GetTableSchema:              getDataFlowStatisticsSchema,
+			GetIndexedPathExt:           GetDataflowStatIndexedPathExt,
+			GetTableIndexColumnNames:    nil, //TODO: Chewbacca
 		}
 		tfContext.SetFlowDefinitionContext(flowDefinitionContext)
-		tfContext.CustomSeedTrcDb = dataFlowStatPullRemote
 		tfContext.SetCustomSeedTrcdbFunc(dataFlowStatPullRemote)
 	}
 
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
-}
-
-func rocessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
-
-	trctfContext := tfContext.(*trcflowcore.TrcFlowContext)
-	trctfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
-
-	tfmContext.AddTableSchema(getDataFlowStatisticsSchema(trctfContext.Flow.TableName()), trctfContext)
-	prepareDataFlowChangeTable(trctfmContext, trctfContext) //Change table needs to be set again due to composite key - different from other tables
-	trctfContext.ReadOnly = false                           //Change this to false for writeback***
-	trctfContext.TransitionState("N/A")
-	trctfContext.Init = true
-
-	sqlIngestInterval := trctfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
-	if sqlIngestInterval > 0 {
-		// Implement pull from remote data source
-		// Only pull if ingest interval is set to > 0 value.
-		afterTime := time.Duration(0)
-		for {
-			select {
-			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval
-				if trctfContext.GetFlowStateState() == 3 {
-					trctfmContext.PermissionChan <- trcflowcore.PermissionUpdate{TableName: trctfContext.Flow.TableName(), CurrentState: trctfContext.GetFlowStateState()}
-					if trctfContext.CancelContext != nil {
-						trctfContext.CancelContext() //This cancel also pushes any final changes to vault before closing sync cycle.
-						var baseTableTemplate extract.TemplateResultData
-						trcvutils.LoadBaseTemplate(trctfmContext.DriverConfig, &baseTableTemplate, trctfContext.GoMod, trctfContext.FlowSource, trctfContext.Flow.ServiceName(), trctfContext.FlowPath)
-						trctfContext.FlowData = &baseTableTemplate
-					}
-					tfmContext.Log("DataFlowStatistics flow is being stopped...", nil)
-					tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("0", tfContext.GetFlowSyncMode()))
-					continue
-				} else if trctfContext.GetFlowStateState() == 0 {
-					tfmContext.Log("DataFlowStatistics flow is currently offline...", nil)
-					if trctfContext.FlowState.SyncMode == "refreshingDaily" {
-						refresh = true
-						tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("1", tfContext.GetFlowSyncMode()))
-					}
-					continue
-				} else if trctfContext.GetFlowStateState() == 1 {
-					tfmContext.Log("DataFlowStatistics flow is restarting...", nil)
-					trctfContext.Init = true
-					tfmContext.CallDBQuery(trctfContext, map[string]interface{}{"TrcQuery": "truncate " + trctfContext.FlowSourceAlias + "." + trctfContext.Flow.TableName()}, nil, false, "DELETE", nil, "")
-					tfContext.PushState("flowStateReceiver", trctfContext.NewFlowStateUpdate("2", tfContext.GetFlowSyncMode()))
-					continue
-				} else if trctfContext.GetFlowStateState() == 2 {
-					if trctfContext.Init {
-						go tfmContext.SyncTableCycle(trctfContext, flowcoreopts.DataflowTestNameColumn, []string{flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn, flowcoreopts.DataflowTestNameColumn}, GetDataflowStatIndexedPathExt, nil, false)
-					}
-				} else {
-					tfmContext.Log("Ignoring invalid flow.", nil)
-					continue
-				}
-
-				if strings.HasPrefix(trctfContext.FlowState.SyncMode, "refresh") { //This is to refresh from vault - different from pulling/pushing.
-					refreshSuffix, _ := strings.CutPrefix(trctfContext.FlowState.SyncMode, "refresh")
-					if trctfContext.FlowState.SyncMode == "refreshingDaily" {
-						if !refresh { //This is for if trcdb loads up in "refreshingDaily" -> need to kick off refresh again.
-							KickOffTimedRefresh(trctfContext, "Daily")
-						}
-					} else if !KickOffTimedRefresh(trctfContext, refreshSuffix) {
-						tfmContext.Log("DataFlowStatistics has an invalid refresh timing"+flowcorehelper.SyncCheck(trctfContext.FlowState.SyncMode)+".", nil)
-						trctfContext.FlowState.SyncMode = "InvalidRefreshMode"
-						tfContext.PushState("flowStateReceiver", trctfContext.NewFlowStateUpdate("2", "InvalidRefreshMode"))
-					}
-				}
-
-				if trctfContext.GetFlowSyncMode() == "pullonce" {
-					tfContext.PushState("flowStateReceiver", trctfContext.NewFlowStateUpdate("2", "pullsynccomplete"))
-				}
-
-				tfmContext.Log("DataFlowStatistics is running and checking for changes"+flowcorehelper.SyncCheck(trctfContext.GetFlowSyncMode())+".", nil)
-			}
-		}
-	}
-	trctfContext.CancelContext()
-	return nil
 }
 
 func KickOffTimedRefresh(tfContext *trcflowcore.TrcFlowContext, timing string) bool {
