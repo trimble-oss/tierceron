@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	coreoptsloader "github.com/trimble-oss/tierceron/buildoptsstub/coreopts"
 )

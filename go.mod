@@ -33,7 +33,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.2.0
+	github.com/trimble-oss/tierceron-core/v2 v2.3.0
 	github.com/trimble-oss/tierceron-hat v1.2.9
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250317234449-21d92788d7d5
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
@@ -164,7 +164,7 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/rymdport/portal v0.2.6 // indirect
-	github.com/shopspring/decimal v1.2.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cobra v1.6.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -246,6 +246,8 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
+replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
+
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.26
 
 //replace github.com/square/go-jose.v2 => ../go-jose
@@ -274,4 +276,4 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 
 //replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
-// replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core

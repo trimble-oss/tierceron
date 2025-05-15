@@ -191,6 +191,11 @@ func CommonMain(envPtr *string,
 		return errors.New("must use -pluginName flag to use -defineService flag")
 	}
 
+	if *defineServicePtr && !regexp.MustCompile(`^[a-z0-9._/-]+$`).MatchString(*pluginNamePtr) {
+		fmt.Println("pluginName can only include lowercase alphanumeric characters, periods, dashes, underscores, and forward slashes")
+		return errors.New("pluginName can only include lowercase alphanumeric characters, periods, dashes, underscores, and forward slashes")
+	}
+
 	if *pushImagePtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -pushimage flag")
 		return errors.New("must use -pluginName flag to use -pushimage flag")

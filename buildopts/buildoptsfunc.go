@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 )
 
 // SetLogger is called by TrcDb and other utilities to provide the extensions

@@ -1,13 +1,15 @@
 package testopts
 
-import flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+import (
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+)
 
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
 	GetAdditionalTestFlows    func() []flowcore.FlowNameType
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowNameType
-	ProcessTestFlowController func(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error
+	ProcessTestFlowController func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	GetTestConfig             func(tokenPtr *string, wantPluginPaths bool) map[string]interface{}
 }
 
