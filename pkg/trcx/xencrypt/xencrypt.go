@@ -43,6 +43,30 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 	return nil
 }
 
+func loadSecretFromSecretStore(mod *helperkv.Modifier) (map[string]interface{}, error) {
+	region := "west"
+	if len(mod.Regions) > 0 {
+		// Chewbacca: Select a region intelligently.
+		region = mod.Regions[0]
+	}
+
+	data, readErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/regionId/%s/Database", region))
+	if readErr != nil {
+		return nil, readErr
+	}
+	if data == nil {
+		return nil, errors.New("encryption secret could not be found")
+	} else {
+		if encrypSec, ok := data["dbencryptionSecret"].(string); ok && encrypSec != "" {
+			if setEncryptErr := xencryptopts.BuildOptions.SetEncryptionSecret(encrypSec); setEncryptErr != nil {
+				return nil, setEncryptErr
+			}
+		}
+	}
+
+	return map[string]interface{}{}, nil
+}
+
 func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 	var encryptionSecretField = "encryptionSecret"
 
@@ -70,18 +94,12 @@ func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, modErr, false)
 		}
 		mod.Env = strings.Split(driverConfig.CoreConfig.Env, "_")[0]
-		data, readErr := xencryptopts.BuildOptions.LoadSecretFromSecretStore(mod)
+		data, readErr := loadSecretFromSecretStore(mod)
 		if readErr != nil {
 			return readErr
 		}
 		if data == nil {
 			return errors.New("encryption secret could not be found")
-		}
-
-		if encrypSec, ok := data["encryptionSecret"].(string); ok && encrypSec != "" {
-			if setEncryptErr := xencryptopts.BuildOptions.SetEncryptionSecret(encrypSec); setEncryptErr != nil {
-				return setEncryptErr
-			}
 		}
 	}
 	return nil
