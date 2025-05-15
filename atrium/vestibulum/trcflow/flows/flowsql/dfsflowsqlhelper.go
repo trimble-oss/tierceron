@@ -8,52 +8,52 @@ import (
 )
 
 func GetDataFlowStatisticInsert(statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
-	tenantId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
-	tenantId = strings.ReplaceAll(tenantId, "/", "")
-	return GetDataFlowStatisticInsertById(tenantId, statisticData, dbName, tableName)
+	argosId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
+	argosId = strings.ReplaceAll(argosId, "/", "")
+	return GetDataFlowStatisticInsertById(argosId, statisticData, dbName, tableName)
 }
 
-func GetDataFlowStatisticInsertById(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
-	tenantId = strings.ReplaceAll(tenantId, "/", "")
+func GetDataFlowStatisticInsertById(argosId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+	argosId = strings.ReplaceAll(argosId, "/", "")
 	sqlstr := map[string]interface{}{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + flowcoreopts.DataflowTestNameColumn + `, ` + flowcoreopts.DataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
-			statisticData["flowName"].(string) + `','` + tenantId + `','` +
+			statisticData["flowName"].(string) + `','` + argosId + `','` +
 			statisticData["flowGroup"].(string) + `','` + strconv.Itoa(statisticData["mode"].(int)) +
 			`','` + statisticData["stateCode"].(string) + `','` + statisticData["stateName"].(string) +
 			`','` + statisticData["timeSplit"].(string) + `','` + statisticData["lastTestedDate"].(string) + `')` +
 			` ON DUPLICATE KEY UPDATE ` +
 			flowcoreopts.DataflowTestNameColumn + `= VALUES(` + flowcoreopts.DataflowTestNameColumn + `),` + flowcoreopts.DataflowTestIdColumn + `= VALUES(` + flowcoreopts.DataflowTestIdColumn + `),flowGroup = VALUES(flowGroup),mode = VALUES(mode),stateCode = VALUES(stateCode),stateName = VALUES(stateName),timeSplit = VALUES(timeSplit), lastTestedDate = VALUES(lastTestedDate)`,
-		"TrcChangeId": []string{statisticData["flowName"].(string), tenantId, statisticData["stateCode"].(string)},
+		"TrcChangeId": []string{statisticData["flowName"].(string), argosId, statisticData["stateCode"].(string)},
 	}
 	return sqlstr
 }
 
-func GetDataFlowStatisticLM(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
-	tenantId = strings.ReplaceAll(tenantId, "/", "")
+func GetDataFlowStatisticLM(argosId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+	argosId = strings.ReplaceAll(argosId, "/", "")
 	sqlstr := map[string]interface{}{
 		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + ` where ` + flowcoreopts.DataflowTestNameColumn + `='` + statisticData["flowName"].(string) + `' and ` +
-			flowcoreopts.DataflowTestIdColumn + "='" + tenantId + `' and ` + flowcoreopts.DataflowTestStateCodeColumn + ` = '` + statisticData["stateCode"].(string) + `'`,
+			flowcoreopts.DataflowTestIdColumn + "='" + argosId + `' and ` + flowcoreopts.DataflowTestStateCodeColumn + ` = '` + statisticData["stateCode"].(string) + `'`,
 	}
 	return sqlstr
 }
 
 func GetDataFlowStatisticUpdate(statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
-	tenantId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
-	tenantId = strings.ReplaceAll(tenantId, "/", "")
-	return GetDataFlowStatisticUpdateById(tenantId, statisticData, dbName, tableName)
+	argosId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
+	argosId = strings.ReplaceAll(argosId, "/", "")
+	return GetDataFlowStatisticUpdateById(argosId, statisticData, dbName, tableName)
 }
 
-func GetDataFlowStatisticUpdateById(tenantId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
-	tenantId = strings.ReplaceAll(tenantId, "/", "")
+func GetDataFlowStatisticUpdateById(argosId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+	argosId = strings.ReplaceAll(argosId, "/", "")
 	sqlstr := map[string]interface{}{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + flowcoreopts.DataflowTestNameColumn + `, ` + flowcoreopts.DataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
-			statisticData["flowName"].(string) + `','` + tenantId + `','` +
+			statisticData["flowName"].(string) + `','` + argosId + `','` +
 			statisticData["flowGroup"].(string) + `','` + strconv.Itoa(statisticData["mode"].(int)) +
 			`','` + statisticData["stateCode"].(string) + `','` + statisticData["stateName"].(string) +
 			`','` + statisticData["timeSplit"].(string) + `','` + statisticData["lastTestedDate"].(string) + `')` +
 			` ON DUPLICATE KEY UPDATE ` +
 			flowcoreopts.DataflowTestNameColumn + `= VALUES(` + flowcoreopts.DataflowTestNameColumn + `),` + flowcoreopts.DataflowTestIdColumn + `= VALUES(` + flowcoreopts.DataflowTestIdColumn + `),flowGroup = VALUES(flowGroup),mode = VALUES(mode),stateCode = VALUES(stateCode),stateName = VALUES(stateName),timeSplit = VALUES(timeSplit), lastTestedDate = VALUES(lastTestedDate)`,
-		"TrcChangeId": []string{statisticData["flowName"].(string), tenantId, statisticData["stateCode"].(string)},
+		"TrcChangeId": []string{statisticData["flowName"].(string), argosId, statisticData["stateCode"].(string)},
 	}
 	return sqlstr
 }
