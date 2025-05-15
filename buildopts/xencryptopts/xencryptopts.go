@@ -2,8 +2,6 @@ package xencryptopts
 
 import (
 	"errors"
-
-	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 func SetEncryptionSecret(encryptionSecret string) error {
@@ -13,12 +11,6 @@ func SetEncryptionSecret(encryptionSecret string) error {
 // MakeNewEncryption is a function that returns a new encryption key and a new encryption salt
 func MakeNewEncryption() (string, string, error) {
 	return "", "", errors.New("not implemented")
-}
-
-// LoadSecretFromSecretStore is a function that loads a secret from the secret store.  It returns a map with
-// the secret contained in the attribute named "encryptionSecret".
-func LoadSecretFromSecretStore(mod *helperkv.Modifier) (map[string]interface{}, error) {
-	return nil, errors.New("not implemented")
 }
 
 // Encrypt is a function accepts and input string to be encoded and an encryption map.  The map should contain
