@@ -303,6 +303,7 @@ func CommonMain(envDefaultPtr *string,
 			"vault_token": *tokenPtr,
 			"vault_addr":  *driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
 			"agent_env":   *envPtr,
+			//			"deployments": "fenestra",
 			"deployments": "fenestra,rosea,spiralis",
 			"region":      "west",
 		}
