@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"

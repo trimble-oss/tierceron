@@ -22,7 +22,8 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -37,7 +38,7 @@ import (
 func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
-	var tfmContext *flowcore.TrcFlowMachineContext
+	var tfmContext *trcflowcore.TrcFlowMachineContext
 	var driverConfig *config.DriverConfig
 	var vault *sys.Vault
 	var goMod *helperkv.Modifier
@@ -92,10 +93,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	}
 	logger.Println("Deployed status updated.")
 
-	tfmContext = &flowcore.TrcFlowMachineContext{
+	tfmContext = &trcflowcore.TrcFlowMachineContext{
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
-		FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
+		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -204,8 +205,8 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	templateList := pluginConfig["templatePath"].([]string)
 	flowTemplateMap := map[string]string{}
 	flowSourceMap := map[string]string{}
-	flowStateControllerMap := map[string]chan flowcorehelper.CurrentFlowState{}
-	flowStateReceiverMap := map[string]chan flowcorehelper.FlowStateUpdate{}
+	flowStateControllerMap := map[string]chan flowcore.CurrentFlowState{}
+	flowStateReceiverMap := map[string]chan flowcore.FlowStateUpdate{}
 
 	for _, template := range templateList {
 		source, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
@@ -215,13 +216,13 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		}
 		flowTemplateMap[tableName] = template
 		flowSourceMap[tableName] = source
-		flowStateControllerMap[tableName] = make(chan flowcorehelper.CurrentFlowState, 1)
-		flowStateReceiverMap[tableName] = make(chan flowcorehelper.FlowStateUpdate, 1)
+		flowStateControllerMap[tableName] = make(chan flowcore.CurrentFlowState, 1)
+		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
 	for _, enhancement := range flowopts.BuildOptions.GetAdditionalFlows() {
-		flowStateControllerMap[enhancement.TableName()] = make(chan flowcorehelper.CurrentFlowState, 1)
-		flowStateReceiverMap[enhancement.TableName()] = make(chan flowcorehelper.FlowStateUpdate, 1)
+		flowStateControllerMap[enhancement.TableName()] = make(chan flowcore.CurrentFlowState, 1)
+		flowStateReceiverMap[enhancement.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
 	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), harbingeropts.BuildOptions.GetDatabaseName())
@@ -297,7 +298,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	tfmContext.Init(sourceDatabaseConnectionsMap, driverConfigBasis.VersionFilter, flowopts.BuildOptions.GetAdditionalFlows(), flowopts.BuildOptions.GetAdditionalFlows())
 
 	//Initialize tfcContext for flow controller
-	tfmFlumeContext := &flowcore.TrcFlowMachineContext{
+	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
@@ -326,7 +327,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	var flowWG sync.WaitGroup
 
 	for _, table := range GetTierceronTableNames() {
-		tfContext := flowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), ReadOnly: false, Init: true, Log: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 		tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -335,7 +336,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		controllerInitWG.Add(1)
 		tfmFlumeContext.InitConfigWG.Add(1)
 		flowWG.Add(1)
-		go func(tableFlow flowcore.FlowNameType, tcfContext *flowcore.TrcFlowContext, dc *config.DriverConfig) {
+		go func(tableFlow flowcore.FlowNameType, tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tableFlow.ServiceName())
 			defer flowWG.Done()
 			tcfContext.Flow = tableFlow
@@ -351,13 +352,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
 			tfmFlumeContext.ProcessFlow(
-				dc,
 				tcfContext,
 				FlumenProcessFlowController,
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
 				tableFlow,
-				flowcore.TableSyncFlow,
+				trcflowcore.TableSyncFlow,
 			)
 		}(flowcore.FlowNameType(table), &tfContext, driverConfig)
 
@@ -388,7 +388,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tableFlow.ServiceName())
 			defer flowWG.Done()
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 			tfContext.Flow = tableFlow
@@ -413,13 +413,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			tfContext.FlowSourceAlias = harbingeropts.BuildOptions.GetDatabaseName()
 
 			tfmContext.ProcessFlow(
-				dc,
 				&tfContext,
 				flowopts.BuildOptions.ProcessFlowController,
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
 				tableFlow,
-				flowcore.TableSyncFlow,
+				trcflowcore.TableSyncFlow,
 			)
 		}(flowcore.FlowNameType(table), driverConfig)
 	}
@@ -431,7 +430,7 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+enhancementFlow.ServiceName())
 			defer flowWG.Done()
 
-			tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.Flow = enhancementFlow
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
@@ -446,13 +445,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 			}
 
 			tfmContext.ProcessFlow(
-				dc,
 				&tfContext,
 				flowopts.BuildOptions.ProcessFlowController,
-				vaultDatabaseConfig,
+				vaultDatabaseConfig, // unused.
 				sourceDatabaseConnectionsMap,
 				enhancementFlow,
-				flowcore.TableEnrichFlow,
+				trcflowcore.TableEnrichFlow,
 			)
 		}(enhancement, driverConfig)
 	}
@@ -460,10 +458,10 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 	if testopts.BuildOptions != nil {
 		for _, test := range testopts.BuildOptions.GetAdditionalTestFlows() {
 			flowWG.Add(1)
-			go func(testFlow flowcore.FlowNameType, dc *config.DriverConfig, tfmc *flowcore.TrcFlowMachineContext) {
+			go func(testFlow flowcore.FlowNameType, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := flowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, FlowLock: &sync.Mutex{}, ReadOnly: false, Init: true, Log: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -473,13 +471,12 @@ func ProcessFlows(pluginConfig map[string]interface{}, logger *log.Logger) error
 				}
 
 				tfmc.ProcessFlow(
-					dc,
 					&tfContext,
 					flowopts.BuildOptions.ProcessTestFlowController,
-					vaultDatabaseConfig,
+					vaultDatabaseConfig, // unused..
 					sourceDatabaseConnectionsMap,
 					testFlow,
-					flowcore.TableTestFlow,
+					trcflowcore.TableTestFlow,
 				)
 			}(test, driverConfig, tfmContext)
 		}

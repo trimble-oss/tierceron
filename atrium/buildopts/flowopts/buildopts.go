@@ -1,6 +1,9 @@
 package flowopts
 
-import flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+import (
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+)
 
 type Option func(*OptionsBuilder)
 
@@ -9,10 +12,10 @@ type OptionsBuilder struct {
 	GetAdditionalFlows         func() []flowcore.FlowNameType
 	GetAdditionalTestFlows     func() []flowcore.FlowNameType
 	GetAdditionalFlowsByState  func(string) []flowcore.FlowNameType
-	ProcessTestFlowController  func(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error
-	ProcessFlowController      func(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error
+	ProcessTestFlowController  func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
+	ProcessFlowController      func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	GetFlowDatabaseName        func() string
-	ProcessAskFlumeEventMapper func(askFlumeContext *flowcore.AskFlumeContext, query *flowcore.AskFlumeMessage, tfmContext *flowcore.TrcFlowMachineContext, tfContext *flowcore.TrcFlowContext) *flowcore.AskFlumeMessage
+	ProcessAskFlumeEventMapper func(askFlumeContext *trcflowcore.AskFlumeContext, query *trcflowcore.AskFlumeMessage, tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) *trcflowcore.AskFlumeMessage
 }
 
 func LoadOptions() Option {
