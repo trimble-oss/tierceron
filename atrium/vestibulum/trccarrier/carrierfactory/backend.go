@@ -10,12 +10,17 @@ import (
 	"strings"
 	"sync"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -41,7 +46,7 @@ func InitLogger(l *log.Logger) {
 	logger = l
 }
 
-func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvutils.ProcessFlowInitConfig, processFlow trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowMachineInitFunc trcvutils.ProcessFlowMachineInitFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
@@ -84,8 +89,8 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
 				configInitOnce.(*sync.Once).Do(func() {
 
-					if processFlowInit != nil {
-						processFlowInit(pluginEnvConfig, logger)
+					if processFlowMachineInitFunc != nil {
+						processFlowMachineInitFunc(pluginEnvConfig, logger)
 					}
 
 					logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
@@ -121,7 +126,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowInit trcvuti
 
 						pluginEnvConfigClone["trcplugin"] = pluginName
 						logger.Printf("*****Env: %s plugin: %s\n", pluginEnvConfigClone["env"], pluginEnvConfigClone["trcplugin"])
-						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfigClone, configCompleteChan)
+						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlowMachineInitFunc, pluginEnvConfigClone, configCompleteChan)
 						if pecError != nil {
 							logger.Println("Bad configuration data for env: " + pluginEnvConfigClone["env"].(string) + " and plugin: " + pluginName + " error: " + pecError.Error())
 						}
@@ -382,7 +387,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
-	processPluginFlow trcvutils.ProcessFlowFunc,
+	processPluginFlow trcvutils.ProcessFlowMachineInitFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
 	logger.Printf("ProcessPluginEnvConfig begun: %s plugin: %s\n", pluginEnvConfig["env"], pluginEnvConfig["trcplugin"])
@@ -455,8 +460,29 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 
 	go func(pec map[string]interface{}, l *log.Logger) {
 		logger.Println("Initiate process flow for env: " + pec["env"].(string) + " and plugin: " + pec["trcplugin"].(string))
-
-		flowErr := processPluginFlow(pec, l)
+		flowMachineInitContext := flowcore.FlowMachineInitContext{
+			FlowMachineInterfaceConfigs: map[string]interface{}{},
+			GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+			GetTableFlows: func() []flowcore.FlowDefinition {
+				tableFlows := []flowcore.FlowDefinition{}
+				for _, template := range pec["templatePath"].([]string) {
+					flowSource, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
+					tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+					tableFlows = append(tableFlows, flowcore.FlowDefinition{
+						FlowName:         flowcore.FlowNameType(tableName),
+						FlowTemplatePath: template,
+						FlowSource:       flowSource,
+					})
+				}
+				return tableFlows
+			},
+			GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
+			GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
+			GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+			FlowController:      flowopts.BuildOptions.ProcessFlowController,
+			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
+		}
+		flowErr := processPluginFlow(&flowMachineInitContext, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}

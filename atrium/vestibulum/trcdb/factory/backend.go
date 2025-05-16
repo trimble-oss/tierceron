@@ -12,10 +12,14 @@ import (
 	"time"
 
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
@@ -35,7 +39,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowMachineInitFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
@@ -218,7 +222,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	// It takes a parameter of type trcvutils.ProcessFlowFunc.
 	// This function is responsible for setting up the necessary configurations and resources
 	// required for the backend to handle the process flow.
-	processFlowInit trcvutils.ProcessFlowFunc,
+	processFlowMachineInit trcvutils.ProcessFlowMachineInitFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
 	logger.Println("ProcessPluginEnvConfig begun.")
@@ -280,8 +284,30 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		} else {
 			pec["pluginName"] = "trc-vault-plugin"
 		}
+		flowMachineInitContext := flowcore.FlowMachineInitContext{
+			FlowMachineInterfaceConfigs: map[string]interface{}{},
+			GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+			GetTableFlows: func() []flowcore.FlowDefinition {
+				tableFlows := []flowcore.FlowDefinition{}
+				for _, template := range pec["templatePath"].([]string) {
+					flowSource, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
+					tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+					tableFlows = append(tableFlows, flowcore.FlowDefinition{
+						FlowName:         flowcore.FlowNameType(tableName),
+						FlowTemplatePath: template,
+						FlowSource:       flowSource,
+					})
+				}
+				return tableFlows
+			},
+			GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
+			GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
+			GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+			FlowController:      flowopts.BuildOptions.ProcessFlowController,
+			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
+		}
 
-		flowErr := processFlowInit(pec, l)
+		flowErr := processFlowMachineInit(&flowMachineInitContext, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}
