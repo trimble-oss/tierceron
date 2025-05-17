@@ -46,7 +46,11 @@ func InitLogger(l *log.Logger) {
 	logger = l
 }
 
-func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowMachineInitFunc trcvutils.ProcessFlowMachineInitFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig,
+	processFlowInit trcvutils.ProcessFlowInitConfig,
+	processFlowMachineInitFunc trcvutils.ProcessFlowMachineInitFunc,
+	headless bool,
+	l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
@@ -90,7 +94,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowMachineInitF
 				configInitOnce.(*sync.Once).Do(func() {
 
 					if processFlowMachineInitFunc != nil {
-						processFlowMachineInitFunc(pluginEnvConfig, logger)
+						processFlowMachineInitFunc(nil, pluginEnvConfig, logger)
 					}
 
 					logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
@@ -159,7 +163,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlowMachineInitF
 					logger.Println("New plugin install env: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfig["trcplugin"].(string))
 				}
 				// Non init -- carrier new plugin deployment path...
-				pecError := ProcessPluginEnvConfig(processFlowConfig, processFlow, pluginEnvConfig, configCompleteChan)
+				pecError := ProcessPluginEnvConfig(processFlowConfig, processFlowMachineInitFunc, pluginEnvConfig, configCompleteChan)
 
 				if pecError != nil {
 					logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
@@ -794,7 +798,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 		if !pluginutil.IsCapInitted() {
 			// Keep trying to initialize capauth whenever there is a refresh...
 			tokenEnvMap["pluginName"] = "trcsh-curator"
-			deployEnvFlowErr := deploy.PluginDeployEnvFlow(tokenEnvMap, logger)
+			deployEnvFlowErr := deploy.PluginDeployEnvFlow(nil, tokenEnvMap, logger)
 			if deployEnvFlowErr != nil {
 				return nil, fmt.Errorf("Deploy Env Flow error: %v", deployEnvFlowErr)
 			}

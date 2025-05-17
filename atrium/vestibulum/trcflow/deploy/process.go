@@ -35,7 +35,7 @@ func init() {
 	factory.StartPluginSettingEater()
 }
 
-func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
 	var err error
 	var driverConfig *config.DriverConfig
@@ -75,7 +75,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	return err
 }
 
-func PluginDeployFlow(flowMachineInitContext flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var err error
 	var pluginName string
