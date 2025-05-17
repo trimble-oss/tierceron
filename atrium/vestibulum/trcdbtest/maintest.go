@@ -5,8 +5,12 @@ import (
 	"log"
 	"os"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -49,8 +53,30 @@ func main() {
 			}
 		}
 	}
+	flowMachineInitContext := flowcore.FlowMachineInitContext{
+		FlowMachineInterfaceConfigs: map[string]interface{}{},
+		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+		GetTableFlows: func() []flowcore.FlowDefinition {
+			tableFlows := []flowcore.FlowDefinition{}
+			for _, template := range pluginConfig["templatePath"].([]string) {
+				flowSource, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
+				tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+				tableFlows = append(tableFlows, flowcore.FlowDefinition{
+					FlowName:         flowcore.FlowNameType(tableName),
+					FlowTemplatePath: template,
+					FlowSource:       flowSource,
+				})
+			}
+			return tableFlows
+		},
+		GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
+		GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
+		GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+		FlowController:      flowopts.BuildOptions.ProcessFlowController,
+		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
+	}
 
-	trcflow.ProcessFlows(pluginConfig, logger)
+	trcflow.ProcessFlows(&flowMachineInitContext, pluginConfig, logger)
 	wait := make(chan bool)
 	<-wait
 }
