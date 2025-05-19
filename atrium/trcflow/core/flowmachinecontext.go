@@ -22,6 +22,8 @@ import (
 	"github.com/glycerine/bchan"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
@@ -313,8 +315,8 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flow
 	flowTemplatePath string) (map[string]interface{}, bool) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	// Get the flow configuration from vault.
-	flowProject, flowService, _, flowConfigTemplatePath := eUtils.GetProjectService(nil, flowTemplatePath)
-	flowConfigTemplateName := eUtils.GetTemplateFileName(flowConfigTemplatePath, flowService)
+	flowProject, flowService, _, flowConfigTemplatePath := coreutil.GetProjectService("", "trc_templates", flowTemplatePath)
+	flowConfigTemplateName := coreutil.GetTemplateFileName(flowConfigTemplatePath, flowService)
 	tfContext.GoMod.SectionKey = "/Restricted/"
 	tfContext.GoMod.SectionName = flowService
 	if refreshErr := tfContext.Vault.RefreshClient(); refreshErr != nil {

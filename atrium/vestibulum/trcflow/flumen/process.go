@@ -165,8 +165,16 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pl
 					return err
 				}
 			case "VaultDatabase":
-				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
-				vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
+				if len(flowMachineInitContext.FlowMachineInterfaceConfigs) > 0 {
+					// This is a special case where we are using the plugin to create a vault database interface.
+					// We need to use the config from the flow machine interface configs.
+					// Only supported on loopback interface fo security reasons.
+					vaultDatabaseConfig = flowMachineInitContext.FlowMachineInterfaceConfigs
+					vaultDatabaseConfig["vaddress"] = "127.0.0.1"
+				} else {
+					vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
+					vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
+				}
 				if !ok {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't get config values.", false)
 					return err

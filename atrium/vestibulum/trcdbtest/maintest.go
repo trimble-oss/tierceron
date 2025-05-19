@@ -6,6 +6,7 @@ import (
 	"os"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
@@ -59,8 +60,8 @@ func main() {
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {
-				flowSource, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
-				tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
+				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 				tableFlows = append(tableFlows, flowcore.FlowDefinition{
 					FlowName:         flowcore.FlowNameType(tableName),
 					FlowTemplatePath: template,

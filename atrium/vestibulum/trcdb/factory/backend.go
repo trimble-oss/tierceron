@@ -17,6 +17,8 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
@@ -290,8 +292,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			GetTableFlows: func() []flowcore.FlowDefinition {
 				tableFlows := []flowcore.FlowDefinition{}
 				for _, template := range pec["templatePath"].([]string) {
-					flowSource, service, _, tableTemplateName := eUtils.GetProjectService(nil, template)
-					tableName := eUtils.GetTemplateFileName(tableTemplateName, service)
+					flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
+					tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 					tableFlows = append(tableFlows, flowcore.FlowDefinition{
 						FlowName:         flowcore.FlowNameType(tableName),
 						FlowTemplatePath: template,
