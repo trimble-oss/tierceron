@@ -1,13 +1,13 @@
 module github.com/trimble-oss/tierceron
 
-go 1.24.1
+go 1.24.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.4
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // indirect; IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
 	github.com/julienschmidt/httprouter v1.3.0
@@ -33,7 +33,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.5.2
+	github.com/trimble-oss/tierceron-core/v2 v2.5.3
 	github.com/trimble-oss/tierceron-hat v1.2.9
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250317234449-21d92788d7d5
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
@@ -71,7 +71,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
@@ -178,11 +177,11 @@ require (
 	github.com/yuin/goldmark v1.7.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
-	go.opentelemetry.io/otel v1.34.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.34.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
+	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.35.0 // indirect
+	go.opentelemetry.io/otel/metric v1.35.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
 	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
@@ -258,19 +257,19 @@ replace github.com/trimble-oss/tierceron/atrium => ./atrium
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra => ./atrium/vestibulum/hive/plugins/trcfenestra
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore => ./atrium/vestibulum/hive/plugins/trcfenestra/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore => ./atrium/vestibulum/hive/plugins/trcfenestra/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => ./atrium/vestibulum/hive/plugins/trchealthcheck
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./atrium/vestibulum/hive/plugins/trchealthcheck/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./atrium/vestibulum/hive/plugins/trchealthcheck/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis => ./atrium/vestibulum/hive/plugins/trcspiralis
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore => ./atrium/vestibulum/hive/plugins/trcspiralis/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore => ./atrium/vestibulum/hive/plugins/trcspiralis/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea => ./atrium/vestibulum/hive/plugins/trcrosea
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./atrium/vestibulum/hive/plugins/trcrosea/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./atrium/vestibulum/hive/plugins/trcrosea/hcore
 
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./atrium/vestibulum/hive/plugins/atrium/vestibulum/hive/plugins/trcmutabilis
 
