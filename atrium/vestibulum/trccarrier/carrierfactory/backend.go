@@ -48,7 +48,7 @@ func InitLogger(l *log.Logger) {
 
 func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 	processFlowInit trcvutils.ProcessFlowInitConfig,
-	processFlowMachineInitFunc trcvutils.ProcessFlowMachineInitFunc,
+	bootFlowMachineFunc trcvutils.BootFlowMachineFunc,
 	headless bool,
 	l *log.Logger) {
 	eUtils.InitHeadless(headless)
@@ -93,8 +93,8 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
 				configInitOnce.(*sync.Once).Do(func() {
 
-					if processFlowMachineInitFunc != nil {
-						processFlowMachineInitFunc(nil, pluginEnvConfig, logger)
+					if bootFlowMachineFunc != nil {
+						bootFlowMachineFunc(nil, pluginEnvConfig, logger)
 					}
 
 					logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
@@ -130,7 +130,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 
 						pluginEnvConfigClone["trcplugin"] = pluginName
 						logger.Printf("*****Env: %s plugin: %s\n", pluginEnvConfigClone["env"], pluginEnvConfigClone["trcplugin"])
-						pecError := ProcessPluginEnvConfig(processFlowConfig, processFlowMachineInitFunc, pluginEnvConfigClone, configCompleteChan)
+						pecError := ProcessPluginEnvConfig(processFlowConfig, bootFlowMachineFunc, pluginEnvConfigClone, configCompleteChan)
 						if pecError != nil {
 							logger.Println("Bad configuration data for env: " + pluginEnvConfigClone["env"].(string) + " and plugin: " + pluginName + " error: " + pecError.Error())
 						}
@@ -163,7 +163,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 					logger.Println("New plugin install env: " + pluginEnvConfig["env"].(string) + " plugin: " + pluginEnvConfig["trcplugin"].(string))
 				}
 				// Non init -- carrier new plugin deployment path...
-				pecError := ProcessPluginEnvConfig(processFlowConfig, processFlowMachineInitFunc, pluginEnvConfig, configCompleteChan)
+				pecError := ProcessPluginEnvConfig(processFlowConfig, bootFlowMachineFunc, pluginEnvConfig, configCompleteChan)
 
 				if pecError != nil {
 					logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
@@ -391,7 +391,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 }
 
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
-	processPluginFlow trcvutils.ProcessFlowMachineInitFunc,
+	bootFlowMachineFunc trcvutils.BootFlowMachineFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
 	logger.Printf("ProcessPluginEnvConfig begun: %s plugin: %s\n", pluginEnvConfig["env"], pluginEnvConfig["trcplugin"])
@@ -486,7 +486,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			FlowController:      flowopts.BuildOptions.ProcessFlowController,
 			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 		}
-		flowErr := processPluginFlow(&flowMachineInitContext, pec, l)
+		flowErr := bootFlowMachineFunc(&flowMachineInitContext, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}

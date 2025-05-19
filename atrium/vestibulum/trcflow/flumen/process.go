@@ -35,7 +35,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-func ProcessFlows(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
@@ -166,6 +166,7 @@ func ProcessFlows(flowMachineInitContext *flowcore.FlowMachineInitContext, plugi
 				}
 			case "VaultDatabase":
 				vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
+				vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 				if !ok {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't get config values.", false)
 					return err
@@ -483,13 +484,22 @@ func ProcessFlows(flowMachineInitContext *flowcore.FlowMachineInitContext, plugi
 			}(test, driverConfig, tfmContext)
 		}
 	}
-	eUtils.LogInfo(driverConfig.CoreConfig, "Waiting for controller initialization...")
+	err = BuildFlumeDatabaseInterface(tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
+	if err != nil {
+		return err
+	}
+
+	logger.Println("ProcessFlows complete.")
+	return nil
+}
+
+func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]interface{}, spiralDatabaseConfig map[string]interface{}, flowWG *sync.WaitGroup) error {
+	eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Waiting for controller initialization...")
 	tfmFlumeContext.InitConfigWG.Wait()
 	tfmFlumeContext.FlowControllerLock.Lock()
 	tfmFlumeContext.InitConfigWG = nil
 	tfmFlumeContext.FlowControllerLock.Unlock()
 
-	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
 	//Set up controller config
 	controllerVaultDatabaseConfig := make(map[string]interface{})
 	for index, config := range vaultDatabaseConfig {
@@ -513,51 +523,38 @@ func ProcessFlows(flowMachineInitContext *flowcore.FlowMachineInitContext, plugi
 	controllerVaultDatabaseConfig["controller"] = true
 
 	if controllerCheck == 3 {
-		eUtils.LogInfo(driverConfig.CoreConfig, "Starting controller interface...")
+		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting controller interface...")
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
-		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(driverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: driverConfig.CoreConfig.Log})
+		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: tfmFlumeContext.DriverConfig.CoreConfig.Log})
 		if controllerInterfaceErr != nil {
-			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
+			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
 		}
 	}
 
-	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
-	//Set up controller config
-	controllerVaultDatabaseConfig = make(map[string]interface{})
-	for index, config := range vaultDatabaseConfig {
-		controllerVaultDatabaseConfig[index] = config
-	}
-
-	vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]
-	//Set up controller config
-	controllerVaultDatabaseConfig = make(map[string]interface{})
-	for index, config := range vaultDatabaseConfig {
-		controllerVaultDatabaseConfig[index] = config
-	}
-
-	// TODO: Start up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
+	// Starts up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
 	// Variables such as username, password, port are in vaultDatabaseConfig -- configs coming from encrypted vault.
 	// The engine is in tfmContext...  that's the one we need to make available for connecting via dbvis...
 	// be sure to enable encryption on the connection...
 
-	//Setting up DFS USER
-	if dfsUser, ok := spiralDatabaseConfig["dbuser"]; ok {
-		vaultDatabaseConfig["dfsUser"] = dfsUser
-	}
-	if dfsPass, ok := spiralDatabaseConfig["dbpassword"]; ok {
-		vaultDatabaseConfig["dfsPass"] = dfsPass
+	if vaultDatabaseConfig["dbuser"] != nil && vaultDatabaseConfig["dbpassword"] != nil && vaultDatabaseConfig["dbport"] != nil {
+		//Setting up DFS USER
+		if dfsUser, ok := spiralDatabaseConfig["dbuser"]; ok {
+			vaultDatabaseConfig["dfsUser"] = dfsUser
+		}
+		if dfsPass, ok := spiralDatabaseConfig["dbpassword"]; ok {
+			vaultDatabaseConfig["dfsPass"] = dfsPass
+		}
+		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting db interface...")
+		interfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: tfmFlumeContext.DriverConfig.CoreConfig.Log})
+		if interfaceErr != nil {
+			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up database interface:"+interfaceErr.Error(), false)
+			return interfaceErr
+		}
 	}
 
-	eUtils.LogInfo(driverConfig.CoreConfig, "Starting db interface...")
-	interfaceErr := harbingeropts.BuildOptions.BuildInterface(driverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: driverConfig.CoreConfig.Log})
-	if interfaceErr != nil {
-		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to start up database interface:"+interfaceErr.Error(), false)
-		return interfaceErr
-	}
-
+	// Databases not fully online until th flowWG is done and released.
 	flowWG.Wait()
 
-	logger.Println("ProcessFlows complete.")
 	return nil
 }

@@ -32,7 +32,7 @@ import (
 
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
 type ProcessFlowInitConfig func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error
-type ProcessFlowMachineInitFunc func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error
+type BootFlowMachineFunc func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error
 
 // Unused/deprecated
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {

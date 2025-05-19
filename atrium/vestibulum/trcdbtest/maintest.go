@@ -76,7 +76,7 @@ func main() {
 		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 	}
 
-	trcflow.ProcessFlows(&flowMachineInitContext, pluginConfig, logger)
+	trcflow.BootFlowMachine(&flowMachineInitContext, pluginConfig, logger)
 	wait := make(chan bool)
 	<-wait
 }

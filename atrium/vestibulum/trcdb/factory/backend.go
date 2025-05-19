@@ -39,7 +39,7 @@ var _ logical.Factory = TrcFactory
 
 var logger *log.Logger
 
-func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.ProcessFlowMachineInitFunc, headless bool, l *log.Logger) {
+func Init(processFlowConfig trcvutils.ProcessFlowConfig, bootFlowMachineFunc trcvutils.BootFlowMachineFunc, headless bool, l *log.Logger) {
 	eUtils.InitHeadless(headless)
 	logger = l
 	if os.Getenv(api.PluginMetadataModeEnv) == "true" {
@@ -77,7 +77,7 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig, processFlows trcvutils.
 			}
 
 			logger.Println("Config engine init begun: " + pluginEnvConfig["env"].(string))
-			pecError := ProcessPluginEnvConfig(processFlowConfig, processFlows, pluginEnvConfig, configCompleteChan)
+			pecError := ProcessPluginEnvConfig(processFlowConfig, bootFlowMachineFunc, pluginEnvConfig, configCompleteChan)
 
 			if pecError != nil {
 				logger.Println("Bad configuration data for env: " + pluginEnvConfig["env"].(string) + " error: " + pecError.Error())
@@ -222,7 +222,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	// It takes a parameter of type trcvutils.ProcessFlowFunc.
 	// This function is responsible for setting up the necessary configurations and resources
 	// required for the backend to handle the process flow.
-	processFlowMachineInit trcvutils.ProcessFlowMachineInitFunc,
+	bootFlowMachineFunc trcvutils.BootFlowMachineFunc,
 	pluginEnvConfig map[string]interface{},
 	configCompleteChan chan bool) error {
 	logger.Println("ProcessPluginEnvConfig begun.")
@@ -307,7 +307,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 		}
 
-		flowErr := processFlowMachineInit(&flowMachineInitContext, pec, l)
+		flowErr := bootFlowMachineFunc(&flowMachineInitContext, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}
