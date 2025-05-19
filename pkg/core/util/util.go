@@ -20,6 +20,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
@@ -30,8 +31,8 @@ import (
 )
 
 type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
-type ProcessFlowInitConfig func(pluginConfig map[string]interface{}, logger *log.Logger) error
-type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
+type ProcessFlowInitConfig func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error
+type BootFlowMachineFunc func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error
 
 // Unused/deprecated
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
