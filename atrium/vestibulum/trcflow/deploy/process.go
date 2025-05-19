@@ -25,14 +25,17 @@ import (
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
+
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
+
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
 func init() {
 	factory.StartPluginSettingEater()
 }
 
-func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
 	var err error
 	var driverConfig *config.DriverConfig
@@ -72,7 +75,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	return err
 }
 
-func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var err error
 	var pluginName string

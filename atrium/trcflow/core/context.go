@@ -32,7 +32,7 @@ const (
 )
 
 func getUpdateTrigger(databaseName string, tableName string, idColumnNames []string) string {
-	if len(idColumnNames) == 0 {
+	if len(idColumnNames) == 1 {
 		return `CREATE TRIGGER tcUpdateTrigger AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 			` BEGIN` +
 			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, current_timestamp());` +
@@ -74,7 +74,7 @@ func getInsertTrigger(databaseName string, tableName string, idColumnNames []str
 }
 
 func getDeleteTrigger(databaseName string, tableName string, idColumnNames []string) string {
-	if len(idColumnNames) == 0 {
+	if len(idColumnNames) == 1 {
 		return `CREATE TRIGGER tcDeleteTrigger AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 			` BEGIN` +
 			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, current_timestamp());` +
