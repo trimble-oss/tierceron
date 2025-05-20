@@ -8,20 +8,20 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.5 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250409194420-de1ac958c67a // indirect
-	google.golang.org/grpc v1.71.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
+	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6
 )
 
 require (
 	github.com/trimble-oss/tierceron v1.30.7
-	github.com/trimble-oss/tierceron-nute v1.0.9
-	github.com/trimble-oss/tierceron-nute-core v1.0.2
+	github.com/trimble-oss/tierceron-nute v1.0.10
+	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	google.golang.org/api v0.226.0
 )
 
@@ -52,7 +52,7 @@ require (
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250409194420-de1ac958c67a // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect

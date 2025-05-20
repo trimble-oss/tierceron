@@ -1,13 +1,13 @@
 module github.com/trimble-oss/tierceron
 
-go 1.24.1
+go 1.24.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang/protobuf v1.5.4
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // indirect; IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
 	github.com/julienschmidt/httprouter v1.3.0
@@ -15,8 +15,8 @@ require (
 	github.com/sergi/go-diff v1.2.0
 	github.com/twitchtv/twirp v5.12.1+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.36.0
-	golang.org/x/sys v0.31.0
+	golang.org/x/crypto v0.37.0
+	golang.org/x/sys v0.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -33,7 +33,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.5.2
+	github.com/trimble-oss/tierceron-core/v2 v2.5.4
 	github.com/trimble-oss/tierceron-hat v1.2.9
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250317234449-21d92788d7d5
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
@@ -56,7 +56,7 @@ require (
 	github.com/templexxx/cpu v0.1.1 // indirect
 	github.com/templexxx/xorsimd v0.4.3 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.16 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
 )
 
 require (
@@ -71,7 +71,6 @@ require (
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/chai2010/gettext-go v1.0.2 // indirect
@@ -97,7 +96,7 @@ require (
 	github.com/fyne-io/glfw-js v0.0.0-20240101223322-6e1efdc71b7a // indirect
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/g3n/engine v0.2.0 // indirect
-	github.com/getkin/kin-openapi v0.122.0 // indirect
+	github.com/getkin/kin-openapi v0.131.0 // indirect
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-git/go-billy/v5 v5.6.1 // indirect
@@ -106,9 +105,9 @@ require (
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-openapi/jsonpointer v0.19.6 // indirect
+	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.1 // indirect
-	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/go-text/typesetting v0.2.1 // indirect
 	github.com/gocraft/dbr/v2 v2.7.2 // indirect
@@ -125,7 +124,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
@@ -152,6 +150,8 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1 // indirect
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/nrwriter v1.0.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
+	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
+	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
@@ -172,25 +172,25 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.0.9 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.2 // indirect
+	github.com/trimble-oss/tierceron-nute v1.0.10 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
-	go.opentelemetry.io/otel v1.34.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.34.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
+	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.35.0 // indirect
+	go.opentelemetry.io/otel/metric v1.35.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
 	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/image v0.21.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/oauth2 v0.25.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
+	golang.org/x/oauth2 v0.26.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250227231956-55c901821b1e // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
@@ -237,12 +237,12 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/term v0.30.0
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/term v0.31.0
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.6.0 // indirect
-	google.golang.org/grpc v1.71.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/grpc v1.72.0
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
@@ -258,19 +258,19 @@ replace github.com/trimble-oss/tierceron/atrium => ./atrium
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra => ./atrium/vestibulum/hive/plugins/trcfenestra
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore => ./atrium/vestibulum/hive/plugins/trcfenestra/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore => ./atrium/vestibulum/hive/plugins/trcfenestra/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => ./atrium/vestibulum/hive/plugins/trchealthcheck
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./atrium/vestibulum/hive/plugins/trchealthcheck/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore => ./atrium/vestibulum/hive/plugins/trchealthcheck/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis => ./atrium/vestibulum/hive/plugins/trcspiralis
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore => ./atrium/vestibulum/hive/plugins/trcspiralis/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore => ./atrium/vestibulum/hive/plugins/trcspiralis/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea => ./atrium/vestibulum/hive/plugins/trcrosea
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./atrium/vestibulum/hive/plugins/trcrosea/hcore
+//replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./atrium/vestibulum/hive/plugins/trcrosea/hcore
 
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./atrium/vestibulum/hive/plugins/atrium/vestibulum/hive/plugins/trcmutabilis
 

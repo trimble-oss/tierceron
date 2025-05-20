@@ -1,21 +1,21 @@
 module github.com/trimble-oss/tierceron/atrium
 
-go 1.24.1
+go 1.24.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
 	github.com/dolthub/go-mysql-server v0.12.0
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
 	github.com/hashicorp/vault/api v1.1.0
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/twitchtv/twirp v5.12.1+incompatible // indirect
 	github.com/xo/dburl v0.9.0 // indirect
-	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/sys v0.31.0
+	golang.org/x/crypto v0.37.0 // indirect
+	golang.org/x/sys v0.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -26,7 +26,6 @@ require (
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible // indirect
 	github.com/trimble-oss/tierceron-hat v1.2.9
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
-
 )
 
 require (
@@ -39,9 +38,9 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.35.3
-	github.com/trimble-oss/tierceron-core/v2 v2.5.2
-	github.com/trimble-oss/tierceron-nute v1.0.9
-	github.com/trimble-oss/tierceron-nute-core v1.0.2
+	github.com/trimble-oss/tierceron-core/v2 v2.5.4
+	github.com/trimble-oss/tierceron-nute v1.0.10
+	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
@@ -55,16 +54,22 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
+	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/ftbe/dawg v0.0.0-20131228112149-aadae8139481 // indirect
 	github.com/go-text/render v0.2.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
+	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
+	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/rymdport/portal v0.2.6 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20250418225747-d9d4ce87f4c0 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20250418225747-d9d4ce87f4c0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 )
 
 require (
@@ -96,9 +101,9 @@ require (
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-openapi/jsonpointer v0.19.6 // indirect
+	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.20.1 // indirect
-	github.com/go-openapi/swag v0.22.4 // indirect
+	github.com/go-openapi/swag v0.23.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/google/btree v1.0.1 // indirect
@@ -108,7 +113,6 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/imdario/mergo v0.3.6 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -152,13 +156,12 @@ require (
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.16 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.34.0 // indirect
+	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
-	golang.org/x/oauth2 v0.25.0 // indirect
+	golang.org/x/oauth2 v0.26.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250227231956-55c901821b1e // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
@@ -179,8 +182,8 @@ require (
 	github.com/google/flatbuffers v2.0.6+incompatible // indirect
 	//	github.com/graphql-go/graphql     v0.0.0- // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
-	go.opentelemetry.io/otel v1.34.0 // indirect
-	go.opentelemetry.io/otel/trace v1.34.0 // indirect
+	go.opentelemetry.io/otel v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
 )
 
@@ -217,7 +220,7 @@ require (
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 	github.com/fatih/color v1.16.0 // indirect
-	github.com/getkin/kin-openapi v0.122.0
+	github.com/getkin/kin-openapi v0.131.0
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
@@ -254,14 +257,14 @@ require (
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/mod v0.23.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/term v0.30.0 // indirect
-	golang.org/x/text v0.23.0
+	golang.org/x/net v0.39.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
+	golang.org/x/term v0.31.0 // indirect
+	golang.org/x/text v0.24.0
 	golang.org/x/time v0.6.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
-	google.golang.org/grpc v1.71.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/grpc v1.72.0
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
