@@ -10,6 +10,7 @@ import (
 	"os"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"gopkg.in/yaml.v2"
 )
 
@@ -187,6 +188,11 @@ func GetConfigPaths(pluginName string) []string {
 	return []string{
 		COMMON_PATH,
 	}
+}
+
+func GetFlowMachineInitContext(pluginName string) *flow.FlowMachineInitContext {
+	//TODO
+	return nil
 }
 
 func PostInit(configContext *tccore.ConfigContext) {

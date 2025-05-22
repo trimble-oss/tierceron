@@ -4,6 +4,8 @@
 package pluginopts
 
 import (
+	"github.com/trimble-oss/tierceron-core/v2/flow"
+	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 	rcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore"
@@ -41,6 +43,15 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		score.Init(pluginName, properties)
 	case "rosea":
 		rcore.Init(pluginName, properties)
+	}
+}
+
+func GetFlowMachineInitContext(pluginName string) *flow.FlowMachineInitContext {
+	switch pluginName {
+	case "trcdb":
+		return trcdbcore.GetFlowMachineInitContext()
+	default:
+		return nil
 	}
 }
 
