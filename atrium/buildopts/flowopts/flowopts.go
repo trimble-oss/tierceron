@@ -54,6 +54,14 @@ func GetFlowDatabaseName() string {
 	return flowcorehelper.GetFlowDBName()
 }
 
+func GetFlowMachineTemplates() map[string]interface{} {
+	pluginConfig := map[string]interface{}{}
+	pluginConfig["templatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	}
+	return pluginConfig
+}
+
 // Placeholder
 type AskFlumeResponse struct {
 	Message string

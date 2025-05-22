@@ -16,9 +16,11 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
@@ -557,6 +559,36 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
+		}
+	}
+
+	//TODO: Type of plugin for trcdbplugin
+	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcdbpluginservice" &&
+		!pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+		//TODO: Initialize pluginConfig properly
+		pluginConfig["tokenptr"] = currentTokenName
+		pluginConfig["pluginName"] = pluginHandler.Name
+		// Needs certifyPath and connectionPath
+
+		getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
+		if err != nil {
+			driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
+			driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
+			return
+		} else {
+			getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
+			ctx := getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+
+			trcflow.BootFlowMachine(ctx.(*flow.FlowMachineInitContext), pluginConfig, pluginHandler.ConfigContext.Log)
+		}
+	} else {
+		//TODO: add hardwired for testing...
+		if s, ok := pluginToolConfig["trctype"].(string); pluginopts.BuildOptions.IsPluginHardwired() && ok && s == "trcdbpluginservice" {
+			ctx := pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
+			trcflow.BootFlowMachine(ctx, pluginConfig, pluginHandler.ConfigContext.Log)
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Unable to load FlowMachineInitContext for %s\n", service)
+			return
 		}
 	}
 

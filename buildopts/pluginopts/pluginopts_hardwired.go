@@ -4,6 +4,8 @@
 package pluginopts
 
 import (
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 	rcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore"
@@ -26,6 +28,8 @@ func GetConfigPaths(pluginName string) []string {
 		return score.GetConfigPaths(pluginName)
 	case "rosea":
 		return rcore.GetConfigPaths(pluginName)
+	case "trcdb":
+		return trcdbcore.GetConfigPaths(pluginName)
 	}
 	return []string{}
 }
@@ -41,6 +45,17 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		score.Init(pluginName, properties)
 	case "rosea":
 		rcore.Init(pluginName, properties)
+	case "trcdb":
+		trcdbcore.Init(pluginName, properties)
+	}
+}
+
+func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
+	switch pluginName {
+	case "trcdb":
+		return trcdbcore.GetFlowMachineInitContext(pluginName)
+	default:
+		return nil
 	}
 }
 
@@ -55,6 +70,8 @@ func GetPluginMessages(pluginName string) []string {
 		return score.GetPluginMessages(pluginName)
 	case "rosea":
 		return rcore.GetPluginMessages(pluginName)
+	case "trcdb":
+		return trcdbcore.GetPluginMessages(pluginName)
 	}
 	return []string{}
 }
