@@ -296,6 +296,8 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspira
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./vestibulum/hive/plugins/trcrosea/hcore
 
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore => ./vestibulum/hive/plugins/trcdb/hcore
+
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
 //replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core

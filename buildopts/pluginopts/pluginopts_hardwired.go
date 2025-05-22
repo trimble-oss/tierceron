@@ -28,6 +28,8 @@ func GetConfigPaths(pluginName string) []string {
 		return score.GetConfigPaths(pluginName)
 	case "rosea":
 		return rcore.GetConfigPaths(pluginName)
+	case "trcdb":
+		return trcdbcore.GetConfigPaths(pluginName)
 	}
 	return []string{}
 }
@@ -43,6 +45,8 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		score.Init(pluginName, properties)
 	case "rosea":
 		rcore.Init(pluginName, properties)
+	case "trcdb":
+		trcdbcore.Init(pluginName, properties)
 	}
 }
 
@@ -66,6 +70,8 @@ func GetPluginMessages(pluginName string) []string {
 		return score.GetPluginMessages(pluginName)
 	case "rosea":
 		return rcore.GetPluginMessages(pluginName)
+	case "trcdb":
+		return trcdbcore.GetPluginMessages(pluginName)
 	}
 	return []string{}
 }
