@@ -12,8 +12,8 @@ import (
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"gopkg.in/yaml.v2"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -195,7 +195,8 @@ func GetConfigPaths(pluginName string) []string {
 
 func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
 	//TODO
-	pluginConfig := tccore.GetFlowMachineTemplates()
+	pluginConfig := flowopts.BuildOptions.GetFlowMachineTemplates()
+
 	return &flowcore.FlowMachineInitContext{
 		FlowMachineInterfaceConfigs: map[string]interface{}{},
 		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
