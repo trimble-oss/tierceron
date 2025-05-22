@@ -4,7 +4,7 @@
 package pluginopts
 
 import (
-	"github.com/trimble-oss/tierceron-core/v2/flow"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
@@ -46,7 +46,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	}
 }
 
-func GetFlowMachineInitContext(pluginName string) *flow.FlowMachineInitContext {
+func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
 	switch pluginName {
 	case "trcdb":
 		return trcdbcore.GetFlowMachineInitContext(pluginName)
