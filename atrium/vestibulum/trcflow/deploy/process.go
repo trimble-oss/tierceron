@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
-	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -332,7 +332,7 @@ func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, p
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
+		writeMap = certify.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
