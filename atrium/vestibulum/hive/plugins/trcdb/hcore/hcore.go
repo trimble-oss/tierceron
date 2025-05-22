@@ -13,7 +13,8 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
-	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -194,12 +195,11 @@ func GetConfigPaths(pluginName string) []string {
 }
 
 func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
-	//TODO
 	pluginConfig := flowopts.BuildOptions.GetFlowMachineTemplates()
 
 	return &flowcore.FlowMachineInitContext{
 		FlowMachineInterfaceConfigs: map[string]interface{}{},
-		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
+		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {
@@ -213,11 +213,11 @@ func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitConte
 			}
 			return tableFlows
 		},
-		GetBusinessFlows:    coreopts.BuildOptions.GetBusinessFlows,
-		GetTestFlows:        coreopts.BuildOptions.GetTestFlows,
-		GetTestFlowsByState: coreopts.BuildOptions.GetTestFlowsByState,
-		FlowController:      coreopts.BuildOptions.FlowController,
-		TestFlowController:  coreopts.BuildOptions.TestFlowController,
+		GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
+		GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
+		GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+		FlowController:      flowopts.BuildOptions.ProcessFlowController,
+		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 	}
 }
 
