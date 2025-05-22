@@ -49,7 +49,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 func GetFlowMachineInitContext(pluginName string) *flow.FlowMachineInitContext {
 	switch pluginName {
 	case "trcdb":
-		return trcdbcore.GetFlowMachineInitContext()
+		return trcdbcore.GetFlowMachineInitContext(pluginName)
 	default:
 		return nil
 	}

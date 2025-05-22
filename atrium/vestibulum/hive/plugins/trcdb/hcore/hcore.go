@@ -10,8 +10,11 @@ import (
 	"os"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron-core/v2/flow"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var configContext *tccore.ConfigContext
@@ -190,9 +193,31 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
-func GetFlowMachineInitContext(pluginName string) *flow.FlowMachineInitContext {
+func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
 	//TODO
-	return nil
+	pluginConfig := tccore.GetFlowMachineTemplates()
+	return &flowcore.FlowMachineInitContext{
+		FlowMachineInterfaceConfigs: map[string]interface{}{},
+		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
+		GetTableFlows: func() []flowcore.FlowDefinition {
+			tableFlows := []flowcore.FlowDefinition{}
+			for _, template := range pluginConfig["templatePath"].([]string) {
+				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
+				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
+				tableFlows = append(tableFlows, flowcore.FlowDefinition{
+					FlowName:         flowcore.FlowNameType(tableName),
+					FlowTemplatePath: template,
+					FlowSource:       flowSource,
+				})
+			}
+			return tableFlows
+		},
+		GetBusinessFlows:    coreopts.BuildOptions.GetBusinessFlows,
+		GetTestFlows:        coreopts.BuildOptions.GetTestFlows,
+		GetTestFlowsByState: coreopts.BuildOptions.GetTestFlowsByState,
+		FlowController:      coreopts.BuildOptions.FlowController,
+		TestFlowController:  coreopts.BuildOptions.TestFlowController,
+	}
 }
 
 func PostInit(configContext *tccore.ConfigContext) {
