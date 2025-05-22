@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -25,7 +26,6 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -81,7 +81,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pl
 		pluginutil.PluginInitNewRelic(driverConfig, cGoMod, pluginConfig)
 		logger = driverConfig.CoreConfig.Log
 
-		deployedUpdateErr := deploy.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
+		deployedUpdateErr := certify.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not update plugin deployed status in vault.", false)
