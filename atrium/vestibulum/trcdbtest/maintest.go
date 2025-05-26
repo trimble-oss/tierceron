@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
-	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -85,23 +85,10 @@ func main() {
 	currentTokenName := "config_token_unrestricted"
 	tokenCache := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
 
-	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
-			WantCerts:           false,
-			Insecure:            false,
-			CurrentTokenNamePtr: &currentTokenName,
-			TokenCache:          tokenCache,
-			Env:                 pluginConfig["env"].(string),
-			EnvBasis:            eUtils.GetEnvBasis(pluginConfig["env"].(string)),
-			Regions:             []string{"west"},
-			ExitOnFailure:       true,
-			Log:                 logger,
-		},
-		SecretMode:     true, //  "Only override secret values in templates?"
-		ServicesWanted: []string{},
-		StartDir:       append([]string{}, ""),
-		EndDir:         "",
-		GenAuth:        false,
+	driverConfig, err := eUtils.InitDriverConfigForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
+	if err != nil {
+		fmt.Printf("Error initializing driver config: %v\n", err)
+		os.Exit(1)
 	}
 
 	trcflow.BootFlowMachine(&flowMachineInitContext, driverConfig, pluginConfig, logger)
