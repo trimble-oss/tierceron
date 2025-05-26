@@ -22,9 +22,9 @@ At this point you want to edit all seed variables in preparation for publish.
 After running trcx -certs, a certs folder will appear under trc_seeds with placeholder empty certificate files.
 You'll want to replace these placeholder files with the real thing.
 
-# Publish initial trcdb seed data
+# Publish initial trcdb default seed data
 ```
-trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
+trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
 ```
 
 ```
@@ -50,5 +50,16 @@ trcx -env=dev -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=confi
 
 ```
 trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=VaultDatabase
+
+```
+
+# Spiral DB refresh access restrictions
+Access to spiral db is optional since it only provides optional data flow statistics.
+```
+trcx -env=dev -token=$VAULT_TOKEN -restricted=SpiralDatabase -serviceFilter=config -indexFilter=config
+```
+
+```
+trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=SpiralDatabase
 
 ```

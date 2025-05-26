@@ -75,7 +75,7 @@ func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext
 	return err
 }
 
-func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var err error
 	var pluginName string

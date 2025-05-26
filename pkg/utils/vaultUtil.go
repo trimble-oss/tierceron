@@ -227,6 +227,57 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 	return InitVaultMod(&driverConfig)
 }
 
+func InitDriverConfigForPlugin(pluginConfig map[string]interface{}, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, error) {
+	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
+	exitOnFailure := false
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin begin..")
+	if _, ok := pluginConfig["exitOnFailure"]; ok {
+		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
+	}
+	trcdbEnvLogger.Println("InitVaultModForPlugin region init.")
+	var regions []string
+	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
+		regions = regionsSlice
+	}
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
+	if tokenPtr, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk || RefLength(tokenPtr) < 5 {
+		if tokenCache.GetToken(currentTokenName) == nil {
+			trcdbEnvLogger.Println("Missing required token")
+			return nil, errors.New("missing required token")
+		}
+	}
+	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
+		trcdbEnvLogger.Println("Missing required vaddress")
+		return nil, errors.New("missing required vaddress")
+	}
+	if _, envOk := pluginConfig["env"].(string); !envOk {
+		trcdbEnvLogger.Println("Missing required env")
+		return nil, errors.New("missing required env")
+	}
+	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
+
+	return &config.DriverConfig{
+		CoreConfig: &core.CoreConfig{
+			WantCerts:           false,
+			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
+			CurrentTokenNamePtr: &currentTokenName,
+			TokenCache:          tokenCache,
+			Env:                 pluginConfig["env"].(string),
+			EnvBasis:            GetEnvBasis(pluginConfig["env"].(string)),
+			Regions:             regions,
+			ExitOnFailure:       exitOnFailure,
+			Log:                 trcdbEnvLogger,
+		},
+		SecretMode:     true, //  "Only override secret values in templates?"
+		ServicesWanted: []string{},
+		StartDir:       append([]string{}, ""),
+		EndDir:         "",
+		GenAuth:        false,
+	}, nil
+}
+
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	exitOnFailure := false

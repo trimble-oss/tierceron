@@ -304,8 +304,9 @@ func CommonMain(envDefaultPtr *string,
 			"vault_addr":  *driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
 			"agent_env":   *envPtr,
 			//			"deployments": "fenestra",
-			"deployments": "fenestra,rosea,spiralis",
-			"region":      "west",
+			"deployments": "trcdb",
+			//			"deployments": "fenestra,rosea,spiralis,trcdb",
+			"region": "west",
 		}
 		trcshArgs := []string{}
 		for i := 0; i < len(os.Args); i++ {

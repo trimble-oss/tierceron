@@ -27,6 +27,7 @@ func LoadOptions() Option {
 		optionsBuilder.ProcessTestFlowController = ProcessTestFlowController
 		optionsBuilder.ProcessFlowController = ProcessFlowController
 		optionsBuilder.GetFlowDatabaseName = GetFlowDatabaseName
+		optionsBuilder.GetFlowMachineTemplates = GetFlowMachineTemplates
 		optionsBuilder.ProcessAskFlumeEventMapper = ProcessAskFlumeEventMapper
 	}
 }

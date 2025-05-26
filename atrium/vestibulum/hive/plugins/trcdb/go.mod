@@ -18,3 +18,5 @@ require (
 	google.golang.org/grpc v1.72.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
+
+replace github.com/cespare/xxhash => github.com/joel-rieke/xxhash v1.1.0-patch
