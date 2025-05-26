@@ -15,7 +15,9 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -33,12 +35,16 @@ func main() {
 	eUtils.CheckError(&core.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
 
 	pluginConfig := testopts.BuildOptions.GetTestConfig(tokenPtr, false)
-	pluginConfig["address"] = ""
-	pluginConfig["vaddress"] = ""
-	pluginConfig["caddress"] = ""
-	pluginConfig["tokenptr"] = tokenPtr
-	ctokenPtr := new(string)
-	pluginConfig["ctokenptr"] = ctokenPtr
+	pluginConfig["address"] = os.Getenv("VAULT_ADDR")
+	pluginConfig["vaddress"] = os.Getenv("VAULT_ADDR")
+	pluginConfig["caddress"] = os.Getenv("VAULT_ADDR")
+	if eUtils.RefLength(tokenPtr) > 0 {
+		pluginConfig["tokenptr"] = tokenPtr
+		pluginConfig["ctokenptr"] = tokenPtr
+	} else {
+		pluginConfig["tokenptr"] = os.Getenv("VAULT_TOKEN")
+		pluginConfig["ctokenptr"] = pluginConfig["tokenptr"]
+	}
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true
 
@@ -76,8 +82,29 @@ func main() {
 		FlowController:      flowopts.BuildOptions.ProcessFlowController,
 		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 	}
+	currentTokenName := "config_token_unrestricted"
+	tokenCache := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
 
-	trcflow.BootFlowMachine(&flowMachineInitContext, pluginConfig, logger)
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &core.CoreConfig{
+			WantCerts:           false,
+			Insecure:            false,
+			CurrentTokenNamePtr: &currentTokenName,
+			TokenCache:          tokenCache,
+			Env:                 pluginConfig["env"].(string),
+			EnvBasis:            eUtils.GetEnvBasis(pluginConfig["env"].(string)),
+			Regions:             []string{"west"},
+			ExitOnFailure:       true,
+			Log:                 logger,
+		},
+		SecretMode:     true, //  "Only override secret values in templates?"
+		ServicesWanted: []string{},
+		StartDir:       append([]string{}, ""),
+		EndDir:         "",
+		GenAuth:        false,
+	}
+
+	trcflow.BootFlowMachine(&flowMachineInitContext, driverConfig, pluginConfig, logger)
 	wait := make(chan bool)
 	<-wait
 }

@@ -597,7 +597,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 
 		// Needs certifyPath and connectionPath
-		trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), pluginConfig, pluginHandler.ConfigContext.Log)
+		trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 	}
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,

@@ -25,11 +25,12 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{
 	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["logNamespace"] = "db"
 
+	// Main controller flow definition, but also other flows defined here.
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
 	}
 
-	// plugin configs here...
+	// Service connection configurations defined here.
 	pluginConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
 		//		"trc_templates/TrcVault/Database/config.yml.tmpl",       // Optional.

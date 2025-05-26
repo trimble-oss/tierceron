@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
+	flowcoreloadopts "github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	flowloadopts "github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
@@ -44,6 +46,7 @@ func main() {
 	}
 	testopts.NewOptionsBuilder(testloadopts.LoadOptions())
 	flowopts.NewOptionsBuilder(flowloadopts.LoadOptions())
+	flowcoreopts.NewOptionsBuilder(flowcoreloadopts.LoadOptions())
 	harbingeropts.NewOptionsBuilder(harbingerloadopts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelloadopts.LoadOptions())
 	cursoropts.NewOptionsBuilder(cursorloadopts.LoadOptions())
