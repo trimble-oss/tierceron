@@ -5,11 +5,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	flowloadopts "github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
+	testloadopts "github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	buildloadopts "github.com/trimble-oss/tierceron/buildopts"
 	coreloadopts "github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	cursorloadopts "github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	deployloadopts "github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	harbingerloadopts "github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	kernelloadopts "github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
@@ -36,6 +42,9 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	testopts.NewOptionsBuilder(testloadopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowloadopts.LoadOptions())
+	harbingeropts.NewOptionsBuilder(harbingerloadopts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelloadopts.LoadOptions())
 	cursoropts.NewOptionsBuilder(cursorloadopts.LoadOptions())
 	pluginopts.NewOptionsBuilder(pluginloadopts.LoadOptions())

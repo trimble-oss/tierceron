@@ -52,7 +52,7 @@ func GetFolderPrefix(custom []string) string {
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return ""
+	return "TierceronFlowCurator"
 }
 
 func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]interface{}, error) {

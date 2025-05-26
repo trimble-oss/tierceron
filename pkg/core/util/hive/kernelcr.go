@@ -526,7 +526,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		return
 	}
 	if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod == nil {
-		if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshpluginservice" {
+		if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
 			driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginHandler.Name)
 			return
 		}
@@ -562,34 +562,36 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 	}
 
-	//TODO: Type of plugin for trcdbplugin
-	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcdbpluginservice" &&
-		!pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
-		//TODO: Initialize pluginConfig properly
+	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
 		pluginConfig["tokenptr"] = currentTokenName
 		pluginConfig["pluginName"] = pluginHandler.Name
+		pluginConfig["connectionPath"] = []string{
+			"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
+			"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
+			"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
+		}
+
+		var flowMachineContext interface{}
+
+		if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+			getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
+				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
+				return
+			} else {
+				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
+				flowMachineContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+			}
+		} else if pluginopts.BuildOptions.IsPluginHardwired() {
+			flowMachineContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
+			return
+		}
+
 		// Needs certifyPath and connectionPath
-
-		getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
-		if err != nil {
-			driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
-			driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
-			return
-		} else {
-			getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
-			ctx := getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
-
-			trcflow.BootFlowMachine(ctx.(*flow.FlowMachineInitContext), pluginConfig, pluginHandler.ConfigContext.Log)
-		}
-	} else {
-		//TODO: add hardwired for testing...
-		if s, ok := pluginToolConfig["trctype"].(string); pluginopts.BuildOptions.IsPluginHardwired() && ok && s == "trcdbpluginservice" {
-			ctx := pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
-			trcflow.BootFlowMachine(ctx, pluginConfig, pluginHandler.ConfigContext.Log)
-		} else {
-			driverConfig.CoreConfig.Log.Printf("Unable to load FlowMachineInitContext for %s\n", service)
-			return
-		}
+		trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), pluginConfig, pluginHandler.ConfigContext.Log)
 	}
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
