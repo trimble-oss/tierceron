@@ -31,8 +31,8 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{
 
 	// plugin configs here...
 	pluginConfig["connectionPath"] = []string{
-		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
-		"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
+		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
+		//		"trc_templates/TrcVault/Database/config.yml.tmpl",       // Optional.
 		"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
 	}
 	pluginConfig["certifyPath"] = []string{

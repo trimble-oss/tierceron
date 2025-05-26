@@ -17,6 +17,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
@@ -539,7 +540,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		return
 	}
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
-	pluginConfig := make(map[string]interface{})
+	var pluginConfig map[string]interface{}
+	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+		pluginConfig = flowopts.BuildOptions.GetFlowMachineTemplates()
+	} else {
+		pluginConfig = make(map[string]interface{})
+	}
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 	if len(driverConfig.CoreConfig.Regions) > 0 {
 		pluginConfig["regions"] = driverConfig.CoreConfig.Regions
@@ -563,7 +569,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-		pluginConfig["tokenptr"] = currentTokenName
+		pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenName)
 		pluginConfig["pluginName"] = pluginHandler.Name
 		pluginConfig["connectionPath"] = []string{
 			"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
