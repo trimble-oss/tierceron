@@ -779,8 +779,8 @@ github.com/trimble-oss/go-mysql-server v0.12.0-1.26 h1:sMy5W3CcPELkGuuwEXbi09fnF
 github.com/trimble-oss/go-mysql-server v0.12.0-1.26/go.mod h1:Fx5WqhwndjwRjWZ3m3Gs2LbHvCDrBRudeihcpIlzp+M=
 github.com/trimble-oss/kubectl v0.0.5 h1:8faeUC0kYp4vvY7cbymrOehUm2bj74JU+s330CTJ3Pw=
 github.com/trimble-oss/kubectl v0.0.5/go.mod h1:V+ivAn0PvtBhgnjiBq1rk9EcijMNmAbD+Bc4SrMFP50=
-github.com/trimble-oss/tierceron-core/v2 v2.5.4 h1:ukgvL6t30OZSDi9/XYlBla/KlU/2FxRxvN3JyMLY2kk=
-github.com/trimble-oss/tierceron-core/v2 v2.5.4/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
+github.com/trimble-oss/tierceron-core/v2 v2.5.5 h1:glb0GyXcT9XPxraEyrlWCOzAwXFR9Cdj/JOfzhjjkaw=
+github.com/trimble-oss/tierceron-core/v2 v2.5.5/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
 github.com/trimble-oss/tierceron-hat v1.2.9 h1:176D3zOGdIGMckP7K8R/4FZGV8JHrGc5nH7cbMRYLDI=
 github.com/trimble-oss/tierceron-hat v1.2.9/go.mod h1:CC3nz7PaIEu75TnE2QRGw/hUyNvu2AshCnvZ4kHuLsw=
 github.com/trimble-oss/tierceron-nute v1.0.10 h1:3EXG4dF9631DeEsrcszTaCnwJ9KaTkkRTg8mLkPUCsE=
@@ -789,6 +789,8 @@ github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlC
 github.com/trimble-oss/tierceron-nute-core v1.0.3/go.mod h1:2M/uT8pm7AJMzRxsasQsQdjXvDXbXpBPCqd3ghb03ss=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 h1:pawnUESmxej0xrSStXI91vK9ryLWI4rFVDEJqy+pKHs=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103/go.mod h1:pS2vkiPDNCOggDomTxvPTLucBOB/PdeOQWzLIHHjvu0=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12 h1:z6yg2drO5XU8Ogg2w//sT96kyubL+W4Qlqk3MOIHHII=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12/go.mod h1:ET57svsVb8+Up3JxYywXqL7c6ewdHUqVBlpI9bwnuRc=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0 h1:8ZLyHRMiV0hAplzLJF90FrHR5Al1K/SMt82e2mJCRu4=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0/go.mod h1:JvRxlCG5PqpELZolKeQPZwf0poEZaig8PWXUsCiOzgc=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20250418225747-d9d4ce87f4c0 h1:sq/K1vkGYEEx+reZ/Gd80a3oYgtAJfOcTGK2WOfL27k=

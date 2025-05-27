@@ -33,9 +33,10 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.5.4
+	github.com/trimble-oss/tierceron-core/v2 v2.5.5
 	github.com/trimble-oss/tierceron-hat v1.2.9
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250317234449-21d92788d7d5
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20250519234914-b4f1fd022bb9
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20250418225747-d9d4ce87f4c0
@@ -269,6 +270,8 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspira
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore => ./atrium/vestibulum/hive/plugins/trcspiralis/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea => ./atrium/vestibulum/hive/plugins/trcrosea
+
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb => ./atrium/vestibulum/hive/plugins/trcdb
 
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./atrium/vestibulum/hive/plugins/trcrosea/hcore
 

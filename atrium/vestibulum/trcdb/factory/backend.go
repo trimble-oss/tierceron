@@ -280,6 +280,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		logger.Println("Finished selective locks.")
 	}
 
+	tokenCache := cache.NewTokenCache("config_token_unrestricted", eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+
 	go func(pec map[string]interface{}, l *log.Logger) {
 		if prod.IsProd() {
 			pec["pluginName"] = "trc-vault-plugin-prod"
@@ -308,8 +310,12 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			FlowController:      flowopts.BuildOptions.ProcessFlowController,
 			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 		}
+		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, "config_token_unrestricted", l)
+		if driverConfigErr != nil {
+			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], driverConfigErr.Error())
+		}
 
-		flowErr := bootFlowMachineFunc(&flowMachineInitContext, pec, l)
+		flowErr := bootFlowMachineFunc(&flowMachineInitContext, driverConfig, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}

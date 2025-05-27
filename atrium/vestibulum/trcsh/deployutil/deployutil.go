@@ -265,13 +265,13 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
 					}
 				}
-				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" {
+				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
 					deploymentList = append(deploymentList, deployment)
-				} else if deploymentConfig["trctype"].(string) == "trcshservice" && len(valid_id) > 0 && valid_id == machineID {
+				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)
 				}
 			} else {
-				if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" {
+				if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
 					deploymentList = append(deploymentList, deployment)
 				}
 			}

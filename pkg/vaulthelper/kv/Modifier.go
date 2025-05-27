@@ -116,6 +116,11 @@ func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, tokenName string, en
 //
 //	Any errors generated in creating the client
 func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if addressPtr == nil || len(*addressPtr) == 0 {
+		addressPtr = new(string)
+		*addressPtr = "http://127.0.0.1:8020" // Default address
+	}
+
 	if useCache {
 		PruneCache(env, *addressPtr, 10)
 		checkoutModifier, err := cachedModifierHelper(env, *addressPtr)
@@ -139,10 +144,6 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		}
 	}
 
-	if addressPtr == nil || len(*addressPtr) == 0 {
-		addressPtr = new(string)
-		*addressPtr = "http://127.0.0.1:8020" // Default address
-	}
 	httpClient, err := CreateHTTPClient(insecure, *addressPtr, env, false)
 	if err != nil {
 		return nil, err
