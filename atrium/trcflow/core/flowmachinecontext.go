@@ -1076,7 +1076,11 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 			var iVar interface{}
 			var cErr error
 			if tcopts.BuildOptions.CheckIncomingColumnName(column.Name) && secretValue != "<Enter Secret Here>" && secretValue != "" {
-				decodedValue, secretValue, lmQuery, lm, incomingValErr := tcopts.BuildOptions.CheckFlowDataIncoming(secretColumns, secretValue, tfContext.FlowSourceAlias, tfContext.Flow.TableName())
+				flowSource := tfContext.FlowSourceAlias
+				if flowSource == "" {
+					flowSource = tfContext.FlowSource
+				}
+				decodedValue, secretValue, lmQuery, lm, incomingValErr := tcopts.BuildOptions.CheckFlowDataIncoming(secretColumns, secretValue, flowSource, tfContext.Flow.TableName())
 				if incomingValErr != nil {
 					tfmContext.Log("error checking incoming data flow", incomingValErr)
 					continue

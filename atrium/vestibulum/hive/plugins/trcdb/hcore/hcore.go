@@ -198,6 +198,7 @@ func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitConte
 	pluginConfig := flowopts.BuildOptions.GetFlowMachineTemplates()
 
 	return &flowcore.FlowMachineInitContext{
+		GetFlowMachineTemplates:     flowopts.BuildOptions.GetFlowMachineTemplates,
 		FlowMachineInterfaceConfigs: map[string]interface{}{},
 		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {

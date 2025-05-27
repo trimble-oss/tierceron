@@ -17,7 +17,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
-	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
@@ -541,8 +540,30 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
 	var pluginConfig map[string]interface{}
+	var flowMachineContext interface{}
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-		pluginConfig = flowopts.BuildOptions.GetFlowMachineTemplates()
+		if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+			getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
+				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
+				return
+			} else {
+				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
+				flowMachineContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+			}
+		} else if pluginopts.BuildOptions.IsPluginHardwired() {
+			flowMachineContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
+			return
+		}
+		if flowMachineContext != nil {
+			pluginConfig = flowMachineContext.(*flow.FlowMachineInitContext).GetFlowMachineTemplates()
+		} else {
+			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
+			return
+		}
 	} else {
 		pluginConfig = make(map[string]interface{})
 	}
@@ -550,7 +571,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	if len(driverConfig.CoreConfig.Regions) > 0 {
 		pluginConfig["regions"] = driverConfig.CoreConfig.Regions
 	}
-	currentTokenName := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+	driverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
 	if !pluginopts.BuildOptions.IsPluginHardwired() {
@@ -569,40 +591,27 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-		pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenName)
+		pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
 		pluginConfig["pluginName"] = pluginHandler.Name
-		pluginConfig["connectionPath"] = []string{
-			"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
-			"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
-			"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
-		}
-
-		var flowMachineContext interface{}
-
-		if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
-			getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
-			if err != nil {
-				driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
-				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
-				return
-			} else {
-				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
-				flowMachineContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+		if !driverConfig.IsShellSubProcess {
+			// Presently trcshk does not have permissions it needs to access this area of vault.
+			pluginConfig["connectionPath"] = []string{
+				// No interfaces
+				"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
+				"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
+				"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
 			}
-		} else if pluginopts.BuildOptions.IsPluginHardwired() {
-			flowMachineContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
 		} else {
-			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
-			return
+			pluginConfig["connectionPath"] = []string{}
 		}
 
 		// Needs certifyPath and connectionPath
-		trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+		go trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 	}
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
 		driverConfig.CoreConfig.TokenCache,
-		*currentTokenName,
+		*currentTokenNamePtr,
 		driverConfig.CoreConfig.Log)
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)

@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,6 +45,7 @@ func CommonMain(envPtr *string,
 	var flagEnvPtr *string
 	var tokenPtr *string
 	var addrPtr *string
+
 	// Main functions are as follows:
 	if flagset == nil {
 		fmt.Println("Version: " + "1.05")
@@ -55,6 +55,7 @@ func CommonMain(envPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+		flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
@@ -103,7 +104,6 @@ func CommonMain(envPtr *string,
 	// NewRelic flags...
 	newrelicAppNamePtr := flagset.String("newRelicAppName", "", "App name for New Relic")
 	newrelicLicenseKeyPtr := flagset.String("newRelicLicenseKey", "", "License key for New Relic")
-	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 
 	certifyInit := false
 
@@ -150,16 +150,6 @@ func CommonMain(envPtr *string,
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	}
-	if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log" {
-		*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "plgtool.log"
-	}
-	f, errLog := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if errLog != nil {
-		fmt.Printf("Could not open logfile: %s\n", *logFilePtr)
-		os.Exit(1)
-	}
-
-	trcshDriverConfig.DriverConfig.CoreConfig.Log = log.New(f, "[INIT]", log.LstdFlags)
 
 	if utils.RefLength(addrPtr) == 0 {
 		eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
@@ -269,6 +259,7 @@ func CommonMain(envPtr *string,
 		case "trcshpluginservice":
 		case "trcshmutabilispraefecto":
 		case "trcshcmdtoolplugin":
+		case "trcflowpluginservice":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
