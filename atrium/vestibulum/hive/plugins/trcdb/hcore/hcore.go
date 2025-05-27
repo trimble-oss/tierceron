@@ -10,7 +10,12 @@ import (
 	"os"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"gopkg.in/yaml.v2"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var configContext *tccore.ConfigContext
@@ -189,6 +194,34 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
+func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
+	pluginConfig := flowopts.BuildOptions.GetFlowMachineTemplates()
+
+	return &flowcore.FlowMachineInitContext{
+		GetFlowMachineTemplates:     flowopts.BuildOptions.GetFlowMachineTemplates,
+		FlowMachineInterfaceConfigs: map[string]interface{}{},
+		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+		GetTableFlows: func() []flowcore.FlowDefinition {
+			tableFlows := []flowcore.FlowDefinition{}
+			for _, template := range pluginConfig["templatePath"].([]string) {
+				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
+				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
+				tableFlows = append(tableFlows, flowcore.FlowDefinition{
+					FlowName:         flowcore.FlowNameType(tableName),
+					FlowTemplatePath: template,
+					FlowSource:       flowSource,
+				})
+			}
+			return tableFlows
+		},
+		GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
+		GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
+		GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
+		FlowController:      flowopts.BuildOptions.ProcessFlowController,
+		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
+	}
+}
+
 func PostInit(configContext *tccore.ConfigContext) {
 	configContext.Start = start
 	sender = *configContext.ErrorChan
@@ -215,4 +248,8 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		fmt.Println("Missing common config components")
 		return
 	}
+}
+
+func GetPluginMessages(pluginName string) []string {
+	return []string{}
 }

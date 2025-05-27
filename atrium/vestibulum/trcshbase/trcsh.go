@@ -1364,7 +1364,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			if trcBootstrap, ok := certifyMap["trcbootstrap"]; ok && strings.Contains(trcBootstrap.(string), "/deploy/") {
 				trcPath = trcBootstrap.(string)
 			} else {
-				fmt.Println("Kernel Missing plugin component bootstrap.")
+				fmt.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
 				return
 			}
 		}

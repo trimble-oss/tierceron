@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/insecure"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcutil "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
@@ -52,7 +53,7 @@ func GetFolderPrefix(custom []string) string {
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return ""
+	return "TierceronFlowCurator"
 }
 
 func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]interface{}, error) {
@@ -344,7 +345,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 											}
 										}
 
-									} else if strings.Contains(tableN, "TierceronFlow") {
+									} else if strings.Contains(tableN, flowcorehelper.TierceronFlowConfigurationTableName) {
 										_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
 									} else {
 										// Override the default grant when provided.

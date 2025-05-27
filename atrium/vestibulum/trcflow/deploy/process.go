@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
-	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -75,7 +75,7 @@ func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext
 	return err
 }
 
-func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("PluginDeployFlow begun.")
 	var err error
 	var pluginName string
@@ -332,7 +332,7 @@ func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, p
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
+		writeMap = certify.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
@@ -362,93 +362,5 @@ func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, p
 
 	logger.Println("PluginDeployFlow complete.")
 
-	return nil
-}
-
-// Updated deployed to true for any plugin
-func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, vault *sys.Vault, pluginNameList []string, cPath []string, logger *log.Logger) error {
-	logger.Println("PluginDeployedUpdate start.")
-
-	hostName, hostNameErr := os.Hostname()
-	if hostNameErr != nil {
-		return hostNameErr
-	} else if hostName == "" {
-		return errors.New("could not find hostname")
-	}
-
-	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
-	if hostRegion == "" {
-		logger.Println("PluginDeployedUpdate self certification not provided on base region deployers")
-		return nil
-	}
-
-	mod.Regions = append(mod.Regions, hostRegion)
-	projects, services, _ := eUtils.GetProjectServices(nil, cPath)
-	for _, pluginName := range pluginNameList {
-		for i := 0; i < len(projects); i++ {
-			if services[i] == "Certify" {
-				mod.SectionName = "trcplugin"
-				mod.SectionKey = "/Index/"
-				mod.SubSectionValue = pluginName
-
-				properties, err := trcvutils.NewProperties(driverConfig.CoreConfig, vault, mod, driverConfig.CoreConfig.Env, projects[i], services[i])
-				if err != nil {
-					return err
-				}
-
-				pluginData, replacedFields := properties.GetPluginData(hostRegion, services[i], "config", driverConfig.CoreConfig.Log)
-				if pluginData == nil {
-					pluginData = make(map[string]interface{})
-					pluginData["trcplugin"] = pluginName
-
-					var agentPath string
-
-					if pluginData["trctype"] == "agent" {
-						agentPath = "/home/azuredeploy/bin/" + pluginName
-					} else {
-						agentPath = coreopts.BuildOptions.GetVaultInstallRoot() + "/plugins/" + pluginName
-					}
-
-					logger.Println("Checking file.")
-					if imageFile, err := os.Open(agentPath); err == nil {
-						sha256 := sha256.New()
-
-						defer imageFile.Close()
-						if _, err := io.Copy(sha256, imageFile); err != nil {
-							continue
-						}
-
-						filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-						pluginData["trcsha256"] = filesystemsha256
-						pluginData["copied"] = false
-						pluginData["instances"] = "0"
-
-						if pluginData["trctype"].(string) == "agent" {
-							pluginData["deployed"] = false
-						}
-					}
-				}
-
-				if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
-					logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
-					continue
-				}
-
-				if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
-					continue
-				}
-
-				if hostRegion != "" {
-					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
-				}
-				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, driverConfig.CoreConfig.Log, hostRegion, pluginName)
-				if statusUpdateErr != nil {
-					return statusUpdateErr
-				}
-
-			}
-		}
-	}
-	logger.Println("PluginDeployedUpdate complete.")
 	return nil
 }

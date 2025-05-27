@@ -15,6 +15,7 @@ type OptionsBuilder struct {
 	ProcessTestFlowController  func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	ProcessFlowController      func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	GetFlowDatabaseName        func() string
+	GetFlowMachineTemplates    func() map[string]interface{}
 	ProcessAskFlumeEventMapper func(askFlumeContext *trcflowcore.AskFlumeContext, query *trcflowcore.AskFlumeMessage, tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) *trcflowcore.AskFlumeMessage
 }
 
@@ -26,6 +27,7 @@ func LoadOptions() Option {
 		optionsBuilder.ProcessTestFlowController = ProcessTestFlowController
 		optionsBuilder.ProcessFlowController = ProcessFlowController
 		optionsBuilder.GetFlowDatabaseName = GetFlowDatabaseName
+		optionsBuilder.GetFlowMachineTemplates = GetFlowMachineTemplates
 		optionsBuilder.ProcessAskFlumeEventMapper = ProcessAskFlumeEventMapper
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/pkg/core"
@@ -25,7 +26,6 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -35,18 +35,15 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) error {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
-	var driverConfig *config.DriverConfig
 	var vault *sys.Vault
 	var goMod *helperkv.Modifier
 	var err error
 
-	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
-		"config_token_pluginany", logger)
+	_, goMod, vault, err = eUtils.InitVaultMod(driverConfig)
 	if err != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
 		return err
@@ -66,9 +63,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pl
 		}
 		pluginConfig["exitOnFailure"] = true
 
-		cConfig, cGoMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig,
-			cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
-			"config_token_pluginany", logger)
+		cConfig, cGoMod, cVault, err := eUtils.InitVaultMod(driverConfig)
 		if err != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
 			return err
@@ -81,7 +76,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pl
 		pluginutil.PluginInitNewRelic(driverConfig, cGoMod, pluginConfig)
 		logger = driverConfig.CoreConfig.Log
 
-		deployedUpdateErr := deploy.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
+		deployedUpdateErr := certify.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not update plugin deployed status in vault.", false)
@@ -202,7 +197,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, pl
 			Regions:             emptySlice,
 			CurrentTokenNamePtr: &currentTokenName,
 			TokenCache:          cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
-			Insecure:            true, // Always local...
+			Insecure:            false,
 			Env:                 pluginConfig["env"].(string),
 			EnvBasis:            eUtils.GetEnvBasis(pluginConfig["env"].(string)),
 			ExitOnFailure:       false,

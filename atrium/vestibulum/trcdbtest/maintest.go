@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -33,12 +35,16 @@ func main() {
 	eUtils.CheckError(&core.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
 
 	pluginConfig := testopts.BuildOptions.GetTestConfig(tokenPtr, false)
-	pluginConfig["address"] = ""
-	pluginConfig["vaddress"] = ""
-	pluginConfig["caddress"] = ""
-	pluginConfig["tokenptr"] = tokenPtr
-	ctokenPtr := new(string)
-	pluginConfig["ctokenptr"] = ctokenPtr
+	pluginConfig["address"] = os.Getenv("VAULT_ADDR")
+	pluginConfig["vaddress"] = os.Getenv("VAULT_ADDR")
+	pluginConfig["caddress"] = os.Getenv("VAULT_ADDR")
+	if eUtils.RefLength(tokenPtr) > 0 {
+		pluginConfig["tokenptr"] = tokenPtr
+		pluginConfig["ctokenptr"] = tokenPtr
+	} else {
+		pluginConfig["tokenptr"] = os.Getenv("VAULT_TOKEN")
+		pluginConfig["ctokenptr"] = pluginConfig["tokenptr"]
+	}
 	pluginConfig["env"] = "dev"
 	pluginConfig["insecure"] = true
 
@@ -76,8 +82,16 @@ func main() {
 		FlowController:      flowopts.BuildOptions.ProcessFlowController,
 		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 	}
+	currentTokenName := "config_token_unrestricted"
+	tokenCache := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
 
-	trcflow.BootFlowMachine(&flowMachineInitContext, pluginConfig, logger)
+	driverConfig, err := eUtils.InitDriverConfigForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
+	if err != nil {
+		fmt.Printf("Error initializing driver config: %v\n", err)
+		os.Exit(1)
+	}
+
+	trcflow.BootFlowMachine(&flowMachineInitContext, driverConfig, pluginConfig, logger)
 	wait := make(chan bool)
 	<-wait
 }
