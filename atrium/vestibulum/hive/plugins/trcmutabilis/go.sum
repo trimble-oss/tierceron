@@ -18,8 +18,8 @@ github.com/moby/sys/mountinfo v0.6.2 h1:BzJjoreD5BMFNmD9Rus6gdd1pLuecOFPt8wC+Vyg
 github.com/moby/sys/mountinfo v0.6.2/go.mod h1:IJb6JQeOklcdMU9F5xQ8ZALD+CUr5VlGpwtX+VE0rpI=
 github.com/trimble-oss/tierceron v1.38.5 h1:3OiKx3wJPB0cpwAq1U3bpC8iay2AgwvMFCIwCkgBhr0=
 github.com/trimble-oss/tierceron v1.38.5/go.mod h1:0FK36DuuWTcZXku5TxxrHf2cpVufr6KibisZzv9dcCw=
-github.com/trimble-oss/tierceron-core/v2 v2.5.5 h1:glb0GyXcT9XPxraEyrlWCOzAwXFR9Cdj/JOfzhjjkaw=
-github.com/trimble-oss/tierceron-core/v2 v2.5.5/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
+github.com/trimble-oss/tierceron-core/v2 v2.5.6 h1:Z/eRmjR3BSnvH+WBrxWzxwo23LDsC5OUqrgDidKy1Tg=
+github.com/trimble-oss/tierceron-core/v2 v2.5.6/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
 github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlCjxAOUzzJ7Igyid3Y=
 github.com/trimble-oss/tierceron-nute-core v1.0.3/go.mod h1:2M/uT8pm7AJMzRxsasQsQdjXvDXbXpBPCqd3ghb03ss=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=

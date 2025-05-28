@@ -315,7 +315,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], driverConfigErr.Error())
 		}
 
-		flowErr := bootFlowMachineFunc(&flowMachineInitContext, driverConfig, pec, l)
+		_, flowErr := bootFlowMachineFunc(&flowMachineInitContext, driverConfig, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}

@@ -63,3 +63,11 @@ trcx -env=dev -token=$VAULT_TOKEN -restricted=SpiralDatabase -serviceFilter=conf
 trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=SpiralDatabase
 
 ```
+
+# Trcdb default table initialization
+
+INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("DataFlowStatistics");
+
+trcinit -indexed=TenantDatabase
+
+trcx -env=QA -token=$TRC_ROOT_TOKEN -insecure -indexed=FlumeDatabase -serviceFilter=TierceronFlow -indexFilter=flowName -indexValueFilter=DataFlowStatistics 

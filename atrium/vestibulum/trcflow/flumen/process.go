@@ -35,7 +35,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) (any, error) {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
@@ -46,7 +46,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	_, goMod, vault, err = eUtils.InitVaultMod(driverConfig)
 	if err != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
-		return err
+		return nil, err
 	}
 
 	//Need new function writing to that path using pluginName ->
@@ -66,7 +66,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		cConfig, cGoMod, cVault, err := eUtils.InitVaultMod(driverConfig)
 		if err != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
-			return err
+			return nil, err
 		}
 
 		// TODO: should these have capabilities?
@@ -80,7 +80,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		if deployedUpdateErr != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, deployedUpdateErr.Error(), false)
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not update plugin deployed status in vault.", false)
-			return err
+			return nil, err
 		}
 		pluginConfig["vaddress"] = tempAddr
 		pluginConfig["tokenptr"] = tempTokenPtr
@@ -133,7 +133,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			properties, err := trcvutils.NewProperties(driverConfig.CoreConfig, vault, goMod, pluginConfig["env"].(string), projects[i], services[i])
 			if err != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-				return err
+				return nil, err
 			}
 
 			switch services[i] {
@@ -157,7 +157,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				trcIdentityConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't get config values.", false)
-					return err
+					return nil, err
 				}
 			case "VaultDatabase":
 				if len(flowMachineInitContext.FlowMachineInterfaceConfigs) > 0 {
@@ -172,13 +172,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				}
 				if !ok {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't get config values.", false)
-					return err
+					return nil, err
 				}
 			case "SpiralDatabase":
 				spiralDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't get config values.", false)
-					return err
+					return nil, err
 				}
 			}
 		}
@@ -233,7 +233,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	if err != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't build engine.", false)
-		return err
+		return nil, err
 	}
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished building engine")
 
@@ -278,7 +278,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-			return err
+			return nil, err
 		}
 
 		eUtils.LogInfo(driverConfig.CoreConfig, "Finished creating auth extension connection")
@@ -324,7 +324,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), flowopts.BuildOptions.GetFlowDatabaseName())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
@@ -384,7 +384,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		} else {
 			initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, initReceiverErr.Error(), false)
-			return initReceiverErr
+			return nil, initReceiverErr
 		}
 	}
 
@@ -487,13 +487,15 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}(test, driverConfig, tfmContext)
 		}
 	}
-	err = BuildFlumeDatabaseInterface(tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
-	if err != nil {
-		return err
-	}
+	go func() {
+		err := BuildFlumeDatabaseInterface(tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
+		if err != nil {
+			tfmContext.DriverConfig.CoreConfig.Log.Println("Error building flume database interface:", err)
+		}
+	}()
 
 	logger.Println("ProcessFlows complete.")
-	return nil
+	return tfmContext, nil
 }
 
 func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]interface{}, spiralDatabaseConfig map[string]interface{}, flowWG *sync.WaitGroup) error {
