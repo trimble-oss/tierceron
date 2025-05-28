@@ -4,8 +4,8 @@ go 1.24.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
-	github.com/dolthub/go-mysql-server v0.12.0
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/dolthub/go-mysql-server v0.19.0
+	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/vault/api v1.1.0
@@ -35,7 +35,7 @@ require (
 	github.com/graphql-go/graphql v0.8.1
 	github.com/trimble-oss/tierceron-core/v2 v2.5.5
 	github.com/trimble-oss/tierceron-hat v1.2.9
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250519234914-b4f1fd022bb9
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69
@@ -61,6 +61,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	fyne.io/fyne/v2 v2.5.2 // indirect
 	fyne.io/systray v1.11.0 // indirect
 	gioui.org v0.8.0 // indirect
@@ -82,7 +83,7 @@ require (
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91 // indirect
+	github.com/dolthub/vitess v0.0.0-20241211024425-b00987f7ba54 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect

@@ -4,8 +4,8 @@ go 1.24.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
-	github.com/dolthub/go-mysql-server v0.12.0
-	github.com/go-sql-driver/mysql v1.6.0 // indirect
+	github.com/dolthub/go-mysql-server v0.19.0
+	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
@@ -53,6 +53,7 @@ require (
 )
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
@@ -199,7 +200,7 @@ require (
 	github.com/fyne-io/gl-js v0.0.0-20220119005834-d2da28d9ccfe // indirect
 	github.com/fyne-io/glfw-js v0.0.0-20240101223322-6e1efdc71b7a // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
 	github.com/go-text/typesetting v0.2.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
@@ -219,7 +220,7 @@ require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.43.30 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
+	github.com/dolthub/vitess v0.0.0-20241211024425-b00987f7ba54
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/go-kit/kit v0.12.0 // indirect

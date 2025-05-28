@@ -314,7 +314,7 @@ func (er *ElementRenderer) ctrlRemove(worldApp *g3nworld.WorldApp) {
 		for amount <= (len(er.ctrlElements) - 1) {
 			el := er.ctrlElements[amount]
 			a := !er.isChildElement(worldApp, el)
-			b := el.GetParentElementIds() != nil
+			b := len(el.GetParentElementIds()) != 0
 			d := len(clickedElement.GetParentElementIds()) != 0
 			c := false
 			if d {
