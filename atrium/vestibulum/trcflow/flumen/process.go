@@ -35,7 +35,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) (*trcflowcore.TrcFlowMachineContext, error) {
+func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) (any, error) {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
