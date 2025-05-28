@@ -53,14 +53,15 @@ type certValue struct {
 }
 
 type PluginHandler struct {
-	Name          string //service
-	State         int    //0 - initialized, 1 - running, 2 - failed
-	Id            string
-	Signature     string //sha256 of plugin
-	ConfigContext *core.ConfigContext
-	Services      *map[string]*PluginHandler
-	PluginMod     *plugin.Plugin
-	KernelCtx     *KernelCtx
+	Name            string //service
+	State           int    //0 - initialized, 1 - running, 2 - failed
+	Id              string
+	Signature       string //sha256 of plugin
+	ConfigContext   *core.ConfigContext
+	Services        *map[string]*PluginHandler
+	PluginMod       *plugin.Plugin
+	KernelCtx       *KernelCtx
+	ServiceResource any
 }
 
 type KernelCtx struct {
@@ -606,7 +607,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 
 		// Needs certifyPath and connectionPath
-		go trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+		tfmContext, err := trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+		if err != nil || tfmContext == nil {
+			driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
+			return
+		} else {
+			pluginHandler.ServiceResource = tfmContext
+		}
 	}
 
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
@@ -1065,6 +1072,10 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 			return
 		}
+		// if TrcdbExchange != nil {
+		// cast service resource to context
+		// execute query via engine
+		// return response
 		for _, q := range *msg.Query {
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
 			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
