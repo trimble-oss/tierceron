@@ -75,12 +75,18 @@ func InitKernel(id string) *PluginHandler {
 	globalCertCache = &certCache
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
+	trcdbChan := make(chan *core.TrcdbExchange)
+	chatReceiverChan := make(chan *core.ChatMsg)
+
 	return &PluginHandler{
-		Name:          "Kernel",
-		Id:            id,
-		State:         0,
-		Services:      &pluginMap,
-		ConfigContext: &core.ConfigContext{},
+		Name:     "Kernel",
+		Id:       id,
+		State:    0,
+		Services: &pluginMap,
+		ConfigContext: &core.ConfigContext{
+			TrcdbChan:        &trcdbChan,
+			ChatReceiverChan: &chatReceiverChan,
+		},
 		KernelCtx: &KernelCtx{
 			DeployRestartChan: &deployRestart,
 			PluginRestartChan: &pluginRestart,
@@ -367,7 +373,9 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 		(*pH.Services)[service] = &PluginHandler{
 			Name: service,
 			ConfigContext: &core.ConfigContext{
-				Log: driverConfig.CoreConfig.Log,
+				Log:              driverConfig.CoreConfig.Log,
+				ChatReceiverChan: pH.ConfigContext.ChatReceiverChan,
+				TrcdbChan:        pH.ConfigContext.TrcdbChan,
 			},
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
@@ -428,7 +436,6 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig *config.DriverConfig,
 	service string,
 	serviceConfig *map[string]interface{},
-	chatReceiverChan *chan *core.ChatMsg,
 ) {
 	// Initialize channels
 	sender := make(chan core.KernelCmd)
@@ -446,8 +453,8 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	status_receiver := make(chan core.KernelCmd)
 	pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
 
-	if chatReceiverChan == nil {
-		driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+	if pluginHandler.ConfigContext.ChatReceiverChan == nil {
+		driverConfig.CoreConfig.Log.Printf("Unable to access chat configuration data for %s\n", service)
 		return
 	}
 
@@ -461,7 +468,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
 	chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
@@ -506,7 +513,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, chatReceiverChan *chan *core.ChatMsg) {
+func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) {
 	if driverConfig.CoreConfig.Log != nil {
 		if pluginHandler.ConfigContext.Log == nil {
 			pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
@@ -758,8 +765,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			status_receiver := make(chan core.KernelCmd)
 			pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
 
-			if chatReceiverChan == nil {
-				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+			if pluginHandler.ConfigContext.ChatReceiverChan == nil {
+				driverConfig.CoreConfig.Log.Printf("Unable to access chat configuration data for %s\n", service)
 				return
 			}
 
@@ -773,7 +780,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
 			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
@@ -1072,24 +1079,22 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 			return
 		}
-		// if TrcdbExchange != nil {
-		// cast service resource to context
-		// execute query via engine
-		// return response
+
 		for _, q := range *msg.Query {
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
 			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
-					Name:     &q,
-					KernelId: &pluginHandler.Id,
-					Query:    &[]string{},
+					Name:          &q,
+					KernelId:      &pluginHandler.Id,
+					Query:         &[]string{},
+					TrcdbExchange: msg.TrcdbExchange,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Warning, self identification through Name is required for all messages. Dropping query...\n")
-					return
+					continue
 				}
 				if eUtils.RefLength(msg.Response) > 0 && eUtils.RefLength((*msg).Response) > 0 {
 					new_msg.Response = (*msg).Response
@@ -1130,4 +1135,28 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 		}
 	}
+}
+
+func (pluginHandler *PluginHandler) ProcessTrcdb(driverConfig *config.DriverConfig) {
+	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Trcdb processing not supported for plugin: %s\n", pluginHandler.Name)
+		return
+	}
+
+	if pluginHandler.ServiceResource == nil {
+		driverConfig.CoreConfig.Log.Println("No service resource available to process TrcdbExchange query.")
+		return
+	}
+	//IN PROGRESS
+	// if tfmCtx, ok := pluginHandler.ServiceResource.(*flowcore.TrcFlowMachineContext); ok && tfmCtx != nil {
+	// 	if tfCtx, ok := tfmCtx.GetFlowContext(trcdbExchange.FlowName); ok && tfCtx != nil {
+	// 		trcdb.Query(tfmCtx.TierceronEngine, trcdbExchange.Query, tfCtx.FlowLock)
+	// 	} else {
+	// 		driverConfig.CoreConfig.Log.Printf("No flow context available for flow: %s\n", trcdbExchange.FlowName)
+	// 		return
+	// 	}
+	// } else {
+	// 	driverConfig.CoreConfig.Log.Println("No flow context available to process TrcdbExchange query.")
+	// 	return
+	// }
 }

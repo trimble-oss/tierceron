@@ -90,6 +90,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
+		FlowMapLock:               sync.RWMutex{},
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -333,7 +334,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			tcfContext.Flow = tableFlow
 			tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 			tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+			tfmContext.FlowMapLock.Lock()
 			tfmContext.FlowMap[tcfContext.Flow] = tcfContext
+			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
@@ -373,7 +376,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}
 	}
 
-	flowMapLock := &sync.Mutex{}
 	for _, table := range flowMachineInitContext.GetTableFlows() {
 		flowWG.Add(1)
 		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
@@ -385,9 +387,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			tfContext.Flow = tableFlow
 			tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 			tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-			flowMapLock.Lock()
+			tfmContext.FlowMapLock.Lock()
 			tfmContext.FlowMap[tfContext.Flow] = &tfContext
-			flowMapLock.Unlock()
+			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
@@ -425,9 +427,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			tfContext.Flow = enhancementFlow
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[enhancementFlow.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[enhancementFlow.TableName()]
-			flowMapLock.Lock()
+			tfmContext.FlowMapLock.Lock()
 			tfmContext.FlowMap[tfContext.Flow] = &tfContext
-			flowMapLock.Unlock()
+			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {

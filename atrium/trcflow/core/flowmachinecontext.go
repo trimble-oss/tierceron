@@ -58,7 +58,8 @@ type TrcFlowMachineContext struct {
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowNameType
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
-	PermissionChan            chan PermissionUpdate                     // This channel is used to alert for dynamic permissions when tables are loaded
+	FlowMapLock               sync.RWMutex
+	PermissionChan            chan PermissionUpdate // This channel is used to alert for dynamic permissions when tables are loaded
 }
 
 var _ flowcore.FlowMachineContext = (*TrcFlowMachineContext)(nil)
@@ -67,6 +68,8 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
 	if flowContext, refOk := tfmContext.FlowMap[flowName]; refOk {
 		return flowContext
 	} else {
