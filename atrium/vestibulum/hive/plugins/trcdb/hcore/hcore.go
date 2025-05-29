@@ -23,7 +23,7 @@ var sender chan error
 var dfstat *tccore.TTDINode
 
 const (
-	COMMON_PATH = "./config.yml"
+	COMMON_PATH = "./application.yml"
 )
 
 func receiver(receive_chan chan tccore.KernelCmd) {
@@ -107,7 +107,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		case event == nil:
 			fallthrough
 		case *event.Name == "SHUTDOWN":
-			configContext.Log.Println("rainier shutting down message receiver")
+			configContext.Log.Println("trcdb shutting down message receiver")
 			return
 		case event.Response != nil && *((*event).Response) == "Service unavailable":
 			configContext.Log.Println("Rainier unable to access chat service.")
@@ -123,7 +123,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			//			(*event).Response = &results
 			*configContext.ChatSenderChan <- event
 		default:
-			configContext.Log.Println("rainier received chat message")
+			configContext.Log.Println("trcdb received chat message")
 		}
 	}
 }

@@ -19,8 +19,6 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -188,21 +186,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
 
 	// 4. Create config for vault for queries to vault.
-	emptySlice := []string{""}
-
-	currentTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(pluginConfig["env"].(string)))
-
 	driverConfigBasis := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
-			Regions:             emptySlice,
-			CurrentTokenNamePtr: &currentTokenName,
-			TokenCache:          cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
-			Insecure:            false,
-			Env:                 pluginConfig["env"].(string),
-			EnvBasis:            eUtils.GetEnvBasis(pluginConfig["env"].(string)),
-			ExitOnFailure:       false,
-			Log:                 driverConfig.CoreConfig.Log,
-		},
+		CoreConfig: driverConfig.CoreConfig,
 	}
 
 	// Need to create askflumeflow template --> fill with default vals

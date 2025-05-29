@@ -3,7 +3,7 @@ package flowcorehelper
 //import "github.com/trimble-oss/tierceron/buildopts/flowopts"
 
 const TierceronFlowConfigurationTableName = "TierceronFlow"
-const TierceronFlowDB = "FlumeDatabase"
+const TierceronFlowDB = "TrcDb"
 
 type FlowStateUpdate struct {
 	FlowName    string
