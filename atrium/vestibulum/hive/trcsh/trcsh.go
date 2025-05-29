@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -14,6 +17,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
@@ -30,6 +34,10 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
+	testopts.NewOptionsBuilder(testopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
+	pluginopts.NewOptionsBuilder(pluginopts.LoadOptions())
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
