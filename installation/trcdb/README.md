@@ -68,6 +68,9 @@ trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=SpiralDataba
 
 INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("DataFlowStatistics");
 
-trcinit -indexed=TenantDatabase
+trcinit -indexed=TrcDb
 
-trcx -env=QA -token=$TRC_ROOT_TOKEN -insecure -indexed=FlumeDatabase -serviceFilter=TierceronFlow -indexFilter=flowName -indexValueFilter=DataFlowStatistics 
+In order to extract data flow statistic data to seed files, run the following:
+```
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -dynamicPath=PublicIndex/TrcDb/argosId/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s/%s
+```

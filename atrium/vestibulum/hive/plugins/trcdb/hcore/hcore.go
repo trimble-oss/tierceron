@@ -135,7 +135,7 @@ func start(pluginName string) {
 	}
 	var config map[string]interface{}
 	var ok bool
-	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
+	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); ok {
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
 		err := yaml.Unmarshal(configBytes, &config)
 		if err != nil {
@@ -143,6 +143,8 @@ func start(pluginName string) {
 			send_err(err)
 			return
 		}
+	} else {
+		configContext.Log.Println("Trcdb: Missing common configs")
 	}
 
 	if config != nil {
