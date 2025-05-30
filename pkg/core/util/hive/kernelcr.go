@@ -469,15 +469,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	go pluginHandler.handle_errors(driverConfig)
-	statPluginConfig := make(map[string]interface{})
-	statPluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
-	wantedTokenName := "config_token_pluginany"
-	statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
+	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
-	_, kernelmod, kernelvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
-		driverConfig.CoreConfig.TokenCache,
-		wantedTokenName,
-		driverConfig.CoreConfig.Log)
+	_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 		return
@@ -781,19 +775,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handle_errors(driverConfig)
-			statPluginConfig := make(map[string]interface{})
-			statPluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
-			currentStatTokenName := "config_token_pluginany"
-			if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshcmdtoolplugin") {
-				cmdToken := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
-				currentStatTokenName = *cmdToken
-			}
-			statPluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
-
-			_, kernelmod, kernelvault, err := eUtils.InitVaultModForPlugin(statPluginConfig,
-				driverConfig.CoreConfig.TokenCache,
-				currentStatTokenName,
-				driverConfig.CoreConfig.Log)
+			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
+			_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 				return
