@@ -139,6 +139,13 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 			providedLogger = logger[0]
 		}
 	}
+	if driverConfigPtr != nil &&
+		driverConfigPtr.CoreConfig != nil &&
+		driverConfigPtr.CoreConfig.TokenCache != nil &&
+		!(*driverConfigPtr).CoreConfig.TokenCache.IsEmpty() &&
+		gTokenCache.IsEmpty() {
+		gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
+	}
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
@@ -823,7 +830,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		for _, deployment := range deployments {
 			if kernelopts.BuildOptions.IsKernel() {
-				go func(driverConfigPtr *config.DriverConfig,
+				go func(dcPtr *config.DriverConfig,
 					env string,
 					region string,
 					trcPath string,
@@ -832,8 +839,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					projectService *string) {
 					for {
 						deploy := <-*kernelPluginHandler.KernelCtx.DeployRestartChan
-						driverConfigPtr.CoreConfig.Log.Printf("Restarting deploy for %s.\n", deploy)
-						go EnableDeployer(driverConfigPtr,
+						dcPtr.CoreConfig.Log.Printf("Restarting deploy for %s.\n", deploy)
+						go EnableDeployer(dcPtr,
 							env,
 							region,
 							deploy,

@@ -297,6 +297,14 @@ func CommonMain(envDefaultPtr *string,
 		}
 		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 
+		// Services downstream several more limited tokens but all covered
+		// by the scope of the unrestricted token.
+		limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
+		driverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
+
+		statTokenName := "config_token_pluginany"
+		driverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
+
 		configMap := map[string]interface{}{
 			"plugin_name": "trcctl",
 			"token_name":  tokenName,
