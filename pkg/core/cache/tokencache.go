@@ -37,6 +37,10 @@ func NewTokenCache(tokenKey string, token *string, vaptr *string) *TokenCache {
 	return tc
 }
 
+func (tc *TokenCache) IsEmpty() bool {
+	return tc.cache.IsEmpty() && tc.rcache.IsEmpty()
+}
+
 func (tc *TokenCache) SetVaultAddress(vaptr *string) error {
 	if vaptr == nil || len(*vaptr) == 0 {
 		return errors.New("Vault address nil or empty")
