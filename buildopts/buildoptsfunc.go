@@ -69,7 +69,7 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{
 
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TenantDatabase/DataFlowStatistics/DataFlowStatistics.tmpl",
 	}
 
 	// plugin configs here...
@@ -131,7 +131,7 @@ func GetTestDeployConfig(tokenPtr *string) map[string]interface{} {
 func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	pluginEnvConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TenantDatabase/DataFlowStatistics/DataFlowStatistics.tmpl",
 	}
 	pluginEnvConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",

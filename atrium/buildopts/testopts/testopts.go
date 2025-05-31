@@ -28,7 +28,7 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{
 	// Main controller flow definition, but also other flows defined here.
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TenantDatabase/DataFlowStatistics/DataFlowStatistics.tmpl",
 	}
 
 	// Service connection configurations defined here.
