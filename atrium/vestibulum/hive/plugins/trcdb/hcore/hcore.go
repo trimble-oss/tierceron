@@ -23,7 +23,7 @@ var sender chan error
 var dfstat *tccore.TTDINode
 
 const (
-	COMMON_PATH = "./application.yml"
+	COMMON_PATH = "trc_templates/Hive/PluginTrcdb"
 )
 
 func receiver(receive_chan chan tccore.KernelCmd) {
@@ -192,7 +192,7 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext { return configCo
 
 func GetConfigPaths(pluginName string) []string {
 	return []string{
-		COMMON_PATH,
+		"trc_templates/Hive/PluginTrcdb/config.yml",
 	}
 }
 

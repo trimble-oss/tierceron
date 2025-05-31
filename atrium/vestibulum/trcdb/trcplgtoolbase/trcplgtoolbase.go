@@ -919,7 +919,7 @@ func CommonMain(envPtr *string,
 				driverConfig.CoreConfig.Log.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
 			} else {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Starting plugin service: %s\n", *pluginNamePtr)
-				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig, kernelPluginHandler.ConfigContext.ChatReceiverChan)
+				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			}
 		} else {
 			fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
