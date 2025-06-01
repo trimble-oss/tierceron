@@ -20,7 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
@@ -639,7 +639,7 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
-		if pluginopts.BuildOptions.IsPluginHardwired() {
+		if plugincoreopts.BuildOptions.IsPluginHardwired() {
 			var deployRoot string
 			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
 				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
@@ -703,7 +703,7 @@ func CommonMain(envPtr *string,
 			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 
-			if !pluginopts.BuildOptions.IsPluginHardwired() {
+			if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 				fmt.Printf("Deploying image to: %s\n", deployPath)
 				if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
 					err = os.MkdirAll(deployRoot, 0700)
@@ -789,7 +789,7 @@ func CommonMain(envPtr *string,
 				return err
 			}
 			sha := hex.EncodeToString(h.Sum(nil))
-			if pluginopts.BuildOptions.IsPluginHardwired() || (ptcsha256.(string) == sha) {
+			if plugincoreopts.BuildOptions.IsPluginHardwired() || (ptcsha256.(string) == sha) {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Verified plugin module sha.")
 				err = memprotectopts.UnsetChattr(f)
 				if err != nil {

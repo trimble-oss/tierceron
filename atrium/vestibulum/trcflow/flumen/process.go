@@ -165,6 +165,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					// Only supported on loopback interface fo security reasons.
 					vaultDatabaseConfig = flowMachineInitContext.FlowMachineInterfaceConfigs
 					vaultDatabaseConfig["vaddress"] = "127.0.0.1"
+					ok = true
 				} else {
 					vaultDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 					vaultDatabaseConfig["vaddress"] = pluginConfig["vaddress"]

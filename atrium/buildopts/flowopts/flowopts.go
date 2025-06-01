@@ -16,7 +16,7 @@ import (
 // only a trcsh kernel compiled to allow custom building of this interface
 // will actually create an interface using configurations provided by the plugin.
 func AllowTrcdbInterfaceOverride() bool {
-	return true
+	return false
 }
 
 // GetAdditionalFlows - override to provide a list of additional business logic based flows.

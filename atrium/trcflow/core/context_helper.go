@@ -210,8 +210,16 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 				} else if len(idColumns) == 3 {
 					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d' AND %s='%d' AND %s='%d'", databaseName, changeTable, idColumns[0], valueInt, idColumns[1], indexColumnValuesSlice[1], idColumns[2], indexColumnValuesSlice[2])
 				}
+			} else if valueStr, vStrOK := indexColumnValuesSlice[0].(string); vStrOK {
+				if len(idColumns) == 1 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumns[0], valueStr)
+				} else if len(idColumns) == 2 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s' AND %s='%s'", databaseName, changeTable, idColumns[0], valueStr, idColumns[1], indexColumnValuesSlice[1])
+				} else if len(idColumns) == 3 {
+					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s' AND %s='%s' AND %s='%s'", databaseName, changeTable, idColumns[0], valueStr, idColumns[1], indexColumnValuesSlice[1], idColumns[2], indexColumnValuesSlice[2])
+				}
 			} else {
-				panic("Error - Unsupported type for index column - add support for new type.")
+				return "", errors.New("Error - Unsupported type for index column - add support for new type.")
 			}
 
 			if len(indexColumnNamesSlice) > 1 {

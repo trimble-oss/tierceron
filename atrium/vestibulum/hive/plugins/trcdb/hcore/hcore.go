@@ -9,22 +9,20 @@ import (
 	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	yaml "gopkg.in/yaml.v3"
 )
 
 var configContext *tccore.ConfigContext
 var sender chan error
 var dfstat *tccore.TTDINode
-
-const (
-	COMMON_PATH = "trc_templates/Hive/PluginTrcdb"
-)
 
 func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
@@ -45,6 +43,9 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open("plugins/trcdb.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
@@ -133,36 +134,17 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for trcdb")
 		return
 	}
-	var config map[string]interface{}
-	var ok bool
-	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); ok {
-		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
-		err := yaml.Unmarshal(configBytes, &config)
-		if err != nil {
-			configContext.Log.Println("Missing common configs")
-			send_err(err)
-			return
-		}
-	} else {
-		configContext.Log.Println("Trcdb: Missing common configs")
-	}
 
-	if config != nil {
-		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
-		dfstat.UpdateDataFlowStatistic("System",
-			pluginName,
-			"Start up",
-			"1",
-			1,
-			func(msg string, err error) {
-				configContext.Log.Println(msg, err)
-			})
-		send_dfstat()
-	} else {
-		configContext.Log.Println("Missing common configs")
-		send_err(errors.New("missing common configs"))
-		return
-	}
+	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+	dfstat.UpdateDataFlowStatistic("System",
+		pluginName,
+		"Start up",
+		"1",
+		1,
+		func(msg string, err error) {
+			configContext.Log.Println(msg, err)
+		})
+	send_dfstat()
 }
 
 func stop(pluginName string) {
@@ -192,7 +174,7 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext { return configCo
 
 func GetConfigPaths(pluginName string) []string {
 	return []string{
-		"trc_templates/Hive/PluginTrcdb/config.yml",
+		"-templateFilter=Hive/PluginTrcdb",
 	}
 }
 
@@ -236,7 +218,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
-		COMMON_PATH,
+		"", // No additional config file used/managed by the trcdb plugin itself.
 		"trcdb",
 		start,
 		receiver,
@@ -246,7 +228,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
-	if _, ok := (*properties)[COMMON_PATH]; !ok {
+	if _, ok := (*properties)[flow.HARBINGER_INTERFACE_CONFIG]; !ok {
 		fmt.Println("Missing common config components")
 		return
 	}

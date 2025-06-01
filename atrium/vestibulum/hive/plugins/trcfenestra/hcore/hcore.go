@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -69,6 +70,9 @@ func receiver(receive_chan *chan core.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerLib, err := os.Open("plugins/fenestra.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
