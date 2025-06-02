@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+
 	echocore "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/echocore"
 	tbtapi "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/tbtcore/tbtapi"
 	tbtgapi "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/tbtcore/tbtgapi"
@@ -26,6 +28,9 @@ import (
 var configContext *tccore.ConfigContext
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open("/usr/local/trcshk/plugins/trcshtalkback.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")

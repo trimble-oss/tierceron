@@ -11,6 +11,14 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
 )
 
+// AllowTrcdbInterfaceOverride - by default trcdb plugins cannot expose
+// a mariadb interface.  They can always create an internal database but
+// only a trcsh kernel compiled to allow custom building of this interface
+// will actually create an interface using configurations provided by the plugin.
+func AllowTrcdbInterfaceOverride() bool {
+	return false
+}
+
 // GetAdditionalFlows - override to provide a list of additional business logic based flows.
 // These business logic flows have direct access to other flow data via the internal
 // sql query engine, the ability to call other flows, and the ability to directly call

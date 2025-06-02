@@ -1,1 +1,29 @@
-Some trcdb goodness.
+# Introduction 
+You have found the installation folder for trcdb hive plugin templates and secrets.
+
+# Trcdb default table initialization
+
+```
+trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=SpiralDatabase
+
+```
+
+# Create initial flow
+INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("DataFlowStatistics");
+update TierceronFlow set state=1 where flowName='DataFlowStatistics'
+
+
+# Examples:
+Proiectum:
+    Fabrica Navis
+        Servitium:
+            Constructio
+            Navigatio Technica
+            Auxilium Medicum
+            Cultura
+    Questus Aureae Velleris
+        Servitium:
+            Navigatio
+            Praesidium
+            Informatio
+            Communicationis

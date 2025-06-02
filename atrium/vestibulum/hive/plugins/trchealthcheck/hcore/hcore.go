@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
@@ -74,6 +76,9 @@ func receiver(receive_chan *chan core.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open("plugins/healthcheck.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
