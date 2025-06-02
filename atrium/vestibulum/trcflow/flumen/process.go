@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
@@ -186,10 +187,20 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished retrieving configs")
 	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
+	currentTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(pluginConfig["env"].(string)))
 
 	// 4. Create config for vault for queries to vault.
 	driverConfigBasis := config.DriverConfig{
-		CoreConfig: driverConfig.CoreConfig,
+		CoreConfig: &core.CoreConfig{
+			Regions:             driverConfig.CoreConfig.Regions,
+			CurrentTokenNamePtr: &currentTokenName,
+			TokenCache:          driverConfig.CoreConfig.TokenCache,
+			Insecure:            driverConfig.CoreConfig.Insecure,
+			Env:                 driverConfig.CoreConfig.Env,
+			EnvBasis:            driverConfig.CoreConfig.EnvBasis,
+			ExitOnFailure:       driverConfig.CoreConfig.ExitOnFailure,
+			Log:                 driverConfig.CoreConfig.Log,
+		},
 	}
 
 	// Need to create askflumeflow template --> fill with default vals
@@ -354,7 +365,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				tableFlow,
 				trcflowcore.TableSyncFlow,
 			)
-		}(flowcore.FlowNameType(table), &tfContext, driverConfig)
+		}(flowcore.FlowNameType(table), &tfContext, &driverConfigBasis)
 
 		controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
 		if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
@@ -414,7 +425,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				tableFlow,
 				trcflowcore.TableSyncFlow,
 			)
-		}(flowcore.FlowNameType(table.FlowName), driverConfig)
+		}(flowcore.FlowNameType(table.FlowName), &driverConfigBasis)
 	}
 
 	for _, enhancement := range flowMachineInitContext.GetBusinessFlows() {
@@ -446,7 +457,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				enhancementFlow,
 				trcflowcore.TableEnrichFlow,
 			)
-		}(enhancement, driverConfig)
+		}(enhancement, &driverConfigBasis)
 	}
 
 	if testopts.BuildOptions != nil {
@@ -472,7 +483,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					testFlow,
 					trcflowcore.TableTestFlow,
 				)
-			}(test, driverConfig, tfmContext)
+			}(test, &driverConfigBasis, tfmContext)
 		}
 	}
 	go func() {
