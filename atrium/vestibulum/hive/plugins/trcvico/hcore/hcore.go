@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"gopkg.in/yaml.v2"
@@ -40,6 +41,10 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
+
 	peerExe, err := os.Open("plugins/vico.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")

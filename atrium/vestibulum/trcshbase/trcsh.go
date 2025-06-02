@@ -972,9 +972,11 @@ func roleBasedRunner(
 	deployArgLines []string,
 	configCount *int) error {
 	*configCount -= 1
-	currentRoleEntityPtr := new(string)
-	*currentRoleEntityPtr = "config.yml"
-	trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr = currentRoleEntityPtr
+	if trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr == nil {
+		currentRoleEntityPtr := new(string)
+		*currentRoleEntityPtr = "config.yml" // Chewbacca: Why?!?!
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr = currentRoleEntityPtr
+	}
 	trcshDriverConfig.DriverConfig.FileFilter = nil
 	trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = false
 	trcshDriverConfig.DriverConfig.IsShellSubProcess = true

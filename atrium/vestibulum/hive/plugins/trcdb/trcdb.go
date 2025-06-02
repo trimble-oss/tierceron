@@ -8,6 +8,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	// Update package path as needed
 )
@@ -48,7 +49,7 @@ func main() {
 		logger.Println("Error unmarshaling YAML:", err)
 		os.Exit(-1)
 	}
-	config[hcore.COMMON_PATH] = &configCommon
+	config[flow.HARBINGER_INTERFACE_CONFIG] = &configCommon
 
 	Init("vico", &config)
 	hcore.GetConfigContext("trcdb").Start("trcdb")

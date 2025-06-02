@@ -12,11 +12,6 @@ import (
 	score "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore"
 )
 
-// IsPluginHardwired - Override to hardwire plugins into the kernel for debugging.
-func IsPluginHardwired() bool {
-	return true
-}
-
 // GetConfigPaths - Override GetConfigPaths calls.
 func GetConfigPaths(pluginName string) []string {
 	switch pluginName {

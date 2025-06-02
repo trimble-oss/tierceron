@@ -17,12 +17,14 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
@@ -34,6 +36,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/validator"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
+	"gopkg.in/yaml.v3"
 )
 
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
@@ -75,12 +78,18 @@ func InitKernel(id string) *PluginHandler {
 	globalCertCache = &certCache
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
+	trcdbChan := make(chan *core.TrcdbExchange)
+	chatReceiverChan := make(chan *core.ChatMsg)
+
 	return &PluginHandler{
-		Name:          "Kernel",
-		Id:            id,
-		State:         0,
-		Services:      &pluginMap,
-		ConfigContext: &core.ConfigContext{},
+		Name:     "Kernel",
+		Id:       id,
+		State:    0,
+		Services: &pluginMap,
+		ConfigContext: &core.ConfigContext{
+			TrcdbChan:        &trcdbChan,
+			ChatReceiverChan: &chatReceiverChan,
+		},
 		KernelCtx: &KernelCtx{
 			DeployRestartChan: &deployRestart,
 			PluginRestartChan: &pluginRestart,
@@ -233,7 +242,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 			pH.KernelCtx.DeployRestartChan != nil &&
 			pH.KernelCtx.PluginRestartChan != nil &&
 			mod != nil &&
-			!pluginopts.BuildOptions.IsPluginHardwired() {
+			!plugincoreopts.BuildOptions.IsPluginHardwired() {
 			for service, servPh := range *pH.Services {
 				certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", service))
 				if err != nil {
@@ -367,7 +376,9 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 		(*pH.Services)[service] = &PluginHandler{
 			Name: service,
 			ConfigContext: &core.ConfigContext{
-				Log: driverConfig.CoreConfig.Log,
+				Log:              driverConfig.CoreConfig.Log,
+				ChatReceiverChan: pH.ConfigContext.ChatReceiverChan,
+				TrcdbChan:        pH.ConfigContext.TrcdbChan,
 			},
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
@@ -408,7 +419,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 		return
 	}
 
-	if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+	if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 		if pluginHandler.PluginMod == nil {
 			pluginHandler.ConfigContext.Log.Println("No plugin module set for initializing plugin service.")
 			return
@@ -428,7 +439,6 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig *config.DriverConfig,
 	service string,
 	serviceConfig *map[string]interface{},
-	chatReceiverChan *chan *core.ChatMsg,
 ) {
 	// Initialize channels
 	sender := make(chan core.KernelCmd)
@@ -446,8 +456,8 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	status_receiver := make(chan core.KernelCmd)
 	pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
 
-	if chatReceiverChan == nil {
-		driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+	if pluginHandler.ConfigContext.ChatReceiverChan == nil {
+		driverConfig.CoreConfig.Log.Printf("Unable to access chat configuration data for %s\n", service)
 		return
 	}
 
@@ -461,7 +471,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
 	chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
@@ -500,7 +510,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}, chatReceiverChan *chan *core.ChatMsg) {
+func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) {
 	if driverConfig.CoreConfig.Log != nil {
 		if pluginHandler.ConfigContext.Log == nil {
 			pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
@@ -520,7 +530,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		driverConfig.CoreConfig.Log.Println("No plugin name specified to start plugin service.")
 		return
 	}
-	if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod == nil {
+	if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod == nil {
 		if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
 			driverConfig.CoreConfig.Log.Printf("No plugin module initialized to start plugin service: %s\n", pluginHandler.Name)
 			return
@@ -537,7 +547,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	var pluginConfig map[string]interface{}
 	var flowMachineContext interface{}
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-		if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+		if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 			getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
@@ -547,7 +557,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
 				flowMachineContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
 			}
-		} else if pluginopts.BuildOptions.IsPluginHardwired() {
+		} else if plugincoreopts.BuildOptions.IsPluginHardwired() {
 			flowMachineContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
@@ -570,7 +580,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	driverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
 
-	if !pluginopts.BuildOptions.IsPluginHardwired() {
+	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		if pluginHandler.PluginMod != nil {
 			set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
 			if err == nil && set_prod != nil {
@@ -582,31 +592,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
-		}
-	}
-
-	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-		pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
-		pluginConfig["pluginName"] = pluginHandler.Name
-		if !driverConfig.IsShellSubProcess {
-			// Presently trcshk does not have permissions it needs to access this area of vault.
-			pluginConfig["connectionPath"] = []string{
-				// No interfaces
-				"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
-				"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
-				"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
-			}
-		} else {
-			pluginConfig["connectionPath"] = []string{}
-		}
-
-		// Needs certifyPath and connectionPath
-		tfmContext, err := trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
-		if err != nil || tfmContext == nil {
-			driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
-			return
-		} else {
-			pluginHandler.ServiceResource = tfmContext
 		}
 	}
 
@@ -636,7 +621,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 
 			var paths []string
-			if !pluginopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+			if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 				getConfigPaths, err := pluginHandler.PluginMod.Lookup("GetConfigPaths")
 				if err != nil {
 					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
@@ -646,7 +631,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				pluginConfigPaths := getConfigPaths.(func(string) []string)
 				paths = pluginConfigPaths(pluginHandler.Name)
 			} else {
-				if s, ok := pluginToolConfig["trctype"].(string); pluginopts.BuildOptions.IsPluginHardwired() || (ok && (s == "trcshkubeservice") || (s == "trcshcmdtoolplugin")) {
+				if s, ok := pluginToolConfig["trctype"].(string); plugincoreopts.BuildOptions.IsPluginHardwired() || (ok && (s == "trcshkubeservice") || (s == "trcshcmdtoolplugin")) {
 					paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
@@ -670,7 +655,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						}
 					}
 				} else {
-					if pluginToolConfig["trctype"] == "trcshkubeservice" {
+					if pluginToolConfig["trctype"] == "trcshkubeservice" || pluginToolConfig["trctype"] == "trcflowpluginservice" {
 						envArg := fmt.Sprintf("-env=%s", driverConfig.CoreConfig.EnvBasis)
 						restrictedMappingSub := append([]string{"", envArg}, paths[0])
 						ctl := "pluginrun"
@@ -678,12 +663,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						flagset.String("env", "dev", "Environment to configure")
 
 						wantedTokenName := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
-						trcsubbase.CommonMain(&driverConfig.CoreConfig.EnvBasis,
+						subErr := trcsubbase.CommonMain(&driverConfig.CoreConfig.EnvBasis,
 							&driverConfig.CoreConfig.EnvBasis,
 							wantedTokenName,
 							flagset,
 							restrictedMappingSub,
 							driverConfig)
+
+						if subErr != nil {
+							driverConfig.CoreConfig.Log.Printf("Could not load templates for plugin: %s error: %v\n", pluginHandler.Name, err)
+							return
+						}
 
 						driverConfig.EndDir = "."
 						restrictedMappingConfig := []string{"", envArg}
@@ -692,13 +682,18 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 						// Get certs...
 						driverConfig.CoreConfig.WantCerts = true
-						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
+						configErr := trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
 							&driverConfig.CoreConfig.Env,
 							wantedTokenName, // wantedTokenName
 							nil,             // regionPtr
 							flagset,
 							restrictedMappingConfig,
 							driverConfig)
+
+						if configErr != nil {
+							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s error: %v\n", pluginHandler.Name, err)
+							return
+						}
 
 						if strings.HasPrefix(paths[0], "-templateFilter=") {
 							filter := paths[0][strings.Index(paths[0], "=")+1:]
@@ -725,6 +720,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.MemFs.ClearCache("./trc_templates")
 						driverConfig.MemFs.ClearCache("./deploy")
 						driverConfig.MemFs.SerializeToMap(".", serviceConfig)
+						if flowopts.BuildOptions.AllowTrcdbInterfaceOverride() {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+								// Make plugin configs available to flowMachineContext
+								var harbingerConfig map[string]interface{}
+								if configBytes, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG].([]byte); ok {
+									err := yaml.Unmarshal(configBytes, &harbingerConfig)
+									if err == nil {
+										flowMachineContext.(*flow.FlowMachineInitContext).FlowMachineInterfaceConfigs = harbingerConfig
+										delete(serviceConfig, flow.HARBINGER_INTERFACE_CONFIG)
+									} else {
+										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
+										return
+									}
+								}
+							}
+						}
 						driverConfig.IsShellSubProcess = true
 					} else {
 						sc, ok := properties.GetRegionConfigValues(projServ[1], path)
@@ -752,8 +763,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			status_receiver := make(chan core.KernelCmd)
 			pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
 
-			if chatReceiverChan == nil {
-				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", service)
+			if pluginHandler.ConfigContext.ChatReceiverChan == nil {
+				driverConfig.CoreConfig.Log.Printf("Unable to access chat configuration data for %s\n", service)
 				return
 			}
 
@@ -767,7 +778,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
 			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = chatReceiverChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
 			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
@@ -805,6 +816,40 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 			}(*pluginHandler.ConfigContext.CmdSenderChan, pluginHandler.Name)
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+		}
+	}
+
+	// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
+	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+		pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
+		pluginConfig["pluginName"] = pluginHandler.Name
+		if !driverConfig.IsShellSubProcess {
+			// Presently trcshk does not have permissions it needs to access this area of vault.
+			pluginConfig["connectionPath"] = []string{
+				// No interfaces
+				"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
+				"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
+				"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
+			}
+		} else {
+			if plugincoreopts.BuildOptions.IsPluginHardwired() {
+				pluginConfig["connectionPath"] = []string{
+					"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // providing for setup.
+				}
+			} else {
+				pluginConfig["connectionPath"] = []string{
+					"trc_templates/TrcVault/Database/config.yml.tmpl", // sync interface
+				}
+			}
+		}
+
+		// Needs certifyPath and connectionPath
+		tfmContext, err := trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+		if err != nil || tfmContext == nil {
+			driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
+			return
+		} else {
+			pluginHandler.ServiceResource = tfmContext
 		}
 	}
 }
@@ -948,7 +993,7 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 	driverConfig.CoreConfig.Log.Printf("Loading plugin: %s\n", pluginPath)
 
 	var pluginM *plugin.Plugin
-	if !pluginopts.BuildOptions.IsPluginHardwired() {
+	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		pM, err := plugin.Open(pluginPath)
 		if err != nil {
 			driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
@@ -1030,7 +1075,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 	for len(globalPluginStatusChan) != 0 {
 		time.Sleep(100 * time.Millisecond)
 	}
-	if !pluginopts.BuildOptions.IsPluginHardwired() {
+	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
 		pluginHandler.sendInitBroadcast(driverConfig)
 	}
@@ -1055,24 +1100,22 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 			return
 		}
-		// if TrcdbExchange != nil {
-		// cast service resource to context
-		// execute query via engine
-		// return response
+
 		for _, q := range *msg.Query {
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
 			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
-					Name:     &q,
-					KernelId: &pluginHandler.Id,
-					Query:    &[]string{},
+					Name:          &q,
+					KernelId:      &pluginHandler.Id,
+					Query:         &[]string{},
+					TrcdbExchange: msg.TrcdbExchange,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Warning, self identification through Name is required for all messages. Dropping query...\n")
-					return
+					continue
 				}
 				if eUtils.RefLength(msg.Response) > 0 && eUtils.RefLength((*msg).Response) > 0 {
 					new_msg.Response = (*msg).Response
@@ -1113,4 +1156,28 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 		}
 	}
+}
+
+func (pluginHandler *PluginHandler) ProcessTrcdb(driverConfig *config.DriverConfig) {
+	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
+		driverConfig.CoreConfig.Log.Printf("Trcdb processing not supported for plugin: %s\n", pluginHandler.Name)
+		return
+	}
+
+	if pluginHandler.ServiceResource == nil {
+		driverConfig.CoreConfig.Log.Println("No service resource available to process TrcdbExchange query.")
+		return
+	}
+	//IN PROGRESS
+	// if tfmCtx, ok := pluginHandler.ServiceResource.(*flowcore.TrcFlowMachineContext); ok && tfmCtx != nil {
+	// 	if tfCtx, ok := tfmCtx.GetFlowContext(trcdbExchange.FlowName); ok && tfCtx != nil {
+	// 		trcdb.Query(tfmCtx.TierceronEngine, trcdbExchange.Query, tfCtx.FlowLock)
+	// 	} else {
+	// 		driverConfig.CoreConfig.Log.Printf("No flow context available for flow: %s\n", trcdbExchange.FlowName)
+	// 		return
+	// 	}
+	// } else {
+	// 	driverConfig.CoreConfig.Log.Println("No flow context available to process TrcdbExchange query.")
+	// 	return
+	// }
 }

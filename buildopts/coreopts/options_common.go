@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/pkg/trcnet"
 )
 
@@ -128,7 +129,15 @@ func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
 // the name of the column that is to be treated as the index for the table.
 // TODO: This function is miss-named.  It should be called FindInexForTable where project = databaseName and service = tableName.
 func FindIndexForService(project string, service string) (string, []string, string, error) {
-	return "", nil, "", errors.New("Not implemented")
+	if project == flowcorehelper.TierceronFlowDB {
+		if service == flowcorehelper.TierceronFlowConfigurationTableName {
+			return "flowName", nil, "", nil
+		} else {
+			return "", nil, "", errors.New("Not implemented")
+		}
+	} else {
+		return "", nil, "", errors.New("Not implemented")
+	}
 }
 
 // GetSyncedTables - return a list of synced tables from a remote source in TrcDb.
