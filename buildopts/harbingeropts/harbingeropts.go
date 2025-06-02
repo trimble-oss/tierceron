@@ -53,7 +53,7 @@ func GetFolderPrefix(custom []string) string {
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return "TierceronFlowCurator"
+	return "TrcDb"
 }
 
 func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]interface{}, error) {
@@ -139,7 +139,16 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 	}
 
 	if _, ok := vaultDatabaseConfig["dbport"]; ok {
-		vaultDatabaseConfig["vaddress"] = strings.Split(interfaceUrl.Host, ":")[0] + ":" + vaultDatabaseConfig["dbport"].(string)
+		interfaceHost := interfaceUrl.Host
+		if len(interfaceHost) == 0 {
+			interfaceHost = interfaceUrl.Path
+		} else {
+			interfaceHost = strings.Split(interfaceUrl.Host, ":")[0]
+		}
+		if _, ok := vaultDatabaseConfig["dbport"].(int); ok {
+			vaultDatabaseConfig["dbport"] = fmt.Sprintf("%d", vaultDatabaseConfig["dbport"])
+		}
+		vaultDatabaseConfig["vaddress"] = interfaceHost + ":" + vaultDatabaseConfig["dbport"].(string)
 	} else {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Missing port. Failing to start interface", false)
 		return errors.New("Missing port for interface")

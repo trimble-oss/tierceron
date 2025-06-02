@@ -401,14 +401,15 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			pluginHandler := &hive.PluginHandler{
 				Name: *pluginNamePtr,
 				ConfigContext: &tccore.ConfigContext{
-					Log: driverConfig.CoreConfig.Log,
+					ChatReceiverChan: &chatReceiverChan,
+					Log:              driverConfig.CoreConfig.Log,
 				},
 				KernelCtx: &hive.KernelCtx{
 					PluginRestartChan: &pluginRestart,
 				},
 			}
 
-			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig, &chatReceiverChan)
+			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig)
 		}
 	} else {
 		fmt.Printf("Plugin not registered with trcctl.\n")

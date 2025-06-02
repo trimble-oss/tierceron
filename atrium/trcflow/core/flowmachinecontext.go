@@ -166,7 +166,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI interface{}
 			tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""})
 			tfmContext.Log("Could not create table.", err)
 		} else {
-			if tfContext.Flow.TableName() == "TierceronFlow" {
+			if tfContext.Flow.TableName() == flowcorehelper.TierceronFlowConfigurationTableName {
 				tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: 2, SyncMode: "nosync", SyncFilter: ""})
 			} else {
 				select {
@@ -506,7 +506,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
 	var df *tccore.TTDINode = nil
-	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
+	if tfContext.Init && tfContext.Flow.TableName() != flowcorehelper.TierceronFlowConfigurationTableName {
 		df = tccore.InitDataFlow(nil, tfContext.Flow.TableName(), true) //Initializing dataflow
 		if tfContext.GetFlowStateAlias() != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
@@ -536,7 +536,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
+	if tfContext.Init && tfContext.Flow.TableName() != flowcorehelper.TierceronFlowConfigurationTableName {
 		if tfContext.GetFlowStateAlias() != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
 		} else {
@@ -546,7 +546,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	if tfContext.Init && tfContext.Flow.TableName() != "TierceronFlow" {
+	if tfContext.Init && tfContext.Flow.TableName() != flowcorehelper.TierceronFlowConfigurationTableName {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
 		dsc, _, err := df.GetDeliverStatCtx()
 		if err == nil {
@@ -741,7 +741,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			// If triggers are ever fixed, this can be removed.
 			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"].(string); changeIdValueOk {
 				var changeQuery string
-				if strings.Contains(tfContext.ChangeFlowName, "TierceronFlow") {
+				if strings.Contains(tfContext.ChangeFlowName, flowcorehelper.TierceronFlowConfigurationTableName) {
 					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
 				} else {
 					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)

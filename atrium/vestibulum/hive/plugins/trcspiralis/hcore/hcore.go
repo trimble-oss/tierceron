@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -56,6 +57,9 @@ func receiver(receive_chan *chan core.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open("plugins/spiralis.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
