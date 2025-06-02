@@ -1,5 +1,3 @@
-github.com/fsnotify/fsnotify v1.7.0 h1:8JEhPFa5W2WU7YfeZzPNqzMP6Lwt7L2715Ggo0nosvA=
-github.com/fsnotify/fsnotify v1.7.0/go.mod h1:40Bi/Hjc2AVfZrqy+aj+yEI+/bRxZnMJyTJwOpGvigM=
 github.com/go-logr/logr v1.4.2 h1:6pFjapn8bFcIbiKo3XT4j/BhANplGihG6tvd+8rYgrY=
 github.com/go-logr/logr v1.4.2/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
@@ -16,12 +14,14 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/moby/sys/mountinfo v0.6.2 h1:BzJjoreD5BMFNmD9Rus6gdd1pLuecOFPt8wC+Vygl78=
 github.com/moby/sys/mountinfo v0.6.2/go.mod h1:IJb6JQeOklcdMU9F5xQ8ZALD+CUr5VlGpwtX+VE0rpI=
-github.com/trimble-oss/tierceron v1.38.5 h1:3OiKx3wJPB0cpwAq1U3bpC8iay2AgwvMFCIwCkgBhr0=
-github.com/trimble-oss/tierceron v1.38.5/go.mod h1:0FK36DuuWTcZXku5TxxrHf2cpVufr6KibisZzv9dcCw=
-github.com/trimble-oss/tierceron-core/v2 v2.5.6 h1:Z/eRmjR3BSnvH+WBrxWzxwo23LDsC5OUqrgDidKy1Tg=
-github.com/trimble-oss/tierceron-core/v2 v2.5.6/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
+github.com/trimble-oss/tierceron v1.38.9 h1:qr/vCzPaW0noz/vfx+/hoFa+XjK/t4Howv3r4hJwKBQ=
+github.com/trimble-oss/tierceron v1.38.9/go.mod h1:wAajygsGk9VKDbXQ2C37Pv2Ype3dCxN1sNx6+Xjprfc=
+github.com/trimble-oss/tierceron-core/v2 v2.5.7 h1:SRTdVJLRRv1HyHBZ+9NHT2Ks49/0CYXkR3Z2MlBjjIg=
+github.com/trimble-oss/tierceron-core/v2 v2.5.7/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
 github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlCjxAOUzzJ7Igyid3Y=
 github.com/trimble-oss/tierceron-nute-core v1.0.3/go.mod h1:2M/uT8pm7AJMzRxsasQsQdjXvDXbXpBPCqd3ghb03ss=
+github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377 h1:m0YHPS32Si7ZxkpQedlfV+2fCJZ2qJHBcWFTl8eUr1E=
+github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377/go.mod h1:DcfpH3ajk3nzlBhAF84/W8OX5add/ZxjJ2HVlxoPOfw=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/otel v1.35.0 h1:xKWKPxrxB6OtMCbmMY021CqC45J+3Onta9MqjhnusiQ=
