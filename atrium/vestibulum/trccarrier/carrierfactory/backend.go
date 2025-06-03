@@ -95,8 +95,8 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 				configInitOnce.(*sync.Once).Do(func() {
 
 					if bootFlowMachineFunc != nil {
-						tokenCache := cache.NewTokenCache("config_token_unrestricted", eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
-						driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pluginEnvConfig, tokenCache, "config_token_unrestricted", l)
+						tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+						driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pluginEnvConfig, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), l)
 						if driverConfigErr != nil {
 							l.Printf("Flow %s had an error: %s\n", pluginEnvConfig["trcplugin"], driverConfigErr.Error())
 						}
@@ -467,7 +467,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		}
 	}
 	logger.Printf("Init: %s plugin: %s\n", pluginEnvConfig["env"], pluginEnvConfig["trcplugin"])
-	tokenCache := cache.NewTokenCache("config_token_unrestricted", eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+	tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
 
 	go func(pec map[string]interface{}, l *log.Logger) {
 		logger.Println("Initiate process flow for env: " + pec["env"].(string) + " and plugin: " + pec["trcplugin"].(string))
@@ -493,7 +493,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			FlowController:      flowopts.BuildOptions.ProcessFlowController,
 			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 		}
-		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, "config_token_unrestricted", l)
+		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), l)
 		if driverConfigErr != nil {
 			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], driverConfigErr.Error())
 		}
