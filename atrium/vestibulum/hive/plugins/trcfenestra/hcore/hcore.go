@@ -11,7 +11,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"

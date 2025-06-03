@@ -18,6 +18,7 @@ import (
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -419,7 +420,15 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 			tfmContext.ProcessFlow(
 				&tfContext,
-				flowMachineInitContext.FlowController,
+				func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+					switch flowcore.FlowNameType(tfContext.GetFlowName()) {
+					case trcflowcore.DataFlowStatConfigurationsFlow:
+						// DFS flow always handled internally.
+						return flows.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+					default:
+						return flowMachineInitContext.FlowController(tfmContext, tfContext)
+					}
+				},
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
 				tableFlow,

@@ -21,6 +21,6 @@ depend:
 clean:
 	rm -f bin
 
-pluginvico:
+vico:
 	go build -buildmode=plugin -trimpath -o="./vico.so" -tags "tc azrcr memonly kernel" trcvico.go
 

@@ -9,7 +9,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"gopkg.in/yaml.v2"

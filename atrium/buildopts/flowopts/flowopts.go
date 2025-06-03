@@ -52,9 +52,6 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	switch trcFlowContext.Flow {
 	case trcflowcore.DataFlowStatConfigurationsFlow:
 		return flows.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-		// Chewbacca: add ArgosSocii
-		// case "ArgosSocii":
-		// 	return flowcore.ProcessArgosSociiConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext)
 	}
 	return errors.New("flow not implemented")
 }
