@@ -82,7 +82,7 @@ func main() {
 		FlowController:      flowopts.BuildOptions.ProcessFlowController,
 		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 	}
-	currentTokenName := "config_token_unrestricted"
+	currentTokenName := fmt.Sprintf("config_token_%s_unrestricted", pluginConfig["env"])
 	tokenCache := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
 
 	driverConfig, err := eUtils.InitDriverConfigForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
