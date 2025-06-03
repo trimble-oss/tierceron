@@ -52,6 +52,9 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	switch trcFlowContext.Flow {
 	case trcflowcore.DataFlowStatConfigurationsFlow:
 		return flows.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+		// Chewbacca: add ArgosSocii
+		// case "ArgosSocii":
+		// 	return flowcore.ProcessArgosSociiConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext)
 	}
 	return errors.New("flow not implemented")
 }
@@ -67,6 +70,7 @@ func GetFlowMachineTemplates() map[string]interface{} {
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
 		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
 	}
 	return pluginConfig
 }
