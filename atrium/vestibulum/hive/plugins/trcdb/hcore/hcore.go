@@ -9,15 +9,11 @@ import (
 	"log"
 	"os"
 
-	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
-	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
-	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
-	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 )
 
 var configContext *tccore.ConfigContext
@@ -178,13 +174,55 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
+// ProcessFlowController - override to provide a custom flow controller.  You will need a custom
+// flow controller if you define any additional flows other than the default flows:
+// 1. DataFlowStatConfigurationsFlow
+func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+	switch tfContext.GetFlowName() {
+	case "ArgosSocii":
+		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+	}
+	return errors.New("Flow not implemented: " + tfContext.GetFlowName())
+}
+
+// GetDatabaseName - returns a name to be used by TrcDb.
+func GetDatabaseName() string {
+	return "TrcDb"
+}
+
+func GetFlowMachineTemplates() map[string]interface{} {
+	flowMachineTemplates := map[string]interface{}{}
+	flowMachineTemplates["templatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+	}
+	return flowMachineTemplates
+}
+
+func GetBusinessFlows() []flowcore.FlowNameType {
+	return []flowcore.FlowNameType{}
+}
+
+func GetTestFlows() []flowcore.FlowNameType {
+	return []flowcore.FlowNameType{}
+}
+
+func GetTestFlowsByState(teststate string) []flowcore.FlowNameType {
+	return []flowcore.FlowNameType{}
+}
+
+func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
+	return nil
+}
+
 func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
-	pluginConfig := flowopts.BuildOptions.GetFlowMachineTemplates()
+	pluginConfig := GetFlowMachineTemplates()
 
 	return &flowcore.FlowMachineInitContext{
-		GetFlowMachineTemplates:     flowopts.BuildOptions.GetFlowMachineTemplates,
+		GetFlowMachineTemplates:     GetFlowMachineTemplates,
 		FlowMachineInterfaceConfigs: map[string]interface{}{},
-		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+		GetDatabaseName:             GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {
@@ -198,11 +236,11 @@ func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitConte
 			}
 			return tableFlows
 		},
-		GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
-		GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
-		GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
-		FlowController:      flowopts.BuildOptions.ProcessFlowController,
-		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
+		GetBusinessFlows:    GetBusinessFlows,
+		GetTestFlows:        GetTestFlows,
+		GetTestFlowsByState: GetTestFlowsByState,
+		FlowController:      ProcessFlowController,
+		TestFlowController:  TestFlowController,
 	}
 }
 
@@ -228,7 +266,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
-	if _, ok := (*properties)[flow.HARBINGER_INTERFACE_CONFIG]; !ok {
+	if _, ok := (*properties)[flowcore.HARBINGER_INTERFACE_CONFIG]; !ok {
 		fmt.Println("Missing common config components")
 		return
 	}

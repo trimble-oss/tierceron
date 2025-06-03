@@ -110,19 +110,21 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 func BuildTableGrant(tableName string) (string, error) {
 	switch tableName {
 	case "DataFlowStatistics":
-		//	return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil
+		fallthrough
+	case "ArgosSocii":
+		return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil
 	}
 	return "", errors.New("use default grant")
 }
 
 func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) {
-	// TODO: Add notification that table grant has been provided.
+	trcTfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
 	if tableName == "DataFlowStatistics" {
-		// if registerEnterpriseFlowContext, refOk := tfmContext.FlowMap[flowcore.FlowNameType("EnterpriseRegistrations")]; refOk {
-		// 	go func(refContext flowcore.FlowContext) {
-		// 		refContext.ContextNotifyChan <- true
-		// 	}(registerEnterpriseFlowContext)
-		// }
+		if dfsFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType("DataFlowStatistics")]; refOk {
+			go func(refContext *trcflowcore.TrcFlowContext) {
+				refContext.ContextNotifyChan <- true
+			}(dfsFlowContext)
+		}
 	}
 }
 

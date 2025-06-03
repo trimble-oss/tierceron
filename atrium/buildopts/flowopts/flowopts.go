@@ -65,8 +65,9 @@ func GetFlowDatabaseName() string {
 func GetFlowMachineTemplates() map[string]interface{} {
 	pluginConfig := map[string]interface{}{}
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",            // implemented.
-		"trc_templates/TenantDatabase/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
 	}
 	return pluginConfig
 }
