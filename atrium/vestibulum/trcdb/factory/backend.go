@@ -279,8 +279,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		}
 		logger.Println("Finished selective locks.")
 	}
-
-	tokenCache := cache.NewTokenCache("config_token_unrestricted", eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+	tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
 
 	go func(pec map[string]interface{}, l *log.Logger) {
 		if prod.IsProd() {
@@ -310,7 +309,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			FlowController:      flowopts.BuildOptions.ProcessFlowController,
 			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 		}
-		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, "config_token_unrestricted", l)
+		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), l)
 		if driverConfigErr != nil {
 			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], driverConfigErr.Error())
 		}
