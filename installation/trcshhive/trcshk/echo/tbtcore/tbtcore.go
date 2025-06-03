@@ -14,7 +14,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/trimble-oss/tierceron/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
 	echocore "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/echocore"
 	tbtapi "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/tbtcore/tbtapi"

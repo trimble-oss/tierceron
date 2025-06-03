@@ -21,6 +21,6 @@ depend:
 clean:
 	rm -f bin
 
-pluginspiralis:
+spiralis:
 	go build -buildmode=plugin -trimpath -o="./spiralis.so" -tags "tc azrcr memonly kernel" trcspiralis.go
 
