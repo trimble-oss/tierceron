@@ -9,16 +9,11 @@ trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=SpiralDataba
 ```
 
 # Create initial flow
-INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("DataFlowStatistics");
-update TierceronFlow set state=1 where flowName='DataFlowStatistics'
+INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("ArgosSocii");
+update TierceronFlow set state=1 where flowName='ArgosSocii'
 
 
-# Adding a Table
-This is more complicated than I'd like at the moment.  Add templates 
-to atrium/buildopts/flowopts,testopts/flowopts,testopts.go and buildopts/buildoptsfunc.go 
-Wire in the flow handler code in flowopts.ProcessFlowController (TODO/Chewbacca)
-
-# Examples:
+# Examples data for ArgosSocii
 Proiectum:
     Fabrica Navis
         Servitium:

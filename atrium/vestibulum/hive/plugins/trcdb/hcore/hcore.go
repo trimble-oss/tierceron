@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	argossocii "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/flows/argossocii"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -180,9 +181,12 @@ func GetConfigPaths(pluginName string) []string {
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	switch tfContext.GetFlowName() {
 	case "ArgosSocii":
-		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
+	default:
+		return errors.New("Flow not implemented: " + tfContext.GetFlowName())
 	}
-	return errors.New("Flow not implemented: " + tfContext.GetFlowName())
+
+	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 }
 
 // GetDatabaseName - returns a name to be used by TrcDb.
