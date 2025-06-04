@@ -61,16 +61,21 @@ trcx -env=dev -token=$VAULT_TOKEN -restricted=SpiralDatabase -serviceFilter=conf
 
 ```
 trcinit -env=dev -token=$VAULT_TOKEN  -addr=$VAULT_ADDR -restricted=SpiralDatabase
-
 ```
 
 # Trcdb default table initialization
+Generate the default table and flow: DataFlowStatistics
 
-INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("DataFlowStatistics");
-
+```
 trcinit -indexed=TrcDb
+INSERT IGNORE INTO TierceronFlow(flowName) VALUES ("DataFlowStatistics");
+```
 
 In order to extract data flow statistic data to seed files, run the following:
 ```
 trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -dynamicPath=PublicIndex/TrcDb/argosId/%s/DataFlowStatistics/DataFlowGroup/%s/dataFlowName/%s/%s
 ```
+
+# Adding additional table flows
+Adding other table and business flows is as simple as creating and
+pubbing the templates (table schema), initializing the default values for these templates (via trcx/trcinit), and inserting a row into TierceronFlow.  You'll also need to provide some default table processing code.  You can find an example with ArgosSocii in the default/example trcdb plugin.  Tables can be managed in this way from any directory containing properly named project/service templates where project is the database name and service is the name of the table you want to add.
