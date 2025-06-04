@@ -161,8 +161,73 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	return nil
 }
 
+func ColumnTypeConverter(fnt flowcore.FlowColumnType) sqle.Type {
+	switch fnt {
+	case flowcore.TinyText:
+		return sqle.TinyText
+	case flowcore.Text:
+		return sqle.Text
+	case flowcore.MediumText:
+		return sqle.MediumText
+	case flowcore.LongText:
+		return sqle.LongText
+	case flowcore.TinyBlob:
+		return sqle.TinyBlob
+	case flowcore.Blob:
+		return sqle.MediumText
+	case flowcore.MediumBlob:
+		return sqle.MediumBlob
+	case flowcore.LongBlob:
+		return sqle.LongBlob
+	case flowcore.Int8:
+		return sqle.Int8
+	case flowcore.Uint8:
+		return sqle.Uint8
+	case flowcore.Int16:
+		return sqle.Int16
+	case flowcore.Uint16:
+		return sqle.Uint16
+	case flowcore.Int24:
+		return sqle.Int24
+	case flowcore.Uint24:
+		return sqle.Uint24
+	case flowcore.Int32:
+		return sqle.Int32
+	case flowcore.Uint32:
+		return sqle.Uint32
+	case flowcore.Int64:
+		return sqle.Int64
+	case flowcore.Uint64:
+		return sqle.Uint64
+	case flowcore.Float32:
+		return sqle.Float32
+	case flowcore.Float64:
+		return sqle.Float64
+	case flowcore.Timestamp:
+		return sqle.Timestamp
+	}
+	return sqle.Text
+}
+
 func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI interface{}, tcflowContext flowcore.FlowContext) {
-	tableSchema := tableSchemaI.(sqle.PrimaryKeySchema)
+	var tableSchema sqle.PrimaryKeySchema
+	if metaSchema, ok := tableSchemaI.([]flowcore.FlowColumn); ok {
+		schema := sqle.Schema{}
+		for _, col := range metaSchema {
+			schema = append(schema, &sqle.Column{
+				Name:       col.Name,
+				Type:       ColumnTypeConverter(col.Type),
+				Source:     col.Source,
+				PrimaryKey: col.PrimaryKey})
+		}
+		tableSchema = sqle.NewPrimaryKeySchema(schema)
+	} else if metaSchema, ok := tableSchemaI.(sqle.PrimaryKeySchema); ok {
+		tableSchema = metaSchema
+	} else {
+		tfmContext.Log("Could not add table schema.  Invalid type: "+fmt.Sprintf("%T", tableSchemaI), nil)
+		return
+	}
+
 	tfContext := tcflowContext.(*TrcFlowContext)
 	tableName := tfContext.Flow.TableName()
 	// Create table if necessary.

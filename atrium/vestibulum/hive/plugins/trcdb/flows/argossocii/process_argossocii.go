@@ -5,14 +5,7 @@ import (
 	"strings"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-
-	sqle "github.com/dolthub/go-mysql-server/sql"
 )
-
-const flowGroupName = "System"
-
-var refresh = false
-var endRefreshChan = make(chan bool, 1)
 
 func getIndexColumnNames() []string {
 	return []string{"argosId"}
@@ -26,35 +19,14 @@ func getIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, in
 	return "", errors.New("could not find argossocii index")
 }
 
-func GetDataFlowUpdateTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
-	return `CREATE TRIGGER trcUpdateTrigger_` + tableName + ` AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
-		` END;`
-}
-
-func GetDataFlowInsertTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
-	return `CREATE TRIGGER trcInsertTrigger_` + tableName + ` AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
-		` END;`
-}
-
-func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
-	return `CREATE TRIGGER trcDeleteTrigger_` + tableName + ` AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,current_timestamp());` +
-		` END;`
-}
-
 func getSchema(tableName string) interface{} {
-	return sqle.NewPrimaryKeySchema(sqle.Schema{
-		{Name: "argosId", Type: sqle.Text, Source: tableName, PrimaryKey: true},
-		{Name: "argosIdentitasNomen", Type: sqle.Text, Source: tableName},
-		{Name: "argosProiectum", Type: sqle.Text, Source: tableName},
-		{Name: "argosServitium", Type: sqle.Text, Source: tableName, PrimaryKey: true},
-		{Name: "argosNotitia", Type: sqle.Text, Source: tableName},
-	})
+	return []flowcore.FlowColumn{
+		{Name: "argosId", Type: flowcore.Text, Source: tableName, PrimaryKey: true},
+		{Name: "argosIdentitasNomen", Type: flowcore.Text, Source: tableName},
+		{Name: "argosProiectum", Type: flowcore.Text, Source: tableName},
+		{Name: "argosServitium", Type: flowcore.Text, Source: tableName},
+		{Name: "argosNotitia", Type: flowcore.Text, Source: tableName},
+	}
 }
 
 func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
@@ -88,6 +60,7 @@ func getInsertUpdateById(argosId string, data map[string]interface{}, dbName str
 	}
 	return sqlstr
 }
+
 func GetProcessFlowDefinition() *flowcore.FlowDefinitionContext {
 	return &flowcore.FlowDefinitionContext{
 		GetTableConfigurationById:   nil, //not pulling from remote
