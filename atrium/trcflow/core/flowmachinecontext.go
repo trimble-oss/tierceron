@@ -78,6 +78,16 @@ func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNa
 
 }
 
+func (tfmContext *TrcFlowMachineContext) GetTrcFlowContext(flowName flowcore.FlowNameType) *TrcFlowContext {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
+	if flowContext, refOk := tfmContext.FlowMap[flowName]; refOk {
+		return flowContext
+	} else {
+		return nil
+	}
+}
+
 func (tfmContext *TrcFlowMachineContext) GetDatabaseName() string {
 	return tfmContext.TierceronEngine.Database.Name()
 }
