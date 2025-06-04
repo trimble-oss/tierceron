@@ -460,7 +460,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 			tfmContext.ProcessFlow(
 				&tfContext,
-				flowopts.BuildOptions.ProcessFlowController,
+				flowMachineInitContext.FlowController,
 				vaultDatabaseConfig, // unused.
 				sourceDatabaseConnectionsMap,
 				enhancementFlow,
