@@ -11,6 +11,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	argossocii "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/flows/argossocii"
+	"github.com/trimble-oss/tierceron/buildopts/core"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -189,17 +190,12 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 }
 
-// GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return "TrcDb"
-}
-
 func GetFlowMachineTemplates() map[string]interface{} {
 	flowMachineTemplates := map[string]interface{}{}
 	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                     // implemented.
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()), // implemented.
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),                 // implemented.
 	}
 	return flowMachineTemplates
 }
@@ -226,7 +222,7 @@ func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitConte
 	return &flowcore.FlowMachineInitContext{
 		GetFlowMachineTemplates:     GetFlowMachineTemplates,
 		FlowMachineInterfaceConfigs: map[string]interface{}{},
-		GetDatabaseName:             GetDatabaseName,
+		GetDatabaseName:             core.GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {

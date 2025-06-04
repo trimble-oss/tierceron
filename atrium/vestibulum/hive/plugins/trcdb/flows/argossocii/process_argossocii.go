@@ -5,9 +5,6 @@ import (
 	"strings"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
-	"github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
@@ -19,6 +16,10 @@ var endRefreshChan = make(chan bool, 1)
 
 func getIndexColumnNames() []string {
 	return []string{"argosId"}
+}
+
+func getFlowIndexComplex() (string, []string, string, error) {
+	return "argosId", nil, "", nil
 }
 
 func getIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
@@ -82,41 +83,19 @@ func getInsertUpdateById(argosId string, data map[string]interface{}, dbName str
 			`','` + data["argosServitium"].(string) + `','` + data["argosServitium"].(string) +
 			`','` + data["argosNotitia"].(string) + `','` + data["argosNotitia"].(string) + `')` +
 			` ON DUPLICATE KEY UPDATE ` +
-			`argosId=VALUES(argosId),argosIdentitasNomen= VALUES(argosIdentitasNomen),argosProiectum = VALUES(argosProiectum),argosServitium = VALUES(argosServitium),argosNotitia = VALUES(argosNotitia)`,
+			`argosId = VALUES(argosId),argosIdentitasNomen = VALUES(argosIdentitasNomen),argosProiectum = VALUES(argosProiectum),argosServitium = VALUES(argosServitium),argosNotitia = VALUES(argosNotitia)`,
 		"TrcChangeId": []string{data["flowName"].(string), argosId, data["stateCode"].(string)},
 	}
 	return sqlstr
 }
-
-func CreateTableTriggers(tfmContextI flowcore.FlowMachineContext, tfContextI flowcore.FlowContext) {
-	tfmContext := tfmContextI.(*core.TrcFlowMachineContext)
-	tfContext := tfContextI.(*core.TrcFlowContext)
-	tfmContext.GetTableModifierLock().Lock()
-	changeTableName := tfContext.Flow.TableName() + "_Changes"
-	tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
-	changeTableErr := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
-		{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
-		{Name: flowcoreopts.DataflowTestStateCodeColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
-		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
-	}),
-		trcflowcore.TableCollationIdGen(changeTableName),
-	)
-	if changeTableErr != nil {
-		tfmContext.Log("Error creating dfs change table", changeTableErr)
-	}
-	tfmContext.CreateDataFlowTableTriggers(tfContext, flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn, GetDataFlowInsertTrigger, GetDataFlowUpdateTrigger, GetDataFlowDeleteTrigger)
-	tfmContext.GetTableModifierLock().Unlock()
-}
-
 func GetProcessFlowDefinition() *flowcore.FlowDefinitionContext {
 	return &flowcore.FlowDefinitionContext{
-		GetTableConfigurationById:   nil,                 //not pulling from remote
-		GetTableConfigurations:      nil,                 //not pulling from remote
-		CreateTableTriggers:         CreateTableTriggers, // TODO: Bifurcate.
-		GetTableMap:                 nil,                 //not pulling from remote
-		GetTableFromMap:             nil,                 //not pulling from remote
-		GetFilterFieldFromConfig:    nil,                 //not pushing remote
+		GetTableConfigurationById:   nil, //not pulling from remote
+		GetTableConfigurations:      nil, //not pulling from remote
+		CreateTableTriggers:         nil, // use default provided by tierceron.
+		GetTableMap:                 nil, //not pulling from remote
+		GetTableFromMap:             nil, //not pulling from remote
+		GetFilterFieldFromConfig:    nil, //not pushing remote
 		GetTableMapFromArray:        getTableMapFromArray,
 		GetTableConfigurationInsert: getTableConfigurationInsertUpdate,
 		GetTableConfigurationUpdate: getTableConfigurationInsertUpdate,
@@ -124,5 +103,6 @@ func GetProcessFlowDefinition() *flowcore.FlowDefinitionContext {
 		GetTableSchema:              getSchema,
 		GetIndexedPathExt:           getIndexedPathExt,
 		GetTableIndexColumnNames:    getIndexColumnNames,
+		GetFlowIndexComplex:         getFlowIndexComplex,
 	}
 }
