@@ -508,8 +508,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 					return "", nil, "", errors.New("not implemented")
 				}
 			} else {
-				if tfContext.GetFlowDefinitionContext() != nil {
-					return tfContext.GetFlowDefinitionContext().GetFlowIndexComplex()
+				if flowDefinitionContext := tfCtx.GetFlowDefinitionContext(); flowDefinitionContext != nil && flowDefinitionContext.GetFlowIndexComplex != nil {
+					return flowDefinitionContext.GetFlowIndexComplex()
 				} else {
 					return coreopts.BuildOptions.FindIndexForService(tfCtx.FlowSource, tfCtx.Flow.ServiceName())
 				}
