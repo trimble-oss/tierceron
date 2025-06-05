@@ -18,7 +18,8 @@ import (
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/dataflowstatistics"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -424,7 +425,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					switch flowcore.FlowNameType(tfContext.GetFlowName()) {
 					case trcflowcore.DataFlowStatConfigurationsFlow:
 						// DFS flow always handled internally.
-						return flows.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+					case trcflowcore.ArgossoiciiFlow:
+						tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
+						return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 					default:
 						return flowMachineInitContext.FlowController(tfmContext, tfContext)
 					}

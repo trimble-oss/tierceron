@@ -9,7 +9,8 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/dataflowstatistics"
 	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
@@ -53,7 +54,10 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	trcFlowContext := tfContext.(*trcflowcore.TrcFlowContext)
 	switch trcFlowContext.Flow {
 	case trcflowcore.DataFlowStatConfigurationsFlow:
-		return flows.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+		return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+	case trcflowcore.ArgossoiciiFlow:
+		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
+		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 	}
 	return errors.New("flow not implemented")
 }
