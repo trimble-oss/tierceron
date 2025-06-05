@@ -13,6 +13,7 @@ import (
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
+	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
@@ -499,7 +500,22 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		tfContext.GoMod.Env = tfmContext.Env
 		tfContext.GoMod.Version = "0"
 
-		index, secondaryI, indexExt, indexErr := coreopts.BuildOptions.FindIndexForService(tfContext.FlowSource, tfContext.Flow.ServiceName())
+		index, secondaryI, indexExt, indexErr := func(tfCtx *TrcFlowContext) (string, []string, string, error) {
+			if tfCtx.FlowSource == flowcorehelper.TierceronFlowDB {
+				if tfCtx.Flow.ServiceName() == flowcorehelper.TierceronFlowConfigurationTableName {
+					return "flowName", nil, "", nil
+				} else {
+					return "", nil, "", errors.New("not implemented")
+				}
+			} else {
+				if tfContext.GetFlowDefinitionContext() != nil {
+					return tfContext.GetFlowDefinitionContext().GetFlowIndexComplex()
+				} else {
+					return coreopts.BuildOptions.FindIndexForService(tfCtx.FlowSource, tfCtx.Flow.ServiceName())
+				}
+			}
+		}(tfContext)
+
 		if indexErr == nil && index != "" {
 			tfContext.GoMod.SectionName = index
 			secondaryIndexes = secondaryI
