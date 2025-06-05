@@ -19,6 +19,8 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
+
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
@@ -78,7 +80,6 @@ func InitKernel(id string) *PluginHandler {
 	globalCertCache = &certCache
 	deployRestart := make(chan string)
 	pluginRestart := make(chan core.KernelCmd)
-	trcdbChan := make(chan *core.TrcdbExchange)
 	chatReceiverChan := make(chan *core.ChatMsg)
 
 	return &PluginHandler{
@@ -87,7 +88,6 @@ func InitKernel(id string) *PluginHandler {
 		State:    0,
 		Services: &pluginMap,
 		ConfigContext: &core.ConfigContext{
-			TrcdbChan:        &trcdbChan,
 			ChatReceiverChan: &chatReceiverChan,
 		},
 		KernelCtx: &KernelCtx{
@@ -378,7 +378,6 @@ func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.Dr
 			ConfigContext: &core.ConfigContext{
 				Log:              driverConfig.CoreConfig.Log,
 				ChatReceiverChan: pH.ConfigContext.ChatReceiverChan,
-				TrcdbChan:        pH.ConfigContext.TrcdbChan,
 			},
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
@@ -782,6 +781,18 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
+			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+				trcdbQueryChan := make(chan *core.TrcdbExchange)
+				pluginHandler.ConfigContext.TrcdbQueryChan = &trcdbQueryChan
+
+				trcdbResponseChan := make(chan *core.TrcdbExchange)
+				pluginHandler.ConfigContext.TrcdbResponseChan = &trcdbResponseChan
+
+				chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.TRCDB_CHANNEL] = pluginHandler.ConfigContext.TrcdbResponseChan
+
+				chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.TRCDB_CHANNEL] = pluginHandler.ConfigContext.TrcdbQueryChan
+			}
+
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
@@ -850,6 +861,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			return
 		} else {
 			pluginHandler.ServiceResource = tfmContext
+			go pluginHandler.processTrcdb(driverConfig)
 		}
 	}
 }
@@ -1158,26 +1170,63 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 	}
 }
 
-func (pluginHandler *PluginHandler) ProcessTrcdb(driverConfig *config.DriverConfig) {
-	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Trcdb processing not supported for plugin: %s\n", pluginHandler.Name)
+func (pH *PluginHandler) processTrcdb(driverConfig *config.DriverConfig) {
+	driverConfig.CoreConfig.Log.Printf("Setting up Trcdb Exchange handling for %s\n", pH.Name)
+	var tfmCtx *flowcore.TrcFlowMachineContext
+	if tfm, ok := pH.ServiceResource.(*flowcore.TrcFlowMachineContext); ok && tfmCtx != nil {
+		tfmCtx = tfm
+	} else {
+		driverConfig.CoreConfig.Log.Println("No flow context available to process TrcdbExchange query.")
 		return
+	}
+	for {
+		exchange := <-*pH.ConfigContext.TrcdbQueryChan
+		if exchange == nil {
+			driverConfig.CoreConfig.Log.Println("Invalid TrcdbExchange received, shutting down Trcdb processing.")
+			continue
+		}
+		driverConfig.CoreConfig.Log.Printf("Processing TrcdbExchange query for: %s\n", pH.Name)
+		var flowLocks []*sync.Mutex
+		for _, f := range exchange.Flows {
+			tfCtx := tfmCtx.GetTrcFlowContext(flow.FlowNameType(f))
+			if tfCtx != nil && tfCtx.QueryLock != nil {
+				flowLocks = append(flowLocks, tfCtx.QueryLock)
+			} else {
+				driverConfig.CoreConfig.Log.Printf("No flow context available for flow: %s\n", f)
+				continue
+			}
+		}
+		_, columns, matrix, err := trcdb.Query(tfmCtx.TierceronEngine, exchange.Query, flowLocks...)
+		if err != nil {
+			driverConfig.CoreConfig.Log.Printf("Error processing TrcdbExchange query: %s\n", err)
+			// Send error response back to trcdb?
+			*pH.ConfigContext.TrcdbResponseChan <- exchange
+			continue
+		}
+		response := processResponse(columns, matrix)
+		exchange.Response = response
+		*pH.ConfigContext.TrcdbResponseChan <- exchange
+		driverConfig.CoreConfig.Log.Printf("Processed TrcdbExchange query for %s\n", pH.Name)
+	}
+}
+
+func processResponse(columns []string, matrix [][]interface{}) core.TrcdbResponse {
+	response := core.TrcdbResponse{
+		Columns: []*string{},
+		Rows:    []map[string]interface{}{},
 	}
 
-	if pluginHandler.ServiceResource == nil {
-		driverConfig.CoreConfig.Log.Println("No service resource available to process TrcdbExchange query.")
-		return
+	for _, col := range columns {
+		response.Columns = append(response.Columns, &col)
 	}
-	//IN PROGRESS
-	// if tfmCtx, ok := pluginHandler.ServiceResource.(*flowcore.TrcFlowMachineContext); ok && tfmCtx != nil {
-	// 	if tfCtx, ok := tfmCtx.GetFlowContext(trcdbExchange.FlowName); ok && tfCtx != nil {
-	// 		trcdb.Query(tfmCtx.TierceronEngine, trcdbExchange.Query, tfCtx.FlowLock)
-	// 	} else {
-	// 		driverConfig.CoreConfig.Log.Printf("No flow context available for flow: %s\n", trcdbExchange.FlowName)
-	// 		return
-	// 	}
-	// } else {
-	// 	driverConfig.CoreConfig.Log.Println("No flow context available to process TrcdbExchange query.")
-	// 	return
-	// }
+
+	for _, row := range matrix {
+		responseRow := make(map[string]interface{})
+		for i, col := range columns {
+			responseRow[col] = row[i]
+		}
+		response.Rows = append(response.Rows, responseRow)
+	}
+
+	return response
 }

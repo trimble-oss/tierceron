@@ -7,6 +7,7 @@ import (
 	"io"
 
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
+	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
 // SetLogger is called by TrcDb and other utilities to provide the extensions
@@ -69,7 +70,7 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{
 
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
 		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
 	}
 
@@ -132,8 +133,8 @@ func GetTestDeployConfig(tokenPtr *string) map[string]interface{} {
 func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
 	pluginEnvConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),
 	}
 	pluginEnvConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",
@@ -184,7 +185,7 @@ func GetExtensionAuthComponents(config map[string]interface{}) map[string]interf
 // false if not, and an error if an error occurs.
 // The web interface is not presently maintained.
 func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
-	return false, "", errors.New("Not implemented")
+	return false, "", errors.New("not implemented")
 }
 
 // CheckMemLock - override to provide a custom mem lock check function.

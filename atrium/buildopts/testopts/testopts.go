@@ -1,7 +1,10 @@
 package testopts
 
 import (
+	"fmt"
+
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
 func GetAdditionalTestFlows() []flowcore.FlowNameType {
@@ -28,8 +31,8 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{
 	// Main controller flow definition, but also other flows defined here.
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),
 	}
 
 	// Service connection configurations defined here.

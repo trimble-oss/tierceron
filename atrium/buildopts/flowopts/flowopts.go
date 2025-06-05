@@ -3,12 +3,14 @@ package flowopts
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows"
+	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
 // AllowTrcdbInterfaceOverride - by default trcdb plugins cannot expose
@@ -65,9 +67,9 @@ func GetFlowDatabaseName() string {
 func GetFlowMachineTemplates() map[string]interface{} {
 	pluginConfig := map[string]interface{}{}
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                     // implemented.
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()), // implemented.
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),                 // implemented.
 	}
 	return pluginConfig
 }

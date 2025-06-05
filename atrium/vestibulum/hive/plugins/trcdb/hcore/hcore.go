@@ -189,7 +189,6 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 }
 
-// GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
 	return "TrcDb"
 }
@@ -197,9 +196,9 @@ func GetDatabaseName() string {
 func GetFlowMachineTemplates() map[string]interface{} {
 	flowMachineTemplates := map[string]interface{}{}
 	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                // implemented.
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDatabaseName()), // implemented.
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", GetDatabaseName()),                 // implemented.
 	}
 	return flowMachineTemplates
 }

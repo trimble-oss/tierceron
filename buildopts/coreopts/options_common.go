@@ -122,7 +122,7 @@ func GetUserCodeField() string {
 // Override to provide a map of active sessions by querying the provided database connection.
 // Used to provide active sessions in the web interface -- not maintained..
 func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
-	return nil, errors.New("Not implemented")
+	return nil, errors.New("not implemented")
 }
 
 // FindIndexForService - override to provide a custom index for a given service.  This should return
@@ -133,10 +133,10 @@ func FindIndexForService(project string, service string) (string, []string, stri
 		if service == flowcorehelper.TierceronFlowConfigurationTableName {
 			return "flowName", nil, "", nil
 		} else {
-			return "", nil, "", errors.New("Not implemented")
+			return "", nil, "", errors.New("not implemented")
 		}
 	} else {
-		return "", nil, "", errors.New("Not implemented")
+		return "", nil, "", errors.New("not implemented")
 	}
 }
 
