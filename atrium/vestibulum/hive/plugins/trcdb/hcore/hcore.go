@@ -190,15 +190,19 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 }
 
 func GetDatabaseName() string {
-	return "TrcDb"
+	return "Trcdb"
+}
+
+func GetDbProject() string {
+	return "Trcdb"
 }
 
 func GetFlowMachineTemplates() map[string]interface{} {
 	flowMachineTemplates := map[string]interface{}{}
 	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                // implemented.
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDatabaseName()), // implemented.
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", GetDatabaseName()),                 // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                             // implemented.
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDbProject()), // implemented.
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", GetDbProject()),                 // implemented.
 	}
 	return flowMachineTemplates
 }
