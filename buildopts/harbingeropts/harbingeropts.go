@@ -56,6 +56,10 @@ func GetDatabaseName() string {
 	return "TrcDb"
 }
 
+func IsValidProjectName(project string) bool {
+	return project != "" && !strings.HasPrefix(project, "TrcVault") && !strings.HasPrefix(project, "Vault") && !strings.HasPrefix(project, "TrcDb") && !strings.HasPrefix(project, "FlumeDatabase") && !strings.HasPrefix(project, "Azure")
+}
+
 func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]interface{}, error) {
 	schema, r, queryErr := engine.Query(ctx, query)
 	if queryErr != nil {
@@ -403,6 +407,8 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 												_, _, _, queryErr = engineQuery(engine, ctx, fmt.Sprintf(grant, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string), cidrBlock))
 											} else if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 3 {
 												_, _, _, queryErr = engineQuery(engine, ctx, fmt.Sprintf(grant, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string)))
+											} else if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 0 {
+												_, _, _, queryErr = engineQuery(engine, ctx, grant)
 											} else {
 												queryErr = errors.New("unexpected grant format")
 											}
