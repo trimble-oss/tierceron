@@ -190,11 +190,11 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 }
 
 func GetDatabaseName() string {
-	return "Trcdb"
+	return "TrcDb"
 }
 
 func GetDbProject() string {
-	return "Trcdb"
+	return "TrcDb"
 }
 
 func GetFlowMachineTemplates() map[string]interface{} {

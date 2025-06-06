@@ -359,8 +359,18 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 									} else if strings.Contains(tableN, flowcorehelper.TierceronFlowConfigurationTableName) {
 										_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
 									} else {
+										var grant string
+										var grantErr error
+										if flow := tfmContext.GetFlowContext(flowcore.FlowNameType(tableN)); flow != nil {
+											if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableGrant != nil {
+												grant, grantErr = flow.GetFlowDefinitionContext().GetTableGrant(tableN)
+											}
+										}
+										if len(grant) == 0 {
+											grant, grantErr = BuildOptions.BuildTableGrant(tableN)
+										}
 										// Override the default grant when provided.
-										if grant, err := BuildOptions.BuildTableGrant(tableN); err == nil {
+										if grantErr == nil {
 											if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 4 {
 												_, _, _, queryErr = engineQuery(engine, ctx, fmt.Sprintf(grant, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string), cidrBlock))
 											} else if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 3 {
@@ -369,10 +379,10 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 												queryErr = errors.New("unexpected grant format")
 											}
 										} else {
-											if err.Error() == "use default grant" {
+											if grantErr.Error() == "use default grant" {
 												_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE,DELETE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
 											} else {
-												queryErr = err
+												queryErr = grantErr
 											}
 										}
 									}

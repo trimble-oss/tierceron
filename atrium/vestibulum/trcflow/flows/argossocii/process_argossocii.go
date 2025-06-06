@@ -39,6 +39,10 @@ func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
 	return m
 }
 
+func getTableGrant(tableName string) (string, error) {
+	return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil // database.table to user@cidr
+}
+
 func getTableConfigurationInsertUpdate(data map[string]interface{}, dbName string, tableName string) map[string]interface{} {
 	argosId := data["argosId"].(string)
 	argosId = strings.ReplaceAll(argosId, "/", "")
@@ -76,6 +80,7 @@ func GetProcessFlowDefinition() *flowcore.FlowDefinitionContext {
 		GetTableSchema:              getSchema,
 		GetIndexedPathExt:           getIndexedPathExt,
 		GetTableIndexColumnNames:    getIndexColumnNames,
+		GetTableGrant:               getTableGrant,
 		GetFlowIndexComplex:         getFlowIndexComplex,
 	}
 }
