@@ -54,10 +54,10 @@ func getInsertUpdateById(argosId string, data map[string]interface{}, dbName str
 	sqlstr := map[string]interface{}{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(argosId, argosIdentitasNomen, argosProiectum, argosServitium, argosNotitia) VALUES ('` +
 			argosId + `','` +
-			data["argosIdentitasNomen"].(string) + `','` + data["argosIdentitasNomen"].(string) +
-			`','` + data["argosProiectum"].(string) + `','` + data["argosProiectum"].(string) +
-			`','` + data["argosServitium"].(string) + `','` + data["argosServitium"].(string) +
-			`','` + data["argosNotitia"].(string) + `','` + data["argosNotitia"].(string) + `')` +
+			data["argosIdentitasNomen"].(string) + `','` +
+			data["argosProiectum"].(string) + `','` +
+			data["argosServitium"].(string) + `','` +
+			data["argosNotitia"].(string) + `')` +
 			` ON DUPLICATE KEY UPDATE ` +
 			`argosId = VALUES(argosId),argosIdentitasNomen = VALUES(argosIdentitasNomen),argosProiectum = VALUES(argosProiectum),argosServitium = VALUES(argosServitium),argosNotitia = VALUES(argosNotitia)`,
 		"TrcChangeId": []string{argosId},

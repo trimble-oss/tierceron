@@ -530,7 +530,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 	argosId := 0
 	if err == nil && projectValues != nil {
 		for _, projectValue := range projectValues.Data["keys"].([]interface{}) {
-			if project := projectValue.(string); project != "" {
+			if project := projectValue.(string); harbingeropts.BuildOptions.IsValidProjectName(project) {
 				project = strings.TrimSuffix(project, "/")
 				serviceValues, err := goMod.List(fmt.Sprintf("templates/%s", project), driverConfig.CoreConfig.Log)
 				if err == nil && serviceValues != nil {
