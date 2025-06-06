@@ -1,4 +1,4 @@
-package flows
+package argossocii
 
 import (
 	"errors"
@@ -29,10 +29,6 @@ func getSchema(tableName string) interface{} {
 	}
 }
 
-func getTableGrant(tableName string) (string, string, error) {
-	return "SELECT", "%s", nil
-}
-
 func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
 	m := make(map[string]interface{})
 	m["argosId"] = dfs[0]
@@ -41,6 +37,10 @@ func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
 	m["argosServitium"] = dfs[3]
 	m["argosNotitia"] = dfs[4]
 	return m
+}
+
+func getTableGrant(tableName string) (string, string, error) {
+	return "SELECT", "%s", nil // database.table to user@cidr
 }
 
 func getTableConfigurationInsertUpdate(data map[string]interface{}, dbName string, tableName string) map[string]interface{} {

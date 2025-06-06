@@ -19,6 +19,7 @@ import (
 )
 
 var DataFlowStatConfigurationsFlow flowcore.FlowNameType = "DataFlowStatistics"
+var ArgossoiciiFlow flowcore.FlowNameType = "Argossocii"
 var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
 
 var signalChannel chan os.Signal

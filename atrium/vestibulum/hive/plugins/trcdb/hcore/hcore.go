@@ -193,12 +193,16 @@ func GetDatabaseName() string {
 	return "TrcDb"
 }
 
+func GetDbProject() string {
+	return "TrcDb"
+}
+
 func GetFlowMachineTemplates() map[string]interface{} {
 	flowMachineTemplates := map[string]interface{}{}
 	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                // implemented.
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDatabaseName()), // implemented.
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", GetDatabaseName()),                 // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                             // implemented.
+		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDbProject()), // implemented.
+		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", GetDbProject()),                 // implemented.
 	}
 	return flowMachineTemplates
 }
