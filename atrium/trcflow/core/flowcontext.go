@@ -169,7 +169,7 @@ func (tfContext *TrcFlowContext) GetFlowSourceAlias() string {
 func (tfContext *TrcFlowContext) SetFlowSourceAlias(flowSourceAlias string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
-	tfContext.FlowState.FlowAlias = flowSourceAlias
+	tfContext.FlowSourceAlias = flowSourceAlias
 }
 
 func (tfContext *TrcFlowContext) SetChangeFlowName(changeFlowName string) {
