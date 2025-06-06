@@ -55,7 +55,7 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	switch trcFlowContext.Flow {
 	case trcflowcore.DataFlowStatConfigurationsFlow:
 		return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-	case trcflowcore.ArgossoiciiFlow:
+	case trcflowcore.ArgosSociiFlow:
 		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
 		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 	}

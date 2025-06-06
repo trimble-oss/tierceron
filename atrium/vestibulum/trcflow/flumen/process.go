@@ -94,6 +94,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
 		FlowMapLock:               sync.RWMutex{},
+		FlowControllerUpdateLock:  sync.Mutex{},
+		FlowControllerUpdateAlert: make(chan string, 1),
+		PreloadChan:               make(chan trcflowcore.PermissionUpdate, 1),
+		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]interface{}
@@ -308,6 +312,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		FlowControllerInit:        true,
 		FlowControllerUpdateLock:  sync.Mutex{},
 		FlowControllerUpdateAlert: make(chan string, 1),
+		PreloadChan:               make(chan trcflowcore.PermissionUpdate, 1),
+		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
 	}
 
 	if len(sourceDatabaseConnectionsMap) == 0 {
@@ -418,7 +424,14 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				}
 			}
 			tfContext.FlowSourceAlias = flowMachineInitContext.GetDatabaseName()
-
+			go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
+				for tableLoadedPerm := range tfmContext.PreloadChan {
+					if flowcore.FlowNameType(tableLoadedPerm.TableName) == trcflowcore.ArgosSociiFlow {
+						populateArgosSocii(tfContext.GoMod, driverConfig, tfmContext)
+						break
+					}
+				}
+			}(tfmContext, &tfContext)
 			tfmContext.ProcessFlow(
 				&tfContext,
 				func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
@@ -426,7 +439,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					case trcflowcore.DataFlowStatConfigurationsFlow:
 						// DFS flow always handled internally.
 						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-					case trcflowcore.ArgossoiciiFlow:
+					case trcflowcore.ArgosSociiFlow:
 						tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
 						return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 					default:
@@ -439,43 +452,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				trcflowcore.TableSyncFlow,
 			)
 		}(flowcore.FlowNameType(table.FlowName), &driverConfigBasis)
-	}
-
-	projectValues, err := goMod.List("templates", driverConfig.CoreConfig.Log)
-	argosId := 0
-	if err == nil && projectValues != nil {
-		for _, projectValue := range projectValues.Data["keys"].([]interface{}) {
-			if project := projectValue.(string); project != "" {
-				serviceValues, err := goMod.List(fmt.Sprintf("templates/%s", project), driverConfig.CoreConfig.Log)
-				if err == nil && serviceValues != nil {
-					for _, serviceValue := range serviceValues.Data["keys"].([]interface{}) {
-						if service := serviceValue.(string); service != "" {
-							if !strings.HasSuffix(service, "Build") && !strings.HasSuffix(service, "Cert") {
-								existsData, err := goMod.ReadMetadata(fmt.Sprintf("super-secrets/%s/%s/%s", driverConfig.CoreConfig.EnvBasis, project, service), driverConfig.CoreConfig.Log)
-								if err != nil || len(existsData) == 0 {
-									continue
-								}
-								if flow := tfmContext.GetFlowContext(flowcore.FlowNameType("ArgosSocii")); flow != nil {
-									if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
-										argosId = argosId + 1
-										var data = make(map[string]interface{})
-										data["argosId"] = fmt.Sprintf("%d", argosId)
-										data["argosIdentitasNomen"] = "system"
-										data["argosProiectum"] = project
-										data["argosServitium"] = service
-										data["argosNotitia"] = "Tierceron service"
-
-										flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flowopts.BuildOptions.GetFlowDatabaseName(), trcflowcore.ArgossoiciiFlow.FlowName())
-										tfmContext.CallDBQuery(flow, flowInsertQueryMap, nil, false, "INSERT", nil, "")
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-
-		}
 	}
 
 	for _, businessFlow := range flowMachineInitContext.GetBusinessFlows() {
@@ -546,6 +522,47 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	logger.Println("ProcessFlows complete.")
 	return tfmContext, nil
+}
+
+func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverConfig, tfmContext flowcore.FlowMachineContext) {
+	goMod.Reset()
+	projectValues, err := goMod.List("templates", driverConfig.CoreConfig.Log)
+	argosId := 0
+	if err == nil && projectValues != nil {
+		for _, projectValue := range projectValues.Data["keys"].([]interface{}) {
+			if project := projectValue.(string); project != "" {
+				project = strings.TrimSuffix(project, "/")
+				serviceValues, err := goMod.List(fmt.Sprintf("templates/%s", project), driverConfig.CoreConfig.Log)
+				if err == nil && serviceValues != nil {
+					for _, serviceValue := range serviceValues.Data["keys"].([]interface{}) {
+						if service := serviceValue.(string); service != "" {
+							service = strings.TrimSuffix(service, "/")
+							if !strings.HasSuffix(service, "Build") && !strings.HasSuffix(service, "Cert") {
+								existsData, err := goMod.ReadMetadata(fmt.Sprintf("super-secrets/%s", service), driverConfig.CoreConfig.Log)
+								if err != nil || len(existsData) == 0 || existsData["destroyed"].(bool) || len(existsData["deletion_time"].(string)) > 0 {
+									continue
+								}
+								if flow := tfmContext.GetFlowContext(flowcore.FlowNameType("ArgosSocii")); flow != nil {
+									if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
+										argosId = argosId + 1
+										var data = make(map[string]interface{})
+										data["argosId"] = fmt.Sprintf("%d", argosId)
+										data["argosIdentitasNomen"] = "Jason Aesonides"
+										data["argosProiectum"] = project
+										data["argosServitium"] = service
+										data["argosNotitia"] = "Tierceron service"
+
+										flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flow.GetFlowSourceAlias(), trcflowcore.ArgosSociiFlow.FlowName())
+										tfmContext.CallDBQuery(flow, flowInsertQueryMap, nil, false, "INSERT", nil, "")
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]interface{}, spiralDatabaseConfig map[string]interface{}, flowWG *sync.WaitGroup) error {
