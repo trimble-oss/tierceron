@@ -154,16 +154,22 @@ func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
 	tfContext.FlowState.SyncMode = syncMode
 }
 
+func (tfContext *TrcFlowContext) GetFlowSource() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
+	return tfContext.FlowSource
+}
+
 func (tfContext *TrcFlowContext) GetFlowSourceAlias() string {
 	tfContext.FlowStateLock.RLock()
 	defer tfContext.FlowStateLock.RUnlock()
-	return tfContext.FlowState.FlowAlias
+	return tfContext.FlowSourceAlias
 }
 
 func (tfContext *TrcFlowContext) SetFlowSourceAlias(flowSourceAlias string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
-	tfContext.FlowState.FlowAlias = flowSourceAlias
+	tfContext.FlowSourceAlias = flowSourceAlias
 }
 
 func (tfContext *TrcFlowContext) SetChangeFlowName(changeFlowName string) {

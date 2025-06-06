@@ -59,6 +59,7 @@ type TrcFlowMachineContext struct {
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
+	PreloadChan               chan PermissionUpdate
 	PermissionChan            chan PermissionUpdate // This channel is used to alert for dynamic permissions when tables are loaded
 }
 
@@ -638,7 +639,12 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	}
 	tfmContext.FlowControllerLock.Unlock()
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfmContext.PermissionChan <- PermissionUpdate{tfContext.Flow.TableName(), tfContext.GetFlowStateState()}
+		go func() {
+			tfmContext.PreloadChan <- PermissionUpdate{tfContext.Flow.TableName(), tfContext.GetFlowStateState()}
+		}()
+		go func() {
+			tfmContext.PermissionChan <- PermissionUpdate{tfContext.Flow.TableName(), tfContext.GetFlowStateState()}
+		}()
 		tfContext.Init = false
 	} else if tfContext.GetFlowStateState() == 2 {
 		tfmContext.Log("Flow ready for use: "+tfContext.Flow.TableName(), nil)
