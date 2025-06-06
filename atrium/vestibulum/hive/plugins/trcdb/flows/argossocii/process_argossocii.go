@@ -29,8 +29,8 @@ func getSchema(tableName string) interface{} {
 	}
 }
 
-func getTableGrant(tableName string) (string, error) {
-	return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil
+func getTableGrant(tableName string) (string, string, error) {
+	return "SELECT", "%s", nil
 }
 
 func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
