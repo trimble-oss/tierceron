@@ -363,7 +363,35 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 										var grantErr error
 										if flow := tfmContext.GetFlowContext(flowcore.FlowNameType(tableN)); flow != nil {
 											if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableGrant != nil {
-												grant, grantErr = flow.GetFlowDefinitionContext().GetTableGrant(tableN)
+												grantcomponent, cidr, grantFlowErr := flow.GetFlowDefinitionContext().GetTableGrant(tableN)
+												if grantFlowErr == nil && len(grantcomponent) > 0 {
+													grantCheck := strings.Split(grantcomponent, ",")
+													invalidGrant := false
+													for _, g := range grantCheck {
+														if g == "SELECT" || g == "INSERT" || g == "UPDATE" || g == "DELETE" {
+															continue
+														} else {
+															invalidGrant = true
+														}
+													}
+													if len(cidr) == 0 || cidr == "%s" {
+														cidr = cidrBlock
+													} else {
+														if net.ParseIP(cidr) != nil || func(c string) bool { _, _, err := net.ParseCIDR(c); return err == nil }(cidr) {
+															cidr = cidrBlock
+														} else {
+															invalidGrant = true
+														}
+													}
+
+													if !invalidGrant {
+														grant = fmt.Sprintf("GRANT %s ON %s.%s TO '%s'@'%s'", grantcomponent, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string), cidr)
+													} else {
+														grantErr = fmt.Errorf("unsupported grant format: %s, %s", grantcomponent, cidr)
+													}
+												} else {
+													grantErr = grantFlowErr
+												}
 											}
 										}
 										if len(grant) == 0 {

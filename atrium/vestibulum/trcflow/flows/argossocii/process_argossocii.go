@@ -39,8 +39,8 @@ func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
 	return m
 }
 
-func getTableGrant(tableName string) (string, error) {
-	return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil // database.table to user@cidr
+func getTableGrant(tableName string) (string, string, error) {
+	return "SELECT", "%s", nil // database.table to user@cidr
 }
 
 func getTableConfigurationInsertUpdate(data map[string]interface{}, dbName string, tableName string) map[string]interface{} {

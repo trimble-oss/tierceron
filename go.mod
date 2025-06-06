@@ -33,7 +33,7 @@ require (
 	github.com/docker/docker v26.1.5+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.5.10
+	github.com/trimble-oss/tierceron-core/v2 v2.5.12
 	github.com/trimble-oss/tierceron-hat v1.2.9
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12
@@ -194,7 +194,8 @@ require (
 	golang.org/x/oauth2 v0.26.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/tools v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250519155744-55703ea1f237 // indirect
+	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
@@ -279,4 +280,4 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb =>
 
 //replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
