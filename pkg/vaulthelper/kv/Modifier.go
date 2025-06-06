@@ -275,6 +275,14 @@ func PruneCache(env string, addr string, limit uint64) {
 		}
 	}
 }
+func (m *Modifier) Reset() {
+	m.ProjectIndex = []string{}
+	m.SectionKey = ""
+	m.SectionName = ""
+	m.SectionPath = ""
+	m.SubSectionName = ""
+	m.SubSectionValue = ""
+}
 
 func (m *Modifier) CleanCache(limit uint64) {
 	m.Close()
