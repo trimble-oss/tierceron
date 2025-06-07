@@ -171,19 +171,19 @@ func GetProjectServices(driverConfig *config.DriverConfig, templateFiles []strin
 // returns project, service, templatePath
 func GetProjectService(driverConfig *config.DriverConfig, templateFile string) (string, string, int, string) {
 	var startDir []string = nil
-	var deploymentDriverConfig string = ""
+	var driverConfigProjectService string = ""
 
 	if driverConfig != nil {
 		startDir = driverConfig.StartDir
 		if len(driverConfig.DeploymentConfig) > 0 {
 			if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok {
-				deploymentDriverConfig = projectService.(string)
+				driverConfigProjectService = projectService.(string)
 			}
 		}
 	}
 	trcTemplateParam := coreopts.BuildOptions.GetFolderPrefix(startDir) + "_templates"
 
-	return coreutil.GetProjectService(deploymentDriverConfig, trcTemplateParam, templateFile)
+	return coreutil.GetProjectService(driverConfigProjectService, trcTemplateParam, templateFile)
 }
 
 func GetTemplateFileName(templateFile string, service string) string {

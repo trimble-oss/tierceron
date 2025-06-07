@@ -108,11 +108,11 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			configContext.Log.Println("trcdb shutting down message receiver")
 			return
 		case event.Response != nil && *((*event).Response) == "Service unavailable":
-			configContext.Log.Println("Rainier unable to access chat service.")
+			configContext.Log.Println("Trcdb unable to access chat service.")
 			return
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
 			configContext.Log.Println("Sending progress results back to kernel.")
-			progressResp := "Running Rainier Diagnostics..."
+			progressResp := "Running Trcdb Diagnostics..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS":

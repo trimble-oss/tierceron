@@ -397,6 +397,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, table := range flowMachineInitContext.GetTableFlows() {
+		if table.FlowName == "TierceronFlow" {
+			continue
+		}
 		flowWG.Add(1)
 		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tableFlow.ServiceName())
