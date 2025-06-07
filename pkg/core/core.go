@@ -12,6 +12,7 @@ import (
 type CoreConfig struct {
 	IsProdPtr *bool
 	IsShell   bool // If tool running in shell.
+	IsEditor  bool
 
 	// Vault Configurations...
 	Insecure             bool

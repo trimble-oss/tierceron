@@ -73,6 +73,7 @@ func main() {
 	driverConfig := config.DriverConfig{
 		CoreConfig: &core.CoreConfig{
 			ExitOnFailure: true,
+			IsEditor:      false,
 			TokenCache:    cache.NewTokenCacheEmpty(),
 		},
 	}

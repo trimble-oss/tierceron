@@ -180,7 +180,7 @@ func LogErrorObject(config *core.CoreConfig, err error, exit bool) {
 
 // LogErrorObject writes errors to the passed logger object and exits
 func LogInfo(config *core.CoreConfig, msg string) {
-	if !headlessService {
+	if !headlessService && !config.IsEditor {
 		fmt.Println(SanitizeForLogging(msg))
 	}
 	if config != nil && config.Log != nil {

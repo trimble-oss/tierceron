@@ -222,7 +222,11 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		fmt.Println("Missing common config components")
 		return
 	}
-	//rosea.BootInit()
+	// err = rosea.BootInit()
+	// if err != nil {
+	// 	(*properties)["log"].(*log.Logger).Printf("Rosea Initialization error: %v", err)
+	// 	return
+	// }
 }
 
 func GetPluginMessages(pluginName string) []string {
