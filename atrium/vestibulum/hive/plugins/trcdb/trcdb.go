@@ -51,6 +51,6 @@ func main() {
 	}
 	config[flow.HARBINGER_INTERFACE_CONFIG] = &configCommon
 
-	Init("vico", &config)
+	Init("trcdb", &config)
 	hcore.GetConfigContext("trcdb").Start("trcdb")
 }
