@@ -48,7 +48,11 @@ func CommonMain(envPtr *string,
 
 	// Main functions are as follows:
 	if flagset == nil {
-		fmt.Println("Version: " + "1.05")
+		if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig != nil {
+			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, "Version: "+"1.05")
+		} else {
+			fmt.Println("Version: " + "1.05")
+		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
 		// set and ignore..
 		flagEnvPtr = flagset.String("env", "dev", "Environment to configure")
@@ -571,7 +575,7 @@ func CommonMain(envPtr *string,
 
 	//Define Service Image
 	if *defineServicePtr {
-		fmt.Printf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
+		eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
 		writeMap := make(map[string]interface{})
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
@@ -654,7 +658,7 @@ func CommonMain(envPtr *string,
 				}
 			}
 
-			fmt.Printf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string))
+			eUtils.LogInfo(trcshDriverConfigBase.DriverConfig.CoreConfig, fmt.Sprintf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string)))
 			return nil
 		}
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
@@ -842,7 +846,7 @@ func CommonMain(envPtr *string,
 				fmt.Println("Valid image found.")
 			}
 			//SHA MATCHES
-			fmt.Printf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
+			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
