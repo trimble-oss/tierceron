@@ -62,6 +62,6 @@ func main() {
 	config[hcore.HELLO_CERT] = helloCertBytes
 	config[hcore.HELLO_KEY] = helloKeyBytes
 
-	Init("healthcheck", &config)
-	hcore.GetConfigContext("healthcheck").Start("healthcheck")
+	Init("fenestra", &config)
+	hcore.GetConfigContext("fenestra").Start("fenestra")
 }

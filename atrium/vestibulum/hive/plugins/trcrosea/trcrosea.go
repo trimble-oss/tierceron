@@ -50,6 +50,6 @@ func main() {
 	}
 	config[hcore.COMMON_PATH] = &configCommon
 
-	Init("vico", &config)
+	Init("rosea", &config)
 	hcore.GetConfigContext("rosea").Start("rosea")
 }
