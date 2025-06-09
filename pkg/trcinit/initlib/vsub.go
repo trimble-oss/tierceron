@@ -48,7 +48,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 		} else {
 			// TODO: In recent run in prod, sub was printing an annoying warning here
 			// and yet correct templates seem to have gotten created...
-			fmt.Println("No data found for: " + path + "template-file")
+			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No data found for: %s template-file", path))
 			continue
 		}
 		templateBytes, decodeErr := base64.StdEncoding.DecodeString(data)
@@ -94,7 +94,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 				continue
 			}
 		}
-		fmt.Printf("File has been written to %s\n", templateFile)
+		eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s\n", templateFile))
 	}
 }
 
@@ -182,7 +182,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				} else {
 					// TODO: In recent run in prod, sub was printing an annoying warning here
 					// and yet correct templates seem to have gotten created...
-					fmt.Println("No data found for: " + path + "template-file")
+					eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No data found for: %s template-file", path))
 					continue
 				}
 				templateBytes, decodeErr := base64.StdEncoding.DecodeString(data)
@@ -230,7 +230,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 						continue
 					}
 				}
-				fmt.Println("File has been written to " + dirPath + file + ext + ".tmpl")
+				eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s.tmpl\n", dirPath+file+ext))
 			}
 		}
 	}
