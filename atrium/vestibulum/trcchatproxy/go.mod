@@ -48,7 +48,7 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/trimble-oss/tierceron-core/v2 v2.5.12 // indirect
+	github.com/trimble-oss/tierceron-core/v2 v2.6.0 // indirect
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0 // indirect

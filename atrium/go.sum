@@ -782,8 +782,8 @@ github.com/trimble-oss/go-mysql-server v0.12.0-1.26 h1:sMy5W3CcPELkGuuwEXbi09fnF
 github.com/trimble-oss/go-mysql-server v0.12.0-1.26/go.mod h1:Fx5WqhwndjwRjWZ3m3Gs2LbHvCDrBRudeihcpIlzp+M=
 github.com/trimble-oss/kubectl v0.0.5 h1:8faeUC0kYp4vvY7cbymrOehUm2bj74JU+s330CTJ3Pw=
 github.com/trimble-oss/kubectl v0.0.5/go.mod h1:V+ivAn0PvtBhgnjiBq1rk9EcijMNmAbD+Bc4SrMFP50=
-github.com/trimble-oss/tierceron-core/v2 v2.5.12 h1:Av+km2BwQg5Pv0V9D2fnqzm9tfpmdb0ceehnVLj2osA=
-github.com/trimble-oss/tierceron-core/v2 v2.5.12/go.mod h1:TRa8k1xjoEwpDsCZ3YnhGXBbiDMAOl3f0ijGcMdSrrc=
+github.com/trimble-oss/tierceron-core/v2 v2.6.0 h1:VzabfLYGwDi+z8dxWZVwPvZMHFh3i/B/yGaL+7fwCDg=
+github.com/trimble-oss/tierceron-core/v2 v2.6.0/go.mod h1:TZxToJmlPBNBaOxMwNM+u9QdyI5U6DjK7e/WpkzhJ3M=
 github.com/trimble-oss/tierceron-hat v1.2.9 h1:176D3zOGdIGMckP7K8R/4FZGV8JHrGc5nH7cbMRYLDI=
 github.com/trimble-oss/tierceron-hat v1.2.9/go.mod h1:CC3nz7PaIEu75TnE2QRGw/hUyNvu2AshCnvZ4kHuLsw=
 github.com/trimble-oss/tierceron-nute v1.0.10 h1:3EXG4dF9631DeEsrcszTaCnwJ9KaTkkRTg8mLkPUCsE=
@@ -1222,7 +1222,6 @@ google.golang.org/genproto v0.0.0-20210310155132-4ce2db91004e/go.mod h1:FWY/as6D
 google.golang.org/genproto v0.0.0-20210319143718-93e7006c17a6/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/genproto v0.0.0-20210402141018-6c239bbf2bb1/go.mod h1:9lPAdzaEmUacj36I+k7YKbEc5CXzPIeORRgDAUOu28A=
 google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c/go.mod h1:UODoCrxHCcBojKKwX1terBiRUaqAsFqJiF615XL43r0=
-google.golang.org/genproto v0.0.0-20250603155806-513f23925822 h1:rHWScKit0gvAPuOnu87KpaYtjK5zBMLcULh7gxkCXu4=
 google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a h1:SGktgSolFCo75dnHJF2yMvnns6jCmHFJ0vE4Vn2JKvQ=
 google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a/go.mod h1:a77HrdMjoeKbnd2jmgcWdaS++ZLZAEq3orIOAEIKiVw=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a h1:v2PbRU4K3llS09c7zodFpNePeamkAwG3mPrAery9VeE=
