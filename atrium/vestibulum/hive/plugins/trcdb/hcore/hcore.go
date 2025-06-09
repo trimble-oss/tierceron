@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron-core/v2/core"
 	argossocii "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/flows/argossocii"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -110,8 +111,15 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		case event.Response != nil && *((*event).Response) == "Service unavailable":
 			configContext.Log.Println("Trcdb unable to access chat service.")
 			return
-		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
-			configContext.Log.Println("Sending progress results back to kernel.")
+		case event.ChatId != nil && (*event).ChatId != nil && event.TrcdbExchange != nil:
+			if flowMachine, flowMachineOk := (*configContext.Config)[core.TRCDB_RESOURCE].(flowcore.FlowMachineContext); flowMachineOk {
+				for _, flow := range event.TrcdbExchange.Flows {
+					flowCtx := flowMachine.GetFlowContext(flowcore.FlowNameType(flow))
+					event.TrcdbExchange.Response.Rows, event.TrcdbExchange.Response.Success = flowMachine.CallDBQuery(flowCtx, map[string]interface{}{"TrcQuery": event.TrcdbExchange.Query}, nil, false, "SELECT", nil, "")
+				}
+			}
+
+			configContext.Log.Println("Sending progress results back to caller.")
 			progressResp := "Running Trcdb Diagnostics..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
@@ -273,7 +281,10 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
-	if _, ok := (*properties)[flowcore.HARBINGER_INTERFACE_CONFIG]; !ok {
+	if tfmContext, ok := (*properties)[core.TRCDB_RESOURCE]; ok {
+		(*configContext.Config)[core.TRCDB_RESOURCE] = tfmContext
+		return
+	} else {
 		fmt.Println("Missing common config components")
 		return
 	}
