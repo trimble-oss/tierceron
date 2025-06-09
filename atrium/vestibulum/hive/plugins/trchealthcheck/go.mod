@@ -1,9 +1,9 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck
 
-go 1.24.3
+go 1.24.4
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.5.12
+	github.com/trimble-oss/tierceron-core/v2 v2.6.0
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
