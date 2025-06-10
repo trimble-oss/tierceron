@@ -1,0 +1,2 @@
+FROM scratch
+ADD bin/trcsh.so /usr/local/trcshk/plugins

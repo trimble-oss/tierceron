@@ -18,4 +18,6 @@ use ./atrium/vestibulum/hive/plugins/trcviride
 
 use ./atrium/vestibulum/hive/plugins/trcdb
 
+use ./atrium/vestibulum/hive/plugins/trctrcsh
+
 use ./atrium/vestibulum/trcchatproxy
