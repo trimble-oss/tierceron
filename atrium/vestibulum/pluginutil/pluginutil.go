@@ -22,7 +22,7 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func GetPluginCertifyMap(mod *helperkv.Modifier, pluginConfig map[string]interface{}) (map[string]interface{}, error) {
+func GetPluginCertifyMap(mod *helperkv.Modifier, pluginConfig map[string]any) (map[string]any, error) {
 	if pluginName, ok := pluginConfig["pluginName"].(string); ok && pluginName != "" {
 		certifyMap, err := mod.ReadData("super-secrets/Index/TrcVault/trcplugin/" + pluginName + "/Certify")
 		if err != nil {
@@ -33,7 +33,7 @@ func GetPluginCertifyMap(mod *helperkv.Modifier, pluginConfig map[string]interfa
 	return nil, errors.New("missing plugin name for configuration")
 }
 
-func PluginInitNewRelic(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}) {
+func PluginInitNewRelic(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]any) {
 	certifyConfig, certifyErr := GetPluginCertifyMap(mod, pluginConfig)
 	if certifyErr == nil {
 		driverConfig.CoreConfig.Log.Printf("Found certification for plugin: %s Env: %s", pluginConfig["pluginName"], pluginConfig["env"])
@@ -72,7 +72,7 @@ var gCapInitted bool = false
 
 func IsCapInitted() bool { return gCapInitted }
 
-func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig map[string]interface{}) error {
+func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig map[string]any) error {
 	var goMod *helperkv.Modifier
 	var vault *sys.Vault
 	var err error
@@ -114,7 +114,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	return TapFeatherInit(trcshDriverConfig.DriverConfig, goMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 }
 
-func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, wantsFeathering bool, logger *log.Logger) error {
+func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) error {
 	var err error
 	var ok bool
 	logger.Printf("TapFeatherInit\n")

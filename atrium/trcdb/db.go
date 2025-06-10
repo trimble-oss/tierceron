@@ -51,7 +51,7 @@ func CreateEngine(driverConfig *config.DriverConfig,
 		return nil, err
 	}
 	if tempEnterprises != nil {
-		for _, enterprise := range tempEnterprises.Data["keys"].([]interface{}) {
+		for _, enterprise := range tempEnterprises.Data["keys"].([]any) {
 			envEnterprises = append(envEnterprises, strings.Replace(enterprise.(string), "/", "", 1))
 		}
 		/* This is for versioning -> enhancements might be needed
@@ -84,7 +84,7 @@ func CreateEngine(driverConfig *config.DriverConfig,
 						return
 					}
 
-					var first map[string]interface{}
+					var first map[string]any
 					for _, file := range fileMetadata {
 						if first == nil {
 							first = file
@@ -126,7 +126,7 @@ func CreateEngine(driverConfig *config.DriverConfig,
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func Query(te *engine.TierceronEngine, query string, queryLock ...*sync.Mutex) (string, []string, [][]interface{}, error) {
+func Query(te *engine.TierceronEngine, query string, queryLock ...*sync.Mutex) (string, []string, [][]any, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
@@ -145,7 +145,7 @@ func Query(te *engine.TierceronEngine, query string, queryLock ...*sync.Mutex) (
 	}
 
 	columns := []string{}
-	matrix := [][]interface{}{}
+	matrix := [][]any{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -168,7 +168,7 @@ func Query(te *engine.TierceronEngine, query string, queryLock ...*sync.Mutex) (
 			} else if err != nil {
 				return "", nil, nil, err
 			}
-			rowData := []interface{}{}
+			rowData := []any{}
 			if sqles.IsOkResult(row) { //This is for insert statements
 				okResult = true
 				sqlOkResult := sqles.GetOkResult(row)
@@ -197,7 +197,7 @@ func Query(te *engine.TierceronEngine, query string, queryLock ...*sync.Mutex) (
 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
-func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[string]sqles.Expression, queryLock ...*sync.Mutex) (string, []string, [][]interface{}, error) {
+func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[string]sqles.Expression, queryLock ...*sync.Mutex) (string, []string, [][]any, error) {
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
@@ -216,7 +216,7 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 	}
 
 	columns := []string{}
-	matrix := [][]interface{}{}
+	matrix := [][]any{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -237,7 +237,7 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 			if err == io.EOF {
 				break
 			}
-			rowData := []interface{}{}
+			rowData := []any{}
 			if sqles.IsOkResult(row) { //This is for insert statements
 				okResult = true
 				sqlOkResult := sqles.GetOkResult(row)

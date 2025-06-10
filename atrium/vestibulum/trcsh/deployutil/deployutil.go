@@ -220,7 +220,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 		}
 	}
 	for _, deploymentInterface := range deploymentListData.Data {
-		for _, deploymentPath := range deploymentInterface.([]interface{}) {
+		for _, deploymentPath := range deploymentInterface.([]any) {
 			deployment := strings.TrimSuffix(deploymentPath.(string), "/")
 
 			if len(deployment) == 0 {

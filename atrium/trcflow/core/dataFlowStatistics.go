@@ -48,7 +48,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	}
 
 	for _, idNameList := range idNameListData.Data {
-		for _, idName := range idNameList.([]interface{}) {
+		for _, idName := range idNameList.([]any) {
 			idListData, idListErr := mod.List(fmt.Sprintf("super-secrets/Index/%s/tenantId", project), logger)
 			if idListErr != nil || idListData == nil {
 				return &aFleet, idListErr
@@ -72,7 +72,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						},
 					}
 
-					sourceDatabaseConnectionMap := map[string]interface{}{
+					sourceDatabaseConnectionMap := map[string]any{
 						"dbsourceurl":      buildopts.BuildOptions.GetTrcDbUrl(data),
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
@@ -104,7 +104,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					argosyMap := map[string]*tccore.TTDINode{}
 
 					for _, idList := range idListData.Data {
-						for _, id := range idList.([]interface{}) {
+						for _, id := range idList.([]any) {
 							argosId := strings.Trim(id.(string), "/")
 							argosNode := &tccore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							argosNode.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
@@ -121,7 +121,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						var flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
 						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
 
-						data := make(map[string]interface{})
+						data := make(map[string]any)
 						data["flowGroup"] = flowGroup
 						data["flowName"] = flowName
 						data["stateName"] = stateName
@@ -219,7 +219,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 			}
 
 			for _, idList := range idListData.Data {
-				for _, id := range idList.([]interface{}) {
+				for _, id := range idList.([]any) {
 					id = strings.Trim(id.(string), "/")
 					statPath := fmt.Sprintf(
 						HIVE_STAT_DFG_PATH,
@@ -237,13 +237,13 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					new.MashupDetailedElement.Name = strings.TrimSuffix(id.(string), "/")
 					new.ChildNodes = make([]*tccore.TTDINode, 0)
 
-					if serviceListData == nil { //No existing dfs for this tenant -> continue
+					if serviceListData == nil { //No existing dfs for this entry -> continue
 						aFleet.ChildNodes = append(aFleet.ChildNodes, &new)
 						continue
 					}
 
 					for _, serviceList := range serviceListData.Data {
-						for _, service := range serviceList.([]interface{}) {
+						for _, service := range serviceList.([]any) {
 							var dfgroup tccore.TTDINode
 							dfgroup.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							dfgroup.MashupDetailedElement.Name = strings.TrimSuffix(service.(string), "/")
@@ -263,9 +263,9 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 							var innerDF tccore.TTDINode
 							innerDF.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							innerDF.MashupDetailedElement.Name = "empty"
-							//Tenant -> System -> Login/Download -> USERS
+							//Entity -> System -> Login/Download -> USERS
 							for _, statisticName := range statisticNameList.Data {
-								for _, statisticName := range statisticName.([]interface{}) {
+								for _, statisticName := range statisticName.([]any) {
 									if strings.Contains(statisticName.(string), "-") {
 										dashNameSplit := strings.Split(statisticName.(string), "-")
 										statisticType := dashNameSplit[0] //login
@@ -369,7 +369,7 @@ func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexP
 	}
 
 	for _, stateCodeList := range listData.Data {
-		for _, stateCode := range stateCodeList.([]interface{}) {
+		for _, stateCode := range stateCodeList.([]any) {
 			path := fmt.Sprintf("%s/%s", statPath, stateCode.(string))
 			data, readErr := mod.ReadData(path)
 			if readErr != nil {
@@ -406,7 +406,7 @@ func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexP
 	return nil
 }
 
-func UpdateLastTestedDate(mod *kv.Modifier, dfs *tccore.DeliverStatCtx, statMap map[string]interface{}) {
+func UpdateLastTestedDate(mod *kv.Modifier, dfs *tccore.DeliverStatCtx, statMap map[string]any) {
 	if _, ok := statMap["lastTestedDate"].(string); ok {
 		if statMap["lastTestedDate"].(string) == "" {
 			flowData, flowReadErr := mod.ReadData(fmt.Sprintf("super-secrets/%s", dfs.FlowGroup))

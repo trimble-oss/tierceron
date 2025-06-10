@@ -123,7 +123,7 @@ func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName st
 			config.Log.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
-			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, config.Log)
+			warn, err := mod.Write(templatePath, map[string]any{"data": fileBytes, "ext": ext}, config.Log)
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}

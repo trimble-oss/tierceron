@@ -99,7 +99,7 @@ func (t *TrcshMemFs) ClearCache(path string) {
 	}
 }
 
-func (t *TrcshMemFs) SerializeToMap(path string, configCache map[string]interface{}) {
+func (t *TrcshMemFs) SerializeToMap(path string, configCache map[string]any) {
 	t.WalkCache(path, func(path string) error {
 		if fileReader, err := t.Open(path); err == nil {
 			bytesBuffer := new(bytes.Buffer)

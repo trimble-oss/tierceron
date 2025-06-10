@@ -107,14 +107,14 @@ var vaultInitialized chan bool = make(chan bool)
 var vaultHostInitialized chan bool = make(chan bool)
 var environments []string = []string{"dev", "QA"}
 var environmentsProd []string = []string{"staging", "prod"}
-var environmentConfigs map[string]interface{} = map[string]interface{}{}
+var environmentConfigs map[string]any = map[string]any{}
 
-var tokenEnvChan chan map[string]interface{} = make(chan map[string]interface{}, 5)
+var tokenEnvChan chan map[string]any = make(chan map[string]any, 5)
 
 var pluginSettingsChan map[string]chan time.Time = map[string]chan time.Time{}
 var pluginShaMap map[string]string = map[string]string{}
 
-func PushEnv(envMap map[string]interface{}) {
+func PushEnv(envMap map[string]any) {
 	tokenEnvChan <- envMap
 }
 
@@ -147,7 +147,7 @@ func StartPluginSettingEater() {
 }
 
 // Only push to sha256 chan if one is present.  Non blocking otherwise.
-func PushPluginSha(driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, vaultPluginSignature map[string]interface{}) {
+func PushPluginSha(driverConfig *config.DriverConfig, pluginConfig map[string]any, vaultPluginSignature map[string]any) {
 	if _, trcShaChanOk := pluginConfig["trcsha256chan"]; trcShaChanOk {
 		if vaultPluginSignature != nil {
 			pluginConfig["trcsha256"] = vaultPluginSignature["trcsha256"]
@@ -197,8 +197,8 @@ func initVaultHostBootstrap() error {
 	return nil
 }
 
-func parseToken(e *logical.StorageEntry) (map[string]interface{}, error) {
-	tokenMap := map[string]interface{}{}
+func parseToken(e *logical.StorageEntry) (map[string]any, error) {
+	tokenMap := map[string]any{}
 	type tokenWrapper struct {
 		Token    string `json:"token,omitempty"`
 		VAddress string `json:"vaddress,omitempty"`
@@ -225,7 +225,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	// This function is responsible for setting up the necessary configurations and resources
 	// required for the backend to handle the process flow.
 	bootFlowMachineFunc trcvutils.BootFlowMachineFunc,
-	pluginEnvConfig map[string]interface{},
+	pluginEnvConfig map[string]any,
 	configCompleteChan chan bool) error {
 	logger.Println("ProcessPluginEnvConfig begun.")
 	env, eOk := pluginEnvConfig["env"]
@@ -264,7 +264,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		logger.Println("Unlocking everything.")
 		memprotectopts.MemUnprotectAll(nil)
 		for _, environmentConfig := range environmentConfigs {
-			for _, value := range environmentConfig.(map[string]interface{}) {
+			for _, value := range environmentConfig.(map[string]any) {
 				if valueSlice, isValueSlice := value.([]string); isValueSlice {
 					for _, valueEntry := range valueSlice {
 						memprotectopts.MemProtect(nil, &valueEntry)
@@ -281,14 +281,14 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	}
 	tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
 
-	go func(pec map[string]interface{}, l *log.Logger) {
+	go func(pec map[string]any, l *log.Logger) {
 		if prod.IsProd() {
 			pec["pluginName"] = "trc-vault-plugin-prod"
 		} else {
 			pec["pluginName"] = "trc-vault-plugin"
 		}
 		flowMachineInitContext := flowcore.FlowMachineInitContext{
-			FlowMachineInterfaceConfigs: map[string]interface{}{},
+			FlowMachineInterfaceConfigs: map[string]any{},
 			GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
 			GetTableFlows: func() []flowcore.FlowDefinition {
 				tableFlows := []flowcore.FlowDefinition{}
@@ -415,17 +415,17 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 	if entry, err := req.Storage.Get(ctx, key); err != nil || entry == nil {
 		//ctx.Done()
 		return &logical.Response{
-			Data: map[string]interface{}{
+			Data: map[string]any{
 				"message": "Entry missing.",
 			},
 		}, nil
 	} else {
-		vData := map[string]interface{}{}
+		vData := map[string]any{}
 		if err := json.Unmarshal(entry.Value, &vData); err != nil {
 			//ctx.Done()
 			return nil, err
 		}
-		tokenEnvMap := map[string]interface{}{}
+		tokenEnvMap := map[string]any{}
 		tokenEnvMap["env"] = req.Path
 		tokenEnvMap["vaddress"] = vData["vaddress"]
 		if vData["token"] != nil {
@@ -450,7 +450,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 	logger.Println("TrcRead complete.")
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message": "Nice try.",
 		},
 	}, nil
@@ -458,7 +458,7 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 
 func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcCreateUpdate")
-	tokenEnvMap := map[string]interface{}{}
+	tokenEnvMap := map[string]any{}
 	key := req.Path //data.Get("path").(string)
 	if key == "" {
 		//ctx.Done()
@@ -528,7 +528,7 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	logger.Println("TrcCreateUpdate complete.")
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message": "Token created.",
 		},
 	}, nil
@@ -536,8 +536,8 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	logger.Println("TrcUpdate")
-	tokenEnvMap := map[string]interface{}{}
-	var plugin interface{}
+	tokenEnvMap := map[string]any{}
+	var plugin any
 	pluginOk := false
 	if plugin, pluginOk = data.GetOk("plugin"); pluginOk {
 		logger.Println("TrcUpdate checking plugin: " + plugin.(string))
@@ -578,7 +578,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				return nil, errors.New("Certification Vault token required.")
 			}
 
-			pluginConfig := map[string]interface{}{}
+			pluginConfig := map[string]any{}
 			pluginConfig = buildopts.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
 			if pluginConfig == nil {
 				logger.Println("Error: " + errors.New("Could not find plugin config").Error())
@@ -712,7 +712,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			//ctx.Done()
 
 			return &logical.Response{
-				Data: map[string]interface{}{
+				Data: map[string]any{
 					"message": sha256,
 				},
 			}, nil
@@ -722,7 +722,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	logger.Println("TrcUpdate complete.")
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message": "Token updated.",
 		},
 	}, nil

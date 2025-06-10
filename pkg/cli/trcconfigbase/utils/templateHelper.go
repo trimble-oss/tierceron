@@ -177,7 +177,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	return template, certData, true, err
 }
 
-func getTemplateVersionData(config *core.CoreConfig, modifier *helperkv.Modifier, project string, service string, file string) (map[string]interface{}, error) {
+func getTemplateVersionData(config *core.CoreConfig, modifier *helperkv.Modifier, project string, service string, file string) (map[string]any, error) {
 	cds := new(ConfigDataStore)
 	return cds.InitTemplateVersionData(config, modifier, true, project, file, service)
 }
@@ -192,7 +192,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	service string,
 	filename string,
 	cert bool) (string, map[int]string, error) {
-	values := make(map[string]interface{}, 0)
+	values := make(map[string]any, 0)
 	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
@@ -204,13 +204,13 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 			eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("unable to open seed file for -novault: "+err.Error()), false)
 		}
 
-		var rawYaml interface{}
+		var rawYaml any
 		err = yaml.Unmarshal(rawFile, &rawYaml)
 		if err != nil {
 			eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 		}
 
-		seed, seedOk := rawYaml.(map[interface{}]interface{})
+		seed, seedOk := rawYaml.(map[any]any)
 		if !seedOk {
 			if driverConfig.NoVault {
 				driverConfig.CoreConfig.ExitOnFailure = true
@@ -219,13 +219,13 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 				eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 			}
 		}
-		tempMap := make(map[string]interface{}, 0)
+		tempMap := make(map[string]any, 0)
 		for seedSectionKey, seedSection := range seed {
 			if seedSectionKey.(string) == "templates" {
 				continue
 			}
-			for _, seedSubSection := range seedSection.(map[interface{}]interface{}) {
-				for k, v := range seedSubSection.(map[interface{}]interface{}) {
+			for _, seedSubSection := range seedSection.(map[any]any) {
+				for k, v := range seedSubSection.(map[any]any) {
 					values[k.(string)] = v
 				}
 			}
@@ -245,7 +245,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	}
 
 	if len(values) == 0 {
-		values, ok = cds.dataMap[serviceLookup].(map[string]interface{})
+		values, ok = cds.dataMap[serviceLookup].(map[string]any)
 	}
 
 	if ok {
@@ -267,7 +267,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 
 		if len(cds.Regions) > 0 {
 			if serviceValues, ok := values[filename]; ok {
-				valueData := serviceValues.(map[string]interface{})
+				valueData := serviceValues.(map[string]any)
 				for valueKey, valueEntry := range valueData {
 					regionSuffix := "~" + cds.Regions[0]
 					if strings.HasSuffix(valueKey, regionSuffix) {
@@ -283,7 +283,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 
 		if cert {
 			if serviceValues, ok := values[serviceLookup]; ok {
-				valueData := serviceValues.(map[string]interface{})
+				valueData := serviceValues.(map[string]any)
 				certDestPath, hasCertDefinition := valueData["certDestPath"]
 				certSourcePath, hasCertSourcePath := valueData["certSourcePath"]
 				certPasswordVaultPath, hasCertPasswordVaultPath := valueData["certPasswordVaultPath"]
@@ -343,7 +343,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 
 		if !prod.IsProd() {
 			// Override trcEnvParam if it was specified in original call
-			data, exists := values[filename].(map[string]interface{})
+			data, exists := values[filename].(map[string]any)
 			if exists {
 				data["trcEnvParam"] = &driverConfig.CoreConfig.Env
 				values[filename] = data

@@ -20,7 +20,7 @@ func GetTierceronFlowIdColName() string {
 	return tierceronFlowIdColumnName
 }
 
-func GetTierceronFlowConfigurationIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNameInterface interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func GetTierceronFlowConfigurationIndexedPathExt(engine any, rowDataMap map[string]any, indexColumnNameInterface any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error) {
 	indexName, idValue := "", ""
 	if indexColumnNameSlice, iOk := indexColumnNameInterface.([]string); iOk && len(indexColumnNameSlice) == 1 { // 1 ID
 		if tierceronFlowName, ok := rowDataMap[indexColumnNameSlice[0]].(string); ok {
@@ -56,8 +56,8 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 
 //cancel contex through all the flows to cancel and stop all the sync cycles.
 
-func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
-	tfFlow := make(map[string]interface{})
+func arrayToTierceronFlow(arr []any) map[string]any {
+	tfFlow := make(map[string]any)
 	if len(arr) == 6 {
 		tfFlow[tierceronFlowIdColumnName] = arr[0]
 		tfFlow["state"] = arr[1]
@@ -70,11 +70,11 @@ func arrayToTierceronFlow(arr []interface{}) map[string]interface{} {
 }
 
 func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext, flowControllerMap map[string]chan flowcore.CurrentFlowState, tierceronFlowName string) {
-	var rows [][]interface{}
+	var rows [][]any
 	if tierceronFlowName != "" {
-		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
+		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
 	} else {
-		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
+		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow)}, nil, false, "SELECT", nil, "")
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
@@ -102,7 +102,7 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 	}
 }
 
-func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) ([]map[string]interface{}, error) {
+func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) ([]map[string]any, error) {
 	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan flowcore.CurrentFlowState); ok {
 		if flowControllerMap == nil {
 			return nil, errors.New("Channel map for flow controller was nil.")

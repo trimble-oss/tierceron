@@ -15,14 +15,14 @@ func GetConfigPaths(pluginName string) []string {
 	return core.GetConfigPaths(pluginName)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	core.Init(pluginName, properties)
 }
 
 func main() {
 	logFilePtr := flag.String("log", "./trchelloworld.log", "Output path for log file")
 	flag.Parse()
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -39,7 +39,7 @@ func main() {
 	}
 
 	// Create an empty map for the YAML data
-	var configCommon map[string]interface{}
+	var configCommon map[string]any
 
 	// Unmarshal the YAML data into the map
 	err = yaml.Unmarshal(data, &configCommon)

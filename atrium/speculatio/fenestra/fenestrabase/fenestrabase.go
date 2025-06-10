@@ -50,10 +50,10 @@ func CommonMain(logoIconBytes []byte,
 		logger.Printf("Failure to load any enterprises.\n")
 	}
 
-	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
+	tenantDataRenderer := &trcRenderers.EntityDataRenderer{}
 	custosWorld := custosworld.NewCustosWorldApp(*serverheadless, false, DetailedElements, tenantDataRenderer)
 	tenantDataRenderer.CustosWorldApp = custosWorld
-	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
+	custosWorld.CustomTabItemRenderer["EntityDataRenderer"] = tenantDataRenderer
 	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
 
 	custosWorld.Title = "Tierceron Topology Discovery Interface"

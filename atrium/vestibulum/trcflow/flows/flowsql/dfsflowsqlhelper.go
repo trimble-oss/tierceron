@@ -7,15 +7,15 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 )
 
-func GetDataFlowStatisticInsert(statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticInsert(statisticData map[string]any, dbName string, tableName string) map[string]any {
 	argosId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
 	argosId = strings.ReplaceAll(argosId, "/", "")
 	return GetDataFlowStatisticInsertById(argosId, statisticData, dbName, tableName)
 }
 
-func GetDataFlowStatisticInsertById(argosId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticInsertById(argosId string, statisticData map[string]any, dbName string, tableName string) map[string]any {
 	argosId = strings.ReplaceAll(argosId, "/", "")
-	sqlstr := map[string]interface{}{
+	sqlstr := map[string]any{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + flowcoreopts.DataflowTestNameColumn + `, ` + flowcoreopts.DataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
 			statisticData["flowName"].(string) + `','` + argosId + `','` +
 			statisticData["flowGroup"].(string) + `','` + strconv.Itoa(statisticData["mode"].(int)) +
@@ -28,24 +28,24 @@ func GetDataFlowStatisticInsertById(argosId string, statisticData map[string]int
 	return sqlstr
 }
 
-func GetDataFlowStatisticLM(argosId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticLM(argosId string, statisticData map[string]any, dbName string, tableName string) map[string]any {
 	argosId = strings.ReplaceAll(argosId, "/", "")
-	sqlstr := map[string]interface{}{
+	sqlstr := map[string]any{
 		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + ` where ` + flowcoreopts.DataflowTestNameColumn + `='` + statisticData["flowName"].(string) + `' and ` +
 			flowcoreopts.DataflowTestIdColumn + "='" + argosId + `' and ` + flowcoreopts.DataflowTestStateCodeColumn + ` = '` + statisticData["stateCode"].(string) + `'`,
 	}
 	return sqlstr
 }
 
-func GetDataFlowStatisticUpdate(statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticUpdate(statisticData map[string]any, dbName string, tableName string) map[string]any {
 	argosId := statisticData[flowcoreopts.DataflowTestIdColumn].(string)
 	argosId = strings.ReplaceAll(argosId, "/", "")
 	return GetDataFlowStatisticUpdateById(argosId, statisticData, dbName, tableName)
 }
 
-func GetDataFlowStatisticUpdateById(argosId string, statisticData map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func GetDataFlowStatisticUpdateById(argosId string, statisticData map[string]any, dbName string, tableName string) map[string]any {
 	argosId = strings.ReplaceAll(argosId, "/", "")
-	sqlstr := map[string]interface{}{
+	sqlstr := map[string]any{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(` + flowcoreopts.DataflowTestNameColumn + `, ` + flowcoreopts.DataflowTestIdColumn + `, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate) VALUES ('` +
 			statisticData["flowName"].(string) + `','` + argosId + `','` +
 			statisticData["flowGroup"].(string) + `','` + strconv.Itoa(statisticData["mode"].(int)) +
@@ -58,8 +58,8 @@ func GetDataFlowStatisticUpdateById(argosId string, statisticData map[string]int
 	return sqlstr
 }
 
-func GetDataFlowStatisticsFromArray(dfs []interface{}) map[string]interface{} {
-	m := make(map[string]interface{})
+func GetDataFlowStatisticsFromArray(dfs []any) map[string]any {
+	m := make(map[string]any)
 	m[flowcoreopts.DataflowTestNameColumn] = dfs[0]
 	m[flowcoreopts.DataflowTestIdColumn] = dfs[1]
 	m["flowGroup"] = dfs[2]
@@ -72,13 +72,13 @@ func GetDataFlowStatisticsFromArray(dfs []interface{}) map[string]interface{} {
 	return m
 }
 
-func DataFlowStatisticsSparseArrayToMap(dfs []interface{}) map[string]interface{} {
-	m := make(map[string]interface{})
+func DataFlowStatisticsSparseArrayToMap(dfs []any) map[string]any {
+	m := make(map[string]any)
 	m["lastModified"] = dfs[0] //This is for lastModified comparison -> not used in table or queries
 	return m
 }
 
-func GetDataFlowStatisticFilterFieldFromConfig(tableConfig interface{}) string {
+func GetDataFlowStatisticFilterFieldFromConfig(tableConfig any) string {
 	// Not pulling or pushing to remote
 	// dfsNode := tableConfig.(*core.TTDINode)
 	return "" //dfsNode.Name

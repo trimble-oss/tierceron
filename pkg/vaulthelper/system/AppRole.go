@@ -116,12 +116,12 @@ func (v *Vault) GetRoleID(roleName string) (string, string, error) {
 		return "", "", err
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", "", err
 	}
 
-	if raw, ok := jsonData["data"].(map[string]interface{}); ok {
+	if raw, ok := jsonData["data"].(map[string]any); ok {
 		if roleID, ok := raw["role_id"].(string); ok {
 			return roleID, string(jsonData["lease_duration"].(json.Number)), nil
 		}
@@ -144,12 +144,12 @@ func (v *Vault) GetSecretID(roleName string) (string, error) {
 		return "", err
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", err
 	}
 
-	if raw, ok := jsonData["data"].(map[string]interface{}); ok {
+	if raw, ok := jsonData["data"].(map[string]any); ok {
 		if secretID, ok := raw["secret_id"].(string); ok {
 			return secretID, nil
 		}
@@ -172,7 +172,7 @@ func (v *Vault) GetListApproles() (string, error) {
 		return "", err
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return "", err
 	}
@@ -184,7 +184,7 @@ func (v *Vault) GetListApproles() (string, error) {
 func (v *Vault) AppRoleLogin(roleID string, secretID string) (*string, error) {
 	r := v.client.NewRequest("POST", "/v1/auth/approle/login")
 
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"role_id":   roleID,
 		"secret_id": secretID,
 	}
@@ -202,13 +202,13 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (*string, error) {
 		return nil, err
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return nil, err
 	}
 
-	if authData, ok := jsonData["auth"].(map[string]interface{}); ok {
+	if authData, ok := jsonData["auth"].(map[string]any); ok {
 		if token, ok := authData["client_token"].(string); ok {
 			return &token, nil
 		}

@@ -26,7 +26,7 @@ func getChangeIdQuery(databaseName string, changeTable string) string {
 	return fmt.Sprintf("SELECT id FROM %s.%s", databaseName, changeTable)
 }
 
-func getChangedByIdQuery(databaseName string, changeTable string, identityColumnName string, id interface{}) string {
+func getChangedByIdQuery(databaseName string, changeTable string, identityColumnName string, id any) string {
 	if _, iOk := id.(int64); iOk {
 		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, identityColumnName, id)
 	} else {
@@ -34,7 +34,7 @@ func getChangedByIdQuery(databaseName string, changeTable string, identityColumn
 	}
 }
 
-func getDeleteChangeQuery(databaseName string, changeTable string, id interface{}) string {
+func getDeleteChangeQuery(databaseName string, changeTable string, id any) string {
 	if _, iOk := id.(int64); iOk {
 		return fmt.Sprintf("DELETE FROM %s.%s WHERE id = '%d'", databaseName, changeTable, id)
 	} else {
@@ -42,7 +42,7 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id interface{
 	}
 }
 
-func getInsertChangeQuery(databaseName string, changeTable string, id interface{}) string {
+func getInsertChangeQuery(databaseName string, changeTable string, id any) string {
 	if _, iOk := id.(int64); iOk {
 		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (%d, current_timestamp())", databaseName, changeTable, id)
 	} else {
@@ -50,11 +50,11 @@ func getInsertChangeQuery(databaseName string, changeTable string, id interface{
 	}
 }
 
-func getCompositeChangeIdQuery(databaseName string, changeTable string, indexColumnNames interface{}) string {
+func getCompositeChangeIdQuery(databaseName string, changeTable string, indexColumnNames any) string {
 	return fmt.Sprintf("SELECT %s, %s FROM %s.%s", indexColumnNames.([]string)[0], indexColumnNames.([]string)[1], databaseName, changeTable)
 }
 
-func getCompositeDeleteChangeQuery(databaseName string, changeTable string, indexColumnNames interface{}, indexColumnValues interface{}) string {
+func getCompositeDeleteChangeQuery(databaseName string, changeTable string, indexColumnNames any, indexColumnValues any) string {
 	if first, second, third, fourth := indexColumnNames.([]string)[0], indexColumnValues.([]string)[0], indexColumnNames.([]string)[1], indexColumnValues.([]string)[1]; first != "" && second != "" && third != "" && fourth != "" {
 		return fmt.Sprintf("DELETE FROM %s.%s WHERE %s='%s' AND %s='%s'", databaseName, changeTable, indexColumnNames.([]string)[0], indexColumnValues.([]string)[0], indexColumnNames.([]string)[1], indexColumnValues.([]string)[1])
 	}
@@ -62,7 +62,7 @@ func getCompositeDeleteChangeQuery(databaseName string, changeTable string, inde
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCols []string, indexColumnNames interface{}) ([][]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCols []string, indexColumnNames any) ([][]any, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
@@ -88,7 +88,7 @@ func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(t
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *TrcFlowContext) ([][]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *TrcFlowContext) ([][]any, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
@@ -116,7 +116,7 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	return matrixChangedEntries, nil
 }
 
-func getStatisticChangeIdQuery(databaseName string, changeTable string, idCols []string, indexColumnNames interface{}) string {
+func getStatisticChangeIdQuery(databaseName string, changeTable string, idCols []string, indexColumnNames any) string {
 	if len(idCols) == 1 {
 		return fmt.Sprintf("SELECT %s, %s, %s FROM %s.%s", idCols[0], indexColumnNames.([]string)[0], indexColumnNames.([]string)[1], databaseName, changeTable)
 	} else if len(idCols) == 2 {
@@ -128,7 +128,7 @@ func getStatisticChangeIdQuery(databaseName string, changeTable string, idCols [
 	}
 }
 
-func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCols []string, idColVal interface{}, indexColumnNames interface{}, indexColumnValues interface{}) string {
+func getStatisticDeleteChangeQuery(databaseName string, changeTable string, idCols []string, idColVal any, indexColumnNames any, indexColumnValues any) string {
 	if first, second, third := idColVal.(string), indexColumnValues.([]string)[0], indexColumnValues.([]string)[1]; first != "" && second != "" && third != "" {
 		return fmt.Sprintf("DELETE FROM %s.%s WHERE %s='%s' AND %s='%s' AND %s='%s'", databaseName, changeTable, idCols[0], idColVal, indexColumnNames.([]string)[0], indexColumnValues.([]string)[0], indexColumnNames.([]string)[1], indexColumnValues.([]string)[1])
 	}
@@ -148,7 +148,7 @@ func removeElementFromSlice(slice []string, ss []string) ([]string, string) {
 	return slice, ""
 }
 
-func removeElementFromSliceInterface(slice []interface{}, ss []string) ([]interface{}, interface{}) {
+func removeElementFromSliceInterface(slice []any, ss []string) ([]any, any) {
 	indexFound := -1
 	for _, v := range slice {
 		indexFound = 0
@@ -167,20 +167,20 @@ func removeElementFromSliceInterface(slice []interface{}, ss []string) ([]interf
 		return slice, nil
 	}
 
-	var value interface{} = &slice
+	var value any = &slice
 
 	// Now do the removal:
-	sp := value.(*[]interface{})
+	sp := value.(*[]any)
 	removedVal := (*sp)[indexFound]
 	*sp = append((*sp)[:indexFound], (*sp)[indexFound+1:]...)
 	return *sp, removedVal
 }
 
-func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumns []string, indexColumnNames interface{}, indexColumnValues interface{}) (string, error) {
+func getStatisticChangedByIdQuery(databaseName string, changeTable string, idColumns []string, indexColumnNames any, indexColumnValues any) (string, error) {
 	if indexColumnNamesSlice, iOk := indexColumnNames.([]string); iOk {
-		if indexColumnValuesSlice, iOk := indexColumnValues.([]interface{}); iOk {
+		if indexColumnValuesSlice, iOk := indexColumnValues.([]any); iOk {
 			var query string
-			var removedVal interface{}
+			var removedVal any
 			var removedValName string
 			if valueSliceStr, sOk := indexColumnValuesSlice[0].([]string); sOk {
 				if len(idColumns) == 1 {
@@ -243,7 +243,7 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 	}
 }
 
-func getStatisticInsertChangeQuery(databaseName string, changeTable string, idColVal interface{}, indexColVal interface{}, secIndexColVal interface{}) string {
+func getStatisticInsertChangeQuery(databaseName string, changeTable string, idColVal any, indexColVal any, secIndexColVal any) string {
 	if first, second, third := idColVal.(string), indexColVal.(string), secIndexColVal.(string); first != "" && second != "" && third != "" {
 		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', '%s', '%s', current_timestamp())", databaseName, changeTable, idColVal, indexColVal, secIndexColVal)
 	}
@@ -251,7 +251,7 @@ func getStatisticInsertChangeQuery(databaseName string, changeTable string, idCo
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext tcflow.FlowContext, idCols []string, indexColumnNames interface{}) ([][]interface{}, error) {
+func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext tcflow.FlowContext, idCols []string, indexColumnNames any) ([][]any, error) {
 	var changedEntriesQuery string
 	tfContext := tcflowContext.(*TrcFlowContext)
 
@@ -282,13 +282,13 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	tcflowContext tcflow.FlowContext,
 	identityColumnNames []string,
-	indexColumnNames interface{},
+	indexColumnNames any,
 	mysqlPushEnabled bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(tcflow.FlowContext, map[string]interface{}) error) error {
+	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
+	flowPushRemote func(tcflow.FlowContext, map[string]any) error) error {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
-	var matrixChangedEntries [][]interface{}
+	var matrixChangedEntries [][]any
 	var removeErr error
 
 	if indexColumnNamesSlice, colOK := indexColumnNames.([]string); colOK {
@@ -316,7 +316,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 	for _, changedEntry := range matrixChangedEntries {
 		var changedTableQuery string
-		var changedId interface{}
+		var changedId any
 		var changeTableError error
 		changedTableQuery, changeTableError = getStatisticChangedByIdQuery(tfContext.FlowSourceAlias, tfContext.Flow.TableName(), identityColumnNames, indexColumnNames, changedEntry)
 		if changeTableError != nil {
@@ -345,7 +345,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			if tfContext.FlowState.State != 0 && (tfContext.FlowState.SyncMode == "push" || tfContext.FlowState.SyncMode == "pushonce") && flowPushRemote != nil {
 				//Check if it exists in trcdb
 				//Writeback to mysql to delete that
-				rowDataMap := map[string]interface{}{}
+				rowDataMap := map[string]any{}
 				rowDataMap["Deleted"] = "true"
 				rowDataMap["changedId"] = changedId
 				for _, column := range changedTableColumns {
@@ -358,7 +358,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 				}
 			}
 
-			rowDataMap := map[string]interface{}{}
+			rowDataMap := map[string]any{}
 			for index, column := range indexColumnNames.([]string) {
 				if _, strOk := changedEntry[index].(string); strOk && len(changedEntry[index].(string)) == 0 {
 					// Invalid string index...  Skip these.
@@ -367,7 +367,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 				rowDataMap[column] = changedEntry[index]
 			}
 
-			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]interface{}) (string, []string, [][]interface{}, error) {
+			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine any, query map[string]any) (string, []string, [][]any, error) {
 				return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.QueryLock)
 			})
 			if indexPathErr != nil {
@@ -391,7 +391,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
-		rowDataMap := map[string]interface{}{}
+		rowDataMap := map[string]any{}
 		if len(changedTableRowData) == 0 {
 			continue
 		}
@@ -402,7 +402,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		// Columns are keys, values in tenantData
 
 		//Use trigger to make another table
-		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine interface{}, query map[string]interface{}) (string, []string, [][]interface{}, error) {
+		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine any, query map[string]any) (string, []string, [][]any, error) {
 			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.QueryLock)
 		})
 		if indexPathErr != nil {
@@ -469,8 +469,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	identityColumnName string,
 	vaultIndexColumnName string,
 	isInit bool,
-	getIndexedPathExt func(engine interface{}, rowDataMap map[string]interface{}, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(interface{}, map[string]string) (string, []string, [][]interface{}, error)) (string, error),
-	flowPushRemote func(*TrcFlowContext, map[string]interface{}, map[string]interface{}) error,
+	getIndexedPathExt func(engine any, rowDataMap map[string]any, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(any, map[string]string) (string, []string, [][]any, error)) (string, error),
+	flowPushRemote func(*TrcFlowContext, map[string]any, map[string]any) error,
 	tableLock *sync.Mutex) error {
 	trcseed.TransformConfig(tfContext.GoMod,
 		tfmContext.TierceronEngine,
@@ -530,7 +530,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
-	rows := make([][]interface{}, 0)
+	rows := make([][]any, 0)
 	for _, indexValue := range indexValues {
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"

@@ -156,7 +156,7 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
@@ -316,7 +316,7 @@ func InitCertBytes(cert []byte) {
 }
 
 func subdirInterceptor(subdir string) grpc.UnaryClientInterceptor {
-	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	return func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 		// Modify the method name to include the subdirectory
 		method = subdir + method
 
@@ -717,7 +717,7 @@ func chat_receiver(rec_chan chan *tccore.ChatMsg) {
 func main() {
 	logFilePtr := flag.String("log", "./trcshtalk.log", "Output path for log file") //renamed from trchealthcheck.log
 	flag.Parse()
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -734,7 +734,7 @@ func main() {
 	}
 
 	// Create an empty map for the YAML data
-	var configCommon map[string]interface{}
+	var configCommon map[string]any
 
 	// Unmarshal the YAML data into the map
 	err = yaml.Unmarshal(data, &configCommon)

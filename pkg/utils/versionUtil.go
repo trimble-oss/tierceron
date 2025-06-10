@@ -45,10 +45,10 @@ func GetEnvBasis(env string) string {
 	}
 }
 
-func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
-	versionMetadataMap := make(map[string]map[string]interface{})
+func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modifier) map[string]map[string]any {
+	versionMetadataMap := make(map[string]map[string]any)
 	mod.VersionFilter = driverConfig.VersionFilter
-	var secretMetadataMap map[string]map[string]interface{}
+	var secretMetadataMap map[string]map[string]any
 	var err error
 	mod.SectionKey = driverConfig.SectionKey
 	mod.SubSectionName = driverConfig.SubSectionName
@@ -94,7 +94,7 @@ func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modi
 	return versionMetadataMap
 }
 
-func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap map[string]map[string]any) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
 		if len(driverConfig.ServiceFilter) > 0 {

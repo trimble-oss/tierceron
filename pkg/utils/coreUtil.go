@@ -61,7 +61,7 @@ func RefString(src *string) *string {
 	return src
 }
 
-func IToString(src interface{}) string {
+func IToString(src any) string {
 	if src == nil {
 		return ""
 	}
@@ -73,7 +73,7 @@ func IToString(src interface{}) string {
 	return ""
 }
 
-func RefMap(m map[string]interface{}, key string) *string {
+func RefMap(m map[string]any, key string) *string {
 	v, ok := m[key]
 	if !ok {
 		return nil

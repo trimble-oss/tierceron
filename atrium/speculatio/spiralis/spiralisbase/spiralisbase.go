@@ -54,7 +54,7 @@ func CommonMain(
 	mashupRenderer.AddRenderer("Curve", curveRenderer)
 	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 	mashupRenderer.AddRenderer("Element", curveRenderer.CollaboratingRenderer)
-	mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]interface{}{}})
+	mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]any{}})
 
 	worldApp := g3nworld.NewWorldApp(*headless, true, mashupRenderer, nil)
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
@@ -73,7 +73,7 @@ func CommonMain(
 		mashupRenderer.AddRenderer("Curve", curveRenderer)
 		mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 		mashupRenderer.AddRenderer("Element", curveRenderer.CollaboratingRenderer)
-		mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]interface{}{}})
+		mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]any{}})
 
 		DetailedElements = libraryElementBundle.DetailedElements
 	} else if *headless && !*custos {

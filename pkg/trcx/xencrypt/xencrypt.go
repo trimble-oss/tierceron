@@ -43,7 +43,7 @@ func FieldValidator(fields string, secSection map[string]map[string]map[string]s
 	return nil
 }
 
-func loadSecretFromSecretStore(mod *helperkv.Modifier) (map[string]interface{}, error) {
+func loadSecretFromSecretStore(mod *helperkv.Modifier) (map[string]any, error) {
 	region := "west"
 	if len(mod.Regions) > 0 {
 		// Chewbacca: Select a region intelligently.
@@ -64,7 +64,7 @@ func loadSecretFromSecretStore(mod *helperkv.Modifier) (map[string]interface{}, 
 		}
 	}
 
-	return map[string]interface{}{}, nil
+	return map[string]any{}, nil
 }
 
 func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
@@ -105,8 +105,8 @@ func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
 	return nil
 }
 
-func GetEncryptors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
-	encryption := map[string]interface{}{}
+func GetEncryptors(secSection map[string]map[string]map[string]string) (map[string]any, error) {
+	encryption := map[string]any{}
 	encryptionList := []string{"salt", "initial_value"}
 	for _, encryptionField := range encryptionList {
 		for secretSectionMap := range secSection["super-secrets"] {
@@ -125,8 +125,8 @@ func GetEncryptors(secSection map[string]map[string]map[string]string) (map[stri
 	return encryption, nil
 }
 
-func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
-	encryptedMap := map[string]interface{}{}
+func CreateEncryptedReadMap(encryptedKeys string) map[string]any {
+	encryptedMap := map[string]any{}
 	encryptedKeysSplit := strings.Split(encryptedKeys, ",")
 
 	for _, encryptedField := range encryptedKeysSplit {
@@ -136,7 +136,7 @@ func CreateEncryptedReadMap(encryptedKeys string) map[string]interface{} {
 	return encryptedMap
 }
 
-func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]interface{}) error {
+func FieldReader(encryptedMap map[string]any, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]any) error {
 	for field := range encryptedMap {
 		found := false
 		for secretSectionMap := range secSection["super-secrets"] {
@@ -174,9 +174,9 @@ func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[
 	return nil
 }
 
-func PromptUserForFields(fields string, encrypted string, encryption map[string]interface{}) (map[string]interface{}, map[string]interface{}, error) {
-	fieldMap := map[string]interface{}{}
-	encryptedMap := map[string]interface{}{}
+func PromptUserForFields(fields string, encrypted string, encryption map[string]any) (map[string]any, map[string]any, error) {
+	fieldMap := map[string]any{}
+	encryptedMap := map[string]any{}
 	//Prompt user for desired value for fields
 	//Prompt user for encrypted value 2x and validate they match.
 
@@ -226,7 +226,7 @@ func PromptUserForFields(fields string, encrypted string, encryption map[string]
 	return fieldMap, encryptedMap, nil
 }
 
-func FieldReplacer(fieldMap map[string]interface{}, encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error {
+func FieldReplacer(fieldMap map[string]any, encryptedMap map[string]any, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error {
 	for field, valueField := range fieldMap {
 		found := false
 		for secretSectionMap := range secSection["super-secrets"] {

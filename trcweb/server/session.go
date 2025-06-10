@@ -59,7 +59,7 @@ func (s *Server) authUser(config *core.CoreConfig, mod *helperkv.Modifier, opera
 	return buildopts.BuildOptions.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(config *core.CoreConfig, env string) ([]map[string]interface{}, error) {
+func (s *Server) getActiveSessions(config *core.CoreConfig, env string) ([]map[string]any, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
@@ -111,14 +111,14 @@ func parseURL(config *core.CoreConfig, url string) (string, string, string, stri
 	return m[1], m[2], m[3], m[4], nil
 }
 
-func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
+func (s *Server) getVaultSessions(env string) ([]map[string]any, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}
 	mod.Env = ""
 
-	sessions := []map[string]interface{}{}
+	sessions := []map[string]any{}
 	paths, err := mod.List("apiLogins/"+env, s.Log)
 	if paths == nil {
 		return nil, fmt.Errorf("Nothing found under apiLogins/" + env)
@@ -130,7 +130,7 @@ func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) 
 
 	// Pass through all registered users
 	var id int
-	if users, ok := paths.Data["keys"].([]interface{}); ok {
+	if users, ok := paths.Data["keys"].([]any); ok {
 		for _, user := range users {
 			if user == "meta" {
 				continue
@@ -153,7 +153,7 @@ func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) 
 				userData["Issued"] = -1
 				userData["Expires"] = -1
 			} else {
-				sessions = append(sessions, map[string]interface{}{
+				sessions = append(sessions, map[string]any{
 					"ID":        id,
 					"User":      strings.TrimSpace(user.(string)),
 					"LastLogIn": issued,

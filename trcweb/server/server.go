@@ -90,7 +90,7 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 	}
 
 	fileNames := []string{}
-	for _, fileName := range secret.Data["keys"].([]interface{}) {
+	for _, fileName := range secret.Data["keys"].([]any) {
 		if strFile, ok := fileName.(string); ok {
 			if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
 				fileNames = append(fileNames, strFile)
@@ -185,7 +185,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		if userPaths == nil {
 			continue
 		}
-		if localEnvs, ok := userPaths.Data["keys"].([]interface{}); ok {
+		if localEnvs, ok := userPaths.Data["keys"].([]any); ok {
 			for _, env := range localEnvs {
 				envStrings = append(envStrings, strings.Trim("local/"+e+"/"+env.(string), "/"))
 			}
@@ -275,7 +275,7 @@ func (s *Server) getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathN
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		slicey := secrets.Data["keys"].([]any)
 		//fmt.Println("secrets are")
 		//fmt.Println(slicey)
 		for _, pathEnd := range slicey {
@@ -300,7 +300,7 @@ func (s *Server) getTemplateFilePaths(config *core.CoreConfig, mod *helperkv.Mod
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		slicey := secrets.Data["keys"].([]any)
 
 		for _, pathEnd := range slicey {
 			//List is returning both pathEnd and pathEnd/
@@ -327,7 +327,7 @@ func (s *Server) templateFileRecurse(config *core.CoreConfig, mod *helperkv.Modi
 		eUtils.LogErrorObject(config, err, false)
 		return subPathList, err
 	} else if subsecrets != nil {
-		subslice := subsecrets.Data["keys"].([]interface{})
+		subslice := subsecrets.Data["keys"].([]any)
 		if subslice[0] != "template-file" {
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/

@@ -19,7 +19,7 @@ import (
 )
 
 var configContext *tccore.ConfigContext
-var tfmContext *flowcore.FlowMachineContext
+var tfmContext flowcore.FlowMachineContext
 var sender chan error
 var dfstat *tccore.TTDINode
 
@@ -115,7 +115,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		event := <-chat_receive_chan
 		switch {
 		case event == nil:
-			fallthrough
+			continue
 		case *event.Name == "SHUTDOWN":
 			configContext.Log.Println("trcdb shutting down message receiver")
 			return
@@ -141,12 +141,12 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 }
 
 func processTrcdb(trcdbExchange *core.TrcdbExchange) {
-	if trcdbExchange == nil {
+	if trcdbExchange == nil || tfmContext == nil {
 		configContext.Log.Println("Invalid TrcdbExchange received, shutting down Trcdb processing.")
 		return
 	}
 	if len(trcdbExchange.Flows) > 0 {
-		tfCtx := (*tfmContext).GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
+		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
 		if tfCtx == nil {
 			configContext.Log.Println("No flow context available for TrcdbExchange processing")
 			trcdbExchange.Response = core.TrcdbResponse{}
@@ -154,7 +154,7 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 		}
 		query := make(map[string]interface{})
 		query["TrcQuery"] = trcdbExchange.Query
-		responseMatrix, changed := (*tfmContext).CallDBQuery(tfCtx, query, nil, false, trcdbExchange.Operation, nil, "")
+		responseMatrix, changed := tfmContext.CallDBQuery(tfCtx, query, nil, false, trcdbExchange.Operation, nil, "")
 		if !changed && trcdbExchange.Operation != "SELECT" {
 			configContext.Log.Println("TrcdbExchange operation did not change the data, returning empty response.")
 		}
@@ -181,6 +181,11 @@ func start(pluginName string) {
 			configContext.Log.Println(msg, err)
 		})
 	send_dfstat()
+	if configContext.CmdSenderChan != nil {
+		*configContext.CmdSenderChan <- tccore.KernelCmd{
+			Command: tccore.PLUGIN_EVENT_START,
+		}
+	}
 }
 
 func stop(pluginName string) {
@@ -317,7 +322,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		fmt.Println("Missing common config components")
 		return
 	}
-	if tfmCtx, ok := (*properties)[tccore.TRCDB_RESOURCE].(*flowcore.FlowMachineContext); ok {
+	if tfmCtx, ok := (*properties)[tccore.TRCDB_RESOURCE].(flowcore.FlowMachineContext); ok {
 		tfmContext = tfmCtx
 	} else {
 		fmt.Println("No flow context available for trcdb plugin.")

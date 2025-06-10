@@ -113,7 +113,7 @@ func GetUserCodeField() string {
 
 // Override to provide a map of active sessions by querying the provided database connection.
 // Used to provide active sessions in the web interface -- not maintained..
-func ActiveSessions(db *sql.DB) ([]map[string]interface{}, error) {
+func ActiveSessions(db *sql.DB) ([]map[string]any, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -145,7 +145,7 @@ func GetSyncedTables() []string {
 //     encrypted password found within the source database configuration.
 //
 // returns: the decrypted password to be used in establishing a database connection.
-func DecryptSecretConfig(sourceDatabaseConfigs map[string]interface{}, config map[string]interface{}) (string, error) {
+func DecryptSecretConfig(sourceDatabaseConfigs map[string]any, config map[string]any) (string, error) {
 	return "", nil
 }
 
@@ -166,7 +166,7 @@ const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"
 // It returns true if the lastModified fields are equal.  False otherwise.
 // Override to provide alternate fields to match on in your flows for comparing lastModified or
 // even other fields...
-func CompareLastModified(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool {
+func CompareLastModified(dfStatMapA map[string]any, dfStatMapB map[string]any) bool {
 	//Check if a & b are time.time
 	//Check if they match.
 	var lastModifiedA time.Time

@@ -67,7 +67,7 @@ func main() {
 		logger.Println("Running prod plugin")
 		prod.SetProd(true)
 	}
-	buildopts.BuildOptions.SetLogger(func(query string, args ...interface{}) {
+	buildopts.BuildOptions.SetLogger(func(query string, args ...any) {
 		logger.Println(query)
 	})
 	buildopts.BuildOptions.SetErrorLogger(logger.Writer())
