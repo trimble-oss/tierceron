@@ -22,7 +22,7 @@ type OptionsBuilder struct {
 	ActiveSessions              func(db *sql.DB) ([]map[string]any, error)
 	GetSyncedTables             func() []string
 	FindIndexForService         func(project string, service string) (string, []string, string, error)
-	DecryptSecretConfig         func(config map[string]any, config map[string]any) (string, error)
+	DecryptSecretConfig         func(map[string]any, map[string]any) (string, error)
 	GetDFSPathName              func() (string, string)
 	GetDatabaseName             func() string
 	CompareLastModified         func(dfStatMapA map[string]any, dfStatMapB map[string]any) bool
