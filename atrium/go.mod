@@ -38,7 +38,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.38.9
-	github.com/trimble-oss/tierceron-core/v2 v2.6.2
+	github.com/trimble-oss/tierceron-core/v2 v2.6.3
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	gopkg.in/fsnotify.v1 v1.4.7
@@ -162,7 +162,7 @@ require (
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-helpers v0.26.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230123231816-1cb3ae25d79a // indirect
