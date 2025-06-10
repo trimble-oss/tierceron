@@ -116,7 +116,7 @@ func CreatePrivateKey(fileName string) (privKey *rsa.PrivateKey, err error) {
 }
 
 // CreateCert creates a cert and saves it to a .pem file
-func CreateCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}, fileName string) (cert *x509.Certificate, err error) {
+func CreateCert(template, parent *x509.Certificate, pub any, parentPriv any, fileName string) (cert *x509.Certificate, err error) {
 	//cert *x509.Certificate,
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {

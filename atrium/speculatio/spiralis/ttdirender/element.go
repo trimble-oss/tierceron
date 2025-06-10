@@ -16,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron-nute/g3nd/g3nworld"
 	g3ndpalette "github.com/trimble-oss/tierceron-nute/g3nd/palette"
 	"github.com/trimble-oss/tierceron-nute/g3nd/worldg3n/g3nrender"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
 
 type ClickedG3nDetailElement struct {
@@ -35,6 +36,11 @@ type ElementRenderer struct {
 	quartiles       []float64
 	ctrlElements    []*g3nmash.G3nDetailedElement
 	isCtrl          bool
+}
+
+func (er *ElementRenderer) GetBasePathComponent() string {
+	tenantIndexPath, _ := coreopts.BuildOptions.GetDFSPathName()
+	return tenantIndexPath
 }
 
 // Returns true if length of er.clickedElements stack is 0 and false otherwise
@@ -85,13 +91,13 @@ func (er *ElementRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, v
 		}
 	}
 	if g3n.GetDetailedElement().Data != "" {
-		var decodedFlow interface{}
+		var decodedFlow any
 		if g3n.GetDetailedElement().Data != "" {
 			err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
 			if err != nil {
 				log.Println("Error in decoding data in buildDataFlowStatistics")
 			}
-			decodedFlowData := decodedFlow.(map[string]interface{})
+			decodedFlowData := decodedFlow.(map[string]any)
 			if decodedFlowData["Mode"] != nil {
 				if decodedFlowData["Mode"].(float64) == 2 {
 					color = math32.NewColor("darkred")
@@ -186,13 +192,13 @@ func (er *ElementRenderer) calculateLocation(center *math32.Vector3, counter flo
 // Initializes location cache
 func (er *ElementRenderer) initLocnCache(worldApp *g3nworld.WorldApp, element *g3nmash.G3nDetailedElement) {
 	if len(element.GetChildElementIds()) != 0 {
-		if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
+		if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != er.GetBasePathComponent() {
 			er.calcLocnStarter(worldApp, element.GetChildElementIds(), -0.1)
 		}
 
 		for _, childID := range element.GetChildElementIds() {
 			if childElement, childElementOk := worldApp.ConcreteElements[childID]; childElementOk {
-				if childElement.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
+				if childElement.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != er.GetBasePathComponent() {
 					er.initLocnCache(worldApp, worldApp.ConcreteElements[childID])
 				}
 			}
@@ -208,7 +214,7 @@ func (er *ElementRenderer) RecursiveClick(worldApp *g3nworld.WorldApp, clickedEl
 			if element.GetDetailedElement().Genre == "DataFlowStatistic" {
 				element.ApplyState(mashupsdk.Clicked, true)
 			}
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" { //
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != er.GetBasePathComponent() { //
 				element.ApplyState(mashupsdk.Hidden, false)
 				element.ApplyState(mashupsdk.Clicked, true)
 				er.ctrlElements = append(er.ctrlElements, element)
@@ -248,7 +254,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		}
 		for key := range copyCache {
 			element := worldApp.ConcreteElements[key]
-			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != "TenantDataBase" {
+			if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Name != er.GetBasePathComponent() {
 				er.initLocnCache(worldApp, element)
 			}
 		}
@@ -281,7 +287,7 @@ func (er *ElementRenderer) InitRenderLoop(worldApp *g3nworld.WorldApp) bool {
 		}
 	}
 
-	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != "TenantDataBase" {
+	if clickedElement.GetDetailedElement().Genre != "Solid" && clickedElement.GetDetailedElement().Genre != "Space" && clickedElement.GetDetailedElement().Name != er.GetBasePathComponent() {
 		name := clickedElement.GetDisplayName()
 		mesh := clickedElement.GetNamedMesh(name)
 		pos := mesh.Position()
@@ -351,13 +357,13 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 	if g3n == worldApp.ClickedElements[len(worldApp.ClickedElements)-1] && g3n.GetNamedMesh(g3n.GetDisplayName()) != nil {
 		g3n.SetColor(math32.NewColor("olive"), 1.0)
 		if g3n.GetDetailedElement().Data != "" {
-			var decodedFlow interface{}
+			var decodedFlow any
 			if g3n.GetDetailedElement().Data != "" {
 				err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
 				if err != nil {
 					log.Println("Error in decoding data in buildDataFlowStatistics")
 				}
-				decodedFlowData := decodedFlow.(map[string]interface{})
+				decodedFlowData := decodedFlow.(map[string]any)
 				if decodedFlowData["Mode"] != nil {
 					if decodedFlowData["Mode"].(float64) == 2 {
 						g3n.SetColor(math32.NewColor("darkred"), 1.0)
@@ -369,7 +375,7 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 		}
 		for _, childId := range g3n.GetChildElementIds() {
 			if element, elementOk := worldApp.ConcreteElements[childId]; elementOk {
-				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != "TenantDataBase" {
+				if element.GetDetailedElement().Genre != "Solid" && element.GetDetailedElement().Genre != "DataFlowStatistic" && element.GetDetailedElement().Name != er.GetBasePathComponent() {
 					if element.GetNamedMesh(element.GetDisplayName()) == nil {
 						_, nextPos := er.NextCoordinate(element, er.totalElements)
 						if nextPos != nil {
@@ -401,13 +407,13 @@ func (er *ElementRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3n *g3nma
 			}
 		}
 		if g3n.GetDetailedElement().Data != "" {
-			var decodedFlow interface{}
+			var decodedFlow any
 			if g3n.GetDetailedElement().Data != "" {
 				err := json.Unmarshal([]byte(g3n.GetDetailedElement().Data), &decodedFlow)
 				if err != nil {
 					log.Println("Error in decoding data in buildDataFlowStatistics")
 				}
-				decodedFlowData := decodedFlow.(map[string]interface{})
+				decodedFlowData := decodedFlow.(map[string]any)
 				if decodedFlowData["Mode"] != nil {
 					if decodedFlowData["Mode"].(float64) == 2 {
 						color = math32.NewColor("darkred")

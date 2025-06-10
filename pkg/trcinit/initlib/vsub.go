@@ -110,7 +110,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 		return nil, err
 	}
 	for _, templatePath := range templateList.Data {
-		for _, projectInterface := range templatePath.([]interface{}) {
+		for _, projectInterface := range templatePath.([]any) {
 			project := strings.TrimSuffix(projectInterface.(string), "/")
 			if len(filterTemplateSlice) > 0 {
 				projectFound := false

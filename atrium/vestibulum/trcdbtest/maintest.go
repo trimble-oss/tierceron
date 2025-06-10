@@ -61,7 +61,7 @@ func main() {
 		}
 	}
 	flowMachineInitContext := flowcore.FlowMachineInitContext{
-		FlowMachineInterfaceConfigs: map[string]interface{}{},
+		FlowMachineInterfaceConfigs: map[string]any{},
 		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}

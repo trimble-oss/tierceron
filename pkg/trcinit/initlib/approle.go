@@ -39,7 +39,7 @@ func GetApproleFileNames(config *core.CoreConfig, namespace string) []string {
 	return approleFileNames
 }
 
-func ParseApproleYaml(fileName string, namespace string) (map[interface{}]interface{}, error) {
+func ParseApproleYaml(fileName string, namespace string) (map[any]any, error) {
 	cwd, cwdErr := os.Getwd()
 	if cwdErr != nil {
 		return nil, cwdErr
@@ -49,7 +49,7 @@ func ParseApproleYaml(fileName string, namespace string) (map[interface{}]interf
 		return nil, err
 	}
 
-	parsedData := make(map[interface{}]interface{})
+	parsedData := make(map[any]any)
 
 	err2 := yaml.Unmarshal(file, &parsedData)
 	if err2 != nil {

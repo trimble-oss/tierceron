@@ -202,7 +202,7 @@ func CommonMain(envDefaultPtr *string,
 			return err
 		}
 		for _, pluginPath := range pluginList.Data {
-			for _, pluginInterface := range pluginPath.([]interface{}) {
+			for _, pluginInterface := range pluginPath.([]any) {
 				plugin := pluginInterface.(string)
 				fmt.Println(strings.TrimRight(plugin, "/"))
 			}
@@ -217,7 +217,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 		fmt.Printf("\nProjects available:\n")
 		for _, templatePath := range templateList.Data {
-			for _, projectInterface := range templatePath.([]interface{}) {
+			for _, projectInterface := range templatePath.([]any) {
 				project := projectInterface.(string)
 				fmt.Println(strings.TrimRight(project, "/"))
 			}

@@ -529,7 +529,7 @@ skipDiff:
 						}
 						levelPart := map[string]string{}
 						for _, valuesPath := range listValues.Data {
-							for _, indexNameInterface := range valuesPath.([]interface{}) {
+							for _, indexNameInterface := range valuesPath.([]any) {
 								levelPart[strings.Trim(indexNameInterface.(string), "/")] = ""
 							}
 						}
@@ -630,7 +630,7 @@ skipDiff:
 							eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, "No available indexes found for "+subSectionPath, 1)
 						}
 						for k, valuesPath := range listValues.Data {
-							for _, indexNameInterface := range valuesPath.([]interface{}) {
+							for _, indexNameInterface := range valuesPath.([]any) {
 								if indexNameInterface != (subSectionName + "/") {
 									continue
 								}
@@ -640,7 +640,7 @@ skipDiff:
 								}
 
 								for _, indexPath := range indexList.Data {
-									for _, indexInterface := range indexPath.([]interface{}) {
+									for _, indexInterface := range indexPath.([]any) {
 										if len(*eUtils.IndexValueFilterPtr) > 0 {
 											if indexInterface != (*eUtils.IndexValueFilterPtr + "/") {
 												continue

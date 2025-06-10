@@ -36,7 +36,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) (any, error) {
+func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error) {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
@@ -100,10 +100,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
-	var sourceDatabaseConfigs []map[string]interface{}
-	var vaultDatabaseConfig map[string]interface{}
-	var spiralDatabaseConfig map[string]interface{}
-	var trcIdentityConfig map[string]interface{}
+	var sourceDatabaseConfigs []map[string]any
+	var vaultDatabaseConfig map[string]any
+	var spiralDatabaseConfig map[string]any
+	var trcIdentityConfig map[string]any
 	logger.Println("Grabbing configs.")
 	for i := 0; i < len(projects); i++ {
 		eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Loading service: %s", services[i]))
@@ -144,7 +144,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 			switch services[i] {
 			case "Database":
-				var sourceDatabaseConfig map[string]interface{}
+				var sourceDatabaseConfig map[string]any
 
 				sourceDatabaseConfig, ok = properties.GetConfigValues(services[i], "config")
 				if !ok || len(sourceDatabaseConfig) == 0 {
@@ -192,7 +192,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	}
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished retrieving configs")
-	sourceDatabaseConnectionsMap := map[string]map[string]interface{}{}
+	sourceDatabaseConnectionsMap := map[string]map[string]any{}
 	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 	// 4. Create config for vault for queries to vault.
@@ -243,7 +243,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	// 2. Establish mysql connection to remote mysql instance.
 	for _, sourceDatabaseConfig := range sourceDatabaseConfigs {
-		dbSourceConnBundle := map[string]interface{}{}
+		dbSourceConnBundle := map[string]any{}
 		dbSourceConnBundle["dbsourceurl"] = sourceDatabaseConfig["dbsourceurl"].(string)
 		dbSourceConnBundle["dbsourceuser"] = sourceDatabaseConfig["dbsourceuser"].(string)
 		dbSourceConnBundle["dbsourcepassword"] = sourceDatabaseConfig["dbsourcepassword"].(string)
@@ -293,7 +293,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			//return err
 		}
 		// Set up reloader in case things go sideways later on.
-		tfmContext.ExtensionAuthDataReloader = make(map[string]interface{}, 1)
+		tfmContext.ExtensionAuthDataReloader = make(map[string]any, 1)
 		tfmContext.ExtensionAuthDataReloader["config"] = driverConfig
 		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
 	}
@@ -317,8 +317,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	if len(sourceDatabaseConnectionsMap) == 0 {
-		sourceDatabaseConnectionsMap = make(map[string]map[string]interface{}, 1)
-		sourceDatabaseDetails := make(map[string]interface{}, 1)
+		sourceDatabaseConnectionsMap = make(map[string]map[string]any, 1)
+		sourceDatabaseDetails := make(map[string]any, 1)
 		sourceDatabaseDetails["dbsourceregion"] = "NA"
 		var d time.Duration = 60000
 		sourceDatabaseDetails["dbingestinterval"] = d
@@ -339,7 +339,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	var flowWG sync.WaitGroup
 
 	for _, table := range GetTierceronTableNames() {
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]interface{}), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]any), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 		tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -404,7 +404,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tableFlow.ServiceName())
 			defer flowWG.Done()
-			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 			tfContext.Flow = tableFlow
@@ -464,7 +464,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.ServiceName())
 			defer flowWG.Done()
 
-			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 			tfContext.Flow = bizFlow
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.TableName()]
@@ -495,7 +495,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			go func(testFlow flowcore.FlowNameType, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
-				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]interface{}{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
+				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1)}
 				tfContext.Flow = testFlow
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -532,12 +532,12 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 	projectValues, err := goMod.List("templates", driverConfig.CoreConfig.Log)
 	argosId := 0
 	if err == nil && projectValues != nil {
-		for _, projectValue := range projectValues.Data["keys"].([]interface{}) {
+		for _, projectValue := range projectValues.Data["keys"].([]any) {
 			if project := projectValue.(string); harbingeropts.BuildOptions.IsValidProjectName(project) {
 				project = strings.TrimSuffix(project, "/")
 				serviceValues, err := goMod.List(fmt.Sprintf("templates/%s", project), driverConfig.CoreConfig.Log)
 				if err == nil && serviceValues != nil {
-					for _, serviceValue := range serviceValues.Data["keys"].([]interface{}) {
+					for _, serviceValue := range serviceValues.Data["keys"].([]any) {
 						if service := serviceValue.(string); service != "" {
 							service = strings.TrimSuffix(service, "/")
 							if !strings.HasSuffix(service, "Build") && !strings.HasSuffix(service, "Cert") {
@@ -548,7 +548,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 								if flow := tfmContext.GetFlowContext(flowcore.FlowNameType("ArgosSocii")); flow != nil {
 									if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
 										argosId = argosId + 1
-										var data = make(map[string]interface{})
+										var data = make(map[string]any)
 										data["argosId"] = fmt.Sprintf("%d", argosId)
 										data["argosIdentitasNomen"] = "Jason Aesonides"
 										data["argosProiectum"] = project
@@ -568,7 +568,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 	}
 }
 
-func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]interface{}, spiralDatabaseConfig map[string]interface{}, flowWG *sync.WaitGroup) error {
+func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]any, spiralDatabaseConfig map[string]any, flowWG *sync.WaitGroup) error {
 	eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Waiting for controller initialization...")
 	tfmFlumeContext.InitConfigWG.Wait()
 	tfmFlumeContext.FlowControllerLock.Lock()
@@ -576,7 +576,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 	tfmFlumeContext.FlowControllerLock.Unlock()
 
 	//Set up controller config
-	controllerVaultDatabaseConfig := make(map[string]interface{})
+	controllerVaultDatabaseConfig := make(map[string]any)
 	for index, config := range vaultDatabaseConfig {
 		controllerVaultDatabaseConfig[index] = config
 	}

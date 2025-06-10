@@ -149,7 +149,7 @@ func file_hellosdk_hellosdk_proto_rawDescGZIP() []byte {
 }
 
 var file_hellosdk_hellosdk_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_hellosdk_hellosdk_proto_goTypes = []interface{}{
+var file_hellosdk_hellosdk_proto_goTypes = []any{
 	(*HelloRequest)(nil), // 0: hellosdk.HelloRequest
 	(*HelloReply)(nil),   // 1: hellosdk.HelloReply
 }
@@ -169,7 +169,7 @@ func file_hellosdk_hellosdk_proto_init() {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_hellosdk_hellosdk_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_hellosdk_hellosdk_proto_msgTypes[0].Exporter = func(v any, i int) any {
 			switch v := v.(*HelloRequest); i {
 			case 0:
 				return &v.state
@@ -181,7 +181,7 @@ func file_hellosdk_hellosdk_proto_init() {
 				return nil
 			}
 		}
-		file_hellosdk_hellosdk_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_hellosdk_hellosdk_proto_msgTypes[1].Exporter = func(v any, i int) any {
 			switch v := v.(*HelloReply); i {
 			case 0:
 				return &v.state

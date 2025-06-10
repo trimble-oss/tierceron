@@ -22,13 +22,13 @@ import (
 // KeyStore:
 // 	type: KeyStore
 
-func verify(config *core.CoreConfig, mod *helperkv.Modifier, v map[interface{}]interface{}) ([]string, error) {
+func verify(config *core.CoreConfig, mod *helperkv.Modifier, v map[any]any) ([]string, error) {
 	var isValid bool
 	var path string
 	config.Log.SetPrefix("[VERIFY]")
 
 	for service, info := range v {
-		vType := info.(map[interface{}]interface{})["type"].(string)
+		vType := info.(map[any]any)["type"].(string)
 		serviceData, err := mod.ReadData("super-secrets/" + service.(string))
 		if err != nil {
 			return nil, err
@@ -66,7 +66,7 @@ func verify(config *core.CoreConfig, mod *helperkv.Modifier, v map[interface{}]i
 		// Log verification status and write to vault
 		config.Log.Printf("\tverified: %v\n", isValid)
 		path = "verification/" + service.(string)
-		warn, err := mod.Write(path, map[string]interface{}{
+		warn, err := mod.Write(path, map[string]any{
 			"type":     vType,
 			"verified": isValid,
 		}, config.Log)

@@ -5,8 +5,8 @@ package cursoropts
 
 import "runtime"
 
-func GetCuratorConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{
+func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
+	return map[string]any{
 		"env":            "dev",
 		"exitOnFailure":  false,
 		"regions":        []string{"west"},

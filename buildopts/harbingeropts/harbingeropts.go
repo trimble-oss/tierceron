@@ -60,14 +60,14 @@ func IsValidProjectName(project string) bool {
 	return project != "" && !strings.HasPrefix(project, "TrcVault") && !strings.HasPrefix(project, "Vault") && !strings.HasPrefix(project, "TrcDb") && !strings.HasPrefix(project, "FlumeDatabase") && !strings.HasPrefix(project, "Azure")
 }
 
-func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]interface{}, error) {
+func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]any, error) {
 	schema, r, queryErr := engine.Query(ctx, query)
 	if queryErr != nil {
 		return "", nil, nil, queryErr
 	}
 
 	columns := []string{}
-	matrix := [][]interface{}{}
+	matrix := [][]any{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -86,7 +86,7 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 			if err == io.EOF {
 				break
 			}
-			rowData := []interface{}{}
+			rowData := []any{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
 				okResult = true
 				if len(row) > 0 {
@@ -134,7 +134,7 @@ func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) 
 
 // Used to define a database interface for querying TrcDb.
 // Builds interface for TrcDB
-func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContextInterface interface{}, vaultDatabaseConfig map[string]interface{}, serverListenerInterface interface{}) error {
+func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContextInterface any, vaultDatabaseConfig map[string]any, serverListenerInterface any) error {
 	serverListener := serverListenerInterface.(server.ServerEventListener)
 	tfmContext := tfmContextInterface.(*trcflowcore.TrcFlowMachineContext)
 	interfaceUrl, parseErr := url.Parse(vaultDatabaseConfig["vaddress"].(string))
@@ -317,7 +317,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		eUtils.LogInfo(driverConfig.CoreConfig, "Permissions have been set up.")
 
 		//Set off listeners for when tables are ready.
-		go func(tfC *trcflowcore.TrcFlowMachineContext, vdc map[string]interface{}) {
+		go func(tfC *trcflowcore.TrcFlowMachineContext, vdc map[string]any) {
 			for {
 				select {
 				case permUpdate := <-tfmContext.PermissionChan:

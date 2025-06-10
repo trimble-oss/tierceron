@@ -141,7 +141,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 }
 
 // GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (interface{}, error) {
+func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if utils.IsWindows() {
@@ -175,7 +175,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 			templateInfo = true
 		}
 	}
-	versionData := make(map[string]interface{})
+	versionData := make(map[string]any)
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetTokenStr(tokenNamePtr), "novault") {
 		// Chewbacca: break here...
 		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
@@ -235,7 +235,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	modCheck.VersionFilter = driverConfig.VersionFilter
 
 	if versionInfo {
-		//versionDataMap := make(map[string]map[string]interface{})
+		//versionDataMap := make(map[string]map[string]any)
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
 			envVersion := eUtils.SplitEnv(modCheck.Env)
@@ -327,7 +327,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	driverConfig.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
+		go func(i int, templatePath string, version string, versionData map[string]any) error {
 			defer wg.Done()
 
 			tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")

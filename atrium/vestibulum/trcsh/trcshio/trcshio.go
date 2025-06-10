@@ -21,5 +21,5 @@ type MemoryFileSystem interface {
 	WriteToMemFile(coreConfig *core.CoreConfig, byteData *[]byte, path string)
 	ReadDir(path string) ([]os.FileInfo, error)
 	ClearCache(path string)
-	SerializeToMap(path string, configCache map[string]interface{})
+	SerializeToMap(path string, configCache map[string]any)
 }

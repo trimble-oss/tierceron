@@ -51,7 +51,7 @@ var globalPluginStatusChan chan string
 
 type certValue struct {
 	CertBytes   *[]byte
-	CreatedTime interface{}
+	CreatedTime any
 	NotAfter    *time.Time
 	lastUpdate  *time.Time
 }
@@ -116,7 +116,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 		if mod == nil {
 			var err error
 			driverConfig.CoreConfig.Log.Println("")
-			pluginConfig := make(map[string]interface{})
+			pluginConfig := make(map[string]any)
 			pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 			currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
@@ -411,7 +411,7 @@ func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.D
 	return nil
 }
 
-func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
+func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 	if pluginHandler.Name == "" {
 		pluginHandler.ConfigContext.Log.Println("No plugin name set for initializing plugin service.")
 		return
@@ -436,7 +436,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]interface{}) {
 func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig *config.DriverConfig,
 	service string,
-	serviceConfig *map[string]interface{},
+	serviceConfig *map[string]any,
 ) {
 	// Initialize channels
 	sender := make(chan core.KernelCmd)
@@ -459,17 +459,17 @@ func (pluginHandler *PluginHandler) RunPlugin(
 		return
 	}
 
-	chan_map := make(map[string]interface{})
+	chan_map := make(map[string]any)
 
-	chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]interface{})
-	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]any)
+	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
 
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]interface{})
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]any)
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
+	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
 	chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
@@ -488,7 +488,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 		defer kernelvault.Close()
 	}
 
-	pluginMap := map[string]interface{}{"pluginName": pluginHandler.Name}
+	pluginMap := map[string]any{"pluginName": pluginHandler.Name}
 
 	certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
 	if err != nil {
@@ -508,7 +508,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 }
 
-func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) {
+func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]any) {
 	if driverConfig.CoreConfig.Log != nil {
 		if pluginHandler.ConfigContext.Log == nil {
 			pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
@@ -542,8 +542,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		return
 	}
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
-	var pluginConfig map[string]interface{}
-	var flowMachineContext interface{}
+	var pluginConfig map[string]any
+	var flowMachineContext any
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
 		if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 			getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
@@ -552,7 +552,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 				return
 			} else {
-				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]interface{}) interface{})
+				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]any) any)
 				flowMachineContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
 			}
 		} else if plugincoreopts.BuildOptions.IsPluginHardwired() {
@@ -568,7 +568,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			return
 		}
 	} else {
-		pluginConfig = make(map[string]interface{})
+		pluginConfig = make(map[string]any)
 	}
 	pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 	if len(driverConfig.CoreConfig.Regions) > 0 {
@@ -638,7 +638,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 			}
 
-			serviceConfig := make(map[string]interface{})
+			serviceConfig := make(map[string]any)
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
 					if v, ok := globalCertCache.Get(path); ok {
@@ -721,7 +721,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						if flowopts.BuildOptions.AllowTrcdbInterfaceOverride() {
 							if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
 								// Make plugin configs available to flowMachineContext
-								var harbingerConfig map[string]interface{}
+								var harbingerConfig map[string]any
 								if configBytes, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG].([]byte); ok {
 									err := yaml.Unmarshal(configBytes, &harbingerConfig)
 									if err == nil {
@@ -766,17 +766,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				return
 			}
 
-			chan_map := make(map[string]interface{})
+			chan_map := make(map[string]any)
 
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]interface{})
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]any)
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
 
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]interface{})
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]any)
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
+			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
 			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
@@ -794,7 +794,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				defer kernelvault.Close()
 			}
 
-			pluginMap := map[string]interface{}{"pluginName": pluginHandler.Name}
+			pluginMap := map[string]any{"pluginName": pluginHandler.Name}
 
 			certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
 			if err != nil {
@@ -958,7 +958,7 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
 }
 
-func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[string]interface{}) string {
+func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[string]any) string {
 	var deployroot string
 	var service string
 	var ext = ".so"

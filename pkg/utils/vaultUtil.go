@@ -132,7 +132,7 @@ func GetAcceptedTemplatePaths(driverConfig *config.DriverConfig, modCheck *helpe
 
 var logMap sync.Map = sync.Map{}
 
-func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *log.Logger {
+func InitPluginLogs(pluginConfig map[string]any, logger *log.Logger) *log.Logger {
 	logger.Println("InitPluginLogs log setup: " + pluginConfig["env"].(string))
 	var trcdbEnvLogger *log.Logger
 
@@ -173,7 +173,7 @@ func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *lo
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
 
@@ -227,7 +227,7 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 	return InitVaultMod(&driverConfig)
 }
 
-func InitDriverConfigForPlugin(pluginConfig map[string]interface{}, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, error) {
+func InitDriverConfigForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, error) {
 	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
 
@@ -279,7 +279,7 @@ func InitDriverConfigForPlugin(pluginConfig map[string]interface{}, tokenCache *
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForTool(pluginConfig map[string]any, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	exitOnFailure := false
 
 	driverConfig.CoreConfig.Log.Println("InitVaultModForTool begin..")

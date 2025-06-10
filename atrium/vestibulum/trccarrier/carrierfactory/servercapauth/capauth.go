@@ -29,7 +29,7 @@ type FeatherAuth struct {
 }
 
 // ValidateTrcshPathSha - if at least one plugin is properly certified, return true.
-func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger *log.Logger) (bool, error) {
 	logger.Printf("ValidateTrcshPathSha start\n")
 
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
@@ -72,7 +72,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 	return false, errors.New("missing certification")
 }
 
-func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering bool, logger *log.Logger) (*FeatherAuth, error) {
+func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) (*FeatherAuth, error) {
 
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
 	tapMap := map[string]string{}
@@ -170,7 +170,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]interface{}, wantsFeathering
 	return nil, nil
 }
 
-func Memorize(memorizeFields map[string]interface{}, logger *log.Logger) {
+func Memorize(memorizeFields map[string]any, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
 		case "trcHatSecretsPort":

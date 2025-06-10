@@ -32,7 +32,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 	// Upload token information to vault
 	if mod != nil {
 		defer func() {
-			tokenData := map[string]interface{}{
+			tokenData := map[string]any{
 				"ID":      id,
 				"Issued":  currentTime,
 				"Expires": expTime,

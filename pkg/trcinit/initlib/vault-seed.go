@@ -30,13 +30,13 @@ import (
 // Used in the decomposition of the seed
 type seedCollection struct {
 	path string
-	data map[interface{}]interface{}
+	data map[any]any
 }
 
 // Used for containing the actual paths and values to vault
 type writeCollection struct {
 	path string
-	data map[string]interface{}
+	data map[string]any
 }
 
 var templateWritten map[string]bool
@@ -661,9 +661,9 @@ func seedVaultWithCertsFromEntry(driverConfig *config.DriverConfig, mod *helperk
 func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData []byte) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Println("=========New File==========")
-	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
+	var verificationData map[any]any // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
-	var rawYaml interface{}
+	var rawYaml any
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
 	isIndexData := strings.HasPrefix(filepath, "Index/") || strings.Contains(filepath, "/PublicIndex/")
 	if hasEmptyValues && !isIndexData {
@@ -686,7 +686,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 		return eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 	}
 
-	seed, ok := rawYaml.(map[interface{}]interface{})
+	seed, ok := rawYaml.(map[any]any)
 	if !ok {
 		return eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 	}
@@ -699,7 +699,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 		current := mapStack[0]
 		mapStack = mapStack[1:] // Pop the top value
 
-		writeVals := writeCollection{path: current.path, data: map[string]interface{}{}}
+		writeVals := writeCollection{path: current.path, data: map[string]any{}}
 		hasLeafNodes := false // Flag to signify this map had values to write
 
 		// Convert nested maps into vault writable data
@@ -709,8 +709,8 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 					driverConfig.CoreConfig.Log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
 				}
 			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
-				verificationData = v.(map[interface{}]interface{})
-			} else if newData, ok := v.(map[interface{}]interface{}); ok { // Decompose into submaps, update path
+				verificationData = v.(map[any]any)
+			} else if newData, ok := v.(map[any]any); ok { // Decompose into submaps, update path
 				decomp := seedCollection{
 					data: newData}
 				if len(current.path) == 0 {
@@ -856,7 +856,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 }
 
 // WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
-func WriteData(driverConfig *config.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
+func WriteData(driverConfig *config.DriverConfig, path string, data map[string]any, mod *helperkv.Modifier) *helperkv.Modifier {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
 		templateWritten = make(map[string]bool)

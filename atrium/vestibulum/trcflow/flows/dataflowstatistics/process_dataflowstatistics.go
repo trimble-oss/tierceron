@@ -30,7 +30,7 @@ func getDataFlowStatisticsIndexColumnNames() []string {
 	return []string{flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestStateCodeColumn}
 }
 
-func GetDataflowStatIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func GetDataflowStatIndexedPathExt(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error) {
 	tenantIndexPath, _ := coreopts.BuildOptions.GetDFSPathName()
 	if _, ok := rowDataMap[flowcoreopts.DataflowTestIdColumn].(string); ok {
 		if _, ok := rowDataMap[flowcoreopts.DataflowTestNameColumn].(string); ok {
@@ -68,7 +68,7 @@ func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 strin
 		` END;`
 }
 
-func getDataFlowStatisticsSchema(tableName string) interface{} {
+func getDataFlowStatisticsSchema(tableName string) any {
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true}, //composite key
 		{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true},
@@ -95,14 +95,14 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 	}
 
 	for _, tenantIdList := range tenantListData.Data {
-		for _, tenantId := range tenantIdList.([]interface{}) {
+		for _, tenantId := range tenantIdList.([]any) {
 			flowGroupNameListData, flowGroupNameListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup", tfmContext.DriverConfig.CoreConfig.Log)
 			if flowGroupNameListErr != nil {
 				return flowGroupNameListErr
 			}
 
 			for _, flowGroupNameList := range flowGroupNameListData.Data {
-				for _, flowGroup := range flowGroupNameList.([]interface{}) {
+				for _, flowGroup := range flowGroupNameList.([]any) {
 					listData, listErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup/"+flowGroup.(string)+"/dataFlowName/", tfmContext.DriverConfig.CoreConfig.Log)
 					if listData == nil {
 						continue
@@ -113,7 +113,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 					}
 
 					for _, testNameList := range listData.Data {
-						for _, testName := range testNameList.([]interface{}) {
+						for _, testName := range testNameList.([]any) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
 							dfGroup := tccore.InitDataFlow(nil, flowGroup.(string), false)
 							dfctx, _, err := dfGroup.GetDeliverStatCtx()
@@ -179,7 +179,7 @@ func CreateTableTriggers(tfmContextI flowcore.FlowMachineContext, tfContextI flo
 	tfContext := tfContextI.(*core.TrcFlowContext)
 	tfmContext.GetTableModifierLock().Lock()
 	changeTableName := tfContext.Flow.TableName() + "_Changes"
-	tfmContext.CallDBQuery(tfContext, map[string]interface{}{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
+	tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
 	changeTableErr := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
 		{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},

@@ -23,7 +23,7 @@ import (
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
+func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]any, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
 	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -33,8 +33,8 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	templateCombinedSection := map[string]interface{}{}
-	sliceTemplateSection := []interface{}{}
+	templateCombinedSection := map[string]any{}
+	sliceTemplateSection := []any{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	var sectionPath string
@@ -297,7 +297,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 					} else {
 						serviceSlice := make([]string, 0)
 						for _, valuesPath := range listValues.Data {
-							for _, serviceInterface := range valuesPath.([]interface{}) {
+							for _, serviceInterface := range valuesPath.([]any) {
 								serviceFace := serviceInterface.(string)
 								if version != "0" {
 									versionMap := eUtils.GetProjectVersionInfo(driverConfig, mod) //("super-secrets/" + strings.Split(config.EnvBasis, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
@@ -531,9 +531,9 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			connInfo, err := authMod.ReadData("apiLogins/meta")
 			authMod.Release()
 			if err == nil {
-				authSection := map[string]interface{}{}
-				authSection["apiLogins"] = map[string]interface{}{}
-				authSection["apiLogins"].(map[string]interface{})["meta"] = connInfo
+				authSection := map[string]any{}
+				authSection["apiLogins"] = map[string]any{}
+				authSection["apiLogins"].(map[string]any)["meta"] = connInfo
 				authYaml, errA = yaml.Marshal(authSection)
 				if errA != nil {
 					eUtils.LogErrorObject(driverConfig.CoreConfig, errA, false)
@@ -542,16 +542,16 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1)
 			}
 		} else {
-			authConfigurations := map[string]interface{}{}
+			authConfigurations := map[string]any{}
 			authConfigurations["authEndpoint"] = "<Enter Secret Here>"
 			authConfigurations["pass"] = "<Enter Secret Here>"
 			authConfigurations["sessionDB"] = "<Enter Secret Here>"
 			authConfigurations["user"] = "<Enter Secret Here>"
 			authConfigurations["trcAPITokenSecret"] = "<Enter Secret Here>"
 
-			authSection := map[string]interface{}{}
-			authSection["apiLogins"] = map[string]interface{}{}
-			authSection["apiLogins"].(map[string]interface{})["meta"] = authConfigurations
+			authSection := map[string]any{}
+			authSection["apiLogins"] = map[string]any{}
+			authSection["apiLogins"].(map[string]any)["meta"] = authConfigurations
 			authYaml, errA = yaml.Marshal(authSection)
 			if errA != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, errA, false)
@@ -637,7 +637,7 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (interface{}, error) {
+func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	if driverConfig.Clean { //Clean flag in trcx
 		if strings.HasSuffix(driverConfig.CoreConfig.Env, "_0") {
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
@@ -905,10 +905,10 @@ func GetDirFiles(dir string) []string {
 }
 
 // MergeMaps - merges 2 maps recursively.
-func MergeMaps(x1, x2 interface{}) interface{} {
+func MergeMaps(x1, x2 any) any {
 	switch x1 := x1.(type) {
-	case map[string]interface{}:
-		x2, ok := x2.(map[string]interface{})
+	case map[string]any:
+		x2, ok := x2.(map[string]any)
 		if !ok {
 			return x1
 		}
@@ -920,7 +920,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 			}
 		}
 	case nil:
-		x2, ok := x2.(map[string]interface{})
+		x2, ok := x2.(map[string]any)
 		if ok {
 			return x2
 		}
@@ -933,7 +933,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 //   - slice to combine
 //   - template slice to combine
 //   - depth of map (-1 for value/secret sections)
-func CombineSection(config *core.CoreConfig, sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
+func CombineSection(config *core.CoreConfig, sliceSectionInterface any, maxDepth int, combinedSectionInterface any) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section
@@ -960,7 +960,7 @@ func CombineSection(config *core.CoreConfig, sliceSectionInterface interface{}, 
 		if maxDepth < 0 && !okMap {
 			eUtils.LogInfo(config, fmt.Sprintf("Env failed to gen.  MaxDepth: %d, okMap: %t\n", maxDepth, okMap))
 		}
-		sliceSection := sliceSectionInterface.([]interface{})
+		sliceSection := sliceSectionInterface.([]any)
 
 		for _, v := range sliceSection {
 			MergeMaps(combinedSectionInterface, v)

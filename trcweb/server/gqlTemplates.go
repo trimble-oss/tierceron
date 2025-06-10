@@ -46,7 +46,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 			continue
 		}
 		if localEnvs, ok := userPaths.Data["keys"]; ok {
-			for _, env := range localEnvs.([]interface{}) {
+			for _, env := range localEnvs.([]any) {
 				envStrings = append(envStrings, strings.Trim("local/"+e+"/"+env.(string), "/"))
 			}
 		}
@@ -93,7 +93,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						}
 						var dates []time.Time
 						for _, v := range versions {
-							if val, ok := v.(map[string]interface{}); ok {
+							if val, ok := v.(map[string]any); ok {
 								location, _ := time.LoadLocation("America/Los_Angeles")
 								creationTime := fmt.Sprintf("%s", val["created_time"])
 								t, _ := time.Parse(time.RFC3339, creationTime)
@@ -127,7 +127,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							// Construct a string -> bool map to track accessible environments
 
 							if vDataKeys, ok := vSecret.Data["keys"]; ok {
-								if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {
+								if vKeys, okKeys := vDataKeys.([]any); okKeys {
 									for _, k := range vKeys {
 										if group, ok := k.(string); ok {
 											availableSecrets[group] = true
@@ -143,7 +143,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 
 						for k, v := range kvs {
 							// Get path to secret
-							if val, ok := v.([]interface{}); ok {
+							if val, ok := v.([]any); ok {
 								if fullPath, ok := val[0].(string); ok {
 									pathBlocks := strings.SplitN(fullPath, "/", 2) // Check that environment contains secret and check verification
 									if pathBlocks[0] == "super-secrets" && availableSecrets[pathBlocks[1]] {

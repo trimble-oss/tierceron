@@ -19,8 +19,8 @@ func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, tfContext
 	return nil
 }
 
-func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]interface{} {
-	pluginConfig := map[string]interface{}{}
+func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
+	pluginConfig := map[string]any{}
 
 	//env = "dev"
 	pluginConfig["vaddress"] = "TODO"

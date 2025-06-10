@@ -19,16 +19,16 @@ type OptionsBuilder struct {
 	GetVaultHostPort            func() string
 	GetUserNameField            func() string
 	GetUserCodeField            func() string
-	ActiveSessions              func(db *sql.DB) ([]map[string]interface{}, error)
+	ActiveSessions              func(db *sql.DB) ([]map[string]any, error)
 	GetSyncedTables             func() []string
 	FindIndexForService         func(project string, service string) (string, []string, string, error)
-	DecryptSecretConfig         func(tenantConfiguration map[string]interface{}, config map[string]interface{}) (string, error)
+	DecryptSecretConfig         func(map[string]any, map[string]any) (string, error)
 	GetDFSPathName              func() (string, string)
 	GetDatabaseName             func() string
-	CompareLastModified         func(dfStatMapA map[string]interface{}, dfStatMapB map[string]interface{}) bool
+	CompareLastModified         func(dfStatMapA map[string]any, dfStatMapB map[string]any) bool
 	PreviousStateCheck          func(currentState int) int
 	GetMachineID                func() string
-	InitPluginConfig            func(pluginEnvConfig map[string]interface{}) map[string]interface{}
+	InitPluginConfig            func(pluginEnvConfig map[string]any) map[string]any
 	GetPluginRestrictedMappings func() map[string][][]string
 	GetConfigPaths              func(string) []string
 	GetSupportedCertIssuers     func() []string

@@ -68,8 +68,8 @@ func GetFlowDatabaseName() string {
 	return flowcorehelper.GetFlowDBName()
 }
 
-func GetFlowMachineTemplates() map[string]interface{} {
-	pluginConfig := map[string]interface{}{}
+func GetFlowMachineTemplates() map[string]any {
+	pluginConfig := map[string]any{}
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                     // implemented.
 		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()), // implemented.
@@ -89,7 +89,7 @@ type AskFlumeResponse struct {
 func ProcessAskFlumeEventMapper(askFlumeContext *trcflowcore.AskFlumeContext, query *trcflowcore.AskFlumeMessage, tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) *trcflowcore.AskFlumeMessage {
 	var msg *trcflowcore.AskFlumeMessage
 
-	sql_query := make(map[string]interface{})
+	sql_query := make(map[string]any)
 
 	switch {
 	case query.Message == "DataFlowState":

@@ -317,7 +317,7 @@ func CommonMain(envPtr *string,
 
 	regions := []string{}
 
-	pluginConfig := map[string]interface{}{}
+	pluginConfig := map[string]any{}
 	pluginConfig = buildopts.BuildOptions.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
 	if pluginConfig == nil {
 		fmt.Println("Error: Could not find plugin config")
@@ -417,7 +417,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]interface{}{}), *defineServicePtr)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		return plcErr
@@ -576,7 +576,7 @@ func CommonMain(envPtr *string,
 	//Define Service Image
 	if *defineServicePtr {
 		eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
-		writeMap := make(map[string]interface{})
+		writeMap := make(map[string]any)
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
 		writeMap["trcprojectservice"] = *projectservicePtr
