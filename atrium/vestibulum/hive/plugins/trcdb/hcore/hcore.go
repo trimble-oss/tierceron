@@ -10,7 +10,8 @@ import (
 	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
-	argossocii "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/flows/argossocii"
+	"github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -18,8 +19,19 @@ import (
 )
 
 var configContext *tccore.ConfigContext
+var tfmContext *flowcore.FlowMachineContext
 var sender chan error
 var dfstat *tccore.TTDINode
+
+var isProd bool = false
+
+func SetProd(prod bool) {
+	isProd = prod
+}
+
+func IsProd() bool {
+	return isProd
+}
 
 func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
@@ -112,16 +124,43 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			return
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
 			configContext.Log.Println("Sending progress results back to kernel.")
-			progressResp := "Running Trcdb Diagnostics..."
+			progressResp := "Running Trcdb Queries..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
-		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS":
-			configContext.Log.Println("trcdb request")
+		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
+			configContext.Log.Println("Received trcdb request.")
+			processTrcdb((*event).TrcdbExchange)
 			configContext.Log.Println("Sending all test results back to kernel.")
+
 			//			(*event).Response = &results
 			*configContext.ChatSenderChan <- event
 		default:
 			configContext.Log.Println("trcdb received chat message")
+		}
+	}
+}
+
+func processTrcdb(trcdbExchange *core.TrcdbExchange) {
+	if trcdbExchange == nil {
+		configContext.Log.Println("Invalid TrcdbExchange received, shutting down Trcdb processing.")
+		return
+	}
+	if len(trcdbExchange.Flows) > 0 {
+		tfCtx := (*tfmContext).GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
+		if tfCtx == nil {
+			configContext.Log.Println("No flow context available for TrcdbExchange processing")
+			trcdbExchange.Response = core.TrcdbResponse{}
+			return
+		}
+		query := make(map[string]interface{})
+		query["TrcQuery"] = trcdbExchange.Query
+		responseMatrix, changed := (*tfmContext).CallDBQuery(tfCtx, query, nil, false, trcdbExchange.Operation, nil, "")
+		if !changed && trcdbExchange.Operation != "SELECT" {
+			configContext.Log.Println("TrcdbExchange operation did not change the data, returning empty response.")
+		}
+		trcdbExchange.Response = core.TrcdbResponse{
+			Rows:    responseMatrix,
+			Success: changed,
 		}
 	}
 }
@@ -189,6 +228,7 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 }
 
+// GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
 	return "TrcDb"
 }
@@ -275,6 +315,12 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	}
 	if _, ok := (*properties)[flowcore.HARBINGER_INTERFACE_CONFIG]; !ok {
 		fmt.Println("Missing common config components")
+		return
+	}
+	if tfmCtx, ok := (*properties)[tccore.TRCDB_RESOURCE].(*flowcore.FlowMachineContext); ok {
+		tfmContext = tfmCtx
+	} else {
+		fmt.Println("No flow context available for trcdb plugin.")
 		return
 	}
 }

@@ -19,7 +19,6 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
-	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -781,18 +780,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
-			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-				trcdbQueryChan := make(chan *core.TrcdbExchange)
-				pluginHandler.ConfigContext.TrcdbQueryChan = &trcdbQueryChan
-
-				trcdbResponseChan := make(chan *core.TrcdbExchange)
-				pluginHandler.ConfigContext.TrcdbResponseChan = &trcdbResponseChan
-
-				chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{})[core.TRCDB_CHANNEL] = pluginHandler.ConfigContext.TrcdbResponseChan
-
-				chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{})[core.TRCDB_CHANNEL] = pluginHandler.ConfigContext.TrcdbQueryChan
-			}
-
 			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
@@ -818,6 +805,43 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, kernelvault)
 			go pluginHandler.receiver(driverConfig)
+
+			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
+			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+				pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
+				pluginConfig["pluginName"] = pluginHandler.Name
+				if !driverConfig.IsShellSubProcess {
+					// Presently trcshk does not have permissions it needs to access this area of vault.
+					pluginConfig["connectionPath"] = []string{
+						// No interfaces
+						"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
+						"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
+						"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
+					}
+				} else {
+					if plugincoreopts.BuildOptions.IsPluginHardwired() {
+						pluginConfig["connectionPath"] = []string{
+							"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // providing for setup.
+						}
+					} else {
+						pluginConfig["connectionPath"] = []string{
+							"trc_templates/TrcVault/Database/config.yml.tmpl", // sync interface
+						}
+					}
+				}
+
+				// Needs certifyPath and connectionPath
+				tfmContext, err := trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+				if err != nil || tfmContext == nil {
+					driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
+					return
+				} else {
+					pluginHandler.ServiceResource = tfmContext
+				}
+
+				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
+			}
+
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 			go func(senderChan chan core.KernelCmd, pluginName string) {
@@ -830,40 +854,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 	}
 
-	// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
-	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
-		pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
-		pluginConfig["pluginName"] = pluginHandler.Name
-		if !driverConfig.IsShellSubProcess {
-			// Presently trcshk does not have permissions it needs to access this area of vault.
-			pluginConfig["connectionPath"] = []string{
-				// No interfaces
-				"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
-				"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
-				"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
-			}
-		} else {
-			if plugincoreopts.BuildOptions.IsPluginHardwired() {
-				pluginConfig["connectionPath"] = []string{
-					"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // providing for setup.
-				}
-			} else {
-				pluginConfig["connectionPath"] = []string{
-					"trc_templates/TrcVault/Database/config.yml.tmpl", // sync interface
-				}
-			}
-		}
-
-		// Needs certifyPath and connectionPath
-		tfmContext, err := trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
-		if err != nil || tfmContext == nil {
-			driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
-			return
-		} else {
-			pluginHandler.ServiceResource = tfmContext
-			go pluginHandler.processTrcdb(driverConfig)
-		}
-	}
 }
 
 func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
@@ -1084,9 +1074,6 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		pluginHandler.State = 1
 	}
 
-	for len(globalPluginStatusChan) != 0 {
-		time.Sleep(100 * time.Millisecond)
-	}
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
 		pluginHandler.sendInitBroadcast(driverConfig)
@@ -1168,65 +1155,4 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 		}
 	}
-}
-
-func (pH *PluginHandler) processTrcdb(driverConfig *config.DriverConfig) {
-	driverConfig.CoreConfig.Log.Printf("Setting up Trcdb Exchange handling for %s\n", pH.Name)
-	var tfmCtx *flowcore.TrcFlowMachineContext
-	if tfm, ok := pH.ServiceResource.(*flowcore.TrcFlowMachineContext); ok && tfmCtx != nil {
-		tfmCtx = tfm
-	} else {
-		driverConfig.CoreConfig.Log.Println("No flow context available to process TrcdbExchange query.")
-		return
-	}
-	for {
-		exchange := <-*pH.ConfigContext.TrcdbQueryChan
-		if exchange == nil {
-			driverConfig.CoreConfig.Log.Println("Invalid TrcdbExchange received, shutting down Trcdb processing.")
-			continue
-		}
-		driverConfig.CoreConfig.Log.Printf("Processing TrcdbExchange query for: %s\n", pH.Name)
-		var flowLocks []*sync.Mutex
-		for _, f := range exchange.Flows {
-			tfCtx := tfmCtx.GetTrcFlowContext(flow.FlowNameType(f))
-			if tfCtx != nil && tfCtx.QueryLock != nil {
-				flowLocks = append(flowLocks, tfCtx.QueryLock)
-			} else {
-				driverConfig.CoreConfig.Log.Printf("No flow context available for flow: %s\n", f)
-				continue
-			}
-		}
-		_, columns, matrix, err := trcdb.Query(tfmCtx.TierceronEngine, exchange.Query, flowLocks...)
-		if err != nil {
-			driverConfig.CoreConfig.Log.Printf("Error processing TrcdbExchange query: %s\n", err)
-			// Send error response back to trcdb?
-			*pH.ConfigContext.TrcdbResponseChan <- exchange
-			continue
-		}
-		response := processResponse(columns, matrix)
-		exchange.Response = response
-		*pH.ConfigContext.TrcdbResponseChan <- exchange
-		driverConfig.CoreConfig.Log.Printf("Processed TrcdbExchange query for %s\n", pH.Name)
-	}
-}
-
-func processResponse(columns []string, matrix [][]interface{}) core.TrcdbResponse {
-	response := core.TrcdbResponse{
-		Columns: []*string{},
-		Rows:    []map[string]interface{}{},
-	}
-
-	for _, col := range columns {
-		response.Columns = append(response.Columns, &col)
-	}
-
-	for _, row := range matrix {
-		responseRow := make(map[string]interface{})
-		for i, col := range columns {
-			responseRow[col] = row[i]
-		}
-		response.Rows = append(response.Rows, responseRow)
-	}
-
-	return response
 }
