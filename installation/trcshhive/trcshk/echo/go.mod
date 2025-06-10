@@ -1,11 +1,11 @@
 module github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo
 
-go 1.24.3
+go 1.24.4
 
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.38.9
-	github.com/trimble-oss/tierceron-core/v2 v2.5.12
+	github.com/trimble-oss/tierceron-core/v2 v2.6.0
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 	google.golang.org/api v0.207.0
 	google.golang.org/grpc v1.72.0

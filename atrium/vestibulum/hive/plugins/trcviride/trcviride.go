@@ -21,7 +21,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 }
 
 func main() {
-	logFilePtr := flag.String("log", "./trcvico.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./trcviride.log", "Output path for log file")
 	flag.Parse()
 	config := make(map[string]interface{})
 
@@ -30,7 +30,7 @@ func main() {
 		fmt.Printf("Error opening log file: %v\n", err)
 		os.Exit(-1)
 	}
-	logger := log.New(f, "[trcvico]", log.LstdFlags)
+	logger := log.New(f, "[trcviride]", log.LstdFlags)
 	config["log"] = logger
 
 	data, err := os.ReadFile("config.yml")
@@ -50,6 +50,6 @@ func main() {
 	}
 	config[hcore.COMMON_PATH] = &configCommon
 
-	Init("vico", &config)
-	hcore.GetConfigContext("vico").Start("vico")
+	Init("viride", &config)
+	hcore.GetConfigContext("viride").Start("viride")
 }
