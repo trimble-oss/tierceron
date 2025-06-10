@@ -22,7 +22,7 @@ const (
 )
 
 type TemplateResultData struct {
-	InterfaceTemplateSection interface{}
+	InterfaceTemplateSection any
 	ValueSection             map[string]map[string]map[string]string
 	SecretSection            map[string]map[string]map[string]string
 	TemplateDepth            int
@@ -44,10 +44,10 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 	project string,
 	service string,
 	templateFromVault bool,
-	interfaceTemplateSection *interface{},
+	interfaceTemplateSection *any,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
-) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int, error) {
+) (*any, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int, error) {
 
 	// TODO: replace string sections with maps
 	templatePath = strings.ReplaceAll(templatePath, "\\", "/")
@@ -212,7 +212,7 @@ func Parse(config *core.CoreConfig, cds *vcutils.ConfigDataStore,
 	templateDir int,
 	templateDepth int,
 	service string,
-	interfaceTemplateSection *interface{},
+	interfaceTemplateSection *any,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
 ) error {
@@ -327,7 +327,7 @@ func Parse(config *core.CoreConfig, cds *vcutils.ConfigDataStore,
 
 // AppendToTemplateSection Add parse line to template section
 func AppendToTemplateSection(
-	interfaceTemplateSection *interface{},
+	interfaceTemplateSection *any,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
 	templatePathSlice []string,
@@ -344,18 +344,18 @@ func AppendToTemplateSection(
 	if len(name) == 2 {
 		wholeName = false
 	}
-	if _, ok := (*interfaceTemplateSection).(map[string]interface{}); !ok {
-		*interfaceTemplateSection = map[string]interface{}{}
+	if _, ok := (*interfaceTemplateSection).(map[string]any); !ok {
+		*interfaceTemplateSection = map[string]any{}
 	}
 
-	itLevel := (*interfaceTemplateSection).(map[string]interface{})
+	itLevel := (*interfaceTemplateSection).(map[string]any)
 
 	for i := templateDir; i < len(templatePathSlice); i++ {
 		currentEntry := templatePathSlice[i]
-		if _, ok := itLevel[currentEntry].(map[string]interface{}); !ok {
-			itLevel[currentEntry] = map[string]interface{}{}
+		if _, ok := itLevel[currentEntry].(map[string]any); !ok {
+			itLevel[currentEntry] = map[string]any{}
 		}
-		itLevel = itLevel[currentEntry].(map[string]interface{})
+		itLevel = itLevel[currentEntry].(map[string]any)
 	}
 	//name[0] = keyName, name[1] = service name
 	if wholeName {

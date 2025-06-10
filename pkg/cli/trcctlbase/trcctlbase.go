@@ -306,7 +306,7 @@ func CommonMain(envDefaultPtr *string,
 		statTokenName := "config_token_pluginany"
 		driverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
 
-		configMap := map[string]interface{}{
+		configMap := map[string]any{
 			"plugin_name": "trcctl",
 			"token_name":  tokenName,
 			"vault_token": *tokenPtr,
@@ -396,7 +396,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 
 			driverConfig.MemFs.ClearCache("./trc_templates")
 			driverConfig.MemFs.ClearCache("./deploy")
-			serviceConfig := map[string]interface{}{}
+			serviceConfig := map[string]any{}
 			driverConfig.MemFs.SerializeToMap(".", serviceConfig)
 			pluginRestart := make(chan tccore.KernelCmd)
 			chatReceiverChan := make(chan *tccore.ChatMsg)

@@ -17,7 +17,7 @@ import (
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
-func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string, pathParamPtr string) map[string]interface{} {
+func WriteMapUpdate(writeMap map[string]any, pluginToolConfig map[string]any, defineServicePtr bool, pluginTypePtr string, pathParamPtr string) map[string]any {
 	if pluginTypePtr != "trcshservice" {
 		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
 		writeMap["trctype"] = pluginTypePtr
@@ -92,7 +92,7 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 
 				pluginData, replacedFields := properties.GetPluginData(hostRegion, services[i], "config", driverConfig.CoreConfig.Log)
 				if pluginData == nil {
-					pluginData = make(map[string]interface{})
+					pluginData = make(map[string]any)
 					pluginData["trcplugin"] = pluginName
 
 					var agentPath string

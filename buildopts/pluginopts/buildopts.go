@@ -8,7 +8,7 @@ type OptionsBuilder struct {
 	GetPluginMessages         func(string) []string
 	GetConfigPaths            func(string) []string
 	GetFlowMachineInitContext func(string) *flow.FlowMachineInitContext
-	Init                      func(string, *map[string]interface{})
+	Init                      func(string, *map[string]any)
 }
 
 func LoadOptions() Option {

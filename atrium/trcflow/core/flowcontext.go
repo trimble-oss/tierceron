@@ -17,7 +17,7 @@ import (
 type TrcFlowContext struct {
 	FlowDefinitionContext *flowcore.FlowDefinitionContext
 	DataSourceRegions     []string
-	RemoteDataSource      map[string]interface{}
+	RemoteDataSource      map[string]any
 	GoMod                 *helperkv.Modifier
 	Vault                 *sys.Vault
 
@@ -38,7 +38,7 @@ type TrcFlowContext struct {
 	Flow                  flowcore.FlowNameType // May be a table name.
 	ChangeIdKeys          []string
 	FlowPath              string
-	FlowData              interface{}
+	FlowData              any
 	ChangeFlowName        string // Change flow table name.
 	FlowState             flowcorehelper.CurrentFlowState
 	FlowStateLock         *sync.RWMutex                   //This is for sync concurrent changes to FlowState
@@ -254,7 +254,7 @@ func (tfContext *TrcFlowContext) NewFlowStateUpdate(state string, syncMode strin
 	}
 }
 
-func (tfContext *TrcFlowContext) GetCurrentFlowStateUpdateByDataSource(dataSource string) interface{} {
+func (tfContext *TrcFlowContext) GetCurrentFlowStateUpdateByDataSource(dataSource string) any {
 	if tfContext.RemoteDataSource == nil {
 		return nil
 	}
@@ -330,12 +330,12 @@ func (tfContext *TrcFlowContext) GetDataSourceRegions(filtered bool) []string {
 	}
 }
 
-func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribute string, regions ...string) interface{} {
+func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribute string, regions ...string) any {
 	if tfContext.RemoteDataSource == nil {
 		return nil
 	}
 	if len(regions) > 0 {
-		if regionSource, ok := tfContext.RemoteDataSource[regions[0]].(map[string]interface{}); ok {
+		if regionSource, ok := tfContext.RemoteDataSource[regions[0]].(map[string]any); ok {
 			if remoteDataSourceAttribute, ok := regionSource[dataSourceAttribute]; ok {
 				return remoteDataSourceAttribute
 			} else {
@@ -378,7 +378,7 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) {
 	}
 	stateUpdateChannel := tfContext.GetCurrentFlowStateUpdateByDataSource("flowStateReceiver")
 
-	go func(tfCtx *TrcFlowContext, sPC interface{}) {
+	go func(tfCtx *TrcFlowContext, sPC any) {
 		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) //does get need locking...
 		for {
 			previousState := tfCtx.GetPreviousFlowState().(flowcorehelper.CurrentFlowState)

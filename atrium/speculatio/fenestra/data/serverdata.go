@@ -37,13 +37,13 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 					stat.State = &mashupsdk.MashupElementState{Id: stat.Id, State: int64(mashupsdk.Init)}
 				}
 				detailedElements = append(detailedElements, stat)
-				var decodedstat interface{}
+				var decodedstat any
 				err := json.Unmarshal([]byte(stat.Data), &decodedstat)
 				if err != nil {
 					log.Println("Error in decoding data in buildDataFlowStatistics")
 					continue
 				}
-				decodedStatData := decodedstat.(map[string]interface{})
+				decodedStatData := decodedstat.(map[string]any)
 				timeNanoSeconds := int64(decodedStatData["TimeSplit"].(float64))
 				if timeNanoSeconds > int64(maxTime) {
 					maxTime = timeNanoSeconds
@@ -53,12 +53,12 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 				if i == len(node.ChildNodes)-2 {
 					detailedElements = append(detailedElements, nextStat)
 				}
-				var nextdecodedstat interface{}
+				var nextdecodedstat any
 				err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
 				if err != nil {
 					log.Println("Error in decoding data in GetData")
 				}
-				nextDecodedStatData := nextdecodedstat.(map[string]interface{})
+				nextDecodedStatData := nextdecodedstat.(map[string]any)
 				nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
 				nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
 				if nextTimeSeconds-timeSeconds >= 0 {
@@ -85,7 +85,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 	return detailedElements, testTimes
 }
 
-// Returns an array of mashup detailed elements populated with each Tenant's data and Childnodes
+// Returns an array of mashup detailed elements populated with each entities' data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
 	addressPtr := new(string)
 	driverConfig := &config.DriverConfig{
@@ -127,14 +127,14 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	avg = avg / (float64(count))
 	if len(DetailedElements) >= idForData {
 		argosyElement := DetailedElements[idForData]
-		decodedData := make(map[string]interface{})
+		decodedData := make(map[string]any)
 		if argosyElement.Data != "" {
-			var decoded interface{}
+			var decoded any
 			err := json.Unmarshal([]byte(argosyElement.Data), &decoded)
 			if err != nil {
 				log.Println("Error in decoding data in GetData")
 			}
-			decodedData = decoded.(map[string]interface{})
+			decodedData = decoded.(map[string]any)
 		}
 
 		decodedData["Quartiles"] = quartiles

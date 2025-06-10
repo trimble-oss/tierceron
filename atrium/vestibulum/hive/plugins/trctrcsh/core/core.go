@@ -126,7 +126,7 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for trcsh")
 		return
 	}
-	var config map[string]interface{}
+	var config map[string]any
 
 	if config != nil {
 		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
@@ -181,7 +181,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	go receiver(configContext.CmdReceiverChan)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 
 	configContext, err = pluginlib.Init(pluginName, properties, PostInit)

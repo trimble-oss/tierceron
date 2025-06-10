@@ -41,6 +41,6 @@ func CheckIncomingAliasColumnName(col string) bool {
 // This can be used to perform direct queries against the TrcDb database using the go sql package.
 // The data map is provided by the caller as convenience to provide things like dbport, etc...
 // The override should return a jdbc compliant connection url to the TrcDb database.
-func GetTrcDbUrl(data map[string]interface{}) string {
+func GetTrcDbUrl(data map[string]any) string {
 	return ""
 }

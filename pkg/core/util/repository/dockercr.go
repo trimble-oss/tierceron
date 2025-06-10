@@ -14,14 +14,14 @@ import (
 )
 
 // Return url to the image to be used for download.
-func GetImageDownloadUrl(pluginToolConfig map[string]interface{}) (string, error) {
+func GetImageDownloadUrl(pluginToolConfig map[string]any) (string, error) {
 	return "", nil
 }
 
 // Defines the keys: "rawImageFile", and "imagesha256" in the map pluginToolConfig.
 // TODO: make this scale by streaming image to disk
 // (maybe parameterizable so only activated for known larger deployment images)
-func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) error {
 	// TODO: Chewbacca flush out to pull images and download...
 
 	dockerAuth := registry.AuthConfig{
@@ -60,6 +60,6 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 }
 
 // Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
-func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) error {
 	return errors.New("Not defined")
 }

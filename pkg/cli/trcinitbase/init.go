@@ -531,7 +531,7 @@ func CommonMain(envPtr *string,
 							continue
 						}
 					}
-					tokenMap := map[string]interface{}{}
+					tokenMap := map[string]any{}
 					fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
 					if parseErr != nil {
 						fmt.Println("Read parsing approle yaml file, continuing to next file.")
@@ -547,8 +547,8 @@ func CommonMain(envPtr *string,
 						continue
 					}
 
-					var tokenPerms map[interface{}]interface{}
-					if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+					var tokenPerms map[any]any
+					if permMap, okPerms := fileYAML["Token_Permissions"].(map[any]any); okPerms {
 						tokenPerms = permMap
 					} else {
 						fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
@@ -699,7 +699,7 @@ func CommonMain(envPtr *string,
 		// Upload tokens from the given token directory
 		tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 		if !*prodPtr {
-			tokenMap := map[string]interface{}{}
+			tokenMap := map[string]any{}
 			for _, token := range tokens {
 				tokenMap[token.Name] = token.Value
 			}
@@ -740,7 +740,7 @@ func CommonMain(envPtr *string,
 						eUtils.CheckError(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
-					_, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{})
+					_, okPerms := fileYAML["Token_Permissions"].(map[any]any)
 					if !okPerms {
 						isPolicy = false
 						fmt.Println("Read incorrect approle token permissions from file, continuing to next file.")

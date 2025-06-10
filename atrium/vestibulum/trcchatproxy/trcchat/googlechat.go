@@ -16,7 +16,7 @@ import (
 // correct endpoint for google chat
 func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 	log.Printf("Message is ready to send to Google Chat user")
-	var infos [][]interface{}
+	var infos [][]any
 
 	err := json.Unmarshal([]byte(msg.Data), &infos)
 	if err != nil {

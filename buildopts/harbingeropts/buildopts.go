@@ -12,7 +12,7 @@ type OptionsBuilder struct {
 	GetFolderPrefix    func(custom []string) string
 	GetDatabaseName    func() string
 	IsValidProjectName func(projectName string) bool
-	BuildInterface     func(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext interface{}, vaultDatabaseConfig map[string]interface{}, serverListener interface{}) error
+	BuildInterface     func(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext any, vaultDatabaseConfig map[string]any, serverListener any) error
 	BuildTableGrant    func(tableName string) (string, error)
 	TableGrantNotify   func(tfmContext flowcore.FlowMachineContext, tableName string)
 }

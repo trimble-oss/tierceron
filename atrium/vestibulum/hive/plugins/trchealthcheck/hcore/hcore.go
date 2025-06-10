@@ -159,11 +159,11 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for healthcheck")
 		return
 	}
-	var config map[string]interface{}
+	var config map[string]any
 	var configCert []byte
 	var configKey []byte
 	var ok bool
-	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
+	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]any); !ok {
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
 		err := yaml.Unmarshal(configBytes, &config)
 		if err != nil {
@@ -299,7 +299,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	go receiver(configContext.CmdReceiverChan)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 
 	configContext, err = pluginlib.Init(pluginName, properties, PostInit)

@@ -35,7 +35,7 @@ func init() {
 	factory.StartPluginSettingEater()
 }
 
-func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]any, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
 	var err error
 	var driverConfig *config.DriverConfig
@@ -75,7 +75,7 @@ func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext
 	return err
 }
 
-func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]interface{}, logger *log.Logger) (any, error) {
+func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error) {
 	logger.Println("PluginDeployFlow begun.")
 	var err error
 	var pluginName string
@@ -322,7 +322,7 @@ func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, d
 
 		if err != nil {
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, pluginName+": Initializing certification")
-			writeMap = make(map[string]interface{})
+			writeMap = make(map[string]any)
 		} else {
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, pluginName+": Updating certification status")
 		}

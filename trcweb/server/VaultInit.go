@@ -97,7 +97,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	il.UploadPolicies(coreConfig, policyPath, v, false)
 
 	tokens := il.UploadTokens(coreConfig, tokenPath, nil, v)
-	tokenMap := map[string]interface{}{}
+	tokenMap := map[string]any{}
 	for _, token := range tokens {
 		tokenMap[token.Name] = token.Value
 	}

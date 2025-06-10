@@ -15,11 +15,11 @@ func getFlowIndexComplex() (string, []string, string, error) {
 	return "argosId", nil, "", nil
 }
 
-func getIndexedPathExt(engine interface{}, rowDataMap map[string]interface{}, indexColumnNames interface{}, databaseName string, tableName string, dbCallBack func(interface{}, map[string]interface{}) (string, []string, [][]interface{}, error)) (string, error) {
+func getIndexedPathExt(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error) {
 	return "", errors.New("could not find argossocii index")
 }
 
-func getSchema(tableName string) interface{} {
+func getSchema(tableName string) any {
 	return []flowcore.FlowColumn{
 		{Name: "argosId", Type: flowcore.Text, Source: tableName, PrimaryKey: true},
 		{Name: "argosIdentitasNomen", Type: flowcore.Text, Source: tableName},
@@ -33,8 +33,8 @@ func getTableGrant(tableName string) (string, string, error) {
 	return "SELECT", "%s", nil
 }
 
-func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
-	m := make(map[string]interface{})
+func getTableMapFromArray(dfs []any) map[string]any {
+	m := make(map[string]any)
 	m["argosId"] = dfs[0]
 	m["argosIdentitasNomen"] = dfs[1]
 	m["argosProiectum"] = dfs[2]
@@ -43,15 +43,15 @@ func getTableMapFromArray(dfs []interface{}) map[string]interface{} {
 	return m
 }
 
-func getTableConfigurationInsertUpdate(data map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func getTableConfigurationInsertUpdate(data map[string]any, dbName string, tableName string) map[string]any {
 	argosId := data["argosId"].(string)
 	argosId = strings.ReplaceAll(argosId, "/", "")
 	return getInsertUpdateById(argosId, data, dbName, tableName)
 }
 
-func getInsertUpdateById(argosId string, data map[string]interface{}, dbName string, tableName string) map[string]interface{} {
+func getInsertUpdateById(argosId string, data map[string]any, dbName string, tableName string) map[string]any {
 	argosId = strings.ReplaceAll(argosId, "/", "")
-	sqlstr := map[string]interface{}{
+	sqlstr := map[string]any{
 		"TrcQuery": `INSERT IGNORE INTO ` + dbName + `.` + tableName + `(argosId, argosIdentitasNomen, argosProiectum, argosServitium, argosNotitia) VALUES ('` +
 			argosId + `','` +
 			data["argosIdentitasNomen"].(string) + `','` +

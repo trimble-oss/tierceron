@@ -243,7 +243,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	if len(deployment) > 0 {
 		// Set the name of the plugin to deploy in "trcplugin"
 		// Used later by codedeploy
-		trcshDriverConfig.DriverConfig.DeploymentConfig = map[string]interface{}{"trcplugin": deployment}
+		trcshDriverConfig.DriverConfig.DeploymentConfig = map[string]any{"trcplugin": deployment}
 		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 20)
 		fmt.Printf("Starting deployer: %s\n", deployment)
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Starting deployer: %s\n", deployment)
@@ -291,7 +291,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 func CommonMain(envPtr *string, envCtxPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	configMap *map[string]interface{},
+	configMap *map[string]any,
 	driverConfigPtr *config.DriverConfig) error {
 
 	if flagset == nil {
@@ -408,7 +408,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if kernelopts.BuildOptions.IsKernel() || isShellRunner {
 			// load via new properties and get config values
 			if configMap == nil || len(*configMap) == 0 {
-				configMap = &map[string]interface{}{}
+				configMap = &map[string]any{}
 				data, err := os.ReadFile("config.yml")
 				if err != nil {
 					driverConfigPtr.CoreConfig.Log.Println("Error reading YAML file:", err)
@@ -731,7 +731,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		// Initialize deployers.
 
 		// Validate drone sha path
-		pluginConfig := make(map[string]interface{})
+		pluginConfig := make(map[string]any)
 		pluginConfig["vaddress"] = *driverConfigPtr.CoreConfig.TokenCache.VaultAddressPtr
 
 		var currentTokenName string
@@ -1334,7 +1334,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Preload setup")
 		// Chewbacca: Continue shellRunner
 		if kernelopts.BuildOptions.IsKernel() || gTrcshConfig.IsShellRunner {
-			pluginMap := map[string]interface{}{"pluginName": deployment}
+			pluginMap := map[string]any{"pluginName": deployment}
 			tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 			tokenPtr := new(string)

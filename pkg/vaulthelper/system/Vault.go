@@ -122,7 +122,7 @@ func (v *Vault) GetToken() *string {
 }
 
 // GetTokenInfo fetches data regarding this token
-func (v *Vault) GetTokenInfo(tokenName string) (map[string]interface{}, error) {
+func (v *Vault) GetTokenInfo(tokenName string) (map[string]any, error) {
 	token, err := v.client.Auth().Token().Lookup(tokenName)
 	if token == nil {
 		return nil, err
@@ -203,18 +203,18 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 		log.Fatal(err)
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return err
 	}
 
-	if data, ok := jsonData["data"].(map[string]interface{}); ok {
-		if accessors, ok := data["keys"].([]interface{}); ok {
+	if data, ok := jsonData["data"].(map[string]any); ok {
+		if accessors, ok := data["keys"].([]any); ok {
 			for _, accessor := range accessors {
 				b := v.client.NewRequest("POST", "/v1/auth/token/lookup-accessor")
 
-				payload := map[string]interface{}{
+				payload := map[string]any{
 					"accessor": accessor,
 				}
 
@@ -235,19 +235,19 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 						return err
 					}
 				}
-				var accessorDataMap map[string]interface{}
+				var accessorDataMap map[string]any
 				if err = response.DecodeJSON(&accessorDataMap); err != nil {
 					return err
 				}
 				var expirationDate string
 				var expirationDateOk bool
 				var matchedPolicy string
-				if accessorData, ok := accessorDataMap["data"].(map[string]interface{}); ok {
+				if accessorData, ok := accessorDataMap["data"].(map[string]any); ok {
 					if expirationDate, expirationDateOk = accessorData["expire_time"].(string); expirationDateOk {
 						currentTime := time.Now()
 						expirationTime, timeError := time.Parse(time.RFC3339Nano, expirationDate)
 						if timeError == nil && currentTime.Before(expirationTime) {
-							if policies, ok := accessorData["policies"].([]interface{}); ok {
+							if policies, ok := accessorData["policies"].([]any); ok {
 								for _, policy := range policies {
 									for _, tokenPolicy := range tokenPolicies {
 										if policy.(string) == "root" || strings.EqualFold(policy.(string), tokenPolicy) {
@@ -267,7 +267,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 					} else {
 						b := v.client.NewRequest("POST", "/v1/auth/token/revoke-accessor")
 
-						payload := map[string]interface{}{
+						payload := map[string]any{
 							"accessor": accessor,
 						}
 
@@ -307,11 +307,11 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 				fmt.Printf("Tidy success status: %s\n", response.Status)
 
 				if response.StatusCode == 202 {
-					var tidyResponseMap map[string]interface{}
+					var tidyResponseMap map[string]any
 					if err = response.DecodeJSON(&tidyResponseMap); err != nil {
 						return err
 					}
-					if warnings, ok := tidyResponseMap["warnings"].([]interface{}); ok {
+					if warnings, ok := tidyResponseMap["warnings"].([]any); ok {
 						for _, warning := range warnings {
 							fmt.Println(warning.(string))
 						}
@@ -391,12 +391,12 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 		return false, err
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return false, err
 	}
 
-	if _, ok := jsonData["data"].(map[string]interface{}); ok {
+	if _, ok := jsonData["data"].(map[string]any); ok {
 		return true, nil
 	}
 
@@ -516,11 +516,11 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 }
 
 // CreateTokenFromMap takes a map and generates a vault token, returning the token
-func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) {
+func (v *Vault) CreateTokenFromMap(data map[string]any) (string, error) {
 	token := &api.TokenCreateRequest{}
 
 	// Parse input data and create request
-	if policies, ok := data["policies"].([]interface{}); ok {
+	if policies, ok := data["policies"].([]any); ok {
 		newPolicies := []string{}
 		for _, p := range policies {
 			if newP, ok := p.(string); ok {
@@ -565,12 +565,12 @@ func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) 
 }
 
 // GetStatus checks the health of the vault and retrieves version and status of init/seal
-func (v *Vault) GetStatus() (map[string]interface{}, error) {
+func (v *Vault) GetStatus() (map[string]any, error) {
 	health, err := v.client.Sys().Health()
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"initialized": health.Initialized,
 		"sealed":      health.Sealed,
 		"version":     health.Version,

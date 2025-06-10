@@ -44,7 +44,7 @@ func ProxyLogin(config *core.CoreConfig, authHost string, req *pb.LoginReq) (str
 	case 200:
 		fallthrough
 	case 204:
-		var response map[string]interface{}
+		var response map[string]any
 		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)

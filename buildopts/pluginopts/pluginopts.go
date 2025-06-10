@@ -16,7 +16,7 @@ func GetConfigPaths(pluginName string) []string {
 }
 
 // Init - Override plugin Init calls
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 }
 
 // GetPluginMessages - Override plugin messages

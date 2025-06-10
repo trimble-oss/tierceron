@@ -97,7 +97,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		if len(authString) > 0 { // Ensure a token was actually sent
 			splitAuth := strings.SplitN(authString, " ", 2)
 			if splitAuth[0] == "Bearer" {
-				token, err := jwt.Parse(splitAuth[1], func(token *jwt.Token) (interface{}, error) { // Parse token and verify formatting
+				token, err := jwt.Parse(splitAuth[1], func(token *jwt.Token) (any, error) { // Parse token and verify formatting
 					if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
 						return s.TrcAPITokenSecret, nil
 					}

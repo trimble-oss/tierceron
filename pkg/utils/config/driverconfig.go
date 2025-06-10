@@ -14,9 +14,9 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core"
 )
 
-type ProcessContext interface{}
+type ProcessContext any
 
-type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, driverConfig *DriverConfig) (interface{}, error)
+type ConfigDriver func(ctx ProcessContext, configCtx *ConfigContext, driverConfig *DriverConfig) (any, error)
 
 type ResultData struct {
 	Done   bool
@@ -91,7 +91,7 @@ type DriverConfig struct {
 	// Diff tooling
 	Diff          bool
 	DiffCounter   int
-	VersionInfo   func(map[string]interface{}, bool, string, bool)
+	VersionInfo   func(map[string]any, bool, string, bool)
 	VersionFilter []string
 
 	// Vault Pathing....
@@ -104,7 +104,7 @@ type DriverConfig struct {
 	SubSectionValue string
 	ServiceFilter   []string // Which tables to use.
 
-	DeploymentConfig         map[string]interface{} // For trcsh to indicate which deployment to work on
+	DeploymentConfig         map[string]any // For trcsh to indicate which deployment to work on
 	DeploymentCtlMessageChan chan string
 }
 

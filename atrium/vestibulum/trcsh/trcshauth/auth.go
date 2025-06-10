@@ -237,7 +237,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	return trcshConfig, err
 }
 
-func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
+func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger *log.Logger) (bool, error) {
 	pluginName := cursoropts.BuildOptions.GetPluginName(false)
 	if len(pluginName) == 0 {
 		pluginName = pluginConfig["plugin"].(string)

@@ -23,7 +23,7 @@ var ArgosSociiFlow flowcore.FlowNameType = "ArgosSocii"
 var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
 
 var signalChannel chan os.Signal
-var sourceDatabaseConnectionsMap map[string]map[string]interface{}
+var sourceDatabaseConnectionsMap map[string]map[string]any
 var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
 
 const (
@@ -145,7 +145,7 @@ type FakeDFStat struct {
 var tableModifierLock sync.Mutex
 
 // True if a time was most recent, false if b time was most recent.
-func WhichLastModified(a interface{}, b interface{}) bool {
+func WhichLastModified(a any, b any) bool {
 	//Check if a & b are time.time
 	//Check if they match.
 	var lastModifiedA time.Time
