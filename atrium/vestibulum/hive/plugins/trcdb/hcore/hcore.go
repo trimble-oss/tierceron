@@ -1,4 +1,4 @@
-package rcore
+package hcore
 
 import (
 	"crypto/sha256"
