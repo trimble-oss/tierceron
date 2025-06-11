@@ -224,7 +224,7 @@ func GetConfigPaths(pluginName string) []string {
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	switch tfContext.GetFlowName() {
-	case "ArgosSocii":
+	case flowcore.ArgosSociiFlow.TableName():
 		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
 	default:
 		return errors.New("Flow not implemented: " + tfContext.GetFlowName())

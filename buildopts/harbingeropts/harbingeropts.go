@@ -113,9 +113,9 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 
 func BuildTableGrant(tableName string) (string, error) {
 	switch tableName {
-	case "DataFlowStatistics":
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
 		fallthrough
-	case "ArgosSocii":
+	case flowcore.ArgosSociiFlow.TableName():
 		return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil
 	}
 	return "", errors.New("use default grant")

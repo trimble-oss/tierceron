@@ -8,8 +8,12 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea"
+	"github.com/trimble-oss/tierceron/buildopts/core"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"gopkg.in/yaml.v2"
@@ -18,6 +22,8 @@ import (
 var configContext *tccore.ConfigContext
 var sender chan error
 var dfstat *tccore.TTDINode
+
+var projectServices [][]any
 
 const (
 	COMMON_PATH = "./config.yml"
@@ -109,19 +115,24 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		case *event.Name == "SHUTDOWN":
 			configContext.Log.Println("rosea shutting down message receiver")
 			return
-		case event.Response != nil && *((*event).Response) == "Service unavailable":
-			configContext.Log.Println("Rosea unable to access chat service.")
-			return
-		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
-			configContext.Log.Println("Sending progress results back to kernel.")
-			progressResp := "Running Rosea Diagnostics..."
-			(*event).Response = &progressResp
-			*configContext.ChatSenderChan <- event
-		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS":
-			configContext.Log.Println("rosea request")
-			configContext.Log.Println("Sending all test results back to kernel.")
-			//			(*event).Response = &results
-			*configContext.ChatSenderChan <- event
+		case (event.Response != nil && *event.Response == "Service unavailable") || (event.TrcdbExchange != nil && len(event.TrcdbExchange.Response.Rows) == 0):
+			if *event.Response == "Service unavailable" {
+				time.Sleep(5 * time.Second)
+				FetchSocii(configContext)
+			} else {
+				if event.TrcdbExchange != nil && len(event.TrcdbExchange.Response.Rows) != 0 {
+					projectServices = event.TrcdbExchange.Response.Rows
+					err := rosea.BootInit(projectServices)
+					if err != nil {
+						configContext.Log.Printf("Rosea Initialization error: %v", err)
+						return
+					}
+				} else {
+					time.Sleep(5 * time.Second)
+					FetchSocii(configContext)
+				}
+			}
+
 		default:
 			configContext.Log.Println("rosea received chat message")
 		}
@@ -222,13 +233,51 @@ func Init(pluginName string, properties *map[string]any) {
 		fmt.Println("Missing common config components")
 		return
 	}
-	// err = rosea.BootInit()
-	// if err != nil {
-	// 	(*properties)["log"].(*log.Logger).Printf("Rosea Initialization error: %v", err)
-	// 	return
-	// }
+
+	roseaConfigContext := GetConfigContext("rosea")
+	roseaConfigContext.Log.Println("Rosea unable to access chat service.")
+
+	id := "SYSTEM"
+	chatResultMsg := tccore.ChatMsg{
+		ChatId: &id,
+	}
+	name := "rosea"
+	chatResultMsg.Name = &name
+	chatResultMsg.Query = &[]string{"trcdb"}
+	chatResultMsg.TrcdbExchange = &tccore.TrcdbExchange{
+		Query:     fmt.Sprintf("SELECT * FROM %s.%s", core.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()),
+		Flows:     []string{flowcore.ArgosSociiFlow.TableName()},
+		Operation: "SELECT",
+	}
+	if roseaConfigContext.ChatSenderChan != nil {
+		*roseaConfigContext.ChatSenderChan <- &chatResultMsg
+	}
+
+	FetchSocii(roseaConfigContext)
 }
 
 func GetPluginMessages(pluginName string) []string {
 	return []string{}
+}
+
+func FetchSocii(ctx *tccore.ConfigContext) {
+	ctx.Log.Println("Sending request for argos socii.")
+
+	id := "SYSTEM"
+	chatResultMsg := tccore.ChatMsg{
+		ChatId: &id,
+	}
+	name := "rosea"
+	chatResultMsg.Name = &name
+	chatResultMsg.Query = &[]string{"trcdb"}
+	chatResultMsg.TrcdbExchange = &tccore.TrcdbExchange{
+		Query:     fmt.Sprintf("SELECT * FROM %s.%s", core.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()),
+		Flows:     []string{flowcore.ArgosSociiFlow.TableName()},
+		Operation: "SELECT",
+	}
+	if ctx.ChatSenderChan != nil {
+		go func() {
+			*ctx.ChatSenderChan <- &chatResultMsg
+		}()
+	}
 }
