@@ -111,11 +111,11 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		event := <-chat_receive_chan
 		switch {
 		case event == nil:
-			fallthrough
+			continue
 		case *event.Name == "SHUTDOWN":
 			configContext.Log.Println("rosea shutting down message receiver")
 			return
-		case (event.Response != nil && *event.Response == "Service unavailable") || (event.TrcdbExchange != nil && len(event.TrcdbExchange.Response.Rows) == 0):
+		case (event.Response != nil && *event.Response == "Service unavailable") || (event.TrcdbExchange != nil):
 			if *event.Response == "Service unavailable" {
 				time.Sleep(5 * time.Second)
 				FetchSocii(configContext)
@@ -158,21 +158,20 @@ func start(pluginName string) {
 		}
 	}
 
-	if config != nil {
-		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
-		dfstat.UpdateDataFlowStatistic("System",
-			pluginName,
-			"Start up",
-			"1",
-			1,
-			func(msg string, err error) {
-				configContext.Log.Println(msg, err)
-			})
-		send_dfstat()
-	} else {
-		configContext.Log.Println("Missing common configs")
-		send_err(errors.New("missing common configs"))
-		return
+	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+	dfstat.UpdateDataFlowStatistic("System",
+		pluginName,
+		"Start up",
+		"1",
+		1,
+		func(msg string, err error) {
+			configContext.Log.Println(msg, err)
+		})
+	send_dfstat()
+	if configContext.CmdSenderChan != nil {
+		*configContext.CmdSenderChan <- tccore.KernelCmd{
+			Command: tccore.PLUGIN_EVENT_START,
+		}
 	}
 }
 
@@ -234,26 +233,7 @@ func Init(pluginName string, properties *map[string]any) {
 		return
 	}
 
-	roseaConfigContext := GetConfigContext("rosea")
-	roseaConfigContext.Log.Println("Rosea unable to access chat service.")
-
-	id := "SYSTEM"
-	chatResultMsg := tccore.ChatMsg{
-		ChatId: &id,
-	}
-	name := "rosea"
-	chatResultMsg.Name = &name
-	chatResultMsg.Query = &[]string{"trcdb"}
-	chatResultMsg.TrcdbExchange = &tccore.TrcdbExchange{
-		Query:     fmt.Sprintf("SELECT * FROM %s.%s", core.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()),
-		Flows:     []string{flowcore.ArgosSociiFlow.TableName()},
-		Operation: "SELECT",
-	}
-	if roseaConfigContext.ChatSenderChan != nil {
-		*roseaConfigContext.ChatSenderChan <- &chatResultMsg
-	}
-
-	FetchSocii(roseaConfigContext)
+	FetchSocii(configContext)
 }
 
 func GetPluginMessages(pluginName string) []string {
