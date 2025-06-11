@@ -53,9 +53,9 @@ func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, trcFlowCo
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	trcFlowContext := tfContext.(*trcflowcore.TrcFlowContext)
 	switch trcFlowContext.Flow {
-	case trcflowcore.DataFlowStatConfigurationsFlow:
+	case flowcore.DataFlowStatConfigurationsFlow:
 		return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-	case trcflowcore.ArgosSociiFlow:
+	case flowcore.ArgosSociiFlow:
 		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
 		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 	}

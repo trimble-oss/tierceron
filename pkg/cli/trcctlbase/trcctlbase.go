@@ -281,10 +281,10 @@ func CommonMain(envDefaultPtr *string,
 		driverConfig := config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
+				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
-				IsEditor:            true,
 				EnvBasis:            *envPtr,
 				Env:                 *envPtr,
 				Log:                 driverConfig.CoreConfig.Log,

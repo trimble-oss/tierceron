@@ -130,9 +130,10 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
 			configContext.Log.Println("Received trcdb request.")
 			processTrcdb((*event).TrcdbExchange)
+			handledResponse := "Handled Trcdb request successfully"
+			(*event).Response = &handledResponse
 			configContext.Log.Println("Sending all test results back to kernel.")
 
-			//			(*event).Response = &results
 			*configContext.ChatSenderChan <- event
 		default:
 			configContext.Log.Println("trcdb received chat message")
@@ -155,8 +156,8 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 		query := make(map[string]interface{})
 		query["TrcQuery"] = trcdbExchange.Query
 		responseMatrix, changed := tfmContext.CallDBQuery(tfCtx, query, nil, false, trcdbExchange.Operation, nil, "")
-		if !changed && trcdbExchange.Operation != "SELECT" {
-			configContext.Log.Println("TrcdbExchange operation did not change the data, returning empty response.")
+		if len(responseMatrix) == 0 {
+			configContext.Log.Println("TrcdbExchange operation did not get any results.  returning empty response.")
 		}
 		trcdbExchange.Response = core.TrcdbResponse{
 			Rows:    responseMatrix,
@@ -224,7 +225,7 @@ func GetConfigPaths(pluginName string) []string {
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	switch tfContext.GetFlowName() {
-	case "ArgosSocii":
+	case flowcore.ArgosSociiFlow.TableName():
 		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
 	default:
 		return errors.New("Flow not implemented: " + tfContext.GetFlowName())

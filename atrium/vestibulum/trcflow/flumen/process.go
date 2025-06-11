@@ -429,7 +429,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			tfContext.FlowSourceAlias = flowMachineInitContext.GetDatabaseName()
 			go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
 				for tableLoadedPerm := range tfmContext.PreloadChan {
-					if flowcore.FlowNameType(tableLoadedPerm.TableName) == trcflowcore.ArgosSociiFlow {
+					if flowcore.FlowNameType(tableLoadedPerm.TableName) == flowcore.ArgosSociiFlow {
 						populateArgosSocii(tfContext.GoMod, driverConfig, tfmContext)
 						break
 					}
@@ -439,10 +439,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				&tfContext,
 				func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 					switch flowcore.FlowNameType(tfContext.GetFlowName()) {
-					case trcflowcore.DataFlowStatConfigurationsFlow:
+					case flowcore.DataFlowStatConfigurationsFlow:
 						// DFS flow always handled internally.
 						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-					case trcflowcore.ArgosSociiFlow:
+					case flowcore.ArgosSociiFlow:
 						tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
 						return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 					default:
@@ -545,7 +545,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 								if err != nil || len(existsData) == 0 || existsData["destroyed"].(bool) || len(existsData["deletion_time"].(string)) > 0 {
 									continue
 								}
-								if flow := tfmContext.GetFlowContext(flowcore.FlowNameType("ArgosSocii")); flow != nil {
+								if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow); flow != nil {
 									if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
 										argosId = argosId + 1
 										var data = make(map[string]any)
@@ -555,7 +555,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 										data["argosServitium"] = service
 										data["argosNotitia"] = "Tierceron service"
 
-										flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flow.GetFlowSourceAlias(), trcflowcore.ArgosSociiFlow.FlowName())
+										flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flow.GetFlowSourceAlias(), flowcore.ArgosSociiFlow.FlowName())
 										tfmContext.CallDBQuery(flow, flowInsertQueryMap, nil, false, "INSERT", nil, "")
 									}
 								}
