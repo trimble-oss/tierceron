@@ -18,8 +18,6 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var DataFlowStatConfigurationsFlow flowcore.FlowNameType = "DataFlowStatistics"
-var ArgosSociiFlow flowcore.FlowNameType = "ArgosSocii"
 var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
 
 var signalChannel chan os.Signal

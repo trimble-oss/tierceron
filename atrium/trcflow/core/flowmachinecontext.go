@@ -684,6 +684,17 @@ func (tfmContext *TrcFlowMachineContext) GetAuthExtended(getExtensionAuthCompone
 	return tfmContext.ExtensionAuthData, authErr
 }
 
+func (tfmContext *TrcFlowMachineContext) CallDBQueryN(flows []string,
+	queryMap map[string]any,
+	bindingsI map[string]any, // Optional param
+	changed bool,
+	operation string,
+	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
+	flowtestState string) ([][]any, bool) {
+	// Chewbacca:
+	return nil, false
+}
+
 // Make a call on Call back to insert or update using the provided query.
 // If this is expected to result in a change to an existing table, thern trigger
 // something to the changed channel.
