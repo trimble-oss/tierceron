@@ -53,7 +53,7 @@ func GetFolderPrefix(custom []string) string {
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return "TrcDb"
+	return "fieldtechservice"
 }
 
 func IsValidProjectName(project string) bool {

@@ -237,7 +237,7 @@ func Init(pluginName string, properties *map[string]any) {
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return "TrcDb"
+	return "fieldtechservice"
 }
 
 func GetPluginMessages(pluginName string) []string {

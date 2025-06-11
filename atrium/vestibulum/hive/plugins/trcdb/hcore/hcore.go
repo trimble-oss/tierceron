@@ -236,11 +236,11 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return "TrcDb"
+	return "fieldtechservice"
 }
 
 func GetDbProject() string {
-	return "TrcDb"
+	return "TenantDatabase"
 }
 
 func GetFlowMachineTemplates() map[string]interface{} {
