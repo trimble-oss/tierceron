@@ -13,7 +13,6 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea"
-	"github.com/trimble-oss/tierceron/buildopts/core"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"gopkg.in/yaml.v2"
@@ -236,6 +235,11 @@ func Init(pluginName string, properties *map[string]any) {
 	FetchSocii(configContext)
 }
 
+// GetDatabaseName - returns a name to be used by TrcDb.
+func GetDatabaseName() string {
+	return "TrcDb"
+}
+
 func GetPluginMessages(pluginName string) []string {
 	return []string{}
 }
@@ -251,7 +255,7 @@ func FetchSocii(ctx *tccore.ConfigContext) {
 	chatResultMsg.Name = &name
 	chatResultMsg.Query = &[]string{"trcdb"}
 	chatResultMsg.TrcdbExchange = &tccore.TrcdbExchange{
-		Query:     fmt.Sprintf("SELECT * FROM %s.%s", core.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()),
+		Query:     fmt.Sprintf("SELECT * FROM %s.%s", GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()),
 		Flows:     []string{flowcore.ArgosSociiFlow.TableName()},
 		Operation: "SELECT",
 	}

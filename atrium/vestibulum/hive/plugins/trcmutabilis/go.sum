@@ -16,8 +16,8 @@ github.com/moby/sys/mountinfo v0.6.2 h1:BzJjoreD5BMFNmD9Rus6gdd1pLuecOFPt8wC+Vyg
 github.com/moby/sys/mountinfo v0.6.2/go.mod h1:IJb6JQeOklcdMU9F5xQ8ZALD+CUr5VlGpwtX+VE0rpI=
 github.com/trimble-oss/tierceron v1.38.9 h1:qr/vCzPaW0noz/vfx+/hoFa+XjK/t4Howv3r4hJwKBQ=
 github.com/trimble-oss/tierceron v1.38.9/go.mod h1:wAajygsGk9VKDbXQ2C37Pv2Ype3dCxN1sNx6+Xjprfc=
-github.com/trimble-oss/tierceron-core/v2 v2.6.3 h1:0KTzW9uT8yYcivTEe+Uo+7+04veG1hZPD0aCf2ebvTY=
-github.com/trimble-oss/tierceron-core/v2 v2.6.3/go.mod h1:4cNs8NpnB8ZRcMadcgLxxWWDN25CuOXMYgZoWTlAcaE=
+github.com/trimble-oss/tierceron-core/v2 v2.6.4 h1:K8oSp+wvSjKZqfdY0vQL3ULtKooq9jOGRgsbD9NkgqQ=
+github.com/trimble-oss/tierceron-core/v2 v2.6.4/go.mod h1:4cNs8NpnB8ZRcMadcgLxxWWDN25CuOXMYgZoWTlAcaE=
 github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlCjxAOUzzJ7Igyid3Y=
 github.com/trimble-oss/tierceron-nute-core v1.0.3/go.mod h1:2M/uT8pm7AJMzRxsasQsQdjXvDXbXpBPCqd3ghb03ss=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377 h1:m0YHPS32Si7ZxkpQedlfV+2fCJZ2qJHBcWFTl8eUr1E=
