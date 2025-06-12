@@ -1074,6 +1074,11 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		pluginHandler.State = 1
 	}
 
+	for len(globalPluginStatusChan) != 0 {
+		// Waiting for all plugins to load before starting chat receiver...
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
 		pluginHandler.sendInitBroadcast(driverConfig)
