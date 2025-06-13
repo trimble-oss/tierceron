@@ -3,7 +3,8 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 go 1.24.4
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.6.4
+	github.com/orcaman/concurrent-map/v2 v2.0.1
+	github.com/trimble-oss/tierceron-core/v2 v2.6.7
 	gopkg.in/yaml.v2 v2.4.0
 )
 

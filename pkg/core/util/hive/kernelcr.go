@@ -838,6 +838,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				} else {
 					pluginHandler.ServiceResource = tfmContext
 				}
+				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
 
 				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
 			}
@@ -1072,11 +1073,6 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		msg_receiver := make(chan *core.ChatMsg)
 		pluginHandler.ConfigContext.ChatReceiverChan = &msg_receiver
 		pluginHandler.State = 1
-	}
-
-	for len(globalPluginStatusChan) != 0 {
-		// Waiting for all plugins to load before starting chat receiver...
-		time.Sleep(100 * time.Millisecond)
 	}
 
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
