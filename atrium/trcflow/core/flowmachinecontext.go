@@ -1241,6 +1241,8 @@ func (tfmContext *TrcFlowMachineContext) GetLogger() *log.Logger {
 
 func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
 	for _, flow := range tfmContext.FlowMap {
+		fmt.Printf("Waiting for flow to unlock: %s\n", flow.GetFlowName())
 		flow.WaitFlowLoaded()
+		fmt.Printf("Flow unlocked: %s\n", flow.GetFlowName())
 	}
 }
