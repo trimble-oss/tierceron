@@ -76,7 +76,6 @@ func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNa
 	} else {
 		return nil
 	}
-
 }
 
 func (tfmContext *TrcFlowMachineContext) GetTrcFlowContext(flowName flowcore.FlowNameType) *TrcFlowContext {
@@ -1238,4 +1237,10 @@ func (tfmContext *TrcFlowMachineContext) GetLogger() *log.Logger {
 		return tfmContext.DriverConfig.CoreConfig.Log
 	}
 	return nil
+}
+
+func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
+	for _, flow := range tfmContext.FlowMap {
+		flow.WaitFlowLoaded()
+	}
 }
