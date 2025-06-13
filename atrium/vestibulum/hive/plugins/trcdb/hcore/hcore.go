@@ -153,7 +153,7 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 			trcdbExchange.Response = core.TrcdbResponse{}
 			return
 		}
-		query := make(map[string]interface{})
+		query := make(map[string]any)
 		query["TrcQuery"] = trcdbExchange.Query
 		responseMatrix, changed := tfmContext.CallDBQuery(tfCtx, query, nil, false, trcdbExchange.Operation, nil, "")
 		if len(responseMatrix) == 0 {
@@ -243,8 +243,8 @@ func GetDbProject() string {
 	return "TrcDb"
 }
 
-func GetFlowMachineTemplates() map[string]interface{} {
-	flowMachineTemplates := map[string]interface{}{}
+func GetFlowMachineTemplates() map[string]any {
+	flowMachineTemplates := map[string]any{}
 	flowMachineTemplates["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                             // implemented.
 		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDbProject()), // implemented.
@@ -274,7 +274,7 @@ func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitConte
 
 	return &flowcore.FlowMachineInitContext{
 		GetFlowMachineTemplates:     GetFlowMachineTemplates,
-		FlowMachineInterfaceConfigs: map[string]interface{}{},
+		FlowMachineInterfaceConfigs: map[string]any{},
 		GetDatabaseName:             GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
@@ -303,7 +303,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	go receiver(*configContext.CmdReceiverChan)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 
 	configContext, err = tccore.Init(properties,
