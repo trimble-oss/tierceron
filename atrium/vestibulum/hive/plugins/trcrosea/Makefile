@@ -8,7 +8,7 @@ ROOT := .
 LD_FLAGS := -X $(ROOT).Version=$(VERSION) -X $(ROOT).Commit=$(COMMIT) -X $(ROOT).BuildTime=$(BUILD_TIME)
 GOBIN ?= ./bin
 
-.PHONY: help clean 
+.PHONY: help clean rosea
 help:
 	@echo "Please use \`make <ROOT>' where <ROOT> is one of"
 	@echo "  dependencies to go install the dependencies"
@@ -19,8 +19,8 @@ depend:
 	go mod tidy
 
 clean:
-	rm -f bin
+	rm -f bin/*
 
-rosea:
+rosea: 
 	go build -buildmode=plugin -trimpath -o="./rosea.so" -tags "tc azrcr memonly kernel" trcrosea.go
 

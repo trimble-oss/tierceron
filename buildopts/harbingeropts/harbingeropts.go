@@ -123,11 +123,12 @@ func BuildTableGrant(tableName string) (string, error) {
 
 func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) {
 	trcTfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
-	if tableName == "DataFlowStatistics" {
-		if dfsFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType("DataFlowStatistics")]; refOk {
-			go func(refContext *trcflowcore.TrcFlowContext) {
-				refContext.ContextNotifyChan <- true
-			}(dfsFlowContext)
+	switch tableName {
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
+		fallthrough
+	case flowcorehelper.TierceronFlowConfigurationTableName:
+		if tfFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
+			tfFlowContext.NotifyFlowComponentLoaded()
 		}
 	}
 }
@@ -322,6 +323,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 				select {
 				case permUpdate := <-tfmContext.PermissionChan:
 					tableName := permUpdate.TableName
+					tablePermsGiven := false
 					permission := false
 					if permUpdate.CurrentState == 2 {
 						permission = true
@@ -430,14 +432,15 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 								if queryErr != nil {
 									eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to grant user permissions - 2a for"+tableN+":"+queryErr.Error(), false)
 								} else {
-									// Notify that the table grant has been provided.
-									if tableName != "" {
-										BuildOptions.TableGrantNotify(tfmContext, tableN)
-									}
+									tablePermsGiven = true
 								}
-
 							}
 						}
+						// Notify that the table grant has been provided.
+						if tablePermsGiven && tableName != "" {
+							BuildOptions.TableGrantNotify(tfmContext, tableName)
+						}
+
 						_, _, _, queryErr = engineQuery(engine, ctx, "FLUSH PRIVILEGES")
 						if queryErr != nil {
 							eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed refresh permissions for users for %s", tableName), false)

@@ -838,6 +838,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				} else {
 					pluginHandler.ServiceResource = tfmContext
 				}
+				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
 
 				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
 			}

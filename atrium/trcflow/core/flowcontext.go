@@ -25,9 +25,10 @@ type TrcFlowContext struct {
 	// are working with flows, this is a different pattern.
 	// This just means some analytic tools won't be able to
 	// perform analysis which are based on the Context.
-	ContextNotifyChan chan bool
-	Context           context.Context
-	CancelContext     context.CancelFunc
+	ContextNotifyChan    chan bool
+	FlowLoadedNotifyChan chan bool
+	Context              context.Context
+	CancelContext        context.CancelFunc
 	// I flow is complex enough, it can define
 	// it's own method for loading TrcDb
 	// from vault.
@@ -84,13 +85,17 @@ func (tfContext *TrcFlowContext) SetRestart(restart bool) {
 
 func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
 	go func() {
+		// Notify machine flow is loaded.
+		tfContext.FlowLoadedNotifyChan <- true
+	}()
+	go func() {
+		// Notify flow context it's loaded.
 		tfContext.ContextNotifyChan <- true
 	}()
 }
 
 func (tfContext *TrcFlowContext) WaitFlowLoaded() {
-	<-tfContext.ContextNotifyChan
-	<-tfContext.ContextNotifyChan
+	<-tfContext.FlowLoadedNotifyChan
 }
 
 func (tfContext *TrcFlowContext) FlowSyncModeMatchAny(syncModes []string) bool {

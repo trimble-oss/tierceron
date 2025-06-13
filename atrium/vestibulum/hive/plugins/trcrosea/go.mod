@@ -3,12 +3,13 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 go 1.24.4
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.6.4
+	github.com/trimble-oss/tierceron-core/v2 v2.6.6
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	github.com/google/go-cmp v0.7.0 // indirect
+	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
