@@ -428,15 +428,17 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				}
 			}
 			tfContext.FlowSourceAlias = flowMachineInitContext.GetDatabaseName()
-			go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
-				for tableLoadedPerm := range tfmContext.PreloadChan {
-					if flowcore.FlowNameType(tableLoadedPerm.TableName) == flowcore.ArgosSociiFlow {
-						populateArgosSocii(tfContext.GoMod, driverConfig, tfmContext)
-						break
+			if flowcore.FlowNameType(tfContext.GetFlowName()) == flowcore.ArgosSociiFlow {
+				go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
+					for tableLoadedPerm := range tfmContext.PreloadChan {
+						if flowcore.FlowNameType(tableLoadedPerm.TableName) == flowcore.ArgosSociiFlow {
+							populateArgosSocii(tfContext.GoMod, driverConfig, tfmContext)
+							tfContext.NotifyFlowComponentLoaded()
+							break
+						}
 					}
-				}
-				tfContext.NotifyFlowComponentLoaded()
-			}(tfmContext, &tfContext)
+				}(tfmContext, &tfContext)
+			}
 			tfmContext.ProcessFlow(
 				&tfContext,
 				func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
@@ -607,6 +609,19 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
 		}
+	} else {
+		go func(tfC *trcflowcore.TrcFlowMachineContext) {
+			for {
+				select {
+				case permUpdate := <-tfC.PermissionChan:
+					tableName := permUpdate.TableName
+
+					if tableName != flowcore.ArgosSociiFlow.TableName() {
+						harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
+					}
+				}
+			}
+		}(tfmFlumeContext)
 	}
 
 	// Starts up dolt mysql instance listening on a port so we can use the plugin instead to host vault encrypted data.
@@ -628,6 +643,19 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up database interface:"+interfaceErr.Error(), false)
 			return interfaceErr
 		}
+	} else {
+		go func(tfC *trcflowcore.TrcFlowMachineContext) {
+			for {
+				select {
+				case permUpdate := <-tfC.PermissionChan:
+					tableName := permUpdate.TableName
+
+					if tableName != flowcore.ArgosSociiFlow.TableName() {
+						harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
+					}
+				}
+			}
+		}(tfmContext)
 	}
 
 	// Databases not fully online until th flowWG is done and released.
