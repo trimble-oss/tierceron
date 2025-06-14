@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
@@ -40,6 +42,11 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
+
+type TrcFlowLock struct {
+	QueryLock sync.Mutex // Lock for query execution
+	FlowCount atomic.Int64
+}
 
 type TrcFlowMachineContext struct {
 	InitConfigWG       *sync.WaitGroup
@@ -59,6 +66,7 @@ type TrcFlowMachineContext struct {
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
+	FlowLockMap               *cmap.ConcurrentMap[string, *TrcFlowLock] // Map of locks for each query
 	PreloadChan               chan PermissionUpdate
 	PermissionChan            chan PermissionUpdate // This channel is used to alert for dynamic permissions when tables are loaded
 }
@@ -69,16 +77,6 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
-	tfmContext.FlowMapLock.RLock()
-	defer tfmContext.FlowMapLock.RUnlock()
-	if flowContext, refOk := tfmContext.FlowMap[flowName]; refOk {
-		return flowContext
-	} else {
-		return nil
-	}
-}
-
-func (tfmContext *TrcFlowMachineContext) GetTrcFlowContext(flowName flowcore.FlowNameType) *TrcFlowContext {
 	tfmContext.FlowMapLock.RLock()
 	defer tfmContext.FlowMapLock.RUnlock()
 	if flowContext, refOk := tfmContext.FlowMap[flowName]; refOk {
@@ -684,6 +682,7 @@ func (tfmContext *TrcFlowMachineContext) GetAuthExtended(getExtensionAuthCompone
 }
 
 func (tfmContext *TrcFlowMachineContext) CallDBQueryN(flows []string,
+	tcflowContext flowcore.FlowContext,
 	queryMap map[string]any,
 	bindingsI map[string]any, // Optional param
 	changed bool,
@@ -691,7 +690,284 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(flows []string,
 	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
 	flowtestState string) ([][]any, bool) {
 	// Chewbacca:
-	return nil, false
+	if len(flows) == 0 {
+		tfmContext.Log("No flow names provided for CallDBQueryN.", errors.New("No flow names provided for CallDBQueryN"))
+		return nil, false
+	}
+
+	if tfmContext.FlowLockMap == nil {
+		ccmap := cmap.New[*TrcFlowLock]()
+		tfmContext.FlowLockMap = &ccmap
+	}
+	err := setQueryLock(tfmContext, flows, 1)
+	if err != nil {
+		tfmContext.Log("Failed to set query lock", err)
+		return nil, false
+	}
+	queryLock, ok := tfmContext.FlowLockMap.Get(flows[0])
+	if !ok {
+		tfmContext.Log("Failed to get flow lock for: "+flows[0], errors.New("Failed to get flow lock"))
+		return nil, false
+	}
+
+	tfContext := tcflowContext.(*TrcFlowContext)
+
+	if queryMap["TrcQuery"].(string) == "" {
+		return nil, false
+	}
+	switch operation {
+	case "INSERT":
+		var matrix [][]any
+		var err error
+		if bindingsI == nil {
+			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), &queryLock.QueryLock)
+			releaseQueryLock(tfmContext, flows)
+			if len(matrix) == 0 {
+				changed = false
+			}
+		} else {
+			bindings := convertUntypedExpressionMap(bindingsI)
+			if bindings == nil {
+				return nil, false
+			}
+
+			tableName, _, _, err := trcdb.QueryWithBindings(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, &queryLock.QueryLock)
+			releaseQueryLock(tfmContext, flows)
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []any{})
+			}
+		}
+		if err != nil {
+			tfmContext.Log("query error", err)
+		}
+		if changed && len(matrix) > 0 {
+
+			// If triggers are ever fixed, this can be removed.
+			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"].(string); changeIdValueOk {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
+				bindings := map[string]sqle.Expression{
+					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, &queryLock.QueryLock)
+				releaseQueryLock(tfmContext, flows)
+				if err != nil {
+					tfmContext.Log("Failed to insert changes for INSERT.", err)
+				}
+			} else if changeIdValues, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk && len(changeIdValues) == 2 {
+				if changeIdCols, changeIdColOk := queryMap["TrcChangeCol"].([]string); changeIdColOk && len(changeIdCols) == 2 {
+					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+changeIdCols[0]+", :"+changeIdCols[1]+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
+					bindings := map[string]sqle.Expression{
+						changeIdCols[0]: sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+						changeIdCols[1]: sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					}
+					_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, &queryLock.QueryLock)
+					releaseQueryLock(tfmContext, flows)
+					if err != nil {
+						tfmContext.Log("Failed to insert changes for INSERT - 2A.", err)
+					}
+				} else {
+					tfmContext.Log("Failed to find changed column Ids for INSERT - 2A", err)
+				}
+			} else if changeIdValues, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk && len(changeIdValues) == 3 {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+flowcoreopts.DataflowTestNameColumn+", :"+flowcoreopts.DataflowTestIdColumn+", :"+flowcoreopts.DataflowTestStateCodeColumn+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics_Changes")
+				bindings := map[string]sqle.Expression{
+					flowcoreopts.DataflowTestNameColumn:      sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					flowcoreopts.DataflowTestIdColumn:        sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					flowcoreopts.DataflowTestStateCodeColumn: sqlee.NewLiteral(changeIdValues[2], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, &queryLock.QueryLock)
+				releaseQueryLock(tfmContext, flows)
+				if err != nil {
+					tfmContext.Log("Failed to insert dfs changes for INSERT.", err)
+				}
+			}
+
+			if len(flowNotifications) > 0 {
+				// look up channels and notify them too.
+				for _, flowNotification := range flowNotifications {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification)]; ok {
+						notificationFlowChannel.Bcast(true)
+					}
+				}
+			}
+			// If this is a test...  Also inject notifications appropriately.
+			if flowtestState != "" {
+				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
+				for _, flowNotification := range additionalTestFlows {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
+						notificationFlowChannel.Bcast(true)
+					}
+				}
+			}
+		}
+	case "DELETE":
+		fallthrough
+	case "UPDATE":
+		var tableName string
+		var matrix [][]any
+		var err error
+
+		if bindingsI == nil {
+			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), &queryLock.QueryLock)
+			releaseQueryLock(tfmContext, flows)
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []any{})
+			} else if len(matrix) == 0 {
+				changed = false
+			}
+		} else {
+			bindings := convertUntypedExpressionMap(bindingsI)
+			if bindings == nil {
+				return nil, false
+			}
+
+			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, &queryLock.QueryLock)
+			releaseQueryLock(tfmContext, flows)
+			if err == nil && tableName == "ok" {
+				changed = true
+				matrix = append(matrix, []any{})
+				tfmContext.Log("UPDATE successful.", nil)
+			} else {
+				tfmContext.Log("UPDATE failed.", nil)
+			}
+		}
+
+		if err != nil {
+			tfmContext.Log("query update error", err)
+		}
+		if changed && (len(matrix) > 0 || tableName != "") {
+			// If triggers are ever fixed, this can be removed.
+			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"].(string); changeIdValueOk {
+				var changeQuery string
+				if strings.Contains(tfContext.ChangeFlowName, flowcorehelper.TierceronFlowConfigurationTableName) {
+					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
+				} else {
+					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
+				}
+				bindings := map[string]sqle.Expression{
+					"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, &queryLock.QueryLock)
+				releaseQueryLock(tfmContext, flows)
+				if err != nil {
+					tfmContext.Log("Failed to insert changes for UPDATE.", err)
+				}
+			} else if changeIdValues, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk && len(changeIdValues) == 2 {
+				if changeIdCols, changeIdColOk := queryMap["TrcChangeCol"].([]string); changeIdColOk && len(changeIdCols) == 2 {
+					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+changeIdCols[0]+", :"+changeIdCols[1]+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
+					bindings := map[string]sqle.Expression{
+						changeIdCols[0]: sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+						changeIdCols[1]: sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					}
+					_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, &queryLock.QueryLock)
+					releaseQueryLock(tfmContext, flows)
+					if err != nil {
+						tfmContext.Log("Failed to insert changes for UPDATE - 2A.", err)
+					}
+				} else {
+					tfmContext.Log("Failed to find changed column Ids for UPDATE - 2A", err)
+				}
+			} else if changeIdValues, changeIdValueOk := queryMap["TrcChangeId"].([]string); changeIdValueOk && len(changeIdValues) == 3 {
+				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+flowcoreopts.DataflowTestNameColumn+", :"+flowcoreopts.DataflowTestIdColumn+", :"+flowcoreopts.DataflowTestStateCodeColumn+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics_Changes")
+				bindings := map[string]sqle.Expression{
+					flowcoreopts.DataflowTestNameColumn:      sqlee.NewLiteral(changeIdValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					flowcoreopts.DataflowTestIdColumn:        sqlee.NewLiteral(changeIdValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+					flowcoreopts.DataflowTestStateCodeColumn: sqlee.NewLiteral(changeIdValues[2], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
+				}
+				_, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, &queryLock.QueryLock)
+				releaseQueryLock(tfmContext, flows)
+				if err != nil {
+					tfmContext.Log("Failed to insert dfs changes for UPDATE.", err)
+				}
+			}
+
+			if len(flowNotifications) > 0 {
+				// look up channels and notify them too.
+				for _, flowNotification := range flowNotifications {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification)]; ok {
+						notificationFlowChannel.Bcast(true)
+					}
+				}
+			}
+			// If this is a test...  Also inject notifications appropriately.
+			if flowtestState != "" {
+				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
+				for _, flowNotification := range additionalTestFlows {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
+						notificationFlowChannel.Bcast(true)
+					}
+				}
+			}
+		}
+	case "SELECT":
+		_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), &queryLock.QueryLock)
+		releaseQueryLock(tfmContext, flows)
+		if err != nil {
+			tfmContext.Log("query select error", err)
+		}
+		return matrixChangedEntries, changed
+	}
+	return nil, changed
+}
+
+func setQueryLock(tfmContext *TrcFlowMachineContext, flows []string, value int64) error {
+	if len(flows) == 0 {
+		tfmContext.Log("No flow names provided for CallDBQueryN.", errors.New("No flow names provided for CallDBQueryN"))
+		return errors.New("No flow names provided for setQueryLock")
+	}
+
+	if tfmContext.FlowLockMap == nil {
+		ccmap := cmap.New[*TrcFlowLock]()
+		tfmContext.FlowLockMap = &ccmap
+	}
+	for _, name := range flows {
+		upsertCb := func(exist bool, valueInMap *TrcFlowLock, newValue *TrcFlowLock) *TrcFlowLock {
+			if exist && valueInMap != nil {
+				valueInMap.FlowCount.Add(value)
+				return valueInMap
+			} else if !exist && newValue != nil {
+				newValue.FlowCount.Add(value)
+				return newValue
+			}
+			return nil
+		}
+		newVal := &TrcFlowLock{
+			QueryLock: sync.Mutex{},
+			FlowCount: atomic.Int64{},
+		}
+		result := tfmContext.FlowLockMap.Upsert(name, newVal, upsertCb)
+		if result == nil {
+			tfmContext.Log("Failed to upsert flow lock for: "+name, errors.New("Failed to upsert flow lock"))
+			return errors.New("Failed to upsert flow lock")
+		}
+	}
+	return nil
+}
+
+func releaseQueryLock(tfmContext *TrcFlowMachineContext, flows []string) error {
+	if len(flows) == 0 {
+		tfmContext.Log("No flow names provided for CallDBQueryN.", errors.New("No flow names provided for CallDBQueryN"))
+		return errors.New("No flow names provided for releaseQueryLock")
+	}
+
+	if tfmContext.FlowLockMap == nil {
+		tfmContext.Log("FlowLockMap is nil, cannot release locks.", errors.New("FlowLockMap is nil"))
+		return errors.New("FlowLockMap is nil")
+	}
+	setQueryLock(tfmContext, flows, -1)
+	for _, name := range flows {
+		removeCb := func(flow string, valueInMap *TrcFlowLock, exists bool) bool {
+			if exists && valueInMap != nil && valueInMap.FlowCount.Load() == 0 {
+				return true
+			} else {
+				return false
+			}
+		}
+		tfmContext.FlowLockMap.RemoveCb(name, removeCb)
+	}
+	return nil
 }
 
 // Make a call on Call back to insert or update using the provided query.
