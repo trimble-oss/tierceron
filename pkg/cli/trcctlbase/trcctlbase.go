@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/faiface/mainthread"
 	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 
@@ -325,11 +326,13 @@ func CommonMain(envDefaultPtr *string,
 			}
 		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &driverConfig)
-		if err != nil {
-			fmt.Println(err.Error())
-			return err
-		}
+		mainthread.Run(func() {
+			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &driverConfig)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		})
 
 	case "x":
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
