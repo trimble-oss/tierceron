@@ -90,6 +90,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	logger.Println("Deployed status updated.")
 
 	tfmContext = &trcflowcore.TrcFlowMachineContext{
+		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
@@ -533,36 +534,29 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverConfig, tfmContext flowcore.FlowMachineContext) {
 	goMod.Reset()
-	projectValues, err := goMod.List("templates", driverConfig.CoreConfig.Log)
-	argosId := 0
-	if err == nil && projectValues != nil {
-		for _, projectValue := range projectValues.Data["keys"].([]any) {
-			if project := projectValue.(string); harbingeropts.BuildOptions.IsValidProjectName(project) {
-				project = strings.TrimSuffix(project, "/")
-				serviceValues, err := goMod.List(fmt.Sprintf("templates/%s", project), driverConfig.CoreConfig.Log)
-				if err == nil && serviceValues != nil {
-					for _, serviceValue := range serviceValues.Data["keys"].([]any) {
-						if service := serviceValue.(string); service != "" {
-							service = strings.TrimSuffix(service, "/")
-							if !strings.HasSuffix(service, "Build") && !strings.HasSuffix(service, "Cert") {
-								existsData, err := goMod.ReadMetadata(fmt.Sprintf("super-secrets/%s", service), driverConfig.CoreConfig.Log)
-								if err != nil || len(existsData) == 0 || existsData["destroyed"].(bool) || len(existsData["deletion_time"].(string)) > 0 {
-									continue
-								}
-								if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow); flow != nil {
-									if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
-										argosId = argosId + 1
-										var data = make(map[string]any)
-										data["argosId"] = fmt.Sprintf("%d", argosId)
-										data["argosIdentitasNomen"] = "Jason Aesonides"
-										data["argosProiectum"] = project
-										data["argosServitium"] = service
-										data["argosNotitia"] = "Tierceron service"
+	if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow); flow != nil {
+		if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
+			pluginNameValues, err := goMod.List("super-secrets/Index/TrcVault/trcplugin", driverConfig.CoreConfig.Log)
+			argosId := 0
 
-										flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flow.GetFlowSourceAlias(), flowcore.ArgosSociiFlow.FlowName())
-										tfmContext.CallDBQuery(flow, flowInsertQueryMap, nil, false, "INSERT", nil, "")
-									}
-								}
+			if err == nil && pluginNameValues != nil {
+				for _, pluginNameValue := range pluginNameValues.Data["keys"].([]any) {
+					if pluginName := pluginNameValue.(string); pluginName != "" {
+						pluginName = strings.TrimSuffix(pluginName, "/")
+						pluginMap, err := goMod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
+						if err == nil {
+							if projectService, ok := pluginMap["trcprojectservice"].(string); ok {
+								projectServiceSlice := strings.Split(projectService, "/")
+								argosId = argosId + 1
+								var data = make(map[string]any)
+								data["argosId"] = fmt.Sprintf("%d", argosId)
+								data["argosIdentitasNomen"] = pluginName
+								data["argosProiectum"] = projectServiceSlice[0]
+								data["argosServitium"] = projectServiceSlice[1]
+								data["argosNotitia"] = "Tierceron service"
+
+								flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flow.GetFlowSourceAlias(), flowcore.ArgosSociiFlow.FlowName())
+								tfmContext.CallDBQuery(flow, flowInsertQueryMap, nil, false, "INSERT", nil, "")
 							}
 						}
 					}

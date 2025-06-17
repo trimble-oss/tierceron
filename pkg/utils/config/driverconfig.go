@@ -57,6 +57,7 @@ type DriverConfig struct {
 
 	// Internal systems...
 	IsShellSubProcess bool // If subshell
+	ShellRunner       func(*DriverConfig, string, string)
 
 	FileFilter    []string // Which systems to operate on.
 	SubPathFilter []string // Which subpaths to operate on.

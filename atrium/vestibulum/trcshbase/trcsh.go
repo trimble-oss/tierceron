@@ -24,7 +24,7 @@ import (
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
+	trcshmemfs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
@@ -146,6 +146,11 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
 	}
 
+	trcsshMemFs := driverConfigPtr.MemFs
+	if trcsshMemFs == nil {
+		trcsshMemFs = trcshmemfs.NewTrcshMemFs()
+	}
+
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &core.CoreConfig{
@@ -162,7 +167,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 			ReadMemCache:      useMemCache,
 			SubOutputMemCache: useMemCache,
 			OutputMemCache:    outputMemCache,
-			MemFs:             trcshMemFs.NewTrcshMemFs(),
+			MemFs:             trcsshMemFs,
 			ZeroConfig:        true,
 			PathParam:         pathParam, // Make available to trcplgtool
 		},
@@ -1006,6 +1011,18 @@ func roleBasedRunner(
 		} else {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 		}
+	case "trcx":
+		//		tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
+		// err = trcxbase.CommonMain(nil, &envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
+		// trcxbase.CommonMain(nil,
+		// 	xutil.GenerateSeedsFromVault,
+		// 	&envDefaultPtr,
+		// 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+		// 	&gTrcshConfig.EnvContext,
+		// 	nil,
+		// 	flagset,
+		// 	restrictedMappingX)
+
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env) {

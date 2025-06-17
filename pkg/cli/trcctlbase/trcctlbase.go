@@ -279,7 +279,27 @@ func CommonMain(envDefaultPtr *string,
 
 	case "edit":
 		tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
-		driverConfig := config.DriverConfig{
+		editDriverConfig := config.DriverConfig{
+			ShellRunner: func(dc *config.DriverConfig, projectService string, scriptPath string) {
+				if dc.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
+					deploy_role := os.Getenv("DEPLOY_ROLE")
+					deploy_secret := os.Getenv("DEPLOY_SECRET")
+					if len(deploy_role) > 0 && len(deploy_secret) > 0 {
+						azureDeployRole := []string{deploy_role, deploy_secret}
+						dc.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
+					}
+				}
+
+				var pathParam = os.Getenv("PATH_PARAM")
+				trcshDriverConfig, err := trcshbase.TrcshInitConfig(dc, dc.CoreConfig.Env, dc.CoreConfig.Regions[0], pathParam, true, true)
+				if err != nil {
+					fmt.Printf("trcsh config setup failure: %s\n", err.Error())
+					os.Exit(124)
+				}
+
+				//Open deploy script and parse it.
+				trcshbase.ProcessDeploy(nil, trcshDriverConfig, "", scriptPath, projectService, nil)
+			},
 			CoreConfig: &core.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				IsEditor:            true,
@@ -297,21 +317,21 @@ func CommonMain(envDefaultPtr *string,
 			OutputMemCache:    true,
 			MemFs:             trcshMemFs.NewTrcshMemFs(),
 		}
-		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+		editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 
 		// Services downstream several more limited tokens but all covered
 		// by the scope of the unrestricted token.
 		limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
-		driverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
+		editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
 
 		statTokenName := "config_token_pluginany"
-		driverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
+		editDriverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
 
 		configMap := map[string]any{
 			"plugin_name": "trcctl",
 			"token_name":  tokenName,
 			"vault_token": *tokenPtr,
-			"vault_addr":  *driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+			"vault_addr":  *editDriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
 			"agent_env":   *envPtr,
 			//			"deployments": "fenestra",
 			//			"deployments": "trcdb",
@@ -327,7 +347,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		mainthread.Run(func() {
-			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &driverConfig)
+			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &editDriverConfig)
 			if err != nil {
 				fmt.Println(err.Error())
 				return
