@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
@@ -54,7 +54,7 @@ func main() {
 
 	makeVaultReq := &pb.GetValuesReq{}
 	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 		},
 	}

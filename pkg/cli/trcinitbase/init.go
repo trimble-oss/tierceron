@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -49,7 +49,7 @@ func CommonMain(envPtr *string,
 
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				TokenCache:    cache.NewTokenCacheEmpty(),
 			},
@@ -880,7 +880,7 @@ func CommonMain(envPtr *string,
 
 		dConfig := &config.DriverConfig{
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				DynamicPathFilter:   *dynamicPathPtr,
 				Insecure:            *insecurePtr,
 				CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,

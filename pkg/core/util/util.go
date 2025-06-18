@@ -12,8 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -25,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 
 	"log"
@@ -49,7 +49,7 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrC
 	}
 }
 
-func GetJSONFromClientByGet(config *core.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
+func GetJSONFromClientByGet(config *coreconfig.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
 	var jsonData map[string]any
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
@@ -91,7 +91,7 @@ func GetJSONFromClientByGet(config *core.CoreConfig, httpClient *http.Client, he
 	return nil, response.StatusCode, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(config *core.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
+func GetJSONFromClientByPost(config *coreconfig.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
 	var jsonData map[string]any
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {

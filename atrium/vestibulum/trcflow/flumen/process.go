@@ -11,7 +11,6 @@ import (
 	"time"
 
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
@@ -25,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -198,7 +198,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	// 4. Create config for vault for queries to vault.
 	driverConfigBasis := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			Regions:             driverConfig.CoreConfig.Regions,
 			CurrentTokenNamePtr: currentTokenNamePtr,
 			TokenCache:          driverConfig.CoreConfig.TokenCache,

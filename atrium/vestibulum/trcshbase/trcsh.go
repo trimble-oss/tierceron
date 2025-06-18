@@ -19,28 +19,28 @@ import (
 	"time"
 
 	"github.com/danieljoos/wincred"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
+	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
-	trcshmemfs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/deployutil"
 	kube "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshauth"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -153,7 +153,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:       true,
 				TokenCache:    gTokenCache,
 				Insecure:      false,

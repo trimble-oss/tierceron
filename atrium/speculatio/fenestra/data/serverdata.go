@@ -9,11 +9,11 @@ import (
 	"strconv"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -89,7 +89,7 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
 	addressPtr := new(string)
 	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 			TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
 			Insecure:      *insecure,
@@ -169,7 +169,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDetailedElement {
 	data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 
-	config := &core.CoreConfig{
+	config := &coreconfig.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
 	}

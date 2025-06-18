@@ -9,13 +9,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/pkg/utils/config"
-
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	twp "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	"github.com/trimble-oss/tierceron/trcweb/server"
 
@@ -229,7 +228,7 @@ func main() {
 	s = server.NewServer(addrPtr, tokenPtr)
 	localHost = *localPtr
 	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 		},
 	}

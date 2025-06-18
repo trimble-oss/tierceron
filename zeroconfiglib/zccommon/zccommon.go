@@ -11,8 +11,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -27,7 +27,7 @@ func ConfigCertLibHelper(token string,
 	logger := log.New(os.Stdout, "[configCertLibHelper]", log.LstdFlags)
 	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
 	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts:  wantCerts,
 			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token, &address),
 			Insecure:   true,

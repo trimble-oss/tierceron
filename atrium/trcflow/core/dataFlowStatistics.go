@@ -12,10 +12,10 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"time"
@@ -65,7 +65,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					return &aFleet, readErr
 				} else {
 					driverConfig := &config.DriverConfig{
-						CoreConfig: &core.CoreConfig{
+						CoreConfig: &coreconfig.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      mod.Insecure,
 							Log:           logger,

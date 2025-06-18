@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -127,7 +127,7 @@ func CommonMain(ctx config.ProcessContext,
 		tokenNamePtr = &tokenName
 	}
 	driverConfigBase := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			Insecure:      *insecurePtr,
 			TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr),
 			ExitOnFailure: true,
@@ -351,7 +351,7 @@ skipDiff:
 		roleEntityPtr := new(string)
 
 		autoErr := eUtils.AutoAuth(&config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				TokenCache:    driverConfigBase.CoreConfig.TokenCache,
 				Insecure:      *insecurePtr,
@@ -416,7 +416,7 @@ skipDiff:
 					roleEntityPtr := new(string)
 
 					authErr := eUtils.AutoAuth(&config.DriverConfig{
-						CoreConfig: &core.CoreConfig{
+						CoreConfig: &coreconfig.CoreConfig{
 							ExitOnFailure: true,
 							TokenCache:    driverConfigBase.CoreConfig.TokenCache,
 							Insecure:      *insecurePtr,
@@ -439,7 +439,7 @@ skipDiff:
 						appconfigrolePtr := new(string)
 
 						authErr := eUtils.AutoAuth(&config.DriverConfig{
-							CoreConfig: &core.CoreConfig{
+							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
 								TokenCache:          driverConfigBase.CoreConfig.TokenCache,
@@ -451,7 +451,7 @@ skipDiff:
 							// Retry once.
 
 							authErr := eUtils.AutoAuth(&config.DriverConfig{
-								CoreConfig: &core.CoreConfig{
+								CoreConfig: &coreconfig.CoreConfig{
 									ExitOnFailure:       true,
 									CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
 									TokenCache:          driverConfigBase.CoreConfig.TokenCache,
@@ -473,7 +473,7 @@ skipDiff:
 					}
 
 					driverConfig := &config.DriverConfig{
-						CoreConfig: &core.CoreConfig{
+						CoreConfig: &coreconfig.CoreConfig{
 							WantCerts:           *wantCertsPtr,
 							Insecure:            *insecurePtr,
 							CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
@@ -585,7 +585,7 @@ skipDiff:
 
 					//Ask vault for list of dev.<id>.* environments, add to envSlice
 					authErr := eUtils.AutoAuth(&config.DriverConfig{
-						CoreConfig: &core.CoreConfig{
+						CoreConfig: &coreconfig.CoreConfig{
 							ExitOnFailure:       true,
 							CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
 							TokenCache:          cache.NewTokenCache(fmt.Sprintf("config_token_%s", baseEnv), tokenPtr, addrPtr),
@@ -717,7 +717,7 @@ skipDiff:
 					*tokenNameEnvPtr = fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 
 					authErr := eUtils.AutoAuth(&config.DriverConfig{
-						CoreConfig: &core.CoreConfig{
+						CoreConfig: &coreconfig.CoreConfig{
 							ExitOnFailure:       true,
 							CurrentTokenNamePtr: tokenNameEnvPtr,
 							TokenCache:          driverConfigBase.CoreConfig.TokenCache,
@@ -728,7 +728,7 @@ skipDiff:
 					if authErr != nil {
 						// Retry once.
 						authErr := eUtils.AutoAuth(&config.DriverConfig{
-							CoreConfig: &core.CoreConfig{
+							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: tokenNameEnvPtr,
 								TokenCache:          driverConfigBase.CoreConfig.TokenCache,
@@ -762,7 +762,7 @@ skipDiff:
 					}
 				}
 				driverConfig := &config.DriverConfig{
-					CoreConfig: &core.CoreConfig{
+					CoreConfig: &coreconfig.CoreConfig{
 						WantCerts:           *wantCertsPtr,
 						Insecure:            *insecurePtr,
 						CurrentTokenNamePtr: tokenNameEnvPtr,

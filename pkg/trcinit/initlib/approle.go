@@ -5,13 +5,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"gopkg.in/yaml.v2"
 )
 
-func GetApproleFileNames(config *core.CoreConfig, namespace string) []string {
+func GetApproleFileNames(config *coreconfig.CoreConfig, namespace string) []string {
 	var approleFileNames []string
 	cwd, cwdErr := os.Getwd()
 	if cwdErr != nil {

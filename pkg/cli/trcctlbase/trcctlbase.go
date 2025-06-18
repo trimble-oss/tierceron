@@ -9,20 +9,20 @@ import (
 	"strings"
 
 	"github.com/faiface/mainthread"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
+	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	"github.com/trimble-oss/tierceron/pkg/utils"
@@ -47,7 +47,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				TokenCache:    cache.NewTokenCacheEmpty(),
 			},
@@ -246,7 +246,7 @@ func CommonMain(envDefaultPtr *string,
 		//		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 		tokenName := "config_token_pluginany"
 		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,
@@ -300,7 +300,7 @@ func CommonMain(envDefaultPtr *string,
 				//Open deploy script and parse it.
 				trcshbase.ProcessDeploy(nil, trcshDriverConfig, "", scriptPath, projectService, nil)
 			},
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,

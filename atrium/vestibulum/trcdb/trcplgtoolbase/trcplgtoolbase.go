@@ -15,12 +15,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"

@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	plgtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -16,12 +19,9 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
 )
 
 // This executable automates the cerification of a plugin docker image.
@@ -52,7 +52,7 @@ func main() {
 
 	trcshDriveConfigPtr := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure:        true,
 				Insecure:             false,
 				CurrentRoleEntityPtr: new(string),

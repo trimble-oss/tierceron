@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
@@ -44,7 +44,7 @@ func main() {
 	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
 	driverConfig := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", env), tokenPtr, &addr),
 			ExitOnFailure: true,
 		},

@@ -14,15 +14,15 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -218,7 +218,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				}
 
 				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, queuedEnvironments[0], "", "", true, true, logger)
-				eUtils.CheckError(&core.CoreConfig{
+				eUtils.CheckError(&coreconfig.CoreConfig{
 					ExitOnFailure: true,
 					Log:           logger,
 				}, err, true)

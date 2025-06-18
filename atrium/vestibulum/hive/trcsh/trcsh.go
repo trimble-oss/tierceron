@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
@@ -15,14 +19,10 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -65,7 +65,7 @@ func main() {
 	}
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 			TokenCache:    cache.NewTokenCacheEmpty(),
 			Log:           logger,
