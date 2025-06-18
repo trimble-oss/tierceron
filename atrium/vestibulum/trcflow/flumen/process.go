@@ -545,7 +545,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 						pluginName = strings.TrimSuffix(pluginName, "/")
 						pluginMap, err := goMod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 						if err == nil {
-							if projectService, ok := pluginMap["trcprojectservice"].(string); ok {
+							if projectService, ok := pluginMap["trcprojectservice"].(string); ok && len(projectService) > 0 {
 								projectServiceSlice := strings.Split(projectService, "/")
 								argosId = argosId + 1
 								var data = make(map[string]any)
