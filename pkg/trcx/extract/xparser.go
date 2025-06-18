@@ -9,10 +9,10 @@ import (
 	"text/template/parse"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -205,7 +205,7 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 //
 // Output:
 //   - String(s) containing the .yml file subsections
-func Parse(config *core.CoreConfig, cds *vcutils.ConfigDataStore,
+func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 	args []string,
 	currentDir string,
 	templatePathSlice []string,

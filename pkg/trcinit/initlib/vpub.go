@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
+func UploadTemplateDirectory(config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 
 	dirs, err := os.ReadDir(dirName)
 	if err != nil {
@@ -37,7 +37,7 @@ func UploadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, di
 	return nil, nil
 }
 
-func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
+func UploadTemplates(config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 	// Open directory
 	files, err := os.ReadDir(dirName)
 	if err != nil {

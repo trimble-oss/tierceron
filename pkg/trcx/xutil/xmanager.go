@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	xencrypt "github.com/trimble-oss/tierceron/pkg/trcx/xencrypt"
 	"github.com/trimble-oss/tierceron/pkg/utils"
@@ -857,7 +857,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 	return nil, nil
 }
 
-func writeToFile(config *core.CoreConfig, data string, path string) {
+func writeToFile(config *coreconfig.CoreConfig, data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
 	dirPath := filepath.Dir(path)
@@ -933,7 +933,7 @@ func MergeMaps(x1, x2 any) any {
 //   - slice to combine
 //   - template slice to combine
 //   - depth of map (-1 for value/secret sections)
-func CombineSection(config *core.CoreConfig, sliceSectionInterface any, maxDepth int, combinedSectionInterface any) {
+func CombineSection(config *coreconfig.CoreConfig, sliceSectionInterface any, maxDepth int, combinedSectionInterface any) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/pkg/trcnet"
 )
@@ -123,6 +125,10 @@ func GetUserCodeField() string {
 // Used to provide active sessions in the web interface -- not maintained..
 func ActiveSessions(db *sql.DB) ([]map[string]any, error) {
 	return nil, errors.New("not implemented")
+}
+
+func IsSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 // FindIndexForService - override to provide a custom index for a given service.  This should return

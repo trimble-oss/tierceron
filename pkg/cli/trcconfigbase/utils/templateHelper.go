@@ -9,9 +9,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -177,7 +177,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	return template, certData, true, err
 }
 
-func getTemplateVersionData(config *core.CoreConfig, modifier *helperkv.Modifier, project string, service string, file string) (map[string]any, error) {
+func getTemplateVersionData(config *coreconfig.CoreConfig, modifier *helperkv.Modifier, project string, service string, file string) (map[string]any, error) {
 	cds := new(ConfigDataStore)
 	return cds.InitTemplateVersionData(config, modifier, true, project, file, service)
 }

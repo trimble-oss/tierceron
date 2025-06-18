@@ -10,10 +10,9 @@ import (
 	"os"
 	"time"
 
-	cmap "github.com/orcaman/concurrent-map/v2"
-
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -117,7 +116,8 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			configContext.Log.Println("rosea shutting down message receiver")
 			return
 		case (*event).ChatId != nil && *event.ChatId != "PROGRESS":
-			tccore.CallSelectedChatMsgHook(GetChatMsgHookCtx(), event)
+			chatMsgHookCtxRef := flowutil.GetChatMsgHookCtx()
+			tccore.CallSelectedChatMsgHook(*chatMsgHookCtxRef, event)
 		default:
 			configContext.Log.Println("rosea received chat message")
 		}
@@ -218,31 +218,26 @@ func Init(pluginName string, properties *map[string]any) {
 		return
 	}
 
-	go FetchSocii(configContext) // Init must be non blocking
-}
+	flowutil.InitChatSenderChan(configContext.ChatSenderChan)
 
-// GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return "fieldtechservice"
+	go FetchSocii(configContext) // Init must be non blocking
 }
 
 func GetPluginMessages(pluginName string) []string {
 	return []string{}
 }
 
-var chatMsgHookCtx *cmap.ConcurrentMap[string, tccore.ChatHookFunc]
-
-func GetChatMsgHookCtx() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] { return chatMsgHookCtx }
-
 func FetchSocii(ctx *tccore.ConfigContext) {
 	ctx.Log.Println("Sending request for argos socii.")
-
-	chatResponseMsg := tccore.CallChatQueryChan(&chatMsgHookCtx,
+	chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
 		"rosea", // From rainier
-		[]string{flowcore.ArgosSociiFlow.TableName()},                                              // Flows
-		fmt.Sprintf("SELECT * FROM %s.%s", GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()), // Query
-		"SELECT", // query operation
-		ctx.ChatSenderChan,
+		&tccore.TrcdbExchange{
+			Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                       // Flows
+			Query:     fmt.Sprintf("SELECT * FROM %s.%s", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()), // Query
+			Operation: "SELECT",                                                                                            // query operation
+			ExecTrcsh: "/edit/edit.trc.tmpl",
+		},
+		flowutil.GetChatSenderChan(),
 	)
 	if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
 		projectServices = chatResponseMsg.TrcdbExchange.Response.Rows

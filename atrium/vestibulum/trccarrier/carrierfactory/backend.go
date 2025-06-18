@@ -10,9 +10,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
@@ -22,10 +26,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -354,7 +354,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
 						tokenCache.AddRoleStr("pub", roleCheckPtr)
 						verr = eUtils.AutoAuth(&config.DriverConfig{
-							CoreConfig: &core.CoreConfig{
+							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
 								TokenCache:          tokenCache,
@@ -375,7 +375,7 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
 						tokenCache.AddRoleStr("bamboo", roleCheckPtr)
 						verr = eUtils.AutoAuth(&config.DriverConfig{
-							CoreConfig: &core.CoreConfig{
+							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
 								TokenCache:          tokenCache,

@@ -3,7 +3,7 @@ package capauth
 import (
 	"fmt"
 
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 

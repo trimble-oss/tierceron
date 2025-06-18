@@ -26,11 +26,11 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -70,7 +70,7 @@ type TrcKubeConfig struct {
 	PipeOS trcshio.TrcshReadWriteCloser // Where to send output.
 }
 
-func LoadFromKube(kubeConfigBytes []byte, config *core.CoreConfig) (*TrcKubeConfig, error) {
+func LoadFromKube(kubeConfigBytes []byte, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
 	// kubeConfig, err := clientcmd.Load(kubeConfigBytes)
 	// if err != nil {
 	// 	return nil, err
@@ -110,7 +110,7 @@ func LoadFromKube(kubeConfigBytes []byte, config *core.CoreConfig) (*TrcKubeConf
 	return trcConfig, nil
 }
 
-func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *core.CoreConfig) (*TrcKubeConfig, error) {
+func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfigPtr)
 	if decodeErr != nil {
 		fmt.Println("Decoding error")

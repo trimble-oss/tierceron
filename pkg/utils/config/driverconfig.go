@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 )
 
 type ProcessContext any
@@ -48,7 +48,7 @@ func (cfgContext *ConfigContext) GetDiffFileCount() int32 {
 
 // DriverConfig -- contains many structures necessary for Tierceron tool functionality.
 type DriverConfig struct {
-	CoreConfig *core.CoreConfig
+	CoreConfig *coreconfig.CoreConfig
 
 	// Process context used by new tool implementations in callbacks.
 	// Tools can attach their own context here for later access in
@@ -57,6 +57,7 @@ type DriverConfig struct {
 
 	// Internal systems...
 	IsShellSubProcess bool // If subshell
+	ShellRunner       func(*DriverConfig, string, string)
 
 	FileFilter    []string // Which systems to operate on.
 	SubPathFilter []string // Which subpaths to operate on.
