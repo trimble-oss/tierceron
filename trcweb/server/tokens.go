@@ -7,7 +7,7 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v5"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -18,7 +18,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 	tokenSecret := s.TrcAPITokenSecret
 	currentTime := time.Now().Unix()
 	expTime := currentTime + 24*60*60
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  id,
@@ -50,7 +50,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.TokensResp, error) {
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
 	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", false, false, false, s.Log)
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if v != nil {
 		defer v.Close()
 	}

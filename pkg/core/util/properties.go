@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/core"
 
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -22,7 +22,7 @@ type Properties struct {
 	cds          *vcutils.ConfigDataStore
 }
 
-func NewProperties(config *core.CoreConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
+func NewProperties(config *coreconfig.CoreConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env

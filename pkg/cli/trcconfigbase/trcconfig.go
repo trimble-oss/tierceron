@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -264,7 +264,7 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = eUtils.GetEnvBasis(*envPtr)
 		}
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				Env:                 *envPtr,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				CurrentTokenNamePtr: driverConfig.CoreConfig.CurrentTokenNamePtr,
@@ -490,7 +490,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 
 			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
+				CoreConfig: &coreconfig.CoreConfig{
 					IsShell:             isShell,
 					Insecure:            *insecurePtr,
 					TokenCache:          driverConfigBase.CoreConfig.TokenCache,
@@ -543,7 +543,7 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = envVersion[0] + "_0"
 		}
 		dConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             isShell,
 				WantCerts:           *wantCertsPtr,
 				Insecure:            *insecurePtr,

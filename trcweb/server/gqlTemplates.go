@@ -7,10 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
+
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 )
 
 // getTemplateData Fetches all keys listed under 'templates' substituting private values with verification
@@ -18,7 +19,7 @@ import (
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
-	config := &core.CoreConfig{
+	config := &coreconfig.CoreConfig{
 		ExitOnFailure: false,
 		Log:           s.Log,
 	}

@@ -20,6 +20,7 @@ type OptionsBuilder struct {
 	GetUserNameField            func() string
 	GetUserCodeField            func() string
 	ActiveSessions              func(db *sql.DB) ([]map[string]any, error)
+	IsSupportedFlow             func(flowName string) bool
 	GetSyncedTables             func() []string
 	FindIndexForService         func(project string, service string) (string, []string, string, error)
 	DecryptSecretConfig         func(map[string]any, map[string]any) (string, error)
@@ -50,6 +51,7 @@ func LoadOptions() Option {
 		optionsBuilder.GetUserCodeField = GetUserCodeField
 		optionsBuilder.GetSyncedTables = GetSyncedTables
 		optionsBuilder.ActiveSessions = ActiveSessions
+		optionsBuilder.IsSupportedFlow = IsSupportedFlow
 		optionsBuilder.FindIndexForService = FindIndexForService
 		optionsBuilder.DecryptSecretConfig = DecryptSecretConfig
 		optionsBuilder.GetDFSPathName = GetDFSPathName

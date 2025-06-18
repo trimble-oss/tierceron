@@ -7,7 +7,15 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
+
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
 )
+
+var roseaMemFs trcshio.MemoryFileSystem
 
 var projectServiceMatrix [][]any
 var (
@@ -57,6 +65,9 @@ func (i roseaItem) FilterValue() string { return i.title }
 func (rm *RoseaModel) Init() tea.Cmd {
 	fmt.Print("\033[H\033[2J")
 	fmt.Println("Rosea Editor")
+	if roseaMemFs == nil {
+		roseaMemFs = trcshMemFs.NewTrcshMemFs()
+	}
 
 	roseaItems := []list.Item{}
 	for _, pluginProjectService := range projectServiceMatrix {
@@ -89,6 +100,25 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				if selectedItem, ok := rm.list.SelectedItem().(roseaItem); ok {
 					// TODO: load editor for selected item.
+					chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
+						"rosea", // From rainier
+						&tccore.TrcdbExchange{
+							Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                                                                         // Flows
+							Query:     fmt.Sprintf("SELECT * FROM %s.%s WHERE argosIdentitasNomen='%'", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName(), selectedItem.title), // Query
+							Operation: "SELECT",                                                                                                                                              // query operation
+							ExecTrcsh: "/editor/load.trc.tmpl",
+							Request: tccore.TrcdbRequest{
+								Rows: [][]any{
+									{roseaMemFs},
+								},
+							},
+						},
+						flowutil.GetChatSenderChan(),
+					)
+					if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
+
+					}
+
 					rm.choice = selectedItem
 					return rm, tea.ClearScreen
 				}

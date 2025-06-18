@@ -6,14 +6,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 )
 
 // UploadTokens accepts a file directory and vault object to upload tokens to. Logs to passed logger
-func UploadTokens(config *core.CoreConfig, dir string, tokenFileFiltersSet map[string]bool, v *sys.Vault) []*pb.InitResp_Token {
+func UploadTokens(config *coreconfig.CoreConfig, dir string, tokenFileFiltersSet map[string]bool, v *sys.Vault) []*pb.InitResp_Token {
 	tokens := []*pb.InitResp_Token{}
 	config.Log.SetPrefix("[TOKEN]")
 	config.Log.Printf("Writing tokens from %s\n", dir)

@@ -8,16 +8,16 @@ import (
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 )
 
 // TODO: update to do the thing...
 func GetHeadlessData(logger *log.Logger) []*mashupsdk.MashupDetailedElement {
 	data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 
-	config := &core.CoreConfig{
+	config := &coreconfig.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
 	}

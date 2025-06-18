@@ -69,16 +69,16 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 	}
 }
 
-func receiver(receive_chan chan int) {
+func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
 		event := <-receive_chan
 		switch {
-		case event == tccore.PLUGIN_EVENT_START:
-			go start()
-		case event == tccore.PLUGIN_EVENT_STOP:
+		case event.Command == tccore.PLUGIN_EVENT_START:
+			go start("trcshtalkback")
+		case event.Command == tccore.PLUGIN_EVENT_STOP:
 			go stop()
 			return
-		case event == tccore.PLUGIN_EVENT_STATUS:
+		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			//TODO
 		default:
 			//TODO
@@ -86,7 +86,7 @@ func receiver(receive_chan chan int) {
 	}
 }
 
-func start() {
+func start(pluginName string) {
 	if configContext == nil {
 		fmt.Println("no config context initialized for trcshtalkback")
 		return
@@ -213,7 +213,7 @@ func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS,
 	chatSenderChan := make(chan *tccore.ChatMsg, 2)
 	configContext.ChatSenderChan = &chatSenderChan
 
-	GetConfigContext().Start()
+	GetConfigContext().Start("")
 
 	// Recreate trcshtalk messaging mechanism to send
 	// a healthcheck message to ourselves to ensure

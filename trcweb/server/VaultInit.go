@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -27,7 +27,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
 	fmt.Println("Initing vault")
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", true, false, false, logger)
 	if err != nil {
@@ -81,7 +81,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		}
 
 		il.SeedVaultFromData(&config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				WantCerts: true,
 				Insecure:  false,
 				TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env),
@@ -192,7 +192,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		Success:   false,
 		AuthToken: "",
 	}
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
@@ -224,7 +224,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 	if v != nil {
 		defer v.Close()
 	}
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(coreConfig, err, false)
 		return nil, err
@@ -245,7 +245,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 // Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
 	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", false, false, false, s.Log)
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(coreConfig, err, false)
 		return nil, err

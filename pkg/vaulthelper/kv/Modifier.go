@@ -16,10 +16,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 
 	"github.com/hashicorp/vault/api"
 )
@@ -96,7 +96,7 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifierFromCoreConfig(coreConfig *core.CoreConfig, tokenName string, env string, useCache bool) (*Modifier, error) {
+func NewModifierFromCoreConfig(coreConfig *coreconfig.CoreConfig, tokenName string, env string, useCache bool) (*Modifier, error) {
 	return NewModifier(coreConfig.Insecure,
 		coreConfig.TokenCache.GetToken(tokenName),
 		coreConfig.TokenCache.VaultAddressPtr,

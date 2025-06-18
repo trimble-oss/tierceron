@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -154,7 +154,7 @@ func InitPluginLogs(pluginConfig map[string]any, logger *log.Logger) *log.Logger
 				}
 
 				trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
-				CheckError(&core.CoreConfig{ExitOnFailure: true, Log: trcdbEnvLogger}, logErr, true)
+				CheckError(&coreconfig.CoreConfig{ExitOnFailure: true, Log: trcdbEnvLogger}, logErr, true)
 				logMap.Store(logFile, trcdbEnvLogger)
 				logger.Println("InitVaultModForPlugin log setup complete")
 			} else {
@@ -205,7 +205,7 @@ func InitVaultModForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenC
 	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts:           false,
 			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 			CurrentTokenNamePtr: &currentTokenName,
@@ -259,7 +259,7 @@ func InitDriverConfigForPlugin(pluginConfig map[string]any, tokenCache *cache.To
 	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
 
 	return &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts:           false,
 			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 			CurrentTokenNamePtr: &currentTokenName,

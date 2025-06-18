@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 )
 
 type TokenCache struct {

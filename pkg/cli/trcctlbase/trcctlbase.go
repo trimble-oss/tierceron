@@ -9,20 +9,20 @@ import (
 	"strings"
 
 	"github.com/faiface/mainthread"
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
+	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	"github.com/trimble-oss/tierceron/pkg/utils"
@@ -47,7 +47,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				TokenCache:    cache.NewTokenCacheEmpty(),
 			},
@@ -246,7 +246,7 @@ func CommonMain(envDefaultPtr *string,
 		//		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 		tokenName := "config_token_pluginany"
 		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,
@@ -279,8 +279,28 @@ func CommonMain(envDefaultPtr *string,
 
 	case "edit":
 		tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+		editDriverConfig := config.DriverConfig{
+			ShellRunner: func(dc *config.DriverConfig, projectService string, scriptPath string) {
+				if dc.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
+					deploy_role := os.Getenv("DEPLOY_ROLE")
+					deploy_secret := os.Getenv("DEPLOY_SECRET")
+					if len(deploy_role) > 0 && len(deploy_secret) > 0 {
+						azureDeployRole := []string{deploy_role, deploy_secret}
+						dc.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
+					}
+				}
+
+				var pathParam = os.Getenv("PATH_PARAM")
+				trcshDriverConfig, err := trcshbase.TrcshInitConfig(dc, dc.CoreConfig.Env, dc.CoreConfig.Regions[0], pathParam, true, true)
+				if err != nil {
+					fmt.Printf("trcsh config setup failure: %s\n", err.Error())
+					os.Exit(124)
+				}
+
+				//Open deploy script and parse it.
+				trcshbase.ProcessDeploy(nil, trcshDriverConfig, "", scriptPath, projectService, nil)
+			},
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
@@ -297,21 +317,21 @@ func CommonMain(envDefaultPtr *string,
 			OutputMemCache:    true,
 			MemFs:             trcshMemFs.NewTrcshMemFs(),
 		}
-		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+		editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 
 		// Services downstream several more limited tokens but all covered
 		// by the scope of the unrestricted token.
 		limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
-		driverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
+		editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
 
 		statTokenName := "config_token_pluginany"
-		driverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
+		editDriverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
 
 		configMap := map[string]any{
 			"plugin_name": "trcctl",
 			"token_name":  tokenName,
 			"vault_token": *tokenPtr,
-			"vault_addr":  *driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+			"vault_addr":  *editDriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
 			"agent_env":   *envPtr,
 			//			"deployments": "fenestra",
 			//			"deployments": "trcdb",
@@ -327,7 +347,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		mainthread.Run(func() {
-			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &driverConfig)
+			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &editDriverConfig)
 			if err != nil {
 				fmt.Println(err.Error())
 				return
