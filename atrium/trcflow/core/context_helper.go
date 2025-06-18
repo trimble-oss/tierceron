@@ -532,6 +532,10 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 
 	rows := make([][]any, 0)
 	for _, indexValue := range indexValues {
+		if tfContext.GetFlowName() == flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(indexValue) {
+			eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported flow: "+indexValue)
+			continue
+		}
 		if indexValue != "" {
 			tfContext.GoMod.SectionKey = "/Index/"
 			var subSection string
