@@ -103,10 +103,10 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
 						"rosea", // From rainier
 						&tccore.TrcdbExchange{
-							Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                                                                         // Flows
-							Query:     fmt.Sprintf("SELECT * FROM %s.%s WHERE argosIdentitasNomen='%'", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName(), selectedItem.title), // Query
-							Operation: "SELECT",                                                                                                                                              // query operation
-							ExecTrcsh: "/editor/load.trc.tmpl",
+							Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                                                                          // Flows
+							Query:     fmt.Sprintf("SELECT * FROM %s.%s WHERE argosIdentitasNomen='%s'", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName(), selectedItem.title), // Query
+							Operation: "SELECT",                                                                                                                                               // query operation
+							ExecTrcsh: "/edit/load.trc.tmpl",
 							Request: tccore.TrcdbRequest{
 								Rows: [][]any{
 									{roseaMemFs},
@@ -116,7 +116,10 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						flowutil.GetChatSenderChan(),
 					)
 					if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
-
+						entrySeedFs := chatResponseMsg.TrcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem)
+						if entrySeedFs != nil {
+							// TODO: get this into an editor.
+						}
 					}
 
 					rm.choice = selectedItem

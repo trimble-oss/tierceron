@@ -931,10 +931,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 				}
 
 				driverConfig := config.DriverConfig{
-					MemFs:      trcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem),
-					CoreConfig: tfmContext.DriverConfig.CoreConfig, // Use shared core config.
+					OutputMemCache:    true,
+					ReadMemCache:      true,
+					SubOutputMemCache: true,
+					MemFs:             trcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem),
+					CoreConfig:        tfmContext.DriverConfig.CoreConfig, // Use shared core config.
 				}
-				tfmContext.ShellRunner(&driverConfig, "", "")
+				tfmContext.ShellRunner(&driverConfig, matrixChangedEntries[0][1].(string), trcdbExchange.ExecTrcsh)
 			} else {
 				tfmContext.Log("No results for trcsh query: "+queryMap["TrcQuery"].(string), nil)
 			}

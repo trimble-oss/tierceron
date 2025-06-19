@@ -119,9 +119,6 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 
 	fmt.Println("trcsh env: " + env)
 	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
-	if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
-		driverConfigPtr.CoreConfig.Regions = regions
-	}
 
 	//Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
@@ -138,23 +135,35 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 			providedLogger = logger[0]
 		}
 	}
-	if driverConfigPtr != nil &&
-		driverConfigPtr.CoreConfig != nil &&
-		driverConfigPtr.CoreConfig.TokenCache != nil &&
-		!(*driverConfigPtr).CoreConfig.TokenCache.IsEmpty() &&
-		gTokenCache.IsEmpty() {
-		gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
+	var trcshMemFs trcshio.MemoryFileSystem = nil
+	var shellRunner func(*config.DriverConfig, string, string)
+	isEditor := false
+	if driverConfigPtr != nil {
+		if driverConfigPtr.CoreConfig != nil {
+			if driverConfigPtr.CoreConfig.TokenCache != nil &&
+				!(*driverConfigPtr).CoreConfig.TokenCache.IsEmpty() &&
+				gTokenCache.IsEmpty() {
+				gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
+			}
+			if driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
+				driverConfigPtr.CoreConfig.Regions = regions
+			}
+			isEditor = driverConfigPtr.CoreConfig.IsEditor
+
+		}
+		shellRunner = driverConfigPtr.ShellRunner
+		trcshMemFs = driverConfigPtr.MemFs
 	}
 
-	trcsshMemFs := driverConfigPtr.MemFs
-	if trcsshMemFs == nil {
-		trcsshMemFs = trcshmemfs.NewTrcshMemFs()
+	if trcshMemFs == nil {
+		trcshMemFs = trcshmemfs.NewTrcshMemFs()
 	}
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:       true,
+				IsEditor:      isEditor,
 				TokenCache:    gTokenCache,
 				Insecure:      false,
 				Env:           env,
@@ -164,10 +173,11 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				Log:           providedLogger,
 			},
 			IsShellSubProcess: false,
+			ShellRunner:       shellRunner,
 			ReadMemCache:      useMemCache,
 			SubOutputMemCache: useMemCache,
 			OutputMemCache:    outputMemCache,
-			MemFs:             trcsshMemFs,
+			MemFs:             trcshMemFs,
 			ZeroConfig:        true,
 			PathParam:         pathParam, // Make available to trcplgtool
 		},
@@ -1011,18 +1021,6 @@ func roleBasedRunner(
 		} else {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 		}
-	case "trcx":
-		//		tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
-		// err = trcxbase.CommonMain(nil, &envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
-		// trcxbase.CommonMain(nil,
-		// 	xutil.GenerateSeedsFromVault,
-		// 	&envDefaultPtr,
-		// 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
-		// 	&gTrcshConfig.EnvContext,
-		// 	nil,
-		// 	flagset,
-		// 	restrictedMappingX)
-
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env) {
@@ -1346,23 +1344,27 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		fmt.Println("Session Authorized")
 	}
 
+	var deployerDriverConfig config.DriverConfig
+	deployerDriverConfig.CoreConfig = trcshDriverConfig.DriverConfig.CoreConfig
+	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
+
 	if kernelopts.BuildOptions.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Preload setup")
+		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
 		// Chewbacca: Continue shellRunner
 		if kernelopts.BuildOptions.IsKernel() || gTrcshConfig.IsShellRunner {
 			pluginMap := map[string]any{"pluginName": deployment}
-			tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+			tokenNamePtr := deployerDriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
+			autoErr := eUtils.AutoAuth(&deployerDriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, deployerDriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
 			if autoErr != nil {
 				fmt.Printf("Kernel Missing auth components: %s.\n", deployment)
 				return
 			}
 
 			mod, err := helperkv.NewModifierFromCoreConfig(
-				trcshDriverConfig.DriverConfig.CoreConfig,
+				deployerDriverConfig.CoreConfig,
 				*tokenNamePtr,
 				mergedEnvBasis, true)
 			if mod != nil {
@@ -1372,7 +1374,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				fmt.Printf("Kernel Missing mod components: %s.\n", deployment)
 				return
 			}
-			mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+			mod.Env = deployerDriverConfig.CoreConfig.EnvBasis
 
 			certifyMap, err := pluginutil.GetPluginCertifyMap(mod, pluginMap)
 			if err != nil {
@@ -1395,60 +1397,60 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 
 		trcPathParts := strings.Split(trcPath, "/")
-		trcshDriverConfig.DriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
+		deployerDriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 
 		if projectService != "" {
 			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
-			err := deployutil.MountPluginFileSystem(trcshDriverConfig, trcPath, projectService)
+			err := deployutil.MountPluginFileSystem(&deployerDriverConfig, trcPath, projectService)
 
 			if err != nil {
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			}
-			trcshDriverConfig.DriverConfig.ServicesWanted = strings.Split(projectService, ",")
+			deployerDriverConfig.ServicesWanted = strings.Split(projectService, ",")
 		}
 
-		trcshDriverConfig.DriverConfig.OutputMemCache = true
-		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
-		trcshDriverConfig.DriverConfig.EndDir = "."
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+		deployerDriverConfig.OutputMemCache = true
+		deployerDriverConfig.StartDir = []string{"trc_templates"}
+		deployerDriverConfig.EndDir = "."
+		deployerDriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		region := ""
-		if len(trcshDriverConfig.DriverConfig.CoreConfig.Regions) > 0 {
-			region = trcshDriverConfig.DriverConfig.CoreConfig.Regions[0]
+		if len(deployerDriverConfig.CoreConfig.Regions) > 0 {
+			region = deployerDriverConfig.CoreConfig.Regions[0]
 		}
 
-		envConfig := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-		if strings.Contains(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-") {
-			envConfig = trcshDriverConfig.DriverConfig.CoreConfig.Env
+		envConfig := deployerDriverConfig.CoreConfig.EnvBasis
+		if strings.Contains(deployerDriverConfig.CoreConfig.Env, "-") {
+			envConfig = deployerDriverConfig.CoreConfig.Env
 		}
-		tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
-		configErr := trcconfigbase.CommonMain(&envConfig, &mergedEnvBasis, tokenNamePtr, &region, nil, []string{"trcsh"}, trcshDriverConfig.DriverConfig)
+		tokenNamePtr := deployerDriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+		configErr := trcconfigbase.CommonMain(&envConfig, &mergedEnvBasis, tokenNamePtr, &region, nil, []string{"trcsh"}, &deployerDriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
+			deployerDriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
 			os.Exit(123)
 		}
 
 		var memFile trcshio.TrcshReadWriteCloser
 		var memFileErr error
-		if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
+		if memFile, memFileErr = deployerDriverConfig.MemFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
-			trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
-			trcshDriverConfig.DriverConfig.MemFs.ClearCache("/trc_templates")
+			deployerDriverConfig.MemFs.Remove(trcPath)
+			deployerDriverConfig.MemFs.ClearCache("/trc_templates")
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
 			}
-			if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
+			if memFile, memFileErr = deployerDriverConfig.MemFs.Open(trcPath); memFileErr == nil {
 				// Read the generated .trc code...
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				content = buf.Bytes()
-				trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
-				trcshDriverConfig.DriverConfig.MemFs.ClearCache("/trc_templates")
+				deployerDriverConfig.MemFs.Remove(trcPath)
+				deployerDriverConfig.MemFs.ClearCache("/trc_templates")
 			} else {
 				if strings.HasPrefix(trcPath, "./") {
 					trcPath = strings.TrimLeft(trcPath, "./")
