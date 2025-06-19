@@ -118,12 +118,6 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 	}
 
-	fmt.Println("trcsh env: " + env)
-	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
-	if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
-		driverConfigPtr.CoreConfig.Regions = regions
-	}
-
 	//Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
 	var err error
@@ -139,23 +133,39 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 			providedLogger = logger[0]
 		}
 	}
-	if driverConfigPtr != nil &&
-		driverConfigPtr.CoreConfig != nil &&
-		driverConfigPtr.CoreConfig.TokenCache != nil &&
-		!(*driverConfigPtr).CoreConfig.TokenCache.IsEmpty() &&
-		gTokenCache.IsEmpty() {
-		gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
+	var trcshMemFs trcshio.MemoryFileSystem = nil
+	var shellRunner func(*config.DriverConfig, string, string)
+	isEditor := false
+	if driverConfigPtr != nil {
+		if driverConfigPtr.CoreConfig != nil {
+			if driverConfigPtr.CoreConfig.TokenCache != nil &&
+				!(*driverConfigPtr).CoreConfig.TokenCache.IsEmpty() &&
+				gTokenCache.IsEmpty() {
+				gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
+			}
+			if driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
+				driverConfigPtr.CoreConfig.Regions = regions
+			}
+			isEditor = driverConfigPtr.CoreConfig.IsEditor
+
+		}
+		shellRunner = driverConfigPtr.ShellRunner
+		trcshMemFs = driverConfigPtr.MemFs
+	}
+	if !isEditor {
+		fmt.Println("trcsh env: " + env)
+		fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
 	}
 
-	trcsshMemFs := driverConfigPtr.MemFs
-	if trcsshMemFs == nil {
-		trcsshMemFs = trcshmemfs.NewTrcshMemFs()
+	if trcshMemFs == nil {
+		trcshMemFs = trcshmemfs.NewTrcshMemFs()
 	}
 
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:       true,
+				IsEditor:      isEditor,
 				TokenCache:    gTokenCache,
 				Insecure:      false,
 				Env:           env,
@@ -165,10 +175,11 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				Log:           providedLogger,
 			},
 			IsShellSubProcess: false,
+			ShellRunner:       shellRunner,
 			ReadMemCache:      useMemCache,
 			SubOutputMemCache: useMemCache,
 			OutputMemCache:    outputMemCache,
-			MemFs:             trcsshMemFs,
+			MemFs:             trcshMemFs,
 			ZeroConfig:        true,
 			PathParam:         pathParam, // Make available to trcplgtool
 		},
@@ -251,7 +262,6 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 		// Used later by codedeploy
 		trcshDriverConfig.DriverConfig.DeploymentConfig = map[string]any{"trcplugin": deployment}
 		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 20)
-		fmt.Printf("Starting deployer: %s\n", deployment)
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Starting deployer: %s\n", deployment)
 	}
 
@@ -310,6 +320,10 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
+	} else {
+		if driverConfigPtr != nil && driverConfigPtr.CoreConfig != nil && driverConfigPtr.CoreConfig.IsEditor {
+			flagset.String("env", "dev", "Environment to configure")
+		}
 	}
 
 	if memonly.IsMemonly() {
@@ -338,7 +352,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
-			if isShellRunner {
+			if isShellRunner && (driverConfigPtr == nil || driverConfigPtr.CoreConfig == nil || !driverConfigPtr.CoreConfig.IsEditor) {
 				util.CheckNotSudo()
 			}
 		}
@@ -364,7 +378,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	flagset.Parse(argLines[1:])
 	driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
-	if kernelopts.BuildOptions.IsKernel() {
+	if kernelopts.BuildOptions.IsKernel() && !driverConfigPtr.CoreConfig.IsEditor {
 		dronePtr = new(bool)
 		*dronePtr = true
 	} else {
@@ -542,7 +556,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 
-		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !isShellRunner {
+		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !isShellRunner && !driverConfigPtr.CoreConfig.IsEditor {
 			fmt.Println("drone trcsh requires AGENT_ROLE.")
 			driverConfigPtr.CoreConfig.Log.Println("drone trcsh requires AGENT_ROLE.")
 			os.Exit(-1)
@@ -623,7 +637,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsWindows() {
 			agentEnv = eUtils.GetEnvBasis(agentEnv)
-			fmt.Printf("Using environment %s for kernel.\n", agentEnv)
+			if driverConfigPtr != nil && driverConfigPtr.CoreConfig != nil && driverConfigPtr.CoreConfig.IsEditor {
+				fmt.Printf("Editing for environment %s\n", agentEnv)
+			} else {
+				fmt.Printf("Using environment %s for kernel.\n", agentEnv)
+			}
 		}
 
 		shutdown := make(chan bool)
@@ -1012,18 +1030,6 @@ func roleBasedRunner(
 		} else {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 		}
-	case "trcx":
-		//		tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
-		// err = trcxbase.CommonMain(nil, &envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
-		// trcxbase.CommonMain(nil,
-		// 	xutil.GenerateSeedsFromVault,
-		// 	&envDefaultPtr,
-		// 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
-		// 	&gTrcshConfig.EnvContext,
-		// 	nil,
-		// 	flagset,
-		// 	restrictedMappingX)
-
 	case "trcconfig":
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env) {
@@ -1154,19 +1160,21 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Feather ctl init for control: %s\n", control)
-		trcshDriverConfig.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
-			gAgentConfig.LocalHostAddr,
-			gAgentConfig.EncryptPass,
-			gAgentConfig.EncryptSalt,
-			gAgentConfig.HostAddr,
-			gAgentConfig.HandshakeCode,
-			new(string),
-			&env,
-			deployCtlAcceptRemote,
-			deployCtlInterrupted)
-		if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
-			trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+		if !trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Feather ctl init for control: %s\n", control)
+			trcshDriverConfig.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
+				gAgentConfig.LocalHostAddr,
+				gAgentConfig.EncryptPass,
+				gAgentConfig.EncryptSalt,
+				gAgentConfig.HostAddr,
+				gAgentConfig.HandshakeCode,
+				new(string),
+				&env,
+				deployCtlAcceptRemote,
+				deployCtlInterrupted)
+			if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
+				trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+			}
 		}
 
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache = gTrcshConfig.TokenCache
@@ -1254,7 +1262,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" {
 		trcshDriverConfig.DriverConfig.OutputMemCache = false
 	}
-	fmt.Println("Logging initialized.")
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Logging initialized for env:%s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 
 	// TODO: Skip this sections for isShell
@@ -1347,109 +1354,114 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		fmt.Println("Session Authorized")
 	}
 
+	var deployerDriverConfig config.DriverConfig
+	deployerDriverConfig.CoreConfig = trcshDriverConfig.DriverConfig.CoreConfig
+	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
+
 	if kernelopts.BuildOptions.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
 		// Generate trc code...
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Preload setup")
+		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
 		// Chewbacca: Continue shellRunner
 		if kernelopts.BuildOptions.IsKernel() || gTrcshConfig.IsShellRunner {
 			pluginMap := map[string]any{"pluginName": deployment}
-			tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+			tokenNamePtr := deployerDriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
+			autoErr := eUtils.AutoAuth(&deployerDriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, deployerDriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
 			if autoErr != nil {
-				fmt.Printf("Kernel Missing auth components: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing auth components: %s.\n", deployment)
 				return
 			}
 
 			mod, err := helperkv.NewModifierFromCoreConfig(
-				trcshDriverConfig.DriverConfig.CoreConfig,
+				deployerDriverConfig.CoreConfig,
 				*tokenNamePtr,
 				mergedEnvBasis, true)
 			if mod != nil {
 				defer mod.Release()
 			}
 			if err != nil {
-				fmt.Printf("Kernel Missing mod components: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing mod components: %s.\n", deployment)
 				return
 			}
-			mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+			mod.Env = deployerDriverConfig.CoreConfig.EnvBasis
 
 			certifyMap, err := pluginutil.GetPluginCertifyMap(mod, pluginMap)
 			if err != nil {
-				fmt.Printf("Kernel Missing plugin certification: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin certification: %s.\n", deployment)
 				return
 			}
 			if pjService, ok := certifyMap["trcprojectservice"]; ok {
 				projectService = pjService.(string)
 			} else {
-				fmt.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
 				return
 			}
 
 			if trcBootstrap, ok := certifyMap["trcbootstrap"]; ok && strings.Contains(trcBootstrap.(string), "/deploy/") {
 				trcPath = trcBootstrap.(string)
 			} else {
-				fmt.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
 				return
 			}
 		}
 
 		trcPathParts := strings.Split(trcPath, "/")
-		trcshDriverConfig.DriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
+		deployerDriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 
 		if projectService != "" {
-			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
-			err := deployutil.MountPluginFileSystem(trcshDriverConfig, trcPath, projectService)
+			deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
+			err := deployutil.MountPluginFileSystem(&deployerDriverConfig, trcPath, projectService)
 
 			if err != nil {
+				deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Failed to fetch template using projectServicePtr: %s", err.Error())
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			}
-			trcshDriverConfig.DriverConfig.ServicesWanted = strings.Split(projectService, ",")
+			deployerDriverConfig.ServicesWanted = strings.Split(projectService, ",")
 		}
 
-		trcshDriverConfig.DriverConfig.OutputMemCache = true
-		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
-		trcshDriverConfig.DriverConfig.EndDir = "."
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+		deployerDriverConfig.OutputMemCache = true
+		deployerDriverConfig.StartDir = []string{"trc_templates"}
+		deployerDriverConfig.EndDir = "."
+		deployerDriverConfig.CoreConfig.Log.Printf("Preloading path %s env %s\n", trcPath, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		region := ""
-		if len(trcshDriverConfig.DriverConfig.CoreConfig.Regions) > 0 {
-			region = trcshDriverConfig.DriverConfig.CoreConfig.Regions[0]
+		if len(deployerDriverConfig.CoreConfig.Regions) > 0 {
+			region = deployerDriverConfig.CoreConfig.Regions[0]
 		}
 
-		envConfig := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-		if strings.Contains(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-") {
-			envConfig = trcshDriverConfig.DriverConfig.CoreConfig.Env
+		envConfig := deployerDriverConfig.CoreConfig.EnvBasis
+		if strings.Contains(deployerDriverConfig.CoreConfig.Env, "-") {
+			envConfig = deployerDriverConfig.CoreConfig.Env
 		}
-		tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
-		configErr := trcconfigbase.CommonMain(&envConfig, &mergedEnvBasis, tokenNamePtr, &region, nil, []string{"trcsh"}, trcshDriverConfig.DriverConfig)
+		tokenNamePtr := deployerDriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+		configErr := trcconfigbase.CommonMain(&envConfig, &mergedEnvBasis, tokenNamePtr, &region, nil, []string{"trcsh"}, &deployerDriverConfig)
 		if configErr != nil {
 			fmt.Println("Preload failed.  Couldn't find required resource.")
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
+			deployerDriverConfig.CoreConfig.Log.Printf("Preload Error %s\n", configErr.Error())
 			os.Exit(123)
 		}
 
 		var memFile trcshio.TrcshReadWriteCloser
 		var memFileErr error
-		if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
+		if memFile, memFileErr = deployerDriverConfig.MemFs.Open(trcPath); memFileErr == nil {
 			// Read the generated .trc code...
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, memFile) // Error handling elided for brevity.
 			content = buf.Bytes()
-			trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
-			trcshDriverConfig.DriverConfig.MemFs.ClearCache("/trc_templates")
+			deployerDriverConfig.MemFs.Remove(trcPath)
+			deployerDriverConfig.MemFs.ClearCache("/trc_templates")
 		} else {
 			if strings.HasPrefix(trcPath, "./") {
 				trcPath = strings.TrimLeft(trcPath, "./")
 			}
-			if memFile, memFileErr = trcshDriverConfig.DriverConfig.MemFs.Open(trcPath); memFileErr == nil {
+			if memFile, memFileErr = deployerDriverConfig.MemFs.Open(trcPath); memFileErr == nil {
 				// Read the generated .trc code...
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				content = buf.Bytes()
-				trcshDriverConfig.DriverConfig.MemFs.Remove(trcPath)
-				trcshDriverConfig.DriverConfig.MemFs.ClearCache("/trc_templates")
+				deployerDriverConfig.MemFs.Remove(trcPath)
+				deployerDriverConfig.MemFs.ClearCache("/trc_templates")
 			} else {
 				if strings.HasPrefix(trcPath, "./") {
 					trcPath = strings.TrimLeft(trcPath, "./")
@@ -1529,7 +1541,11 @@ collaboratorReRun:
 			continue
 		}
 		// Print current process line.
-		fmt.Println(deployPipeline)
+		if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployPipeline)
+		} else {
+			fmt.Println(deployPipeline)
+		}
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
 		if PipeOS, err = trcshDriverConfig.DriverConfig.MemFs.Create("io/STDIO"); err != nil {

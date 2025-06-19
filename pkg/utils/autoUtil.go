@@ -353,7 +353,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 		}
 	} else {
-		fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
+		}
 		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 
 		if v != nil {

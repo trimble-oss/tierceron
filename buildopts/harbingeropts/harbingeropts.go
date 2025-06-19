@@ -233,6 +233,9 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 	dbserver, serverErr := server.NewServer(serverConfig, engine, server.DefaultSessionBuilder, serverListener)
 	if serverErr != nil {
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to start server:"+serverErr.Error(), false)
+		if driverConfig.CoreConfig.IsEditor {
+			os.Exit(-1)
+		}
 		return serverErr
 	}
 

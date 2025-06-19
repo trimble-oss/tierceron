@@ -48,7 +48,8 @@ func CommonMain(ctx config.ProcessContext,
 	envCtxPtr *string,
 	insecurePtrIn *bool,
 	flagset *flag.FlagSet,
-	argLines []string) {
+	argLines []string,
+	driverConfig *config.DriverConfig) {
 	// Executable input arguments(flags)
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -126,12 +127,17 @@ func CommonMain(ctx config.ProcessContext,
 		tokenName := fmt.Sprintf("config_token_%s", envBasis)
 		tokenNamePtr = &tokenName
 	}
-	driverConfigBase := &config.DriverConfig{
-		CoreConfig: &coreconfig.CoreConfig{
-			Insecure:      *insecurePtr,
-			TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr),
-			ExitOnFailure: true,
-		},
+	var driverConfigBase *config.DriverConfig
+	if driverConfig == nil {
+		driverConfigBase = &config.DriverConfig{
+			CoreConfig: &coreconfig.CoreConfig{
+				Insecure:      *insecurePtr,
+				TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr),
+				ExitOnFailure: true,
+			},
+		}
+	} else {
+		driverConfigBase = driverConfig
 	}
 
 	// Initialize logging
@@ -317,7 +323,7 @@ skipDiff:
 		flagset.Usage()
 		os.Exit(1)
 	}
-	if ctx == nil {
+	if ctx == nil && !driverConfig.CoreConfig.IsEditor {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required start template folder: " + *startDirPtr)
 			os.Exit(1)
@@ -472,8 +478,12 @@ skipDiff:
 						*envPtr = envVersion[0] + "_0"
 					}
 
-					driverConfig := &config.DriverConfig{
-						CoreConfig: &coreconfig.CoreConfig{
+					var sharedCoreConfig *coreconfig.CoreConfig
+
+					if driverConfig != nil {
+						sharedCoreConfig = driverConfig.CoreConfig
+					} else {
+						sharedCoreConfig = &coreconfig.CoreConfig{
 							WantCerts:           *wantCertsPtr,
 							Insecure:            *insecurePtr,
 							CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
@@ -484,7 +494,11 @@ skipDiff:
 							DynamicPathFilter:   pGen,
 							ExitOnFailure:       true,
 							Log:                 logger,
-						},
+						}
+					}
+
+					driverConfigSandboxed := &config.DriverConfig{
+						CoreConfig:    sharedCoreConfig,
 						Context:       ctx,
 						SecretMode:    *secretMode,
 						StartDir:      append([]string{}, *startDirPtr),
@@ -502,7 +516,7 @@ skipDiff:
 					go func(dc *config.DriverConfig) {
 						defer waitg.Done()
 						config.ConfigControl(ctx, configCtx, dc, configDriver)
-					}(driverConfig)
+					}(driverConfigSandboxed)
 					return
 				}
 
@@ -583,15 +597,22 @@ skipDiff:
 					}
 					roleEntityPtr := new(string)
 
-					//Ask vault for list of dev.<id>.* environments, add to envSlice
-					authErr := eUtils.AutoAuth(&config.DriverConfig{
-						CoreConfig: &coreconfig.CoreConfig{
+					var coreConfig *coreconfig.CoreConfig
+					if driverConfig != nil {
+						coreConfig = driverConfig.CoreConfig
+					} else {
+						coreConfig = &coreconfig.CoreConfig{
 							ExitOnFailure:       true,
 							CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
 							TokenCache:          cache.NewTokenCache(fmt.Sprintf("config_token_%s", baseEnv), tokenPtr, addrPtr),
 							Insecure:            *insecurePtr,
 							Log:                 logger,
-						},
+						}
+					}
+
+					//Ask vault for list of dev.<id>.* environments, add to envSlice
+					authErr := eUtils.AutoAuth(&config.DriverConfig{
+						CoreConfig: coreConfig,
 					}, tokenNamePtr, &tokenPtr, &baseEnv, envCtxPtr, roleEntityPtr, *pingPtr)
 					if authErr != nil {
 						eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Auth failure: "+authErr.Error(), true)
@@ -770,6 +791,7 @@ skipDiff:
 						Regions:             regions,
 						EnvBasis:            envBasis,
 						Env:                 *envPtr,
+						IsEditor:            driverConfigBase.CoreConfig.IsEditor,
 						DynamicPathFilter:   *dynamicPathPtr,
 						ExitOnFailure:       true,
 						Log:                 logger,
@@ -787,6 +809,9 @@ skipDiff:
 					Clean:           *cleanPtr,
 					Diff:            *diffPtr,
 					Update:          messenger,
+					ReadMemCache:    driverConfigBase.ReadMemCache,
+					OutputMemCache:  driverConfigBase.OutputMemCache,
+					MemFs:           driverConfigBase.MemFs,
 					VersionInfo:     eUtils.VersionHelper,
 					FileFilter:      fileFilter,
 					SubPathFilter:   strings.Split(*eUtils.SubPathFilter, ","),

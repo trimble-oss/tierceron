@@ -1,12 +1,13 @@
-package main
+package testr
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
+	"golang.org/x/term"
 )
 
 // Rosé Pine Moon styles
@@ -16,10 +17,11 @@ var (
 	pineStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ccfd8"))
 	foamStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#c4a7e7"))
 	goldStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
-	editorStyle = baseStyle.Copy().Padding(1, 2).Width(60)
+	editorStyle lipgloss.Style
 )
 
-type model struct {
+type RoseaEditorModel struct {
+	width        int      // terminal width
 	lines        []string // Committed lines
 	input        string   // Current input (multi-line)
 	cursor       int      // Cursor position in input
@@ -27,9 +29,43 @@ type model struct {
 	draft        string   // Saved live input when entering history mode
 }
 
-func initialModel() model {
-	return model{
-		lines:        []string{},
+func lines(b *[]byte) []string {
+	var lines []string
+	start := 0
+
+	for i, c := range *b {
+		if c == '\n' {
+			end := i
+			if end > start && (*b)[end-1] == '\r' {
+				end--
+			}
+			lines = append(lines, string((*b)[start:end]))
+			start = i + 1
+		}
+	}
+
+	if start < len(*b) {
+		end := len(*b)
+		if end > start && (*b)[end-1] == '\r' {
+			end--
+		}
+		lines = append(lines, string((*b)[start:end]))
+	}
+
+	return lines
+}
+
+func InitRoseaEditor(data *[]byte) RoseaEditorModel {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		width = 80
+	}
+	editorStyleCopy := baseStyle
+	editorStyle = editorStyleCopy.Padding(1, 2).Width(width)
+
+	return RoseaEditorModel{
+		width:        width,
+		lines:        lines(data),
 		input:        "",
 		cursor:       0,
 		historyIndex: 0,
@@ -37,17 +73,20 @@ func initialModel() model {
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m RoseaEditorModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
 			return m, tea.Quit
+		case tea.KeyEsc:
+			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S
 			m.lines = append(m.lines, m.input)
@@ -55,6 +94,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			m.historyIndex = 0
 			m.draft = ""
+
 			return m, nil
 
 		case tea.KeyEnter:
@@ -159,10 +199,11 @@ func min(a, b int) int {
 	return b
 }
 
-func (m model) View() string {
+func (m RoseaEditorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to submit, ESC to quit\n\n"))
+	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to save, ESC to navigate"))
+	b.WriteString("\n")
 
 	for _, line := range m.lines {
 		b.WriteString(pineStyle.Render(line) + "\n")
@@ -185,12 +226,12 @@ func (m model) View() string {
 		}
 	}
 
-	return editorStyle.Render(b.String())
+	return editorStyle.Width(m.width).Render(b.String())
 }
 
-func main() {
-	if err := tea.NewProgram(initialModel()).Start(); err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
-}
+// func main() {
+// 	if err := tea.NewProgram(initialModel(nil)).Start(); err != nil {
+// 		fmt.Println("Error:", err)
+// 		os.Exit(1)
+// 	}
+// }

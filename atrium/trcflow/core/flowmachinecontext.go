@@ -431,6 +431,16 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 		select {
 		case <-signalChannel:
 			tfmContext.Log("Receiving shutdown presumably from vault.", nil)
+			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+				tfmContext.vaultPersistPushRemoteChanges(
+					tfContext,
+					identityColumnNames,
+					indexColumnNames,
+					mysqlPushEnabled,
+					getIndexedPathExt,
+					flowPushRemote)
+				// Chewbacca: This is only 1 flow.  All flows should be persisted before exiting.
+			}
 			os.Exit(0)
 		case <-flowChangedChannel.Ch:
 			tfmContext.vaultPersistPushRemoteChanges(
@@ -931,10 +941,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 				}
 
 				driverConfig := config.DriverConfig{
-					MemFs:      trcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem),
-					CoreConfig: tfmContext.DriverConfig.CoreConfig, // Use shared core config.
+					OutputMemCache:    true,
+					ReadMemCache:      true,
+					SubOutputMemCache: true,
+					MemFs:             trcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem),
+					CoreConfig:        tfmContext.DriverConfig.CoreConfig, // Use shared core config.
 				}
-				tfmContext.ShellRunner(&driverConfig, "", "")
+				tfmContext.ShellRunner(&driverConfig, matrixChangedEntries[0][1].(string), trcdbExchange.ExecTrcsh)
 			} else {
 				tfmContext.Log("No results for trcsh query: "+queryMap["TrcQuery"].(string), nil)
 			}
@@ -1553,8 +1566,8 @@ func (tfmContext *TrcFlowMachineContext) GetLogger() *log.Logger {
 
 func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
 	for _, flow := range tfmContext.FlowMap {
-		fmt.Printf("Waiting for flow to unlock: %s\n", flow.GetFlowName())
+		tfmContext.DriverConfig.CoreConfig.Log.Printf("Waiting for flow to unlock: %s\n", flow.GetFlowName())
 		flow.WaitFlowLoaded()
-		fmt.Printf("Flow unlocked: %s\n", flow.GetFlowName())
+		tfmContext.DriverConfig.CoreConfig.Log.Printf("Flow unlocked: %s\n", flow.GetFlowName())
 	}
 }

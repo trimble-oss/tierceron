@@ -235,7 +235,6 @@ func FetchSocii(ctx *tccore.ConfigContext) {
 			Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                       // Flows
 			Query:     fmt.Sprintf("SELECT * FROM %s.%s", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()), // Query
 			Operation: "SELECT",                                                                                            // query operation
-			ExecTrcsh: "/edit/edit.trc.tmpl",
 		},
 		flowutil.GetChatSenderChan(),
 	)

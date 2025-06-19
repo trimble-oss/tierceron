@@ -13,6 +13,7 @@ import (
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"gopkg.in/fsnotify.v1"
 )
@@ -116,7 +117,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
 				fmt.Printf("Loading deployment script for %s and env %s\n", deployment, mod.Env)
 				deployScriptPath := fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string))
-				subErr := MountPluginFileSystem(trcshDriverConfig,
+				subErr := MountPluginFileSystem(trcshDriverConfig.DriverConfig,
 					deployScriptPath,
 					trcProjectService.(string))
 				if subErr != nil {
@@ -141,7 +142,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 
 // Loads a plugin's deploy template from vault.
 func MountPluginFileSystem(
-	trcshDriverConfig *capauth.TrcshDriverConfig,
+	trcshDriverConfig *config.DriverConfig,
 	trcPath string,
 	projectService string) error {
 
@@ -149,18 +150,18 @@ func MountPluginFileSystem(
 		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
 		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
 	}
-	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-	tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+	mergedEnvBasis := trcshDriverConfig.CoreConfig.EnvBasis
+	tokenNamePtr := trcshDriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 	deployTrcPath := trcPath[strings.LastIndex(trcPath, "/deploy/"):]
 	if trcIndex := strings.Index(deployTrcPath, ".trc"); trcIndex > 0 {
 		deployTrcPath = deployTrcPath[0:trcIndex] // get rid of trailing .trc
 	}
 	templatePathsPtr := projectService + deployTrcPath
-	trcshDriverConfig.DriverConfig.EndDir = "./trc_templates"
+	trcshDriverConfig.EndDir = "./trc_templates"
 
-	return trcsubbase.CommonMain(&trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
-		&mergedEnvBasis, tokenNamePtr, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig.DriverConfig)
+	return trcsubbase.CommonMain(&trcshDriverConfig.CoreConfig.EnvBasis,
+		&mergedEnvBasis, tokenNamePtr, nil, []string{"trcsh", "-templatePaths=" + templatePathsPtr}, trcshDriverConfig)
 }
 
 // Gets list of supported deployers for current environment.
@@ -271,8 +272,12 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 					deploymentList = append(deploymentList, deployment)
 				}
 			} else {
-				if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+				if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
 					deploymentList = append(deploymentList, deployment)
+				} else {
+					if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+						deploymentList = append(deploymentList, deployment)
+					}
 				}
 			}
 		}

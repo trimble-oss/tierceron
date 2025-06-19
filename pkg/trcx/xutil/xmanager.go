@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/go-git/go-billy/v5"
 	"github.com/hashicorp/vault/api"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
@@ -636,6 +639,28 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 	return endPath, multiService, seedData, nil
 }
 
+// TODO: move to core.
+func WalkBilly(fs *billy.Filesystem, root string, walkFn func(path string, isDir bool) error) error {
+	infos, err := (*fs).ReadDir(root)
+	if err != nil {
+		return err
+	}
+	for _, info := range infos {
+		fullPath := path.Join(root, info.Name())
+		err := walkFn(fullPath, info.IsDir())
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			err = WalkBilly(fs, fullPath, walkFn)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	if driverConfig.Clean { //Clean flag in trcx
@@ -650,59 +675,74 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 			eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
 		}
-
 		if err1 == nil {
 			eUtils.LogInfo(driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.CoreConfig.Env)
 		}
 		return nil, nil
 	}
+	templatePaths := []string{}
+	templatePathsUniq := []string{}
+	templateFromVault := false
 
 	// Get files from directory
-	tempTemplatePaths := []string{}
-	for _, startDir := range driverConfig.StartDir {
-		//get files from directory
-		tp := GetDirFiles(startDir)
-		tempTemplatePaths = append(tempTemplatePaths, tp...)
-	}
+	if driverConfig.ReadMemCache &&
+		driverConfig.MemFs != nil &&
+		driverConfig.CoreConfig.IsEditor {
+		templateRoot := coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
+		templateFromVault = true
 
-	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(driverConfig.CoreConfig, "No files found in "+coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates", true)
-	}
-
-	//Duplicate path remover
-	keys := make(map[string]bool)
-	templatePaths := []string{}
-	for _, path := range tempTemplatePaths {
-		if _, value := keys[path]; !value {
-			keys[path] = true
-			templatePaths = append(templatePaths, path)
-		}
-	}
-
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") { //Filter unneeded templates
-		var err error
-		// TODO: Redo/deleted the indexedEnv work...
-		// Get filtered using mod and templates.
-		templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(driverConfig, nil, templatePaths)
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-			eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
-		}
-		templatePaths = templatePathsAccepted
+		WalkBilly(driverConfig.MemFs.(*trcshfs.TrcshMemFs).BillyFs, templateRoot, func(p string, isDir bool) error {
+			if !isDir && strings.HasSuffix(p, ".tmpl") {
+				templatePaths = append(templatePaths, p)
+			}
+			return nil
+		})
 	} else {
-		templatePathsAccepted := []string{}
-		for _, project := range driverConfig.ProjectSections {
-			for _, templatePath := range templatePaths {
-				if strings.Contains(templatePath, project) {
-					templatePathsAccepted = append(templatePathsAccepted, templatePath)
-				}
+		for _, startDir := range driverConfig.StartDir {
+			//get files from directory
+			tp := GetDirFiles(startDir)
+			templatePathsUniq = append(templatePathsUniq, tp...)
+		}
+
+		if len(templatePathsUniq) == 0 {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, "No files found in "+coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates", true)
+		}
+
+		//Duplicate path remover
+		keys := make(map[string]bool)
+		for _, path := range templatePathsUniq {
+			if _, value := keys[path]; !value {
+				keys[path] = true
+				templatePaths = append(templatePaths, path)
 			}
 		}
-		if len(templatePathsAccepted) > 0 {
+
+		if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") { //Filter unneeded templates
+			var err error
+			// TODO: Redo/deleted the indexedEnv work...
+			// Get filtered using mod and templates.
+			templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(driverConfig, nil, templatePaths)
+			if err != nil {
+				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+				eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
+			}
 			templatePaths = templatePathsAccepted
+		} else {
+			templatePathsAccepted := []string{}
+			for _, project := range driverConfig.ProjectSections {
+				for _, templatePath := range templatePaths {
+					if strings.Contains(templatePath, project) {
+						templatePathsAccepted = append(templatePathsAccepted, templatePath)
+					}
+				}
+			}
+			if len(templatePathsAccepted) > 0 {
+				templatePaths = templatePathsAccepted
+			}
 		}
 	}
-	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(driverConfig, false, templatePaths)
+
+	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(driverConfig, templateFromVault, templatePaths)
 	if errGenerateSeeds != nil {
 		eUtils.LogInfo(driverConfig.CoreConfig, errGenerateSeeds.Error())
 		return errGenerateSeeds, nil
@@ -770,7 +810,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 		var certData map[int]string
 		certLoaded := false
 
-		for _, templatePath := range tempTemplatePaths {
+		for _, templatePath := range templatePathsUniq {
 
 			project, service, _, templatePath := eUtils.GetProjectService(driverConfig, templatePath)
 
@@ -845,7 +885,12 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 		}
 		driverConfig.Update(configCtx, &seedData, driverConfig.CoreConfig.Env+"||"+driverConfig.CoreConfig.Env+"_seed.yml")
 	} else {
-		writeToFile(driverConfig.CoreConfig, seedData, endPath)
+		if driverConfig.OutputMemCache {
+			byteData := []byte(seedData)
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, endPath)
+		} else {
+			writeToFile(driverConfig.CoreConfig, seedData, endPath)
+		}
 		// Print that we're done
 		if strings.Contains(driverConfig.CoreConfig.Env, "_0") {
 			driverConfig.CoreConfig.Env = strings.Split(driverConfig.CoreConfig.Env, "_")[0]
