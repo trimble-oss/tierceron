@@ -53,7 +53,9 @@ func CommonMain(envDefaultPtr *string,
 	var addrPtr *string = nil
 
 	if flagset == nil {
-		fmt.Println("Version: " + "1.6")
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			fmt.Println("Version: " + "1.6")
+		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
@@ -157,7 +159,9 @@ func CommonMain(envDefaultPtr *string,
 		fmt.Println("Missing auth components.")
 		return autoErr
 	}
-	fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+	if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+		fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+	}
 
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
 		*tokenNamePtr,
@@ -166,7 +170,6 @@ func CommonMain(envDefaultPtr *string,
 		defer mod.Release()
 	}
 	if err != nil {
-		fmt.Println("Failure to init to vault")
 		driverConfigBase.CoreConfig.Log.Println("Failure to init to vault")
 		return err
 	}
@@ -175,7 +178,6 @@ func CommonMain(envDefaultPtr *string,
 	if len(*pluginNamePtr) > 0 {
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", *pluginNamePtr))
 		if err != nil {
-			fmt.Printf("Failure read plugin: %s\n", *pluginNamePtr)
 			driverConfigBase.CoreConfig.Log.Printf("Failure read plugin: %s\n", *pluginNamePtr)
 			return err
 		}
@@ -183,7 +185,6 @@ func CommonMain(envDefaultPtr *string,
 			if projectFilter, ok := certifyMap["trcprojectservice"].(string); ok {
 				filterTemplatePtr = &projectFilter
 			} else {
-				fmt.Printf("No additional secrets for plugin: %s\n", *pluginNamePtr)
 				driverConfigBase.CoreConfig.Log.Printf("No additional secrets for plugin: %s\n", *pluginNamePtr)
 				return err
 			}
@@ -191,13 +192,12 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if *templatePathsPtr != "" {
-		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
+		driverConfigBase.CoreConfig.Log.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
 		il.DownloadTemplates(driverConfigBase, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
 	} else if *pluginInfoPtr {
 		pluginList, err := mod.List("super-secrets/Index/TrcVault/trcplugin", driverConfigBase.CoreConfig.Log)
 		if err != nil || pluginList == nil {
-			fmt.Println("Failure read plugins")
 			driverConfigBase.CoreConfig.Log.Println("Failure read plugins")
 			return err
 		}
@@ -211,24 +211,22 @@ func CommonMain(envDefaultPtr *string,
 	} else if *projectInfoPtr {
 		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
-			fmt.Println("Failure read templates")
 			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
-		fmt.Printf("\nProjects available:\n")
+		driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
 		for _, templatePath := range templateList.Data {
 			for _, projectInterface := range templatePath.([]any) {
 				project := projectInterface.(string)
-				fmt.Println(strings.TrimRight(project, "/"))
+				driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
 			}
 		}
 		return nil
 	} else {
-		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
+		driverConfigBase.CoreConfig.Log.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
 		warn, err := il.DownloadTemplateDirectory(driverConfigBase, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
-			fmt.Println(err)
 			driverConfigBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
 				return err

@@ -323,7 +323,7 @@ skipDiff:
 		flagset.Usage()
 		os.Exit(1)
 	}
-	if ctx == nil {
+	if ctx == nil && !driverConfig.CoreConfig.IsEditor {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required start template folder: " + *startDirPtr)
 			os.Exit(1)

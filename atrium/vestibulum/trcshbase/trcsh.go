@@ -117,9 +117,6 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 	}
 
-	fmt.Println("trcsh env: " + env)
-	fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
-
 	//Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
 	var err error
@@ -153,6 +150,10 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 		shellRunner = driverConfigPtr.ShellRunner
 		trcshMemFs = driverConfigPtr.MemFs
+	}
+	if !isEditor {
+		fmt.Println("trcsh env: " + env)
+		fmt.Printf("trcsh regions: %s\n", strings.Join(regions, ", "))
 	}
 
 	if trcshMemFs == nil {
@@ -260,7 +261,6 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 		// Used later by codedeploy
 		trcshDriverConfig.DriverConfig.DeploymentConfig = map[string]any{"trcplugin": deployment}
 		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 20)
-		fmt.Printf("Starting deployer: %s\n", deployment)
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Starting deployer: %s\n", deployment)
 	}
 
@@ -632,7 +632,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsWindows() {
 			agentEnv = eUtils.GetEnvBasis(agentEnv)
-			fmt.Printf("Using environment %s for kernel.\n", agentEnv)
+			if driverConfigPtr != nil && driverConfigPtr.CoreConfig != nil && driverConfigPtr.CoreConfig.IsEditor {
+				fmt.Printf("Editing for environment %s\n", agentEnv)
+			} else {
+				fmt.Printf("Using environment %s for kernel.\n", agentEnv)
+			}
 		}
 
 		shutdown := make(chan bool)
@@ -1251,7 +1255,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" {
 		trcshDriverConfig.DriverConfig.OutputMemCache = false
 	}
-	fmt.Println("Logging initialized.")
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Logging initialized for env:%s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 
 	// TODO: Skip this sections for isShell
@@ -1359,7 +1362,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			tokenPtr := new(string)
 			autoErr := eUtils.AutoAuth(&deployerDriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, deployerDriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
 			if autoErr != nil {
-				fmt.Printf("Kernel Missing auth components: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing auth components: %s.\n", deployment)
 				return
 			}
 
@@ -1371,27 +1374,27 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				defer mod.Release()
 			}
 			if err != nil {
-				fmt.Printf("Kernel Missing mod components: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing mod components: %s.\n", deployment)
 				return
 			}
 			mod.Env = deployerDriverConfig.CoreConfig.EnvBasis
 
 			certifyMap, err := pluginutil.GetPluginCertifyMap(mod, pluginMap)
 			if err != nil {
-				fmt.Printf("Kernel Missing plugin certification: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin certification: %s.\n", deployment)
 				return
 			}
 			if pjService, ok := certifyMap["trcprojectservice"]; ok {
 				projectService = pjService.(string)
 			} else {
-				fmt.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
 				return
 			}
 
 			if trcBootstrap, ok := certifyMap["trcbootstrap"]; ok && strings.Contains(trcBootstrap.(string), "/deploy/") {
 				trcPath = trcBootstrap.(string)
 			} else {
-				fmt.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
 				return
 			}
 		}
@@ -1400,10 +1403,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		deployerDriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 
 		if projectService != "" {
-			fmt.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
+			deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
 			err := deployutil.MountPluginFileSystem(&deployerDriverConfig, trcPath, projectService)
 
 			if err != nil {
+				deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Failed to fetch template using projectServicePtr: %s", err.Error())
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
 				return
 			}
@@ -1530,7 +1534,11 @@ collaboratorReRun:
 			continue
 		}
 		// Print current process line.
-		fmt.Println(deployPipeline)
+		if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployPipeline)
+		} else {
+			fmt.Println(deployPipeline)
+		}
 		deployPipeSplit := strings.Split(deployPipeline, "|")
 
 		if PipeOS, err = trcshDriverConfig.DriverConfig.MemFs.Create("io/STDIO"); err != nil {

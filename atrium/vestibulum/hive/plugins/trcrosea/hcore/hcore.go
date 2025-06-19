@@ -217,6 +217,9 @@ func Init(pluginName string, properties *map[string]any) {
 		fmt.Println("Missing common config components")
 		return
 	}
+	if configContext != nil {
+		fmt.Printf("Region: %s\n", configContext.Region)
+	}
 
 	flowutil.InitChatSenderChan(configContext.ChatSenderChan)
 

@@ -102,7 +102,9 @@ func CommonMain(envDefaultPtr *string,
 	var addrPtr *string = nil
 
 	if flagset == nil {
-		PrintVersion() // For trcsh
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			PrintVersion() // For trcsh
+		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])

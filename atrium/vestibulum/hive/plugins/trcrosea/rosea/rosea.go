@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
+	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/testr"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 )
@@ -29,9 +30,12 @@ var (
 )
 
 type RoseaModel struct {
-	message string
-	list    list.Model
-	choice  roseaItem
+	message    string
+	list       list.Model
+	roseaItems []list.Item
+	choice     roseaItem
+	pageSize   int
+	pageIndex  int
 }
 
 type roseaItemDelegate struct{}
@@ -66,20 +70,28 @@ func (i roseaItem) Title() string       { return i.title }
 func (i roseaItem) Description() string { return i.desc }
 func (i roseaItem) FilterValue() string { return i.title }
 
+func (m *RoseaModel) updateListItems() {
+	start := m.pageIndex * m.pageSize
+	end := start + m.pageSize
+	if end > len(m.roseaItems) {
+		end = len(m.roseaItems)
+	}
+	m.list.SetItems(m.roseaItems[start:end])
+}
+
 func (rm *RoseaModel) Init() tea.Cmd {
 	fmt.Print("\033[H\033[2J")
-	fmt.Println("Rosea Editor")
 	if roseaMemFs == nil {
 		roseaMemFs = trcshMemFs.NewTrcshMemFs()
 	}
 
-	roseaItems := []list.Item{}
 	for _, pluginProjectService := range projectServiceMatrix {
-		roseaItems = append(roseaItems, roseaItem{title: pluginProjectService[1].(string)})
+		rm.roseaItems = append(rm.roseaItems, roseaItem{title: pluginProjectService[1].(string)})
 	}
 
-	rm.list = list.New(roseaItems, roseaItemDelegate{}, defaultListWidth, defaultListHeight)
+	rm.list = list.New([]list.Item{}, roseaItemDelegate{}, defaultListWidth, defaultListHeight)
 
+	rm.updateListItems()
 	return nil // No initial commands needed
 }
 
@@ -96,6 +108,16 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			rm.list.CursorUp()
 			if selectedItem, ok := rm.list.SelectedItem().(roseaItem); ok {
 				rm.choice = selectedItem
+			}
+		case tea.KeyRight:
+			if (rm.pageIndex+1)*rm.pageSize < len(rm.roseaItems) {
+				rm.pageIndex++
+				rm.updateListItems()
+			}
+		case tea.KeyLeft:
+			if rm.pageIndex > 0 {
+				rm.pageIndex--
+				rm.updateListItems()
 			}
 		default:
 			switch msg.String() {
@@ -165,7 +187,7 @@ func (rm *RoseaModel) View() string {
 		}
 	}
 
-	s += "\nPress ↑/↓ to navigate, 'q' or Ctrl+C to exit"
+	s += "\nPress ↑/↓ to navigate, ←/→ to paginate, 'q' or Ctrl+C to exit"
 
 	return s
 }
@@ -173,10 +195,17 @@ func (rm *RoseaModel) View() string {
 var roseaProgramCtx *tea.Program
 var roseaNavigationCtx *RoseaModel
 
+func GetRoseaNavigationCtx() *RoseaModel {
+	if roseaNavigationCtx == nil {
+		roseaNavigationCtx = &RoseaModel{}
+	}
+	return roseaNavigationCtx
+}
+
 func BootInit(psm [][]any) error {
 	projectServiceMatrix = psm
-	roseaNavigationCtx := &RoseaModel{}
-	roseaProgramCtx = tea.NewProgram(roseaNavigationCtx)
+	roseacore.SetRoseaNavigationCtx(&RoseaModel{pageSize: 10, pageIndex: 0})
+	roseaProgramCtx = tea.NewProgram(roseacore.GetRoseaNavigationCtx())
 	_, err := roseaProgramCtx.Run()
 	return err
 }

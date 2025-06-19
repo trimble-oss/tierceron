@@ -61,9 +61,9 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 		templateAndFilePath := fmt.Sprintf("%s/%s", dirName, filePath)
 		dirPath := filepath.Dir(templateAndFilePath)
 		file := filepath.Base(templateAndFilePath)
-		fmt.Printf("templateDir: %s\n", templateAndFilePath)
-		fmt.Printf("Dir: %s\n", dirPath)
-		fmt.Printf("file: %s\n", file)
+		driverConfig.CoreConfig.Log.Printf("templateDir: %s\n", templateAndFilePath)
+		driverConfig.CoreConfig.Log.Printf("Dir: %s\n", dirPath)
+		driverConfig.CoreConfig.Log.Printf("file: %s\n", file)
 		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
 
 		if driverConfig.SubOutputMemCache {

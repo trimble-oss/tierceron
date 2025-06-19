@@ -1,10 +1,13 @@
 package testr
 
 import (
+	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
+	"golang.org/x/term"
 )
 
 // Rosé Pine Moon styles
@@ -14,10 +17,11 @@ var (
 	pineStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ccfd8"))
 	foamStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#c4a7e7"))
 	goldStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
-	editorStyle = baseStyle.Copy().Padding(1, 2).Width(60)
+	editorStyle lipgloss.Style
 )
 
 type RoseaEditorModel struct {
+	width        int      // terminal width
 	lines        []string // Committed lines
 	input        string   // Current input (multi-line)
 	cursor       int      // Cursor position in input
@@ -52,7 +56,15 @@ func lines(b *[]byte) []string {
 }
 
 func InitRoseaEditor(data *[]byte) RoseaEditorModel {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		width = 80
+	}
+	editorStyleCopy := baseStyle
+	editorStyle = editorStyleCopy.Padding(1, 2).Width(width)
+
 	return RoseaEditorModel{
+		width:        width,
 		lines:        lines(data),
 		input:        "",
 		cursor:       0,
@@ -67,11 +79,14 @@ func (m RoseaEditorModel) Init() tea.Cmd {
 
 func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyCtrlC:
 			return m, tea.Quit
+		case tea.KeyEsc:
+			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S
 			m.lines = append(m.lines, m.input)
@@ -79,6 +94,7 @@ func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			m.historyIndex = 0
 			m.draft = ""
+
 			return m, nil
 
 		case tea.KeyEnter:
@@ -186,7 +202,8 @@ func min(a, b int) int {
 func (m RoseaEditorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to submit, ESC to quit\n\n"))
+	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to save, ESC to navigate"))
+	b.WriteString("\n")
 
 	for _, line := range m.lines {
 		b.WriteString(pineStyle.Render(line) + "\n")
@@ -209,7 +226,7 @@ func (m RoseaEditorModel) View() string {
 		}
 	}
 
-	return editorStyle.Render(b.String())
+	return editorStyle.Width(m.width).Render(b.String())
 }
 
 // func main() {
