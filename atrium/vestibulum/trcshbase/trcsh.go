@@ -319,6 +319,10 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("secretID", "", "Secret for app role ID")
 		flagset.String("appRoleID", "", "Public app role ID")
+	} else {
+		if driverConfigPtr != nil && driverConfigPtr.CoreConfig != nil && driverConfigPtr.CoreConfig.IsEditor {
+			flagset.String("env", "dev", "Environment to configure")
+		}
 	}
 
 	if memonly.IsMemonly() {
@@ -347,7 +351,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			fmt.Println("Trcsh cannot be run as root.")
 			os.Exit(-1)
 		} else {
-			if isShellRunner {
+			if isShellRunner && (driverConfigPtr == nil || driverConfigPtr.CoreConfig == nil || !driverConfigPtr.CoreConfig.IsEditor) {
 				util.CheckNotSudo()
 			}
 		}
@@ -373,7 +377,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	flagset.Parse(argLines[1:])
 	driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
-	if kernelopts.BuildOptions.IsKernel() {
+	if kernelopts.BuildOptions.IsKernel() && !driverConfigPtr.CoreConfig.IsEditor {
 		dronePtr = new(bool)
 		*dronePtr = true
 	} else {
@@ -551,7 +555,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 
-		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !isShellRunner {
+		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !isShellRunner && !driverConfigPtr.CoreConfig.IsEditor {
 			fmt.Println("drone trcsh requires AGENT_ROLE.")
 			driverConfigPtr.CoreConfig.Log.Println("drone trcsh requires AGENT_ROLE.")
 			os.Exit(-1)
@@ -1155,19 +1159,21 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			}
 			gAgentConfig.InterruptHandlerFunc = deployCtlInterrupted
 		}
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Feather ctl init for control: %s\n", control)
-		trcshDriverConfig.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
-			gAgentConfig.LocalHostAddr,
-			gAgentConfig.EncryptPass,
-			gAgentConfig.EncryptSalt,
-			gAgentConfig.HostAddr,
-			gAgentConfig.HandshakeCode,
-			new(string),
-			&env,
-			deployCtlAcceptRemote,
-			deployCtlInterrupted)
-		if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
-			trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+		if !trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Feather ctl init for control: %s\n", control)
+			trcshDriverConfig.FeatherCtx = captiplib.FeatherCtlInit(interruptChan,
+				gAgentConfig.LocalHostAddr,
+				gAgentConfig.EncryptPass,
+				gAgentConfig.EncryptSalt,
+				gAgentConfig.HostAddr,
+				gAgentConfig.HandshakeCode,
+				new(string),
+				&env,
+				deployCtlAcceptRemote,
+				deployCtlInterrupted)
+			if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
+				trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+			}
 		}
 
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache = gTrcshConfig.TokenCache

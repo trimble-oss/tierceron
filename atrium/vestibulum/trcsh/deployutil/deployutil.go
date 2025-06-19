@@ -272,8 +272,12 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 					deploymentList = append(deploymentList, deployment)
 				}
 			} else {
-				if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+				if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
 					deploymentList = append(deploymentList, deployment)
+				} else {
+					if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+						deploymentList = append(deploymentList, deployment)
+					}
 				}
 			}
 		}
