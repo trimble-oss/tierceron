@@ -21,5 +21,5 @@ func GetChatMsgHookCtx() **cmap.ConcurrentMap[string, tccore.ChatHookFunc] { ret
 
 // GetDatabaseName - returns a name to be used by TrcDb.
 func GetDatabaseName() string {
-	return "TrcDb"
+	return "fieldtechservice"
 }
