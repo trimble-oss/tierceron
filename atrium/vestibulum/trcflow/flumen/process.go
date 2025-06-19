@@ -21,6 +21,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/dataflowstatistics"
 	"github.com/trimble-oss/tierceron/buildopts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
@@ -541,9 +542,15 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 			argosId := 0
 
 			if err == nil && pluginNameValues != nil {
+				retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
+
 				for _, pluginNameValue := range pluginNameValues.Data["keys"].([]any) {
 					if pluginName := pluginNameValue.(string); pluginName != "" {
 						pluginName = strings.TrimSuffix(pluginName, "/")
+						if _, ok := retrictedMappingsMap[pluginName]; !ok {
+							continue
+						}
+
 						pluginMap, err := goMod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 						if err == nil {
 							if projectService, ok := pluginMap["trcprojectservice"].(string); ok && len(projectService) > 0 {
