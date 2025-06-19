@@ -205,6 +205,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			Insecure:            driverConfig.CoreConfig.Insecure,
 			Env:                 driverConfig.CoreConfig.Env,
 			EnvBasis:            driverConfig.CoreConfig.EnvBasis,
+			IsEditor:            driverConfig.CoreConfig.IsEditor,
 			ExitOnFailure:       driverConfig.CoreConfig.ExitOnFailure,
 			Log:                 driverConfig.CoreConfig.Log,
 		},

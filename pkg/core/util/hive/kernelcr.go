@@ -543,7 +543,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 	driverConfig.CoreConfig.Log.Printf("Starting initialization for plugin service: %s Env: %s\n", service, driverConfig.CoreConfig.EnvBasis)
 	var pluginConfig map[string]any
-	var flowMachineContext any
+	var flowMachineInitContext any
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
 		if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 			getFlowMachineInitContext, err := pluginHandler.PluginMod.Lookup("GetFlowMachineInitContext")
@@ -553,16 +553,16 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				return
 			} else {
 				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]any) any)
-				flowMachineContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+				flowMachineInitContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
 			}
 		} else if plugincoreopts.BuildOptions.IsPluginHardwired() {
-			flowMachineContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
+			flowMachineInitContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
 			return
 		}
-		if flowMachineContext != nil {
-			pluginConfig = flowMachineContext.(*flow.FlowMachineInitContext).GetFlowMachineTemplates()
+		if flowMachineInitContext != nil {
+			pluginConfig = flowMachineInitContext.(*flow.FlowMachineInitContext).GetFlowMachineTemplates()
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
 			return
@@ -725,7 +725,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 								if configBytes, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG].([]byte); ok {
 									err := yaml.Unmarshal(configBytes, &harbingerConfig)
 									if err == nil {
-										flowMachineContext.(*flow.FlowMachineInitContext).FlowMachineInterfaceConfigs = harbingerConfig
+										flowMachineInitContext.(*flow.FlowMachineInitContext).FlowMachineInterfaceConfigs = harbingerConfig
 										delete(serviceConfig, flow.HARBINGER_INTERFACE_CONFIG)
 									} else {
 										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
@@ -831,7 +831,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 
 				// Needs certifyPath and connectionPath
-				tfmContext, err := trcflow.BootFlowMachine(flowMachineContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 				if err != nil || tfmContext == nil {
 					driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
 					return

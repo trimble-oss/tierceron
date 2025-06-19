@@ -35,5 +35,5 @@ func main() {
 	}
 	envPtr := flagset.String("env", "dev", "Environment to get seed data for.")
 
-	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil, flagset, os.Args)
+	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil, flagset, os.Args, nil)
 }

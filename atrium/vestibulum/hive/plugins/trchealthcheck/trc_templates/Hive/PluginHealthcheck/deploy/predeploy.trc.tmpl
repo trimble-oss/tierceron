@@ -1,0 +1,3 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=healthcheck -pluginType=trcshpluginservice -sha256=bin/healthcheck.so
