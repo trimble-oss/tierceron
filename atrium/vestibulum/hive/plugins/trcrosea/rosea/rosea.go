@@ -3,16 +3,20 @@ package rosea
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/testr"
+	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 )
 
 var roseaMemFs trcshio.MemoryFileSystem
@@ -118,7 +122,24 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
 						entrySeedFs := chatResponseMsg.TrcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem)
 						if entrySeedFs != nil {
+							seedFilePath := ""
 							// TODO: get this into an editor.
+							xutil.WalkBilly(entrySeedFs.(*trcshfs.TrcshMemFs).BillyFs, "./trc_seeds", func(p string, isDir bool) error {
+								if !isDir && strings.HasSuffix(p, ".yml") && len(seedFilePath) == 0 {
+									seedFilePath = p
+								}
+								return nil
+							})
+							if len(seedFilePath) > 0 {
+								entrySeedFileRWC, err := entrySeedFs.Open(seedFilePath)
+								if err != nil {
+									fmt.Printf("Error opening seed file: %v\n", err)
+									return rm, nil
+								}
+								fileData, _ := io.ReadAll(entrySeedFileRWC)
+								return testr.InitRoseaEditor(&fileData), nil
+							}
+
 						}
 					}
 
@@ -150,10 +171,12 @@ func (rm *RoseaModel) View() string {
 }
 
 var roseaProgramCtx *tea.Program
+var roseaNavigationCtx *RoseaModel
 
 func BootInit(psm [][]any) error {
 	projectServiceMatrix = psm
-	roseaProgramCtx = tea.NewProgram(&RoseaModel{})
+	roseaNavigationCtx := &RoseaModel{}
+	roseaProgramCtx = tea.NewProgram(roseaNavigationCtx)
 	_, err := roseaProgramCtx.Run()
 	return err
 }

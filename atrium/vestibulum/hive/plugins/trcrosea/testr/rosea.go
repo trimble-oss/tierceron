@@ -1,8 +1,6 @@
-package main
+package testr
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -19,7 +17,7 @@ var (
 	editorStyle = baseStyle.Copy().Padding(1, 2).Width(60)
 )
 
-type model struct {
+type RoseaEditorModel struct {
 	lines        []string // Committed lines
 	input        string   // Current input (multi-line)
 	cursor       int      // Cursor position in input
@@ -27,9 +25,35 @@ type model struct {
 	draft        string   // Saved live input when entering history mode
 }
 
-func initialModel() model {
-	return model{
-		lines:        []string{},
+func lines(b *[]byte) []string {
+	var lines []string
+	start := 0
+
+	for i, c := range *b {
+		if c == '\n' {
+			end := i
+			if end > start && (*b)[end-1] == '\r' {
+				end--
+			}
+			lines = append(lines, string((*b)[start:end]))
+			start = i + 1
+		}
+	}
+
+	if start < len(*b) {
+		end := len(*b)
+		if end > start && (*b)[end-1] == '\r' {
+			end--
+		}
+		lines = append(lines, string((*b)[start:end]))
+	}
+
+	return lines
+}
+
+func InitRoseaEditor(data *[]byte) RoseaEditorModel {
+	return RoseaEditorModel{
+		lines:        lines(data),
 		input:        "",
 		cursor:       0,
 		historyIndex: 0,
@@ -37,11 +61,11 @@ func initialModel() model {
 	}
 }
 
-func (m model) Init() tea.Cmd {
+func (m RoseaEditorModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
@@ -159,7 +183,7 @@ func min(a, b int) int {
 	return b
 }
 
-func (m model) View() string {
+func (m RoseaEditorModel) View() string {
 	var b strings.Builder
 
 	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to submit, ESC to quit\n\n"))
@@ -188,9 +212,9 @@ func (m model) View() string {
 	return editorStyle.Render(b.String())
 }
 
-func main() {
-	if err := tea.NewProgram(initialModel()).Start(); err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
-}
+// func main() {
+// 	if err := tea.NewProgram(initialModel(nil)).Start(); err != nil {
+// 		fmt.Println("Error:", err)
+// 		os.Exit(1)
+// 	}
+// }
