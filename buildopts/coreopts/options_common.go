@@ -244,6 +244,8 @@ func GetMachineID() string {
 	return netIP
 }
 
+// Override this to allow tierceron to use and manage plugin configuraitons.
+// These are generally cross-verified against vault.
 func GetPluginRestrictedMappings() map[string][][]string {
 	return map[string][][]string{
 		"trcsh-curator": {
