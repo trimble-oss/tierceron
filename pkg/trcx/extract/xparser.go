@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"os"
 	"strings"
 	"text/template/parse"
@@ -71,7 +72,20 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 		templateFile, _ := vcutils.ConfigTemplateRaw(driverConfig, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, driverConfig.CoreConfig.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
-		templateFile, err := os.ReadFile(templatePath)
+		var templateFile []byte
+		var err error
+		if driverConfig.ReadMemCache {
+			templateFileRWC, openerr := driverConfig.MemFs.Open(templatePath)
+			if openerr != nil {
+				return nil, nil, nil, 0, openerr
+			}
+			templateFile, err = io.ReadAll(templateFileRWC)
+			if openerr != nil {
+				return nil, nil, nil, 0, err
+			}
+		} else {
+			templateFile, err = os.ReadFile(templatePath)
+		}
 		newTemplate = string(templateFile)
 		if err != nil {
 			return nil, nil, nil, 0, eUtils.LogAndSafeExit(driverConfig.CoreConfig, err.Error(), -1)

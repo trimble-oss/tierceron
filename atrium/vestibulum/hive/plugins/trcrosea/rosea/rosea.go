@@ -10,14 +10,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	"github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
 	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/testr"
-	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 )
 
 var roseaMemFs trcshio.MemoryFileSystem
@@ -146,7 +144,7 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if entrySeedFs != nil {
 							seedFilePath := ""
 							// TODO: get this into an editor.
-							xutil.WalkBilly(entrySeedFs.(*trcshfs.TrcshMemFs).BillyFs, "./trc_seeds", func(p string, isDir bool) error {
+							entrySeedFs.Walk("./trc_seeds", func(p string, isDir bool) error {
 								if !isDir && strings.HasSuffix(p, ".yml") && len(seedFilePath) == 0 {
 									seedFilePath = p
 								}
@@ -161,7 +159,6 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								fileData, _ := io.ReadAll(entrySeedFileRWC)
 								return testr.InitRoseaEditor(&fileData), nil
 							}
-
 						}
 					}
 
