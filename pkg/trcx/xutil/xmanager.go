@@ -4,15 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 
-	"github.com/go-git/go-billy/v5"
 	"github.com/hashicorp/vault/api"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-	"github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
@@ -639,28 +636,6 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 	return endPath, multiService, seedData, nil
 }
 
-// TODO: move to core.
-func WalkBilly(fs *billy.Filesystem, root string, walkFn func(path string, isDir bool) error) error {
-	infos, err := (*fs).ReadDir(root)
-	if err != nil {
-		return err
-	}
-	for _, info := range infos {
-		fullPath := path.Join(root, info.Name())
-		err := walkFn(fullPath, info.IsDir())
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			err = WalkBilly(fs, fullPath, walkFn)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	if driverConfig.Clean { //Clean flag in trcx
@@ -689,9 +664,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 		driverConfig.MemFs != nil &&
 		driverConfig.CoreConfig.IsEditor {
 		templateRoot := coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
-		templateFromVault = true
-
-		WalkBilly(driverConfig.MemFs.(*trcshfs.TrcshMemFs).BillyFs, templateRoot, func(p string, isDir bool) error {
+		driverConfig.MemFs.Walk(templateRoot, func(p string, isDir bool) error {
 			if !isDir && strings.HasSuffix(p, ".tmpl") {
 				templatePaths = append(templatePaths, p)
 			}
