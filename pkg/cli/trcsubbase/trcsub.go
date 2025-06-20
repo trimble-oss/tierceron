@@ -214,11 +214,19 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
-		driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
+		if driverConfigBase.CoreConfig.IsEditor {
+			driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
+		} else {
+			fmt.Printf("\nProjects available:\n")
+		}
 		for _, templatePath := range templateList.Data {
 			for _, projectInterface := range templatePath.([]any) {
 				project := projectInterface.(string)
-				driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
+				if driverConfigBase.CoreConfig.IsEditor {
+					driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
+				} else {
+					fmt.Println(strings.TrimRight(project, "/"))
+				}
 			}
 		}
 		return nil
