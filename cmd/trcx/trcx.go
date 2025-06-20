@@ -7,6 +7,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
@@ -14,6 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	trcxbase "github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 // This executable automates the creation of seed files from template file(s).
@@ -35,5 +38,11 @@ func main() {
 	}
 	envPtr := flagset.String("env", "dev", "Environment to get seed data for.")
 
-	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil, flagset, os.Args, nil)
+	driverConfig := config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(),
+		},
+	}
+	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil, flagset, os.Args, &driverConfig)
 }
