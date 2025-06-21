@@ -420,7 +420,7 @@ func GetPathsFromProject(config *coreconfig.CoreConfig, mod *helperkv.Modifier, 
 	if mod.SecretDictionary == nil {
 		envCurrent := mod.Env
 		mod.Env = mod.EnvBasis
-		mod.SecretDictionary, err = mod.List("templates", config.Log)
+		mod.SecretDictionary, err = mod.List(fmt.Sprintf("templates/%s", projects[0]), config.Log)
 		mod.Env = envCurrent
 	}
 	secrets := mod.SecretDictionary
@@ -428,7 +428,10 @@ func GetPathsFromProject(config *coreconfig.CoreConfig, mod *helperkv.Modifier, 
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
-		availProjects := secrets.Data["keys"].([]any)
+		availProjects := []any{}
+		if len(secrets.Data["keys"].([]any)) > 0 {
+			availProjects = append(availProjects, projects[0]+"/")
+		}
 		//if projects empty, use all available projects
 		if len(projects) > 0 {
 			projectsUsed := []any{}
