@@ -65,8 +65,8 @@ func InitRoseaEditor(data *[]byte) RoseaEditorModel {
 
 	return RoseaEditorModel{
 		width:        width,
-		lines:        lines(data),
-		input:        "",
+		lines:        []string{},
+		input:        strings.Join(lines(data), "\n"), // Initialize input with existing lines
 		cursor:       0,
 		historyIndex: 0,
 		draft:        "",
