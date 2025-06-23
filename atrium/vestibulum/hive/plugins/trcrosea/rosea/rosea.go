@@ -123,7 +123,7 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return rm, tea.Quit
 			case "enter":
 				if selectedItem, ok := rm.list.SelectedItem().(roseaItem); ok {
-					// TODO: load editor for selected item.
+					roseaMemFs = trcshMemFs.NewTrcshMemFs()
 					chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
 						"rosea", // From rainier
 						&tccore.TrcdbExchange{

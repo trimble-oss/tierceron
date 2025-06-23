@@ -1356,6 +1356,10 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 	var deployerDriverConfig config.DriverConfig
 	deployerDriverConfig.CoreConfig = trcshDriverConfig.DriverConfig.CoreConfig
+	deployerDriverConfig.SubOutputMemCache = true
+	deployerDriverConfig.OutputMemCache = true
+	deployerDriverConfig.ReadMemCache = true
+	deployerDriverConfig.ZeroConfig = true
 	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
 
 	if kernelopts.BuildOptions.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
