@@ -62,6 +62,7 @@ func main() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 		flagset.PrintDefaults()
 	}
+	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
@@ -77,7 +78,7 @@ func main() {
 		},
 	}
 
-	err := trcctlbase.CommonMain(nil,
+	err := trcctlbase.CommonMain(envPtr,
 		pluginNamePtr,
 		tokenPtr,
 		uploadCertPtr,

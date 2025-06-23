@@ -127,9 +127,9 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
 						"rosea", // From rainier
 						&tccore.TrcdbExchange{
-							Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                                                                          // Flows
-							Query:     fmt.Sprintf("SELECT * FROM %s.%s WHERE argosIdentitasNomen='%s'", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName(), selectedItem.title), // Query
-							Operation: "SELECT",                                                                                                                                               // query operation
+							Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                                                    // Flows
+							Query:     fmt.Sprintf("SELECT * FROM %s.%s WHERE argosIdentitasNomen='%s'", "%s", flowcore.ArgosSociiFlow.TableName(), selectedItem.title), // Query
+							Operation: "SELECT",                                                                                                                         // query operation
 							ExecTrcsh: "/edit/load.trc.tmpl",
 							Request: tccore.TrcdbRequest{
 								Rows: [][]any{
