@@ -232,9 +232,9 @@ func FetchSocii(ctx *tccore.ConfigContext) {
 	chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
 		"rosea", // From rainier
 		&tccore.TrcdbExchange{
-			Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                       // Flows
-			Query:     fmt.Sprintf("SELECT * FROM %s.%s", flowutil.GetDatabaseName(), flowcore.ArgosSociiFlow.TableName()), // Query
-			Operation: "SELECT",                                                                                            // query operation
+			Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                 // Flows
+			Query:     fmt.Sprintf("SELECT * FROM %s.%s", "%s", flowcore.ArgosSociiFlow.TableName()), // Query letting engine provide database name
+			Operation: "SELECT",                                                                      // query operation
 		},
 		flowutil.GetChatSenderChan(),
 	)

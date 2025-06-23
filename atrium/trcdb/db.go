@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -129,6 +130,9 @@ func CreateEngine(driverConfig *config.DriverConfig,
 func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (string, []string, [][]any, error) {
 	// Create a test memory database and register it to the default engine.
 
+	if strings.Contains(query, "%s.") {
+		query = fmt.Sprintf(query, te.Database.Name())
+	}
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
 	ctx := sqles.NewContext(context.Background())

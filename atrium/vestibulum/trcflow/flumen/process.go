@@ -221,6 +221,12 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	for _, tableFlow := range flowMachineInitContext.GetTableFlows() {
 		tableName := tableFlow.FlowName.TableName()
+		if tableName != flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
+			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+tableName)
+			}
+			continue
+		}
 		if tableName != flowcorehelper.TierceronFlowConfigurationTableName {
 			driverConfigBasis.VersionFilter = append(driverConfigBasis.VersionFilter, tableName)
 		}
@@ -343,6 +349,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	var flowWG sync.WaitGroup
 
 	for _, table := range GetTierceronTableNames() {
+		if table != flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(table) {
+			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table)
+			}
+			continue
+		}
+
 		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]any), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
 		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
@@ -401,9 +414,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, table := range flowMachineInitContext.GetTableFlows() {
-		if table.FlowName == "TierceronFlow" {
+		if !coreopts.BuildOptions.IsSupportedFlow(table.FlowName.FlowName()) {
+			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table.FlowName.FlowName())
+			}
 			continue
 		}
+
 		flowWG.Add(1)
 		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tableFlow.ServiceName())
@@ -465,6 +482,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, businessFlow := range flowMachineInitContext.GetBusinessFlows() {
+		if !coreopts.BuildOptions.IsSupportedFlow(businessFlow.FlowName()) {
+			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowName())
+			}
+			continue
+		}
+
 		flowWG.Add(1)
 
 		go func(bizFlow flowcore.FlowNameType, dc *config.DriverConfig) {

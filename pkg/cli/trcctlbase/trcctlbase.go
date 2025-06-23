@@ -80,7 +80,6 @@ func CommonMain(envDefaultPtr *string,
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	} else {
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
-		envDefaultPtr = flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
@@ -248,6 +247,7 @@ func CommonMain(envDefaultPtr *string,
 		<-pluginCompleteChan
 
 	case "edit":
+		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow // This is not overridable in edit mode.
 		tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
 		editDriverConfig := config.DriverConfig{
 			ShellRunner: func(dc *config.DriverConfig, pluginName string, scriptPath string) {
