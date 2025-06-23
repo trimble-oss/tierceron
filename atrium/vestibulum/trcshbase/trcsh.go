@@ -638,7 +638,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsWindows() {
 			agentEnv = eUtils.GetEnvBasis(agentEnv)
 			if driverConfigPtr != nil && driverConfigPtr.CoreConfig != nil && driverConfigPtr.CoreConfig.IsEditor {
-				fmt.Printf("Editting for environment %s\n", agentEnv)
+				fmt.Printf("Editing for environment %s\n", agentEnv)
 			} else {
 				fmt.Printf("Using environment %s for kernel.\n", agentEnv)
 			}
