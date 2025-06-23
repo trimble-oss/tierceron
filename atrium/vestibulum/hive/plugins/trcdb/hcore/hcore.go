@@ -230,11 +230,6 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 }
 
-// GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return "fieldtechservice"
-}
-
 func GetDbProject() string {
 	return "TenantDatabase"
 }
@@ -271,7 +266,7 @@ func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitConte
 	return &flowcore.FlowMachineInitContext{
 		GetFlowMachineTemplates:     GetFlowMachineTemplates,
 		FlowMachineInterfaceConfigs: map[string]any{},
-		GetDatabaseName:             GetDatabaseName,
+		GetDatabaseName:             nil,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {
