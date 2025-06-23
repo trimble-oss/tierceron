@@ -56,6 +56,8 @@ sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcsub
 ctl:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
+ctldebug:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "salty memonly argosystub hardwired trcshkernel" -ldflags='-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=ignore' github.com/trimble-oss/tierceron/cmd/trcctl
 descartes:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcdescartes
 
