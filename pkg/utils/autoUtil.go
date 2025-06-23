@@ -146,11 +146,11 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*wantedTokenNamePtr)
+	}
+	if tokenPtr == nil && RefLength(*tokenProvidedPtr) > 0 {
 		if !driverConfig.CoreConfig.IsShell && tokenProvidedPtr != nil {
 			driverConfig.CoreConfig.CurrentTokenNamePtr = wantedTokenNamePtr
 		}
-	}
-	if tokenPtr == nil && RefLength(*tokenProvidedPtr) > 0 {
 		tokenPtr = *tokenProvidedPtr
 		// Make thebig assumption here.
 		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
