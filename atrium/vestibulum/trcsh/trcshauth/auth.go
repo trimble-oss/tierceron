@@ -285,6 +285,6 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 			return false, errors.New("missing certification")
 		}
 	}
-	logger.Printf("Missing certification from Vault")
-	return false, errors.New("missing certification from Vault")
+	logger.Printf("Plugin not certified: %s", pluginName)
+	return false, fmt.Errorf("plugin not certified: %s", pluginName)
 }
