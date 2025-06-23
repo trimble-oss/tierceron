@@ -222,7 +222,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	for _, tableFlow := range flowMachineInitContext.GetTableFlows() {
 		tableName := tableFlow.FlowName.TableName()
 		if tableName != flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
-			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+tableName)
 			}
 			continue
@@ -350,7 +350,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	for _, table := range GetTierceronTableNames() {
 		if table != flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(table) {
-			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table)
 			}
 			continue
@@ -415,7 +415,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	for _, table := range flowMachineInitContext.GetTableFlows() {
 		if !coreopts.BuildOptions.IsSupportedFlow(table.FlowName.FlowName()) {
-			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table.FlowName.FlowName())
 			}
 			continue
@@ -483,7 +483,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	for _, businessFlow := range flowMachineInitContext.GetBusinessFlows() {
 		if !coreopts.BuildOptions.IsSupportedFlow(businessFlow.FlowName()) {
-			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowName())
 			}
 			continue
