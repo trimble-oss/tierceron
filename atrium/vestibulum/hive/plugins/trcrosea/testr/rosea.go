@@ -27,6 +27,12 @@ type RoseaEditorModel struct {
 	cursor       int      // Cursor position in input
 	historyIndex int      // 0 = live input, 1 = last, 2 = second last, etc.
 	draft        string   // Saved live input when entering history mode
+
+	// Authentication related fields
+	showAuthPopup bool
+	authInput     string
+	authCursor    int
+	authError     string
 }
 
 func lines(b *[]byte) []string {
@@ -82,6 +88,65 @@ func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 	case tea.KeyMsg:
+		if m.showAuthPopup {
+			switch msg.Type {
+			case tea.KeyEsc:
+				m.showAuthPopup = false
+				m.authInput = ""
+				m.authCursor = 0
+				m.authError = ""
+			case tea.KeyEnter:
+				if len(m.authInput) == 0 {
+					m.authError = "Token cannot be empty"
+				} else {
+					// TODO: handle token submission (e.g., validate or send)
+					m.lines = append(m.lines, m.input)
+					// TODO: Save to file, send to server, etc. using m.input and m.authInput
+
+					m.input = ""
+					m.cursor = 0
+					m.historyIndex = 0
+					m.draft = ""
+					m.showAuthPopup = false
+					m.authError = ""
+				}
+				return m, nil
+			case tea.KeyBackspace:
+				if m.authCursor > 0 && len(m.authInput) > 0 {
+					m.authInput = m.authInput[:m.authCursor-1] + m.authInput[m.authCursor:]
+					m.authCursor--
+				}
+			case tea.KeyLeft:
+				if m.authCursor > 0 {
+					m.authCursor--
+				}
+			case tea.KeyRight:
+				if m.authCursor < len(m.authInput) {
+					m.authCursor++
+				}
+			default:
+				s := msg.String()
+				if len(s) > 0 && msg.Type != tea.KeySpace {
+					// Accept multi-character paste
+					if m.showAuthPopup {
+						m.authInput = m.authInput[:m.authCursor] + s + m.authInput[m.authCursor:]
+						m.authCursor += len(s)
+					} else {
+						m.input = m.input[:m.cursor] + s + m.input[m.cursor:]
+						m.cursor += len(s)
+					}
+				} else if msg.Type == tea.KeySpace {
+					if m.showAuthPopup {
+						m.authInput = m.authInput[:m.authCursor] + " " + m.authInput[m.authCursor:]
+						m.authCursor++
+					} else {
+						m.input = m.input[:m.cursor] + " " + m.input[m.cursor:]
+						m.cursor++
+					}
+				}
+			}
+			return m, nil
+		}
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
@@ -89,11 +154,17 @@ func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S
-			m.lines = append(m.lines, m.input)
-			m.input = ""
-			m.cursor = 0
-			m.historyIndex = 0
-			m.draft = ""
+			m.showAuthPopup = true // <-- Add this line to trigger the popup
+			// Optionally, reset popup fields:
+			m.authInput = ""
+			m.authCursor = 0
+			m.authError = ""
+			// TODO: figure out how to handle and save...
+			// m.lines = append(m.lines, m.input)
+			// m.input = ""
+			// m.cursor = 0
+			// m.historyIndex = 0
+			// m.draft = ""
 
 			return m, nil
 
@@ -142,13 +213,24 @@ func (m RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		default:
-			// Only insert printable characters
-			if len(msg.String()) == 1 && msg.Type != tea.KeySpace {
-				m.input = m.input[:m.cursor] + msg.String() + m.input[m.cursor:]
-				m.cursor++
+			s := msg.String()
+			if len(s) > 0 && msg.Type != tea.KeySpace {
+				// Accept multi-character paste
+				if m.showAuthPopup {
+					m.authInput = m.authInput[:m.authCursor] + s + m.authInput[m.authCursor:]
+					m.authCursor += len(s)
+				} else {
+					m.input = m.input[:m.cursor] + s + m.input[m.cursor:]
+					m.cursor += len(s)
+				}
 			} else if msg.Type == tea.KeySpace {
-				m.input = m.input[:m.cursor] + " " + m.input[m.cursor:]
-				m.cursor++
+				if m.showAuthPopup {
+					m.authInput = m.authInput[:m.authCursor] + " " + m.authInput[m.authCursor:]
+					m.authCursor++
+				} else {
+					m.input = m.input[:m.cursor] + " " + m.input[m.cursor:]
+					m.cursor++
+				}
 			}
 		}
 	}
@@ -224,6 +306,21 @@ func (m RoseaEditorModel) View() string {
 		} else {
 			b.WriteString(foamStyle.Render(line))
 		}
+	}
+
+	if m.showAuthPopup {
+		popup := lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			Padding(1, 2).
+			Width(40).
+			Align(lipgloss.Center).
+			Render(
+				"Enter authentication token:\n\n" +
+					m.authInput[:m.authCursor] + goldStyle.Render("|") + m.authInput[m.authCursor:] +
+					"\n\n" + m.authError + "\n\n[Enter=Submit, Esc=Cancel]",
+			)
+		// Overlay the popup (simple version)
+		b.WriteString("\n\n" + popup)
 	}
 
 	return editorStyle.Width(m.width).Render(b.String())
