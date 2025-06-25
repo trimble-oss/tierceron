@@ -26,6 +26,7 @@ type RoseaEditorModel struct {
 	cursor       int      // Cursor position in input
 	historyIndex int      // 0 = live input, 1 = last, 2 = second last, etc.
 	draft        string   // Saved live input when entering history mode
+	draftCursor  int
 
 	// Authentication related fields
 	showAuthPopup bool
@@ -101,6 +102,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "token":
 				switch msg.Type {
 				case tea.KeyEsc:
+					m.input = m.draft
+					//					m.cursor = 0
+					m.cursor = m.draftCursor
+					m.draft = ""
 					m.showAuthPopup = false
 					m.authInput = ""
 					m.authCursor = 0
@@ -109,10 +114,13 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if len(m.authInput) == 0 {
 						m.authError = "Token cannot be empty"
 					} else {
+						m.input = m.draft
+						m.cursor = m.draftCursor
 						// TODO: handle token submission (e.g., validate or send)
 						m.lines = append(m.lines, m.input)
 						// TODO: Save to file, send to server, etc. using m.input and m.authInput
 						m.historyIndex = 0
+						//m.cursor = 0
 						m.draft = ""
 						m.showAuthPopup = false
 						m.authError = ""
@@ -173,10 +181,16 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S
+			m.draft = m.input
+			m.draftCursor = m.cursor
+			m.input = ""
+			m.cursor = 0
+			m.scrollOffset = 0
 			m.showAuthPopup = true // <-- Add this line to trigger the popup
 			m.popupMode = "token"
 			// Optionally, reset popup fields:
 			m.authInput = ""
+			m.input = ""
 			m.authCursor = 0
 			m.authError = ""
 			// TODO: figure out how to handle and save...
