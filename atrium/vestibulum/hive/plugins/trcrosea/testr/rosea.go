@@ -26,6 +26,7 @@ type RoseaEditorModel struct {
 	cursor       int      // Cursor position in input
 	historyIndex int      // 0 = live input, 1 = last, 2 = second last, etc.
 	draft        string   // Saved live input when entering history mode
+	draftCursor  int
 
 	// Authentication related fields
 	showAuthPopup bool
@@ -34,6 +35,9 @@ type RoseaEditorModel struct {
 	authError     string
 	popupMode     string // "token" or "confirm"
 	editorStyle   lipgloss.Style
+
+	scrollOffset int
+	height       int
 }
 
 func lines(b *[]byte) []string {
@@ -63,20 +67,21 @@ func lines(b *[]byte) []string {
 }
 
 func InitRoseaEditor(data *[]byte) *RoseaEditorModel {
-	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		width = 80
+		height = 24
 	}
 
 	return &RoseaEditorModel{
 		width:        width,
+		height:       height,
 		lines:        []string{},
 		input:        strings.Join(lines(data), "\n"), // Initialize input with existing lines
 		cursor:       0,
 		historyIndex: 0,
 		draft:        "",
-		editorStyle:  baseStyle.Padding(1, 2).Width(width), // <-- Set here!
-
+		editorStyle:  baseStyle.Padding(1, 2).Width(width),
 	}
 }
 
@@ -88,6 +93,8 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
+		m.height = msg.Height
+
 	case tea.KeyMsg:
 		if m.showAuthPopup {
 
@@ -95,6 +102,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "token":
 				switch msg.Type {
 				case tea.KeyEsc:
+					m.input = m.draft
+					//					m.cursor = 0
+					m.cursor = m.draftCursor
+					m.draft = ""
 					m.showAuthPopup = false
 					m.authInput = ""
 					m.authCursor = 0
@@ -103,10 +114,13 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if len(m.authInput) == 0 {
 						m.authError = "Token cannot be empty"
 					} else {
+						m.input = m.draft
+						m.cursor = m.draftCursor
 						// TODO: handle token submission (e.g., validate or send)
 						m.lines = append(m.lines, m.input)
 						// TODO: Save to file, send to server, etc. using m.input and m.authInput
 						m.historyIndex = 0
+						//m.cursor = 0
 						m.draft = ""
 						m.showAuthPopup = false
 						m.authError = ""
@@ -167,10 +181,16 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S
+			m.draft = m.input
+			m.draftCursor = m.cursor
+			m.input = ""
+			m.cursor = 0
+			m.scrollOffset = 0
 			m.showAuthPopup = true // <-- Add this line to trigger the popup
 			m.popupMode = "token"
 			// Optionally, reset popup fields:
 			m.authInput = ""
+			m.input = ""
 			m.authCursor = 0
 			m.authError = ""
 			// TODO: figure out how to handle and save...
@@ -208,7 +228,14 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyUp:
+			visibleHeight := m.height - 4
 			row, col := cursorRowCol(m.input, m.cursor)
+
+			if row < m.scrollOffset {
+				m.scrollOffset = row
+			} else if row >= m.scrollOffset+visibleHeight {
+				m.scrollOffset = row - visibleHeight + 1
+			}
 			if row > 0 {
 				prevLineStart := nthLineStart(m.input, row-1)
 				prevLineLen := lineLenAt(m.input, row-1)
@@ -217,7 +244,15 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case tea.KeyDown:
+			visibleHeight := m.height - 4
 			row, col := cursorRowCol(m.input, m.cursor)
+
+			if row < m.scrollOffset {
+				m.scrollOffset = row
+			} else if row >= m.scrollOffset+visibleHeight {
+				m.scrollOffset = row - visibleHeight + 1
+			}
+
 			lineCount := strings.Count(m.input, "\n") + 1
 			if row < lineCount-1 {
 				nextLineStart := nthLineStart(m.input, row+1)
@@ -307,9 +342,14 @@ func (m *RoseaEditorModel) View() string {
 
 	// Render input with cursor
 	lines := strings.Split(m.input, "\n")
+	visibleHeight := m.height - 4
+	start := m.scrollOffset
+	end := min(len(lines), start+visibleHeight)
+
 	row, col := cursorRowCol(m.input, m.cursor)
-	for i, line := range lines {
-		if i > 0 {
+	for i := start; i < end; i++ {
+		line := lines[i]
+		if i > start {
 			b.WriteString("\n")
 		}
 		if i == row {
