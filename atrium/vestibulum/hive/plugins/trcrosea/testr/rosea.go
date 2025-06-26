@@ -15,7 +15,9 @@ var (
 	baseStyle = lipgloss.NewStyle().Background(lipgloss.Color("#232136")).Foreground(lipgloss.Color("#e0def4"))
 	roseStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#eb6f92"))
 	pineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ccfd8"))
-	foamStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#c4a7e7"))
+	foamStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#c4a7e7")).
+			Background(lipgloss.Color("#232136"))
 	goldStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
 )
 
