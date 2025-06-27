@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -153,6 +154,10 @@ func LogErrorMessage(config *coreconfig.CoreConfig, errorMessage string, exit bo
 	if exit && config.ExitOnFailure {
 		if !headlessService {
 			fmt.Printf("Errors encountered, exiting and writing to log file\n")
+		}
+		if config.IsEditor {
+			fmt.Print("\033c")
+			exec.Command("stty", "sane").Run()
 		}
 		config.Log.Fatal(errorMessage)
 	} else {
