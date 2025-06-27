@@ -641,7 +641,10 @@ skipDiff:
 						listValues, err = testMod.ListEnv("super-secrets/"+testMod.Env+sectionKey+subSectionPath, driverConfigBase.CoreConfig.Log)
 						if err != nil {
 							if strings.Contains(err.Error(), "permission denied") {
-								eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Attempt to access restricted section of the vault denied.", true)
+								eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Attempt to access restricted section of the vault denied.", !driverConfig.CoreConfig.IsEditor)
+								if driverConfig.CoreConfig.IsEditor {
+									return
+								}
 							}
 						}
 

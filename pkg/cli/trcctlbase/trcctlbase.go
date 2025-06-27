@@ -248,7 +248,10 @@ func CommonMain(envDefaultPtr *string,
 
 	case "edit":
 		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow // This is not overridable in edit mode.
-		tokenName := fmt.Sprintf("config_token_%s_unrestricted", *envPtr)
+		var tokenName string
+		if eUtils.RefLength(tokenPtr) > 0 {
+			tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
+		}
 		editDriverConfig := config.DriverConfig{
 			ShellRunner: func(dc *config.DriverConfig, pluginName string, scriptPath string) {
 				if dc.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
@@ -262,12 +265,17 @@ func CommonMain(envDefaultPtr *string,
 
 				switch scriptPath {
 				case "/edit/load.trc.tmpl":
+					if len(tokenName) == 0 {
+						tokenName = fmt.Sprintf("config_token_%s", *envPtr)
+					}
 					GeneratePluginSeedData(&pluginName, nil, ctl, tokenPtr, envPtr, envCtxPtr, tokenName, dc)
 				case "/edit/save.trc.tmpl":
 					if err != nil {
 						fmt.Printf("trcsh config setup failure: %s\n", err.Error())
 						os.Exit(124)
 					}
+					// TODO: get from somewhere else.
+					tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
 					//Open deploy script and parse it.
 					trcinitbase.CommonMain(&dc.CoreConfig.Env, envPtr, &tokenName, nil, nil, []string{"", "deploy.trc.tmpl"}, dc)
 				}
@@ -288,13 +296,22 @@ func CommonMain(envDefaultPtr *string,
 			ReadMemCache:      true,
 			OutputMemCache:    true,
 		}
-		editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
-
-		// Services downstream several more limited tokens but all covered
-		// by the scope of the unrestricted token.
-		limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
-		editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
-
+		if eUtils.RefLength(tokenPtr) == 0 {
+			role := "bamboo"
+			tokenWanted := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+			autoErr := eUtils.AutoAuth(&editDriverConfig, &tokenWanted, &tokenPtr, &editDriverConfig.CoreConfig.Env, &editDriverConfig.CoreConfig.EnvBasis, &role, false)
+			if autoErr != nil {
+				fmt.Println(autoErr.Error())
+				return autoErr
+			}
+			tokenName = tokenWanted
+		} else {
+			editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+			// Services downstream several more limited tokens but all covered
+			// by the scope of the unrestricted token.
+			limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
+			editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
+		}
 		statTokenName := "config_token_pluginany"
 		editDriverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
 
