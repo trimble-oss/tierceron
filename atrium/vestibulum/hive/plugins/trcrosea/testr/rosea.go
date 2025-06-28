@@ -1,11 +1,15 @@
 package testr
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
 	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
 	"golang.org/x/term"
 )
@@ -20,6 +24,7 @@ var (
 )
 
 type RoseaEditorModel struct {
+	title        string
 	width        int      // terminal width
 	lines        []string // Committed lines
 	input        string   // Current input (multi-line)
@@ -66,7 +71,7 @@ func lines(b *[]byte) []string {
 	return lines
 }
 
-func InitRoseaEditor(data *[]byte) *RoseaEditorModel {
+func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		width = 80
@@ -74,6 +79,7 @@ func InitRoseaEditor(data *[]byte) *RoseaEditorModel {
 	}
 
 	return &RoseaEditorModel{
+		title:        title,
 		width:        width,
 		height:       height,
 		lines:        []string{},
@@ -116,9 +122,31 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					} else {
 						m.input = m.draft
 						m.cursor = m.draftCursor
-						// TODO: handle token submission (e.g., validate or send)
 						m.lines = append(m.lines, m.input)
-						// TODO: Save to file, send to server, etc. using m.input and m.authInput
+
+						roseaMemFs := roseacore.GetRoseaMemFs()
+						// Write current editor content to roseaMemFs
+						chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
+							"rosea", // From rainier
+							&tccore.TrcdbExchange{
+								Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                                                         // Flows
+								Query:     fmt.Sprintf("SELECT * FROM %s.%s WHERE argosIdentitasNomen='%s'", "%s", flowcore.ArgosSociiFlow.TableName(), m.title), // Query
+								Operation: "SELECT",                                                                                                              // query operation
+								ExecTrcsh: "/edit/save.trc.tmpl",
+								Request: tccore.TrcdbRequest{
+									Rows: [][]any{
+										{roseaMemFs},
+										{m.authInput},
+										{m.input},
+									},
+								},
+							},
+							flowutil.GetChatSenderChan(),
+						)
+						if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
+							// entrySeedFs := chatResponseMsg.TrcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem)
+							// Chewbacca: If errors, maybe post an error message to popup?
+						}
 						m.historyIndex = 0
 						//m.cursor = 0
 						m.draft = ""

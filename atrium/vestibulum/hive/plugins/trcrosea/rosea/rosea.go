@@ -20,6 +20,8 @@ import (
 
 var roseaMemFs trcshio.MemoryFileSystem
 
+func GetRoseaMemFs() trcshio.MemoryFileSystem { return roseaMemFs }
+
 var projectServiceMatrix [][]any
 var (
 	boldStyle    = lipgloss.NewStyle().Bold(true)
@@ -156,8 +158,9 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 									fmt.Printf("Error opening seed file: %v\n", err)
 									return rm, nil
 								}
+								//rm.choice.title = selectedItem.title
 								fileData, _ := io.ReadAll(entrySeedFileRWC)
-								return testr.InitRoseaEditor(&fileData), nil
+								return testr.InitRoseaEditor(rm.choice.title, &fileData), nil
 							}
 						}
 					}
