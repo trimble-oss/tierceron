@@ -552,8 +552,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 				return
 			} else {
-				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]any) any)
-				flowMachineInitContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func GetFlowMachineInitContext(*coreconfig.CoreConfig, string) *flowcore.FlowMachineInitContext)
+				flowMachineInitContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config, pluginHandler.Name)
 			}
 		} else if plugincoreopts.BuildOptions.IsPluginHardwired() {
 			flowMachineInitContext = pluginopts.BuildOptions.GetFlowMachineInitContext(driverConfig.CoreConfig, pluginHandler.Name)
