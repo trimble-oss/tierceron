@@ -11,6 +11,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -260,7 +261,7 @@ func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowco
 	return nil
 }
 
-func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
+func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
 	pluginConfig := GetFlowMachineTemplates()
 
 	return &flowcore.FlowMachineInitContext{
