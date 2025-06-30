@@ -998,8 +998,12 @@ func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]
 
 		subPathList := []string{}
 		for _, path := range pathList {
-			subsubList, _ := m.templateFileRecurse(path, logger)
-			subPathList = append(subPathList, subsubList...)
+			if path != "template-file" {
+				subsubList, _ := m.templateFileRecurse(path, logger)
+				subPathList = append(subPathList, subsubList...)
+			} else {
+				subPathList = append(subPathList, path)
+			}
 		}
 		if len(subPathList) != 0 {
 			return subPathList, nil
