@@ -27,14 +27,11 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 }
 
 func receiver(configCtx *config.ConfigContext) {
-	for {
-		select {
-		case data := <-configCtx.ResultChannel:
-			if data != nil && data.InData != nil && data.InPath != "" {
-				configCtx.Mutex.Lock()
-				configCtx.ResultMap[data.InPath] = data.InData
-				configCtx.Mutex.Unlock()
-			}
+	for data := range configCtx.ResultChannel {
+		if data != nil && data.InData != nil && data.InPath != "" {
+			configCtx.Mutex.Lock()
+			configCtx.ResultMap[data.InPath] = data.InData
+			configCtx.Mutex.Unlock()
 		}
 	}
 }

@@ -105,6 +105,9 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 	}
 
 	for _, filter := range filterTemplateSlice {
+		if filter == "" {
+			continue
+		}
 		allTemplateFilePaths, err1 := mod.GetTemplateFilePaths(fmt.Sprintf("templates/%s/", filter), driverConfig.CoreConfig.Log)
 		if err1 != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't read into paths under templates/"+filter+"/", false)
@@ -152,6 +155,9 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 			if err != nil {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't make directory: "+dirName+filePath, false)
 				continue
+			}
+			if file == "/template-file" {
+				file = ""
 			}
 
 			templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)

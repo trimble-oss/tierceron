@@ -19,7 +19,12 @@ var (
 	baseStyle = lipgloss.NewStyle().Background(lipgloss.Color("#232136")).Foreground(lipgloss.Color("#e0def4"))
 	roseStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#eb6f92"))
 	pineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ccfd8"))
-	foamStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#c4a7e7"))
+	foamStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#c4a7e7")).
+			Background(lipgloss.Color("#232136"))
+	editedStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#ebbcba")).
+			Background(lipgloss.Color("#232136"))
 	goldStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
 )
 
@@ -381,10 +386,32 @@ func (m *RoseaEditorModel) View() string {
 			b.WriteString("\n")
 		}
 		if i == row {
-			left := foamStyle.Render(line[:min(col, len(line))])
-			right := foamStyle.Render(line[min(col, len(line)):])
+			var orig string
+			if i < len(m.lines) {
+				orig = m.lines[i]
+			}
+			split := 0
+			maxCmp := min(len(line), len(orig))
+			for split < maxCmp && line[split] == orig[split] {
+				split++
+			}
+			left := foamStyle.Render(line[:split])
+			changed := editedStyle.Render(line[split:])
 			cursor := goldStyle.Render("|")
-			b.WriteString(left + cursor + right)
+			// Place cursor at the right spot
+			if col <= split {
+				// Cursor in unchanged part
+				b.WriteString(foamStyle.Render(line[:col]))
+				b.WriteString(cursor)
+				b.WriteString(foamStyle.Render(line[col:split]))
+				b.WriteString(changed)
+			} else {
+				// Cursor in changed part
+				b.WriteString(left)
+				b.WriteString(editedStyle.Render(line[split:col]))
+				b.WriteString(cursor)
+				b.WriteString(editedStyle.Render(line[col:]))
+			}
 		} else {
 			b.WriteString(foamStyle.Render(line))
 		}
