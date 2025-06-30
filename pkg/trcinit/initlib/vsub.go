@@ -156,6 +156,9 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't make directory: "+dirName+filePath, false)
 				continue
 			}
+			if file == "/template-file" {
+				file = ""
+			}
 
 			templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
 

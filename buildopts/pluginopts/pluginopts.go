@@ -3,7 +3,10 @@
 
 package pluginopts
 
-import flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+import (
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+)
 
 // IsPluginHardwired - Override to hardwire plugins into the kernel for debugging.
 func IsPluginHardwired() bool {
@@ -25,6 +28,6 @@ func GetPluginMessages(pluginName string) []string {
 }
 
 // GetFlowMachineInitContext - Override plugin GetFlowMachineInitContext
-func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
+func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
 	return &flowcore.FlowMachineInitContext{}
 }
