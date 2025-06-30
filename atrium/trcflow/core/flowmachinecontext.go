@@ -21,6 +21,7 @@ import (
 	sqlee "github.com/dolthub/go-mysql-server/sql/expression"
 	"github.com/dolthub/vitess/go/sqltypes"
 	"github.com/glycerine/bchan"
+	"github.com/trimble-oss/tierceron-core/v2/bitlock"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -70,6 +71,8 @@ type TrcFlowMachineContext struct {
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
+	FlowIDMap                 map[string]uint64
+	FlowIDMapLock             sync.RWMutex
 	FlowLockMap               *cmap.ConcurrentMap[string, *TrcFlowLock] // Map of locks for each query
 	PreloadChan               chan PermissionUpdate
 	PermissionChan            chan PermissionUpdate // This channel is used to alert for dynamic permissions when tables are loaded
@@ -88,6 +91,33 @@ func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNa
 	} else {
 		return nil
 	}
+}
+
+func (tfmContext *TrcFlowMachineContext) GetFlowID(flowName flowcore.FlowNameType) *uint64 {
+	tfmContext.FlowIDMapLock.RLock()
+	defer tfmContext.FlowIDMapLock.RUnlock()
+	if flowID, ok := tfmContext.FlowIDMap[string(flowName)]; ok {
+		return &flowID
+	}
+	return nil
+}
+
+func (tfmContext *TrcFlowMachineContext) SetFlowIDs() {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
+	i := 0
+	tfmContext.FlowIDMapLock.Lock()
+	defer tfmContext.FlowIDMapLock.Unlock()
+	for _, flow := range tfmContext.FlowMap {
+		if flow != nil {
+			if tfmContext.FlowIDMap == nil {
+				tfmContext.FlowIDMap = make(map[string]uint64)
+			}
+			tfmContext.FlowIDMap[flow.GetFlowName()] = 1 << i
+			i++
+		}
+	}
+	bitlock.InitBitMask(len(tfmContext.FlowIDMap))
 }
 
 func (tfmContext *TrcFlowMachineContext) GetDatabaseName() string {
@@ -722,6 +752,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 		tfmContext.Log("Failed to get flow lock for: "+trcdbExchange.Flows[0], errors.New("Failed to get flow lock"))
 		return nil, false
 	}
+	// var queryID uint64 = 0
+	// for _, flowName := range trcdbExchange.Flows {
+	// 	flowID := tfmContext.GetFlowID(flowcore.FlowNameType(flowName))
+	// 	if flowID != nil {
+	// 		queryID = queryID ^ *flowID
+	// 	}
+	// }
 
 	if queryMap["TrcQuery"].(string) == "" {
 		return nil, false
