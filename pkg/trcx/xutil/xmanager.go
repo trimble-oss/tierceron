@@ -202,25 +202,22 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 	//Receiver for configs
 	go func(dc *config.DriverConfig) {
-		for {
-			select {
-			case tResult := <-templateResultChan:
-				if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
-					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
-					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
-					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
-					sectionPath = tResult.SectionPath
+		for tResult := range templateResultChan {
+			if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
+				sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
+				sliceValueSection = append(sliceValueSection, tResult.ValueSection)
+				sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
+				sectionPath = tResult.SectionPath
 
-					if tResult.TemplateDepth > maxDepth {
-						maxDepth = tResult.TemplateDepth
-						//templateCombinedSection = interfaceTemplateSection
-					}
-					wg.Done()
-				} else {
-					go func(tResult *extract.TemplateResultData) {
-						templateResultChan <- tResult
-					}(tResult)
+				if tResult.TemplateDepth > maxDepth {
+					maxDepth = tResult.TemplateDepth
+					//templateCombinedSection = interfaceTemplateSection
 				}
+				wg.Done()
+			} else {
+				go func(tResult *extract.TemplateResultData) {
+					templateResultChan <- tResult
+				}(tResult)
 			}
 		}
 	}(driverConfig)
