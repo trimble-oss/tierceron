@@ -893,7 +893,9 @@ func CommonMain(envPtr *string,
 
 		dConfig := &config.DriverConfig{
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
+			MemFs:             driverConfigBase.MemFs,
 			CoreConfig: &coreconfig.CoreConfig{
+				IsEditor:            driverConfigBase.CoreConfig.IsEditor,
 				DynamicPathFilter:   *dynamicPathPtr,
 				Insecure:            *insecurePtr,
 				CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
