@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -86,6 +87,10 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Printf("Seeding vault from seeds in: %s\n", driverConfig.StartDir[0])
 
+	if driverConfig.CoreConfig.IsEditor {
+		SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+driverConfig.CoreConfig.EnvBasis+"/"+driverConfig.CoreConfig.DynamicPathFilter+"/"+driverConfig.CoreConfig.EnvBasis+"_seed.yml")
+		return nil
+	}
 	files, err := os.ReadDir(driverConfig.StartDir[0])
 	if len(files) == 0 {
 		fmt.Println("Empty seed file directory")
@@ -454,9 +459,23 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 
 // SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
 func SeedVaultFromFile(driverConfig *config.DriverConfig, filepath string) {
-	rawFile, err := os.ReadFile(filepath)
+	var rawFile []byte
+	var err error
+	if driverConfig.CoreConfig.IsEditor {
+		seedFile, seedOpenErr := driverConfig.MemFs.Open(filepath)
+		if seedOpenErr != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, seedOpenErr.Error(), false)
+		}
+		defer seedFile.Close()
+		rawFile, err = io.ReadAll(seedFile)
+		if err != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
+		}
+	} else {
+		rawFile, err = os.ReadFile(filepath)
+		eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
+	}
 	// Open file
-	eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 	if driverConfig.CoreConfig.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
 		driverConfig.CoreConfig.Log.Println("Skipping index: " + filepath + " Certs not allowed within index data.")
 		return

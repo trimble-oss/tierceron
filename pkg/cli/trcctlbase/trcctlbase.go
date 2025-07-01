@@ -270,14 +270,8 @@ func CommonMain(envDefaultPtr *string,
 					}
 					GeneratePluginSeedData(&pluginName, nil, ctl, tokenPtr, envPtr, envCtxPtr, tokenName, dc)
 				case "/edit/save.trc.tmpl":
-					if err != nil {
-						fmt.Printf("trcsh config setup failure: %s\n", err.Error())
-						os.Exit(124)
-					}
-					// TODO: get from somewhere else.
-					tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
-					//Open deploy script and parse it.
-					trcinitbase.CommonMain(&dc.CoreConfig.Env, envPtr, &tokenName, nil, nil, []string{"", "deploy.trc.tmpl"}, dc)
+					uploadCert := false
+					trcinitbase.CommonMain(&dc.CoreConfig.Env, envPtr, dc.CoreConfig.CurrentTokenNamePtr, &uploadCert, nil, []string{"", "deploy.trc.tmpl"}, dc)
 				}
 			},
 			CoreConfig: &coreconfig.CoreConfig{

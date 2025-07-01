@@ -144,20 +144,22 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
 						entrySeedFs := chatResponseMsg.TrcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem)
 						if entrySeedFs != nil {
-							seedFilePath := ""
+							roseaSeedFile := ""
 							// TODO: get this into an editor.
 							entrySeedFs.Walk("./trc_seeds", func(p string, isDir bool) error {
-								if !isDir && strings.HasSuffix(p, ".yml") && len(seedFilePath) == 0 {
-									seedFilePath = p
+								if !isDir && strings.HasSuffix(p, ".yml") && len(roseaSeedFile) == 0 {
+									roseaSeedFile = p
 								}
 								return nil
 							})
-							if len(seedFilePath) > 0 {
-								entrySeedFileRWC, err := entrySeedFs.Open(seedFilePath)
+							if len(roseaSeedFile) > 0 {
+								entrySeedFileRWC, err := entrySeedFs.Open(roseaSeedFile)
 								if err != nil {
 									fmt.Printf("Error opening seed file: %v\n", err)
 									return rm, nil
 								}
+								defer entrySeedFileRWC.Close()
+								roseacore.SetRoseaMemFs(roseaSeedFile, entrySeedFs)
 								//rm.choice.title = selectedItem.title
 								fileData, _ := io.ReadAll(entrySeedFileRWC)
 								return testr.InitRoseaEditor(rm.choice.title, &fileData), nil
