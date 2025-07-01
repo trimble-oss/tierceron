@@ -2,6 +2,7 @@ package testr
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -129,7 +130,21 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.cursor = m.draftCursor
 						m.lines = append(m.lines, m.input)
 
-						roseaMemFs := roseacore.GetRoseaMemFs()
+						roseaSeedFile, roseaMemFs := roseacore.GetRoseaMemFs()
+						roseaMemFs.Remove(roseaSeedFile)
+
+						entrySeedFileRWC, err := roseaMemFs.Create(roseaSeedFile)
+						if err != nil {
+							// Pop up error?
+							return m, nil
+						}
+						roseaEditR := strings.NewReader(m.input)
+						_, err = io.Copy(entrySeedFileRWC, roseaEditR)
+						if err != nil {
+							// Pop up error?
+							return m, nil
+						}
+
 						// Write current editor content to roseaMemFs
 						chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
 							"rosea", // From rainier
@@ -142,7 +157,6 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 									Rows: [][]any{
 										{roseaMemFs},
 										{m.authInput},
-										{m.input},
 									},
 								},
 							},
@@ -175,6 +189,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				default:
 					s := msg.String()
 					if len(s) > 0 && msg.Type != tea.KeySpace {
+						s = roseacore.SanitizePaste(s)
 						// Accept multi-character paste
 						if m.showAuthPopup {
 							m.authInput = m.authInput[:m.authCursor] + s + m.authInput[m.authCursor:]
@@ -297,6 +312,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		default:
 			s := msg.String()
 			if len(s) > 0 && msg.Type != tea.KeySpace {
+				s = roseacore.SanitizePaste(s)
 				// Accept multi-character paste
 				if m.showAuthPopup {
 					m.authInput = m.authInput[:m.authCursor] + s + m.authInput[m.authCursor:]

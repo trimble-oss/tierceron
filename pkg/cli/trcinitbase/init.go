@@ -84,7 +84,9 @@ func CommonMain(envPtr *string,
 	var addrPtr *string = defaultEmpty()
 
 	if flagset == nil {
-		PrintVersion()
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			PrintVersion()
+		}
 		// Restricted trcinit and trcsh
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -122,7 +124,7 @@ func CommonMain(envPtr *string,
 		tokenPtr = flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	}
 
-	if driverConfig == nil || !driverConfig.IsShellSubProcess {
+	if driverConfig == nil || (!driverConfig.IsShellSubProcess && (driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor)) {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -141,7 +143,9 @@ func CommonMain(envPtr *string,
 	} else {
 		flagset.Parse(nil)
 	}
-	driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	if eUtils.RefLength(addrPtr) > 0 {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	}
 
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
@@ -168,19 +172,22 @@ func CommonMain(envPtr *string,
 			envBasis := eUtils.GetEnvBasis(*envPtr)
 			tokenName := fmt.Sprintf("config_token_%s_unrestricted", envBasis)
 			tokenNamePtr = &tokenName
+			if strings.ContainsAny(*tokenPtr, " \t\n\r") {
+				fmt.Println("Invalid -token contains whitespace")
+				os.Exit(1)
+			}
+
+			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+
+			eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 		} else if eUtils.RefLength(tokenPtr) == 0 {
-			fmt.Println("-token cannot be empty.")
-			os.Exit(1)
+			if driverConfigBase != nil && driverConfigBase.CoreConfig != nil && driverConfigBase.CoreConfig.TokenCache != nil {
+				if driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr) == nil {
+					fmt.Println("-token cannot be empty.")
+					os.Exit(1)
+				}
+			}
 		}
-
-		if strings.ContainsAny(*tokenPtr, " \t\n\r") {
-			fmt.Println("Invalid -token contains whitespace")
-			os.Exit(1)
-		}
-
-		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
-
-		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
@@ -280,9 +287,11 @@ func CommonMain(envPtr *string,
 	}
 
 	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
-		if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required seed folder: " + *seedPtr)
-			os.Exit(1)
+		if !driverConfigBase.CoreConfig.IsEditor {
+			if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
+				fmt.Println("Missing required seed folder: " + *seedPtr)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -810,7 +819,11 @@ func CommonMain(envPtr *string,
 		mod.EnvBasis = eUtils.GetEnvBasis(*envPtr)
 		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.EnvBasis, *uploadCertPtr, "", driverConfigBase.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.EnvBasis, false, "_unrestricted", driverConfigBase.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
+				if driverConfigBase.CoreConfig.IsEditor {
+					eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Cannot save.  Invalid token.", false)
+				} else {
+					eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
+				}
 				return
 			}
 		}
