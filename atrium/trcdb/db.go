@@ -201,6 +201,7 @@ func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (str
 }
 
 // Query - queries configurations using standard ANSI SQL syntax.
+// Able to run query with multiple flows
 // Example: select * from ServiceTechMobileAPI.configfile
 func QueryN(te *engine.TierceronEngine, query string, queryID uint64, bitlock bitcore.BitLock) (string, []string, [][]any, error) {
 	// Create a test memory database and register it to the default engine.
@@ -313,6 +314,76 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 			queryLock.Lock()
 			row, err := r.Next(ctx)
 			queryLock.Unlock()
+			if err == io.EOF {
+				break
+			}
+			rowData := []any{}
+			if sqles.IsOkResult(row) { //This is for insert statements
+				okResult = true
+				sqlOkResult := sqles.GetOkResult(row)
+				if sqlOkResult.RowsAffected > 0 {
+					matrix = append(matrix, rowData)
+				} else {
+					if sqlOkResult.InsertID > 0 {
+						rowData = append(rowData, sqlOkResult.InsertID)
+						matrix = append(matrix, rowData)
+					}
+				}
+			} else {
+				for _, col := range row {
+					rowData = append(rowData, col.(string))
+				}
+				matrix = append(matrix, rowData)
+			}
+		}
+		if okResult {
+			return "ok", nil, matrix, nil
+		}
+	}
+
+	return tableName, columns, matrix, nil
+}
+
+// Query - queries configurations using standard ANSI SQL syntax.
+// Able to run query with multiple flows with bindings.
+// Example: select * from ServiceTechMobileAPI.configfile
+func QueryWithBindingsN(te *engine.TierceronEngine, query string, bindings map[string]sqles.Expression, queryID uint64, bitlock bitcore.BitLock) (string, []string, [][]any, error) {
+	// Create a test memory database and register it to the default engine.
+
+	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
+	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
+	ctx := sql.NewContext(context.Background())
+	ctx.WithQuery(query)
+	bitlock.Lock(queryID)
+	//	te.Context = ctx
+	schema, r, queryErr := te.Engine.QueryWithBindings(ctx, query, bindings)
+	bitlock.Unlock(queryID)
+	if queryErr != nil {
+		if strings.Contains(queryErr.Error(), "duplicate") {
+			return "", nil, nil, errors.New("Duplicate primary key found.")
+		}
+		return "", nil, nil, queryErr
+	}
+
+	columns := []string{}
+	matrix := [][]any{}
+	tableName := ""
+
+	for _, col := range schema {
+		if tableName == "" {
+			tableName = col.Source
+		}
+
+		columns = append(columns, col.Name)
+	}
+
+	if len(columns) > 0 {
+		// Iterate results and print them.
+		okResult := false
+		for {
+			bitlock.Lock(queryID)
+			row, err := r.Next(ctx)
+			bitlock.Unlock(queryID)
 			if err == io.EOF {
 				break
 			}
