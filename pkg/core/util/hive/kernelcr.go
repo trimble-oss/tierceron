@@ -17,6 +17,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
@@ -552,11 +553,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 				return
 			} else {
-				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(map[string]any) any)
-				flowMachineInitContext = getFlowMachineInitContextFunc(*pluginHandler.ConfigContext.Config)
+				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(*coreconfig.CoreConfig, string) *flow.FlowMachineInitContext)
+				flowMachineInitContext = getFlowMachineInitContextFunc(driverConfig.CoreConfig, pluginHandler.Name)
 			}
 		} else if plugincoreopts.BuildOptions.IsPluginHardwired() {
-			flowMachineInitContext = pluginopts.BuildOptions.GetFlowMachineInitContext(pluginHandler.Name)
+			flowMachineInitContext = pluginopts.BuildOptions.GetFlowMachineInitContext(driverConfig.CoreConfig, pluginHandler.Name)
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
 			return

@@ -202,64 +202,31 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 	//Receiver for configs
 	go func(dc *config.DriverConfig) {
-		for {
-			select {
-			case tResult := <-templateResultChan:
-				if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
-					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
-					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
-					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
-					sectionPath = tResult.SectionPath
+		for tResult := range templateResultChan {
+			if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
+				sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
+				sliceValueSection = append(sliceValueSection, tResult.ValueSection)
+				sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
+				sectionPath = tResult.SectionPath
 
-					if tResult.TemplateDepth > maxDepth {
-						maxDepth = tResult.TemplateDepth
-						//templateCombinedSection = interfaceTemplateSection
-					}
-					wg.Done()
-				} else {
-					go func(tResult *extract.TemplateResultData) {
-						templateResultChan <- tResult
-					}(tResult)
+				if tResult.TemplateDepth > maxDepth {
+					maxDepth = tResult.TemplateDepth
+					//templateCombinedSection = interfaceTemplateSection
 				}
+				wg.Done()
+			} else {
+				go func(tResult *extract.TemplateResultData) {
+					templateResultChan <- tResult
+				}(tResult)
 			}
 		}
 	}(driverConfig)
 
-	commonPathFound := false
+	commonPaths := []string{}
 	for _, tPath := range templatePaths {
 		if strings.Contains(tPath, "Common") {
-			commonPathFound = true
+			commonPaths = append(commonPaths, tPath)
 		}
-	}
-
-	commonPaths := []string{}
-	tokenNameEnv := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenNameEnv), "") && commonPathFound {
-		var commonMod *helperkv.Modifier
-		var err error
-		commonMod, err = helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenNameEnv, env, true)
-		commonMod.Env = driverConfig.CoreConfig.Env
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-		}
-		envVersion := strings.Split(driverConfig.CoreConfig.Env, "_")
-		if len(envVersion) == 1 {
-			envVersion = append(envVersion, "0")
-		}
-		commonMod.Env = envVersion[0]
-		commonMod.EnvBasis = eUtils.GetEnvBasis(commonMod.Env)
-		commonMod.Version = envVersion[1]
-		driverConfig.CoreConfig.Env = envVersion[0] + "_" + envVersion[1]
-		commonMod.Version = commonMod.Version + "***X-Mode"
-
-		commonPaths, err = vcutils.GetPathsFromProject(driverConfig.CoreConfig, commonMod, []string{"Common"}, []string{})
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-		}
-		if len(commonPaths) > 0 && strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
-			commonPaths = commonPaths[:len(commonPaths)-1]
-		}
-		commonMod.Release()
 	}
 
 	// Configure each template in directory

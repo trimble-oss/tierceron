@@ -984,6 +984,13 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 					MemFs:             trcdbExchange.Request.Rows[0][0].(trcshio.MemoryFileSystem),
 					CoreConfig:        tfmContext.DriverConfig.CoreConfig, // Use shared core config.
 				}
+				if len(trcdbExchange.Request.Rows) > 1 && len(trcdbExchange.Request.Rows[1]) > 0 {
+					if unrestrictedToken, ok := trcdbExchange.Request.Rows[1][0].(string); ok && unrestrictedToken != "" {
+						currentTokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+						driverConfig.CoreConfig.CurrentTokenNamePtr = &currentTokenName
+						driverConfig.CoreConfig.TokenCache.AddToken(currentTokenName, &unrestrictedToken)
+					}
+				}
 				tfmContext.ShellRunner(&driverConfig, matrixChangedEntries[0][1].(string), trcdbExchange.ExecTrcsh)
 			} else {
 				tfmContext.Log("No results for trcsh query: "+queryMap["TrcQuery"].(string), nil)

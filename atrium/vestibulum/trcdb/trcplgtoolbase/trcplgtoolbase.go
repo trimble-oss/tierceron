@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -45,6 +46,7 @@ func CommonMain(envPtr *string,
 	var flagEnvPtr *string
 	var tokenPtr *string
 	var addrPtr *string
+	var logFilePtr *string
 
 	// Main functions are as follows:
 	if flagset == nil {
@@ -67,8 +69,9 @@ func CommonMain(envPtr *string,
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
 		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
+		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	}
-	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
+	defineServicePtr := flagset.Bool("defineService", false, "Specified when defining a service.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
 	// These functions only valid for pluginType trcshservice
 	pluginservicestartPtr := flagset.Bool("pluginservicestart", false, "To start a trcshell kernel service for a particular plugin.")
@@ -77,7 +80,7 @@ func CommonMain(envPtr *string,
 	winservicestartPtr := flagset.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
-	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
+	projectservicePtr := flagset.String("projectservice", "", "Provide template path in form project/service")
 	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
 	pushImagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
 	pushAliasPtr := flagset.String("pushAlias", "", "Image name:tag to push to registry, separated by commas (eg: egg:plant,egg:salad,egg:bar).")
@@ -153,6 +156,16 @@ func CommonMain(envPtr *string,
 			return err
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+	}
+
+	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil {
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			fmt.Println("Error creating log file: " + *logFilePtr)
+			return errors.New("Error creating log file: " + *logFilePtr)
+		}
+		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
 	}
 
 	if utils.RefLength(addrPtr) == 0 {

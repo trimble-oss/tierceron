@@ -588,7 +588,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 		var kernelId int
 		var kernelName string = "trcshk"
-		if kernelopts.BuildOptions.IsKernel() {
+		if kernelopts.BuildOptions.IsKernel() && !driverConfigPtr.CoreConfig.IsEditor {
 			hostname := os.Getenv("HOSTNAME")
 			id := 0
 
