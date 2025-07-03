@@ -487,7 +487,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 	pluginToolConfig["buildImagePtr"] = *buildImagePtr
 	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
-	pluginToolConfig["trcbootstrapPtr"] = trcbootstrapPtr
+	pluginToolConfig["trcbootstrapPtr"] = *trcbootstrapPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
 		if *defineServicePtr {
