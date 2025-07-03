@@ -264,13 +264,19 @@ func GetPluginRestrictedMappings() map[string][][]string {
 			[]string{"-templateFilter=TrcVault/SpiralDatabase", "-restricted=SpiralDatabase", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"healthcheck": {
-			[]string{"-templateFilter=Common/servicecert.crt,Common/servicekey.key,Hive/PluginHealthCheck,Hive/PluginHealthCheckBuild"},
+			[]string{"-templateFilter=Common/servicecert.crt,Common/servicekey.key,Hive/PluginHealthcheck,Hive/PluginHealthcheckBuild"},
 		},
 		"trcdb": {
 			[]string{"-templateFilter=Common/db_cert.pem,Common/db_key.pem,Hive/PluginTrcdb,Hive/PluginTrcdbBuild"},
 		},
 		"rosea": {
-			[]string{"-templateFilter=Hive/PluginRosea"},
+			[]string{"-templateFilter=Hive/PluginRosea,Hive/PluginRoseaBuild"},
+		},
+		"mutabilis": {
+			[]string{"-templateFilter=Hive/PluginMutabilis,Hive/PluginMutabilisBuild"},
+		},
+		"spiralis": {
+			[]string{"-templateFilter=Hive/PluginSpiralis,Hive/PluginSpiralisBuild"},
 		},
 		"trchelloworld": {
 			[]string{"-templateFilter=Common/hello.crt,Common/hellokey.key,HelloProjectPlugin/HelloServicePlugin"},
