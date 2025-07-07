@@ -365,15 +365,17 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		controllerInitWG.Add(1)
 		tfmFlumeContext.InitConfigWG.Add(1)
 		flowWG.Add(1)
-		go func(tableFlow flowcore.FlowNameType, tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
-			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tableFlow.ServiceName())
+		tableFlow := flowcore.FlowNameType(table)
+		tfContext.Flow = tableFlow
+		tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+		tfmContext.FlowMapLock.Lock()
+		tfmContext.FlowMap[tfContext.Flow] = &tfContext
+		tfmContext.FlowMapLock.Unlock()
+
+		go func(tFlow flowcore.FlowNameType, tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
+			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tFlow.ServiceName())
 			defer flowWG.Done()
-			tcfContext.Flow = tableFlow
-			tcfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
-			tcfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-			tfmContext.FlowMapLock.Lock()
-			tfmContext.FlowMap[tcfContext.Flow] = tcfContext
-			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
@@ -387,10 +389,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				FlumenProcessFlowController,
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
-				tableFlow,
+				tFlow,
 				trcflowcore.TableSyncFlow,
 			)
-		}(flowcore.FlowNameType(table), &tfContext, &driverConfigBasis)
+		}(tableFlow, &tfContext, &driverConfigBasis)
 
 		controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
 		if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
@@ -420,27 +422,28 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}
 			continue
 		}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
+		tableFlow := flowcore.FlowNameType(table.FlowName)
+		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
+		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
+		tfContext.Flow = tableFlow
+		tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+		tfmContext.FlowMapLock.Lock()
+		tfmContext.FlowMap[tfContext.Flow] = &tfContext
+		tfmContext.FlowMapLock.Unlock()
 
 		flowWG.Add(1)
-		go func(tableFlow flowcore.FlowNameType, dc *config.DriverConfig) {
-			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tableFlow.ServiceName())
+		go func(tFlow flowcore.FlowNameType, dc *config.DriverConfig) {
+			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tFlow.ServiceName())
 			defer flowWG.Done()
-			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
-			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
-			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
-			tfContext.Flow = tableFlow
-			tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
-			tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
-			tfmContext.FlowMapLock.Lock()
-			tfmContext.FlowMap[tfContext.Flow] = &tfContext
-			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
-			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tableFlow.TableName())
+			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tFlow.TableName())
 			dataMap, readErr := tfContext.GoMod.ReadData(flowPath)
 			if readErr == nil && len(dataMap) > 0 {
 				if dataMap["flowAlias"] != nil {
@@ -475,10 +478,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				},
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
-				tableFlow,
+				tFlow,
 				trcflowcore.TableSyncFlow,
 			)
-		}(flowcore.FlowNameType(table.FlowName), &driverConfigBasis)
+		}(tableFlow, &driverConfigBasis)
 	}
 
 	for _, businessFlow := range flowMachineInitContext.GetBusinessFlows() {
