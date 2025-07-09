@@ -20,6 +20,7 @@ require (
 
 require (
 	github.com/trimble-oss/tierceron v1.38.9
+	github.com/trimble-oss/tierceron-core/v2 v2.7.2
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	google.golang.org/api v0.226.0
@@ -48,7 +49,6 @@ require (
 	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
-	github.com/trimble-oss/tierceron-core/v2 v2.6.7 // indirect
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0 // indirect
