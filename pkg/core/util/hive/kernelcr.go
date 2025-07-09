@@ -839,7 +839,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				} else {
 					pluginHandler.ServiceResource = tfmContext
 				}
+
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
+				tfmContext.(flow.FlowMachineContext).SetFlowIDs()
 
 				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
 			}
@@ -1146,6 +1148,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
 					responseError := "Service unavailable"
+					time.Sleep(2 * time.Second) // Give time for the plugin to start
 					msg.Response = &responseError
 					go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
 						sender <- message
