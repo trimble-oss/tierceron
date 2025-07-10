@@ -69,7 +69,9 @@ func CommonMain(envPtr *string,
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
 		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
-		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+		if flagset.Lookup("log") == nil {
+			logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+		}
 	}
 	defineServicePtr := flagset.Bool("defineService", false, "Specified when defining a service.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
@@ -158,7 +160,7 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	}
 
-	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil {
+	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil && logFilePtr != nil {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
 			fmt.Println("Error creating log file: " + *logFilePtr)
