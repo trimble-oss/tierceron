@@ -15,10 +15,13 @@ import (
 	"strings"
 	"time"
 
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -113,11 +116,20 @@ func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentCo
 	var err error
 	var vaultAddress *string
 
-	if featherCtx != nil {
-		vaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 0")
-		vaultAddress, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+	// Chewbacca: scrub before checkin
+	// if true {
+	// 	vaddress := os.Getenv("VAULT_ADDR")
+	// 	vaultAddress = &vaddress
+	// }
+	//	Chewbacca: end scrub
+
+	if eUtils.RefLength(vaultAddress) == 0 {
+		if featherCtx != nil {
+			vaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 0")
+			vaultAddress, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+		}
 	}
 	return vaultAddress, err
 }
@@ -166,70 +178,90 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
 	}
 	var vaultAddressPtr *string
+	var configRolePtr *string
+	var pubRolePtr *string
+	var pluginAnyPtr *string
 
-	if featherCtx != nil {
-		vaultAddressPtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
-		vaultAddressPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
-	}
-	if err != nil {
-		return trcshConfig, err
+	// Chewbacca: scrub before checkin
+	// if true {
+	// 	vaultAddress := os.Getenv("VAULT_ADDR")
+	// 	configRole := os.Getenv("CONFIG_ROLE")
+	// 	pubRole := os.Getenv("PUB_ROLE")
+	// 	pluginAny := os.Getenv("PLUGIN_ANY")
+	// 	vaultAddressPtr = &vaultAddress
+	// 	configRolePtr = &configRole
+	// 	pubRolePtr = &pubRole
+	// 	pluginAnyPtr = &pluginAny
+	// }
+	//	Chewbacca: end scrub
+
+	if eUtils.RefLength(vaultAddressPtr) == 0 {
+		if featherCtx != nil {
+			vaultAddressPtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
+			vaultAddressPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+		}
+		if !kernelopts.BuildOptions.IsKernel() && err != nil {
+			var addrPort string
+			var env, envContext string
+
+			fmt.Println(err)
+			//Env should come from command line - not context here. but addr port is needed.
+			trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
+			if err != nil {
+				fmt.Println(err)
+				return trcshConfig, err
+			}
+			vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
+			vaultAddressPtr = &vAddr
+			trcshDriverConfig.DriverConfig.CoreConfig.Env = env
+			trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
+		}
 	}
 	memprotectopts.MemProtect(nil, vaultAddressPtr)
-
-	if err != nil {
-		var addrPort string
-		var env, envContext string
-
-		fmt.Println(err)
-		//Env should come from command line - not context here. but addr port is needed.
-		trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
-		if err != nil {
-			fmt.Println(err)
-			return trcshConfig, err
-		}
-		vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
-		vaultAddressPtr = &vAddr
-		trcshDriverConfig.DriverConfig.CoreConfig.Env = env
-		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
-	}
-
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr = vaultAddressPtr
 	memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 
-	var configRolePtr *string
-	if featherCtx != nil {
-		configRolePtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
-		configRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
-	}
-	if err != nil {
-		return trcshConfig, err
+	if eUtils.RefLength(configRolePtr) == 0 {
+		if featherCtx != nil {
+			configRolePtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
+			configRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
+		}
+		if err != nil {
+			return trcshConfig, err
+		}
 	}
 	memprotectopts.MemProtect(nil, configRolePtr)
 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
 
-	if featherCtx == nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
-		pubRolePtr, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
-		if err != nil {
-			return trcshConfig, err
+	if eUtils.RefLength(pubRolePtr) == 0 {
+		if featherCtx == nil {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
+			pubRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
+			if err != nil {
+				return trcshConfig, err
+			}
 		}
-		memprotectopts.MemProtect(nil, pubRolePtr)
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
 	}
+	memprotectopts.MemProtect(nil, pubRolePtr)
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
 
-	if featherCtx == nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 6")
-		tokenPtr, err := capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
+	if eUtils.RefLength(pluginAnyPtr) == 0 {
+		if featherCtx == nil {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 6")
+			pluginAnyPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
+			if err != nil {
+				return trcshConfig, err
+			}
+			memprotectopts.MemProtect(nil, pluginAnyPtr)
+			trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
+		}
 		if err != nil {
 			return trcshConfig, err
 		}
-		trcshConfig.TokenCache.AddToken("config_token_pluginany", tokenPtr)
-	}
-	if err != nil {
-		return trcshConfig, err
 	}
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth complete.")
