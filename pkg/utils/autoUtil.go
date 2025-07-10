@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
@@ -147,8 +148,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if RefLength(wantedTokenNamePtr) > 0 {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*wantedTokenNamePtr)
 	}
-	if tokenPtr == nil && RefLength(*tokenProvidedPtr) > 0 {
-		if !driverConfig.CoreConfig.IsShell && tokenProvidedPtr != nil {
+	if tokenPtr == nil && tokenProvidedPtr != nil && RefLength(*tokenProvidedPtr) > 0 {
+		if !driverConfig.CoreConfig.IsShell {
 			driverConfig.CoreConfig.CurrentTokenNamePtr = wantedTokenNamePtr
 		}
 		tokenPtr = *tokenProvidedPtr
@@ -166,7 +167,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			// 3. both not nil and equal
 			RefRefEquals(wantedTokenNamePtr, driverConfig.CoreConfig.CurrentTokenNamePtr)) {
 		// For token based auth, auto auth not
-		*tokenProvidedPtr = tokenPtr
+		if tokenProvidedPtr != nil {
+			*tokenProvidedPtr = tokenPtr
+		}
 		return nil
 	}
 	var err error
@@ -181,7 +184,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if RefLength(roleEntityPtr) == 0 {
 		roleEntityPtr = new(string)
 	}
-	if len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0 {
+	if !kernelopts.BuildOptions.IsKernel() && len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0 {
 		if driverConfig.IsShellSubProcess {
 			return errors.New("required azure deploy approle and secret are missing")
 		}
@@ -221,7 +224,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
+		if override || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") || kernelopts.BuildOptions.IsKernel() {
 			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
@@ -297,7 +300,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if (override && !exists) || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
+		} else if (override && !exists) || kernelopts.BuildOptions.IsKernel() || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
 			if !driverConfig.CoreConfig.IsShell {
 				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
@@ -322,7 +325,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !driverConfig.CoreConfig.IsProd() && (!override || exists) && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
+		if !driverConfig.CoreConfig.IsProd() && (!override || exists) && !kernelopts.BuildOptions.IsKernel() && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
 			// Get current user's home directory
 			userHome, err := userHome(driverConfig.CoreConfig.Log)
 			if err != nil {
@@ -499,7 +502,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		tokenPtr = &token
 		driverConfig.CoreConfig.CurrentTokenNamePtr = wantedTokenNamePtr
 		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
-		*tokenProvidedPtr = tokenPtr
+		if tokenProvidedPtr != nil {
+			*tokenProvidedPtr = tokenPtr
+		}
 	}
 	LogInfo(driverConfig.CoreConfig, "Auth credentials obtained.")
 	return nil

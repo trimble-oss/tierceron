@@ -28,7 +28,7 @@ func (trcshConfig *TrcShConfig) IsValid(agentConfigs *AgentConfigs) bool {
 			return true
 		} else {
 			// Agent
-			return eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("bamboo")) > 0 && eUtils.RefLength(trcshConfig.TokenCache.VaultAddressPtr) > 0
+			return trcshConfig.TokenCache != nil && eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("bamboo")) > 0 && eUtils.RefLength(trcshConfig.TokenCache.VaultAddressPtr) > 0
 		}
 	}
 }

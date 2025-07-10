@@ -73,8 +73,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			// Swapping in project root...
 			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 			approle := "config.yml"
-			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &approle, false)
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, nil, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &approle, false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
@@ -177,7 +176,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 	// Swapping in project root...
 	tokenPtr := new(string)
 	tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
-	if !isShellRunner {
+	if !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 		roleEntity := "config.yml"
 		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &roleEntity, false)

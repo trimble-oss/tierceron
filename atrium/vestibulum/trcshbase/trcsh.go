@@ -136,6 +136,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	var trcshMemFs trcshio.MemoryFileSystem = nil
 	var shellRunner func(*config.DriverConfig, string, string)
 	isEditor := false
+
 	if driverConfigPtr != nil {
 		if driverConfigPtr.CoreConfig != nil {
 			if driverConfigPtr.CoreConfig.TokenCache != nil &&
@@ -646,7 +647,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		shutdown := make(chan bool)
 
-		if !isShellRunner {
+		if !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 			fmt.Printf("drone trcsh beginning new agent configuration sequence.\n")
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		} else {
@@ -706,9 +707,23 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if !gTrcshConfig.IsShellRunner {
 			fmt.Println("Drone trcsh agent bootstrap successful.")
 			driverConfigPtr.CoreConfig.Log.Println("Drone trcsh agent bootstrap successful.")
-		} else {
-			gTokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
 		}
+		if kernelopts.BuildOptions.IsKernel() {
+			authTokenEnv := agentEnv
+			roleEntity := "bamboo"
+			authTokenName := fmt.Sprintf("config_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+			trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+
+			// Pre cache wanted token.
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &authTokenName, nil, &authTokenEnv, &trcshEnvBasis, &roleEntity, false)
+			if autoErr != nil {
+				fmt.Printf("trcsh agent bootstrap agent auth failure: %s\n", autoErr.Error())
+				driverConfigPtr.CoreConfig.Log.Printf("trcsh agent bootstrap agent auth failure: %s\n", autoErr.Error())
+				os.Exit(124)
+			}
+		}
+
+		gTokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
 
 		if eUtils.IsWindows() {
 			if !fromWinCred {
