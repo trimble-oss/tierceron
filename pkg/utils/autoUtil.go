@@ -445,7 +445,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	}
 
-	if len(*wantedTokenNamePtr) > 0 && RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 {
+	if len(*wantedTokenNamePtr) > 0 && (RefLength(driverConfig.CoreConfig.CurrentTokenNamePtr) == 0 || !RefRefEquals(wantedTokenNamePtr, driverConfig.CoreConfig.CurrentTokenNamePtr)) {
 		if len((*appRoleSecret)[0]) == 0 || len((*appRoleSecret)[1]) == 0 {
 			return errors.New("need both public and secret app role to retrieve token from vault")
 		}
