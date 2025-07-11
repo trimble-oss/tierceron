@@ -170,10 +170,12 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
 	}
 
-	if utils.RefLength(addrPtr) == 0 {
-		eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	if !kernelopts.BuildOptions.IsKernel() {
+		if utils.RefLength(addrPtr) == 0 {
+			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		}
 	}
 
 	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
