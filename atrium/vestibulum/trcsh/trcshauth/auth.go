@@ -244,10 +244,12 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			if err != nil {
 				return trcshConfig, err
 			}
+			memprotectopts.MemProtect(nil, pubRolePtr)
 		}
 	}
-	memprotectopts.MemProtect(nil, pubRolePtr)
-	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
+	if eUtils.RefLength(pubRolePtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
+	}
 
 	if eUtils.RefLength(pluginAnyPtr) == 0 {
 		if featherCtx == nil {
@@ -257,11 +259,13 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 				return trcshConfig, err
 			}
 			memprotectopts.MemProtect(nil, pluginAnyPtr)
-			trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 		}
 		if err != nil {
 			return trcshConfig, err
 		}
+	}
+	if eUtils.RefLength(pluginAnyPtr) > 0 {
+		trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 	}
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth complete.")

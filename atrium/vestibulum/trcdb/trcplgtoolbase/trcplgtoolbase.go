@@ -794,6 +794,7 @@ func CommonMain(envPtr *string,
 			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0600)
 			if err != nil {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Could not load plugin due to bad deploy path in certification: %s\n", pathToSO)
 				return err
 			}
 			defer f.Close()
@@ -819,7 +820,7 @@ func CommonMain(envPtr *string,
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
-						if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshpluginservice" {
+						if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
 							pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
 						}
 						pluginHandler.Signature = sha

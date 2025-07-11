@@ -93,6 +93,10 @@ func CommonMain(envDefaultPtr *string,
 	driverConfig.CoreConfig.Log = log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 	if utils.RefLength(addrPtr) == 0 {
 		eUtils.ReadAuthParts(driverConfig, false)
+		if utils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
+			fmt.Println("Missing required vault address")
+			return errors.New("Missing required vault address")
+		}
 	} else {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
