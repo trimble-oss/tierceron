@@ -206,8 +206,8 @@ func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (str
 func QueryN(te *engine.TierceronEngine, query string, queryID uint64, bitlock bitcore.BitLock) (string, []string, [][]any, error) {
 	// Create a test memory database and register it to the default engine.
 
-	if strings.Contains(query, "%s.") {
-		query = fmt.Sprintf(query, te.Database.Name())
+	if strings.Contains(query, "FROM %s.") {
+		query = strings.Replace(query, "FROM %s.", fmt.Sprintf("FROM %s.", te.Database.Name()), -1)
 	}
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
 	//ctx := sql.NewContext(context.Background()).WithCurrentDB(te.Database.Name())
