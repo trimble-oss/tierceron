@@ -382,6 +382,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
+			tcfContext.GoMod.Env = tcfContext.GoMod.EnvBasis
 			tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
 			tfmFlumeContext.ProcessFlow(
@@ -443,6 +444,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
+			tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
 			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tFlow.TableName())
 			dataMap, readErr := tfContext.GoMod.ReadData(flowPath)
 			if readErr == nil && len(dataMap) > 0 {
@@ -511,6 +513,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
+			tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
 
 			tfmContext.ProcessFlow(
 				&tfContext,
@@ -537,6 +540,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					eUtils.LogErrorMessage(dc.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 					return
 				}
+				tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
 
 				tfmc.ProcessFlow(
 					&tfContext,
