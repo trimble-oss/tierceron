@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -228,7 +229,7 @@ func CommonMain(envDefaultPtr *string,
 
 	var currentRoleEntityPtr *string
 	var driverConfigBase *config.DriverConfig
-	if driverConfig.CoreConfig.IsShell {
+	if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
@@ -595,7 +596,7 @@ func CommonMain(envDefaultPtr *string,
 	if driverConfig == nil {
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		close(configCtx.ResultChannel)
-	} else if driverConfig.CoreConfig.IsShell {
+	} else if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		// Just shut down result channel since not really used in shell..
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		select {
