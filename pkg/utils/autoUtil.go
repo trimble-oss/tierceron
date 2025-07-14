@@ -301,7 +301,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 
 			dump = []byte(certConfigData)
 		} else if (override && !exists) || kernelopts.BuildOptions.IsKernel() || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
-			if !driverConfig.CoreConfig.IsShell {
+			if !driverConfig.CoreConfig.IsShell && !kernelopts.BuildOptions.IsKernel() {
 				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
 		} else {

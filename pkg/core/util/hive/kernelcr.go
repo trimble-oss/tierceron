@@ -485,6 +485,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 		driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 		return
 	}
+	kernelmod.Env = kernelmod.EnvBasis
 	if kernelvault != nil {
 		defer kernelvault.Close()
 	}
@@ -791,6 +792,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 				return
 			}
+			kernelmod.Env = kernelmod.EnvBasis
 			if kernelvault != nil {
 				defer kernelvault.Close()
 			}

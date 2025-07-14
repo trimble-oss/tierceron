@@ -143,8 +143,12 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 }
 
 func processTrcdb(trcdbExchange *core.TrcdbExchange) {
-	if trcdbExchange == nil || tfmContext == nil {
-		configContext.Log.Println("Invalid TrcdbExchange received, shutting down Trcdb processing.")
+	if tfmContext == nil {
+		configContext.Log.Printf("trcdb - Request receive before initialization.")
+		return
+	}
+	if trcdbExchange == nil {
+		configContext.Log.Printf("Invalid TrcdbExchange received, ignoring request.")
 		return
 	}
 	if len(trcdbExchange.Flows) > 0 {

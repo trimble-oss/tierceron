@@ -47,6 +47,7 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 		return driverConfig, nil, nil, err
 	}
 	mod.Env = driverConfig.CoreConfig.Env
+	mod.EnvBasis = driverConfig.CoreConfig.EnvBasis
 	mod.Version = "0"
 	mod.VersionFilter = driverConfig.VersionFilter
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod complete..")

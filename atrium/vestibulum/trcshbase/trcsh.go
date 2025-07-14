@@ -89,6 +89,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	pathParam string,
 	useMemCache bool,
 	outputMemCache bool,
+	isShell bool,
 	logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
@@ -165,7 +166,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	trcshDriverConfig := &capauth.TrcshDriverConfig{
 		DriverConfig: &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
-				IsShell:       true,
+				IsShell:       isShell,
 				IsEditor:      isEditor,
 				TokenCache:    gTokenCache,
 				Insecure:      false,
@@ -254,7 +255,14 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	dronePtr *bool,
 	projectService ...*string) {
 
-	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, env, region, "", useMemCache, outputMemCache)
+	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+		env,
+		region,
+		"",
+		useMemCache,
+		outputMemCache,
+		false, // isShell
+	)
 	if err != nil {
 		fmt.Printf("Initialization setup error: %s\n", err.Error())
 	}
@@ -400,7 +408,14 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		var pathParam = os.Getenv("PATH_PARAM")
-		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr, *envPtr, *regionPtr, pathParam, true, true)
+		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+			*envPtr,
+			*regionPtr,
+			pathParam,
+			true, // useMemCache
+			true, // outputMemCache
+			true, // isShell
+		)
 		if err != nil {
 			fmt.Printf("trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
@@ -660,7 +675,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			"",
 			true,                               // useMemCache
 			kernelopts.BuildOptions.IsKernel(), // outputMemCache
-			driverConfigPtr.CoreConfig.Log)
+			false,                              // isShell
+			driverConfigPtr.CoreConfig.Log,
+		)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh agent bootstrap init config failure: %s\n", err.Error())
@@ -1279,8 +1296,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	}
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Logging initialized for env:%s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 
-	// TODO: Skip this sections for isShell
-	if !gTrcshConfig.IsShellRunner {
+	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		var err error
 		// vaultAddress, err := trcshauth.TrcshVAddress(featherCtx, gAgentConfig, trcshDriverConfig)
 		// Chewbacca: scrub before checkin
