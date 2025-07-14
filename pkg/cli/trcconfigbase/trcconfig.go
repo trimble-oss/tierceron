@@ -211,7 +211,7 @@ func CommonMain(envDefaultPtr *string,
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
-	if !isShell {
+	if !isShell && !kernelopts.BuildOptions.IsKernel() {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required template folder: " + *startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
