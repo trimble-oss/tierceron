@@ -236,6 +236,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	}
 	memprotectopts.MemProtect(nil, configRolePtr)
 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", configRolePtr) // alias to old name.
 
 	if eUtils.RefLength(pubRolePtr) == 0 {
 		if featherCtx == nil {
