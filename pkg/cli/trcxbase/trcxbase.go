@@ -135,6 +135,7 @@ func CommonMain(ctx config.ProcessContext,
 		}
 	} else {
 		driverConfigBase = driverConfig
+		driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
 
 	// Initialize logging

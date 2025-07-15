@@ -129,8 +129,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	roleEntityPtr *string,
 	ping bool) error {
 	// Declare local variables
-	var override bool
-	var exists bool
 	var v *sys.Vault
 
 	var appRoleSecret *[]string
@@ -174,37 +172,14 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 	var err error
 
-	// New values available for the cert file
-	if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
-		override = true
-	}
-
 	// If cert file exists obtain secretID and appRoleID
 	var cEnvCtx string
 	if RefLength(roleEntityPtr) == 0 {
 		roleEntityPtr = new(string)
 	}
-	if !kernelopts.BuildOptions.IsKernel() && len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0 {
-		if driverConfig.IsShellSubProcess {
-			return errors.New("required azure deploy approle and secret are missing")
-		}
-		var errAuth error
-		readAuthParts := !override && (RefLength(tokenPtr) == 0 ||
-			!RefEquals(driverConfig.CoreConfig.CurrentTokenNamePtr, *wantedTokenNamePtr))
 
-		exists, cEnvCtx, errAuth = ReadAuthParts(driverConfig, readAuthParts)
-		if errAuth != nil {
-			return errAuth
-		} else {
-			appRoleSecretFromCert := driverConfig.CoreConfig.TokenCache.GetRoleStr(driverConfig.CoreConfig.CurrentRoleEntityPtr)
-			if RefLength(addrPtr) == 0 {
-				addrPtr = driverConfig.CoreConfig.TokenCache.VaultAddressPtr
-			}
-			if appRoleSecretFromCert != nil {
-				appRoleSecret = appRoleSecretFromCert
-			}
-		}
-	}
+	IsCmdLineTool := driverConfig.CoreConfig.IsEditor || (!driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel()))
+	IsApproleEmpty := len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
 	// If no token provided but context is provided, prefer the context over env.
 	if tokenPtr == nil &&
@@ -217,145 +192,180 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	}
 
-	// Overriding or first time access: request IDs and create cert file
-	if override || !exists {
+	if IsCmdLineTool {
+		var override bool
+		var exists bool
 		var vaultHost string
 		var secretID string
 		var approleID string
-		var dump []byte
 
-		if override || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") || kernelopts.BuildOptions.IsKernel() {
-			// Nothing...
-		} else {
-			scanner := bufio.NewScanner(os.Stdin)
-			// Enter ID tokens
-			if !driverConfig.CoreConfig.IsProd() {
-				LogInfo(driverConfig.CoreConfig, "No cert file found, please enter config IDs")
-			} else {
-				LogInfo(driverConfig.CoreConfig, "Please enter config IDs")
-			}
-			if addrPtr != nil && *addrPtr != "" {
-				LogInfo(driverConfig.CoreConfig, "vaultHost: "+*addrPtr)
-				vaultHost = *addrPtr
-			} else {
-				LogInfo(driverConfig.CoreConfig, "vaultHost: ")
-				scanner.Scan()
-				vaultHost = scanner.Text()
-			}
+		if RefLength(addrPtr) > 0 && RefLength(tokenPtr) > 0 {
+			return nil
+		}
 
-			if RefLength(tokenPtr) == 0 {
-				if len((*appRoleSecret)[1]) > 0 {
-					secretID = (*appRoleSecret)[1]
-				} else {
-					LogInfo(driverConfig.CoreConfig, "secretID: ")
-					scanner.Scan()
-					secretID = scanner.Text()
-					(*appRoleSecret)[1] = secretID
+		// New values available for the cert file
+		if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
+			override = true
+		}
+
+		// If the appRoleSecret is empty, we need to read the auth parts from cert if it exists
+		if IsApproleEmpty {
+			var errAuth error
+			readAuthParts := !override && (RefLength(tokenPtr) == 0 ||
+				!RefEquals(driverConfig.CoreConfig.CurrentTokenNamePtr, *wantedTokenNamePtr))
+
+			exists, cEnvCtx, errAuth = ReadAuthParts(driverConfig, readAuthParts)
+			if errAuth != nil {
+				return errAuth
+			} else {
+				appRoleSecretFromCert := driverConfig.CoreConfig.TokenCache.GetRoleStr(driverConfig.CoreConfig.CurrentRoleEntityPtr)
+				if RefLength(addrPtr) == 0 {
+					addrPtr = driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 				}
-
-				if len((*appRoleSecret)[0]) > 0 {
-					secretID = (*appRoleSecret)[1]
-				} else {
-					LogInfo(driverConfig.CoreConfig, "approleID: ")
-					scanner.Scan()
-					approleID = scanner.Text()
-					(*appRoleSecret)[0] = secretID
+				if appRoleSecretFromCert != nil {
+					appRoleSecret = appRoleSecretFromCert
 				}
 			}
+			// Re-evaluate
+			IsApproleEmpty = len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
-			if strings.HasPrefix(vaultHost, "http://") {
-				vaultHost = strings.Replace(vaultHost, "http://", "https://", 1)
-			} else if !strings.HasPrefix(vaultHost, "https://") {
-				vaultHost = "https://" + vaultHost
-			}
-			*addrPtr = vaultHost
-
-			// Checks that the scanner is working
-			if err := scanner.Err(); err != nil {
-				return err
-			}
-		}
-		if driverConfig.CoreConfig.IsShell {
-			driverConfig.CoreConfig.Log.Printf("Auth connecting to vault @ %s and env: %s\n", *addrPtr, *envPtr)
-		} else {
-			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
-		}
-		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
-		if v != nil {
-			defer v.Close()
-		} else {
-			if ping {
+			if RefLength(addrPtr) > 0 && RefLength(tokenPtr) > 0 {
 				return nil
 			}
-		}
-		if err != nil {
-			return err
-		}
 
-		// Get dump
-		if override && exists {
-			certConfigData := "vaultHost: " + *addrPtr + "\n"
-			if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
-				certConfigData = certConfigData + "approleID: " + (*appRoleSecret)[0] + "\nsecretID: " + (*appRoleSecret)[1]
-			}
+			if !override && !exists {
+				scanner := bufio.NewScanner(os.Stdin)
+				// Enter ID tokens
+				if !driverConfig.CoreConfig.IsProd() {
+					fmt.Println("No cert file found, please enter config IDs")
+				} else {
+					fmt.Println(driverConfig.CoreConfig, "Please enter config IDs")
+				}
+				if addrPtr != nil && *addrPtr != "" {
+					fmt.Println("vaultHost: " + *addrPtr)
+					vaultHost = *addrPtr
+				} else {
+					fmt.Print("vaultHost: ")
+					scanner.Scan()
+					vaultHost = scanner.Text()
+				}
 
-			dump = []byte(certConfigData)
-		} else if (override && !exists) || kernelopts.BuildOptions.IsKernel() || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
-			if !driverConfig.CoreConfig.IsShell && !kernelopts.BuildOptions.IsKernel() {
-				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
-			}
-		} else {
-			// Get current user's home directory
-			userHome, err := userHome(driverConfig.CoreConfig.Log)
-			if err != nil {
-				return err
-			}
-			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
+				if RefLength(tokenPtr) == 0 {
+					if len((*appRoleSecret)[1]) > 0 {
+						secretID = (*appRoleSecret)[1]
+					} else {
+						fmt.Print("secretID: ")
+						scanner.Scan()
+						secretID = scanner.Text()
+						(*appRoleSecret)[1] = secretID
+					}
 
-			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
-			certConfigData := "vaultHost: " + vaultHost + "\n"
-			if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
-				certConfigData = certConfigData + "approleID: " + (*appRoleSecret)[0] + "\nsecretID: " + (*appRoleSecret)[1]
-			}
+					if len((*appRoleSecret)[0]) > 0 {
+						secretID = (*appRoleSecret)[1]
+					} else {
+						fmt.Print("approleID: ")
+						scanner.Scan()
+						approleID = scanner.Text()
+						(*appRoleSecret)[0] = secretID
+					}
+				}
 
-			if envCtxPtr != nil {
-				certConfigData = certConfigData + "\nenvCtx: " + *envCtxPtr
-			}
-			dump = []byte(certConfigData)
-		}
+				if strings.HasPrefix(vaultHost, "http://") {
+					vaultHost = strings.Replace(vaultHost, "http://", "https://", 1)
+				} else if !strings.HasPrefix(vaultHost, "https://") {
+					vaultHost = "https://" + vaultHost
+				}
+				*addrPtr = vaultHost
 
-		// Do not save IDs if overriding and no approle file exists
-		if !driverConfig.CoreConfig.IsProd() && (!override || exists) && !kernelopts.BuildOptions.IsKernel() && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
-			// Get current user's home directory
-			userHome, err := userHome(driverConfig.CoreConfig.Log)
-			if err != nil {
-				return err
-			}
-			driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
-
-			// Create hidden folder
-			if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
-				err = os.MkdirAll(userHome+"/.tierceron", 0700)
-				if err != nil {
+				// Checks that the scanner is working
+				if err := scanner.Err(); err != nil {
 					return err
 				}
 			}
+			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
 
-			// Create cert file
-			writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
-			if writeErr != nil {
-				LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Unable to write file: %v\n", writeErr))
+			v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+			if v != nil {
+				defer v.Close()
+			} else {
+				if ping {
+					return nil
+				}
 			}
-		}
+			if err != nil {
+				return err
+			}
 
-		// Set config IDs
-		if !override {
-			if len(approleID) > 0 && len(secretID) > 0 {
-				role := []string{approleID, secretID}
-				driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &role)
+			if override || !exists {
+				var dump []byte
+
+				// Get dump
+				if override && exists {
+					certConfigData := "vaultHost: " + *addrPtr + "\n"
+					if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
+						certConfigData = certConfigData + "approleID: " + (*appRoleSecret)[0] + "\nsecretID: " + (*appRoleSecret)[1]
+					}
+
+					dump = []byte(certConfigData)
+				} else {
+					// Get current user's home directory
+					userHome, err := userHome(driverConfig.CoreConfig.Log)
+					if err != nil {
+						return err
+					}
+					driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
+
+					LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Creating new cert file in %s", userHome+"/.tierceron/config.yml \n"))
+					certConfigData := "vaultHost: " + vaultHost + "\n"
+					if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
+						certConfigData = certConfigData + "approleID: " + (*appRoleSecret)[0] + "\nsecretID: " + (*appRoleSecret)[1]
+					}
+
+					if envCtxPtr != nil {
+						certConfigData = certConfigData + "\nenvCtx: " + *envCtxPtr
+					}
+					dump = []byte(certConfigData)
+				}
+
+				// Do not save IDs if overriding and no approle file exists
+				if !driverConfig.CoreConfig.IsProd() &&
+					(!override || exists) {
+					// Get current user's home directory
+					userHome, err := userHome(driverConfig.CoreConfig.Log)
+					if err != nil {
+						return err
+					}
+					driverConfig.CoreConfig.Log.Printf("User home directory %v ", userHome)
+
+					// Create hidden folder
+					if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
+						err = os.MkdirAll(userHome+"/.tierceron", 0700)
+						if err != nil {
+							return err
+						}
+					}
+
+					// Create cert file
+					writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
+					if writeErr != nil {
+						LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Unable to write file: %v\n", writeErr))
+					}
+				}
+
+				// Set config IDs
+				if !override {
+					if len(approleID) > 0 && len(secretID) > 0 {
+						role := []string{approleID, secretID}
+						driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &role)
+					}
+				}
 			}
 		}
 	} else {
+		if driverConfig.IsShellSubProcess {
+			return errors.New("required azure deploy approle and secret are missing")
+		}
+
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
 			fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
 		}
@@ -379,7 +389,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	//if using appRole
-	if len((*appRoleSecret)[0]) > 0 || len((*appRoleSecret)[1]) > 0 && *wantedTokenNamePtr != "" {
+	if !IsApproleEmpty && *wantedTokenNamePtr == "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
