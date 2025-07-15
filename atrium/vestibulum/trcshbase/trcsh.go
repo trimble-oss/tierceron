@@ -1156,13 +1156,15 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 						if err != nil {
 							trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
 							time.Sleep(time.Second)
-							if retries >= 7 {
+							if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
 								fmt.Printf("pipeline auth setup failure.  Cannot continue.\n")
 								os.Exit(124) // Setup problem.
 							}
 							continue
+						} else {
+							time.Sleep(time.Second)
 						}
-						if retries >= 7 {
+						if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
 							fmt.Printf("pipeline auth setup partial failure.  Cannot continue.\n")
 							os.Exit(124) // Setup problem.
 						}
@@ -1366,14 +1368,16 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
 				time.Sleep(time.Second)
 				retries = retries + 1
-				if retries >= 7 {
+				if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
 					fmt.Printf("pipeline auth setup failure.  Cannot continue.\n")
 					os.Exit(124) // Setup problem.
 				}
 				continue
+			} else {
+				time.Sleep(time.Second)
 			}
 			retries = retries + 1
-			if retries >= 7 {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
 				fmt.Printf("pipeline auth setup partial failure.  Cannot continue.\n")
 				os.Exit(124) // Setup problem.
 			}
