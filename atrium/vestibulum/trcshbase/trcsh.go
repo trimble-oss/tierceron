@@ -1142,13 +1142,13 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		if gAgentConfig == nil {
 
 			var errAgentLoad error
-			if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) || eUtils.RefLength(gTrcshConfig.TokenCache.GetToken("config_token_pluginany")) == 0 {
+			if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) || eUtils.RefLength(gTrcshConfig.TokenCache.GetToken("config_token_pluginany")) == 0 {
 				// Chewbacca: Consider removing as this should have already
 				// been done earlier in the process.
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Unexpected invalid trcshConfig.  Attempting recovery.")
 				retries := 0
 				for {
-					if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) {
+					if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
 						var err error
 						// Loop until we have something usable...
 						gTrcshConfig, err = trcshauth.TrcshAuth(nil, gAgentConfig, trcshDriverConfig)
@@ -1354,7 +1354,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Bootstrap..")
 	var err error
 	for {
-		if gTrcshConfig == nil || !gTrcshConfig.IsValid(gAgentConfig) {
+		if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
 			// Loop until we have something usable...
 			gTrcshConfig, err = trcshauth.TrcshAuth(featherCtx, gAgentConfig, trcshDriverConfig)
 			if err != nil {
