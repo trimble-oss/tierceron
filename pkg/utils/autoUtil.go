@@ -222,6 +222,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 					appRoleSecret = appRoleSecretFromCert
 				}
 			}
+			// Re-evaluate
+			IsApproleEmpty = len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
 			if !override && !exists {
 				scanner := bufio.NewScanner(os.Stdin)
@@ -379,7 +381,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	//if using appRole
-	if !IsApproleEmpty && *wantedTokenNamePtr != "" {
+	if !IsApproleEmpty && *wantedTokenNamePtr == "" {
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
 			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Environment format error: %v\n", envErr), false)
