@@ -1152,15 +1152,21 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 						var err error
 						// Loop until we have something usable...
 						gTrcshConfig, err = trcshauth.TrcshAuth(nil, gAgentConfig, trcshDriverConfig)
+						retries = retries + 1
 						if err != nil {
 							trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
 							time.Sleep(time.Second)
-							retries = retries + 1
-							if retries >= 7 {
-								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.\n")
+							if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
+								fmt.Printf("pipeline auth setup failure.  Cannot continue.\n")
 								os.Exit(124) // Setup problem.
 							}
 							continue
+						} else {
+							time.Sleep(time.Second)
+						}
+						if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
+							fmt.Printf("pipeline auth setup partial failure.  Cannot continue.\n")
+							os.Exit(124) // Setup problem.
 						}
 						trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 					} else {
@@ -1353,6 +1359,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	}
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Bootstrap..")
 	var err error
+	retries := 0
 	for {
 		if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
 			// Loop until we have something usable...
@@ -1360,7 +1367,19 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			if err != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
 				time.Sleep(time.Second)
+				retries = retries + 1
+				if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
+					fmt.Printf("pipeline auth setup failure.  Cannot continue.\n")
+					os.Exit(124) // Setup problem.
+				}
 				continue
+			} else {
+				time.Sleep(time.Second)
+			}
+			retries = retries + 1
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
+				fmt.Printf("pipeline auth setup partial failure.  Cannot continue.\n")
+				os.Exit(124) // Setup problem.
 			}
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		} else {

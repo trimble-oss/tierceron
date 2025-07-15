@@ -259,6 +259,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	if eUtils.RefLength(pubRolePtr) > 0 && strings.Contains(*pubRolePtr, ":") {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", pubRolePtr) // alias to old name.
 	}
 
 	if eUtils.RefLength(pluginAnyPtr) == 0 {
