@@ -1157,13 +1157,13 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 							trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
 							time.Sleep(time.Second)
 							if retries >= 7 {
-								fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.\n")
+								fmt.Printf("pipeline auth setup failure.  Cannot continue.\n")
 								os.Exit(124) // Setup problem.
 							}
 							continue
 						}
 						if retries >= 7 {
-							fmt.Printf("Invalid trcshConfig.  Cannot continue.\n")
+							fmt.Printf("pipeline auth setup partial failure.  Cannot continue.\n")
 							os.Exit(124) // Setup problem.
 						}
 						trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
@@ -1367,14 +1367,14 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				time.Sleep(time.Second)
 				retries = retries + 1
 				if retries >= 7 {
-					fmt.Printf("Unexpected nil trcshConfig.  Cannot continue.\n")
+					fmt.Printf("pipeline auth setup failure.  Cannot continue.\n")
 					os.Exit(124) // Setup problem.
 				}
 				continue
 			}
 			retries = retries + 1
 			if retries >= 7 {
-				fmt.Printf("Unexpected nil trcshConfig field.  Cannot continue.\n")
+				fmt.Printf("pipeline auth setup partial failure.  Cannot continue.\n")
 				os.Exit(124) // Setup problem.
 			}
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
