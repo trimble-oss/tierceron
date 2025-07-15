@@ -113,6 +113,10 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.EndDir = *endDirPtr
 		}
 		currentRoleEntityPtr = driverConfig.CoreConfig.CurrentRoleEntityPtr
+		if eUtils.RefLength(currentRoleEntityPtr) == 0 {
+			roleEntity := "bamboo"
+			currentRoleEntityPtr = &roleEntity
+		}
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
