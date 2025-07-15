@@ -2,6 +2,7 @@ package utils
 
 import (
 	"runtime"
+	"strings"
 )
 
 func IsWindows() bool {
@@ -26,6 +27,22 @@ func RefRefEquals(src *string, dest *string) bool {
 		return false
 	}
 	return *src == *dest
+}
+
+func RefRefHasPrefix(src *string, prefix *string) bool {
+	if src == nil && prefix == nil {
+		return true
+	} else if src == nil || prefix == nil {
+		return false
+	}
+	return strings.HasPrefix(*src, *prefix)
+}
+
+func RefContains(src *string, contains string) bool {
+	if src == nil {
+		return false
+	}
+	return strings.Contains(*src, contains)
 }
 
 func RefEqualsAny(src *string, dest []string) bool {

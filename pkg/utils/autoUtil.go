@@ -153,7 +153,13 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		tokenPtr = *tokenProvidedPtr
 		// Make thebig assumption here.
 		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
+	} else if driverConfig.CoreConfig.IsEditor &&
+		RefContains(driverConfig.CoreConfig.CurrentTokenNamePtr, "unrestricted") {
+		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr)
+		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
+		return nil
 	}
+
 	if RefLength(tokenPtr) != 0 &&
 		!RefEquals(addrPtr, "") &&
 		!RefEquals(roleEntityPtr, "deployauth") &&
@@ -178,7 +184,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		roleEntityPtr = new(string)
 	}
 
-	IsCmdLineTool := driverConfig.CoreConfig.IsEditor || (!driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel()))
+	IsCmdLineTool := !driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel())
 	IsApproleEmpty := len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
 	// If no token provided but context is provided, prefer the context over env.
@@ -198,10 +204,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		var vaultHost string
 		var secretID string
 		var approleID string
-
-		if RefLength(addrPtr) > 0 && RefLength(tokenPtr) > 0 {
-			return nil
-		}
 
 		// New values available for the cert file
 		if len((*appRoleSecret)[0]) > 0 && len((*appRoleSecret)[1]) > 0 {
@@ -228,10 +230,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 			// Re-evaluate
 			IsApproleEmpty = len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
-
-			if RefLength(addrPtr) > 0 && RefLength(tokenPtr) > 0 {
-				return nil
-			}
 
 			if !override && !exists {
 				scanner := bufio.NewScanner(os.Stdin)
