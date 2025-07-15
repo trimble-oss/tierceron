@@ -1427,8 +1427,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			pluginMap := map[string]any{"pluginName": deployment}
 			tokenNamePtr := deployerDriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
+			roleEntity := "bamboo"
 			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(&deployerDriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, deployerDriverConfig.CoreConfig.CurrentRoleEntityPtr, false)
+			autoErr := eUtils.AutoAuth(&deployerDriverConfig, tokenNamePtr, &tokenPtr, &mergedEnvBasis, &mergedEnvBasis, &roleEntity, false)
 			if autoErr != nil {
 				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing auth components: %s.\n", deployment)
 				return
