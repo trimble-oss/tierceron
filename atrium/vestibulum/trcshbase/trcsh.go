@@ -136,6 +136,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	var trcshMemFs trcshio.MemoryFileSystem = nil
 	var shellRunner func(*config.DriverConfig, string, string)
 	isEditor := false
+	isDrone := false
 
 	if driverConfigPtr != nil {
 		if driverConfigPtr.CoreConfig != nil {
@@ -152,6 +153,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 		shellRunner = driverConfigPtr.ShellRunner
 		trcshMemFs = driverConfigPtr.MemFs
+		isDrone = driverConfigPtr.IsDrone
 	}
 	if !isEditor {
 		fmt.Println("trcsh env: " + env)
@@ -175,6 +177,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				ExitOnFailure: true,
 				Log:           providedLogger,
 			},
+			IsDrone:           isDrone,
 			IsShellSubProcess: false,
 			ShellRunner:       shellRunner,
 			ReadMemCache:      useMemCache,
@@ -375,6 +378,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	} else {
 		dronePtr = new(bool)
 		*dronePtr = true
+		driverConfigPtr.IsDrone = *dronePtr
 
 		signal.Notify(ic, os.Interrupt)
 	}
@@ -692,6 +696,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 
 			tokenPtr := new(string)
+			if dronePtr != nil {
+				trcshDriverConfig.DriverConfig.IsDrone = *dronePtr
+			}
 			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &authTokenName, &tokenPtr, &authTokenEnv, &trcshEnvBasis, &roleEntity, false)
 			if autoErr != nil || eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(authTokenName)) == 0 {
 				fmt.Println("Unable to auth.")
