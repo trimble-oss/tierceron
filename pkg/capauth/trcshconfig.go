@@ -19,8 +19,10 @@ func (trcshConfig *TrcShConfig) IsValid(trcshDriverConfig *TrcshDriverConfig, ag
 	if agentConfigs == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("brrrr....\n")
 		// Driver needs a lot more permissions to run...
-		return eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("bamboo")) > 0 &&
+		return eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("configrole")) > 0 &&
+			eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("bamboo")) > 0 &&
 			eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("pub")) > 0 &&
+			eUtils.RefSliceLength(trcshConfig.TokenCache.GetRole("pubrole")) > 0 &&
 			eUtils.RefLength(trcshConfig.KubeConfigPtr) > 0 &&
 			eUtils.RefLength(trcshConfig.TokenCache.VaultAddressPtr) > 0
 	} else {
