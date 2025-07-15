@@ -184,7 +184,16 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if RefLength(roleEntityPtr) == 0 {
 		roleEntityPtr = new(string)
 	}
-	if !kernelopts.BuildOptions.IsKernel() && len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0 {
+
+	memOnlyAuth := RefEquals(roleEntityPtr, "deployauth") ||
+		RefEquals(roleEntityPtr, "hivekernel") ||
+		driverConfig.CoreConfig.IsShell ||
+		kernelopts.BuildOptions.IsKernel()
+
+	if !driverConfig.CoreConfig.IsShell &&
+		!kernelopts.BuildOptions.IsKernel() &&
+		len((*appRoleSecret)[0]) == 0 &&
+		len((*appRoleSecret)[1]) == 0 {
 		if driverConfig.IsShellSubProcess {
 			return errors.New("required azure deploy approle and secret are missing")
 		}
@@ -224,7 +233,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		var approleID string
 		var dump []byte
 
-		if override || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") || kernelopts.BuildOptions.IsKernel() {
+		if override ||
+			memOnlyAuth {
 			// Nothing...
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
@@ -300,7 +310,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 
 			dump = []byte(certConfigData)
-		} else if (override && !exists) || kernelopts.BuildOptions.IsKernel() || RefEquals(roleEntityPtr, "deployauth") || RefEquals(roleEntityPtr, "hivekernel") {
+		} else if (override && !exists) || memOnlyAuth {
 			if !driverConfig.CoreConfig.IsShell && !kernelopts.BuildOptions.IsKernel() {
 				LogInfo(driverConfig.CoreConfig, "No approle file exists, continuing without saving config IDs")
 			}
@@ -325,7 +335,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 
 		// Do not save IDs if overriding and no approle file exists
-		if !driverConfig.CoreConfig.IsProd() && (!override || exists) && !kernelopts.BuildOptions.IsKernel() && !RefEquals(roleEntityPtr, "deployauth") && !RefEquals(roleEntityPtr, "hivekernel") {
+		if !driverConfig.CoreConfig.IsProd() &&
+			(!override || exists) &&
+			!memOnlyAuth {
 			// Get current user's home directory
 			userHome, err := userHome(driverConfig.CoreConfig.Log)
 			if err != nil {
