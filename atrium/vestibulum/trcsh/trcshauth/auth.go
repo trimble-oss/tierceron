@@ -146,43 +146,11 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		return nil, errors.New("trcsh auth: missing required auth component")
 	}
 	var err error
-
-	if prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
-		dir, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Println("No homedir for current user")
-			os.Exit(1)
-		}
-		fileBytes, err := os.ReadFile(dir + "/.kube/config")
-		if err != nil {
-			fmt.Println("No local kube config found...")
-			os.Exit(1)
-		}
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
-		kc := base64.StdEncoding.EncodeToString(fileBytes)
-		trcshConfig.KubeConfigPtr = &kc
-
-		if len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
-			return trcshConfig, nil
-		}
-	} else {
-		if featherCtx == nil {
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
-			trcshConfig.KubeConfigPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "kubeconfig")
-		}
-	}
-
-	if err != nil {
-		return trcshConfig, err
-	}
-	if trcshConfig.KubeConfigPtr != nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
-		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
-	}
 	var vaultAddressPtr *string
 	var configRolePtr *string
 	var pubRolePtr *string
 	var pluginAnyPtr *string
+	var kubeConfigPtr *string
 
 	// Chewbacca: scrub before checkin
 	if true {
@@ -190,12 +158,51 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		configRole := os.Getenv("CONFIG_ROLE")
 		pubRole := os.Getenv("PUB_ROLE")
 		pluginAny := os.Getenv("PLUGIN_ANY")
+		kubeConfig := os.Getenv("KUBE_CONFIG")
 		vaultAddressPtr = &vaultAddress
 		configRolePtr = &configRole
 		pubRolePtr = &pubRole
 		pluginAnyPtr = &pluginAny
+		kubeConfigPtr = &kubeConfig
 	}
 	//	Chewbacca: end scrub
+
+	if eUtils.RefLength(kubeConfigPtr) == 0 {
+		if prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+			dir, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Println("No homedir for current user")
+				os.Exit(1)
+			}
+			fileBytes, err := os.ReadFile(dir + "/.kube/config")
+			if err != nil {
+				fmt.Println("No local kube config found...")
+				os.Exit(1)
+			}
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
+			kc := base64.StdEncoding.EncodeToString(fileBytes)
+			trcshConfig.KubeConfigPtr = &kc
+
+			if len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+				return trcshConfig, nil
+			}
+		} else {
+			if featherCtx == nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
+				kubeConfigPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "kubeconfig")
+			}
+		}
+
+		if err != nil {
+			return trcshConfig, err
+		}
+	}
+
+	if eUtils.RefLength(kubeConfigPtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		trcshConfig.KubeConfigPtr = kubeConfigPtr
+		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
+	}
 
 	if eUtils.RefLength(vaultAddressPtr) == 0 {
 		if featherCtx != nil {
