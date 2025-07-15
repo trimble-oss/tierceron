@@ -158,6 +158,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			fmt.Println("No local kube config found...")
 			os.Exit(1)
 		}
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
 		kc := base64.StdEncoding.EncodeToString(fileBytes)
 		trcshConfig.KubeConfigPtr = &kc
 
@@ -175,6 +176,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		return trcshConfig, err
 	}
 	if trcshConfig.KubeConfigPtr != nil {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
 		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
 	}
 	var vaultAddressPtr *string
@@ -219,9 +221,12 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		}
 	}
-	memprotectopts.MemProtect(nil, vaultAddressPtr)
-	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr = vaultAddressPtr
-	memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
+	if eUtils.RefLength(vaultAddressPtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		memprotectopts.MemProtect(nil, vaultAddressPtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr = vaultAddressPtr
+		memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
+	}
 
 	if eUtils.RefLength(configRolePtr) == 0 {
 		if featherCtx != nil {
@@ -234,9 +239,12 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			return trcshConfig, err
 		}
 	}
-	memprotectopts.MemProtect(nil, configRolePtr)
-	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
-	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", configRolePtr) // alias to old name.
+	if eUtils.RefLength(configRolePtr) > 0 && strings.Contains(*configRolePtr, ":") {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		memprotectopts.MemProtect(nil, configRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", configRolePtr) // alias to old name.
+	}
 
 	if eUtils.RefLength(pubRolePtr) == 0 {
 		if featherCtx == nil {
@@ -248,7 +256,8 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			memprotectopts.MemProtect(nil, pubRolePtr)
 		}
 	}
-	if eUtils.RefLength(pubRolePtr) > 0 {
+	if eUtils.RefLength(pubRolePtr) > 0 && strings.Contains(*pubRolePtr, ":") {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
 	}
 
@@ -266,6 +275,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		}
 	}
 	if eUtils.RefLength(pluginAnyPtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
 		trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 	}
 
