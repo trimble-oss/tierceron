@@ -75,7 +75,7 @@ var (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.31")
+	fmt.Println("Version: " + "1.32")
 }
 
 func CommonMain(envDefaultPtr *string,
