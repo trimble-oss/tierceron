@@ -314,8 +314,8 @@ func InitVaultModForTool(pluginConfig map[string]any, driverConfig *config.Drive
 		driverConfig.CoreConfig.ExitOnFailure = exitOnFailure
 	}
 
-	driverConfig.SecretMode = true //  "Only override secret values in templates?"
-	driverConfig.ServicesWanted = []string{}
+	driverConfig.SecretMode = true           //  "Only override secret values in templates?"
+	driverConfig.ServicesWanted = []string{} // Chewbacca -- this is modifying the original driverConfig and would negatively affect other calls to trcconfig.
 	driverConfig.StartDir = append([]string{}, "")
 	driverConfig.EndDir = ""
 	driverConfig.GenAuth = false
