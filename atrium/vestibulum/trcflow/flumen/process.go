@@ -50,6 +50,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
 		return nil, err
 	}
+	goMod.Env = goMod.EnvBasis
 
 	//Need new function writing to that path using pluginName ->
 	//if not copied -> this plugin should fail to start up
