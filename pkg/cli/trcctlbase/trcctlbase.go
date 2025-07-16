@@ -31,7 +31,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.37")
+	fmt.Println("Version: " + "1.38")
 }
 
 // This is a controller program that can act as any command line utility.
