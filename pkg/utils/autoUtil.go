@@ -360,10 +360,6 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 		}
 	} else {
-		if driverConfig.IsShellSubProcess {
-			return errors.New("required azure deploy approle and secret are missing")
-		}
-
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
 			fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
 		}
@@ -481,6 +477,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		mod.Env = "bamboo"
 		switch *roleEntityPtr {
 		case "configpub.yml":
+		case "pubrole":
 			mod.EnvBasis = "pub"
 			mod.Env = "pub"
 		case "configdeploy.yml":

@@ -408,6 +408,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			if len(deploy_role) > 0 && len(deploy_secret) > 0 {
 				azureDeployRole := []string{deploy_role, deploy_secret}
 				driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
+				driverConfigPtr.CoreConfig.TokenCache.AddRole("deployauth", &azureDeployRole)
 			}
 		}
 
@@ -1070,6 +1071,10 @@ func roleBasedRunner(
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
 		}
 	case "trcconfig":
+		roleEntityPtr := new(string)
+		*roleEntityPtr = "configrole"
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr = roleEntityPtr
+
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env) {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
@@ -1128,7 +1133,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	case "trcpub":
 		tokenName := fmt.Sprintf("vault_pub_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		roleEntityPtr := new(string)
-		*roleEntityPtr = "configpub.yml"
+		*roleEntityPtr = "pubrole"
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr = roleEntityPtr
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 		if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetRole("pub") == nil {
@@ -1345,26 +1350,26 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", &configRole)
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", &pubRole)
 		//	Chewbacca: end scrub
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
-
-		trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-		deployTokenPtr := new(string)
-		authTokenEnv := "hivekernel"
-		currentRoleEntity := "deployauth"
-		if gAgentConfig != nil && gAgentConfig.AgentToken != nil {
-			deployTokenPtr = gAgentConfig.AgentToken
-			currentRoleEntity = "none"
-		}
-		authTokenName := "vault_token_azuredeploy"
-		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &authTokenName, &deployTokenPtr, &authTokenEnv, &trcshEnvBasis, &currentRoleEntity, false)
-		if autoErr != nil || eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken("vault_token_azuredeploy")) == 0 {
-			fmt.Println("Unable to auth.")
-			if autoErr != nil {
-				fmt.Println(autoErr)
-			}
-			os.Exit(-1)
-		}
 	}
+	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
+	trcshEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	deployTokenPtr := new(string)
+	authTokenEnv := "hivekernel"
+	currentRoleEntity := "deployauth"
+	if gAgentConfig != nil && gAgentConfig.AgentToken != nil {
+		deployTokenPtr = gAgentConfig.AgentToken
+		currentRoleEntity = "none"
+	}
+	authTokenName := "vault_token_azuredeploy"
+	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &authTokenName, &deployTokenPtr, &authTokenEnv, &trcshEnvBasis, &currentRoleEntity, false)
+	if autoErr != nil || eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken("vault_token_azuredeploy")) == 0 {
+		fmt.Println("Unable to auth.")
+		if autoErr != nil {
+			fmt.Println(autoErr)
+		}
+		os.Exit(-1)
+	}
+
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Bootstrap..")
 	var err error
 	retries := 0
@@ -1382,7 +1387,9 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				}
 				continue
 			} else {
-				time.Sleep(time.Second)
+				if retries > 0 {
+					time.Sleep(time.Second)
+				}
 			}
 			retries = retries + 1
 			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {

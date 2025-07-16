@@ -33,7 +33,7 @@ func defaultEmpty() *string {
 }
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.36")
+	fmt.Println("Version: " + "1.37")
 }
 
 // This assumes that the vault is completely new, and should only be run for the purpose
