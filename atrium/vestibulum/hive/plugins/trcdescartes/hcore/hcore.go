@@ -20,9 +20,8 @@ var configContext *tccore.ConfigContext
 var sender chan error
 var dfstat *tccore.TTDINode
 
-var trcdbTenantQuery *tccore.ChatMsg
-var pipelineTenantIds chan *[]string = make(chan *[]string)
-var pipelineTenant string
+var trcdbArgosQuery *tccore.ChatMsg
+var pipelineArgosIds chan *[]string = make(chan *[]string)
 
 const (
 	COMMON_PATH = "./config.yml"
@@ -119,8 +118,8 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			// Retry pipeline status query
 			configContext.Log.Println("descartes unable to access trcdb service.")
 			if configContext.ChatSenderChan != nil {
-				trcdbTenantQuery.Response = new(string)
-				*configContext.ChatSenderChan <- trcdbTenantQuery
+				trcdbArgosQuery.Response = new(string)
+				*configContext.ChatSenderChan <- trcdbArgosQuery
 			}
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
 			configContext.Log.Println("Sending progress results back to kernel.")
@@ -129,23 +128,23 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS":
 			configContext.Log.Println("descartes request")
-			event.StatisticsDocs = processRequest(event.ChatId)
+			event.StatisticsDoc = processRequest(event.ChatId)
 			configContext.Log.Println("Sending statistics document to kernel.")
 			*configContext.ChatSenderChan <- event
 		case (*event).TrcdbExchange != nil && (*event).ChatId != nil && *event.ChatId == "trcdb":
 			configContext.Log.Println("Descartes received trcdb exchange message")
 			if (*event).TrcdbExchange.Response.Rows == nil || len((*event).TrcdbExchange.Response.Rows) == 0 {
 				configContext.Log.Println("Descartes received no results from trcdb exchange.")
-				pipelineTenantIds <- nil
+				pipelineArgosIds <- nil
 			} else {
-				tenantIDs := []string{}
+				argosIDs := []string{}
 				for _, row := range (*event).TrcdbExchange.Response.Rows {
 					if len(row) == 1 && row[0] != nil {
-						tenantIDs = append(tenantIDs, row[0].(string))
+						argosIDs = append(argosIDs, row[0].(string))
 					}
 				}
 
-				pipelineTenantIds <- &tenantIDs
+				pipelineArgosIds <- &argosIDs
 			}
 		default:
 			configContext.Log.Println("descartes received chat message")
@@ -153,7 +152,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 	}
 }
 
-func processRequest(chatId *string) *[]tccore.StatisticsDoc {
+func processRequest(chatId *string) *tccore.StatisticsDoc {
 	switch {
 	case *chatId == "trcdb":
 		chatResultMsg := tccore.ChatMsg{
@@ -163,18 +162,20 @@ func processRequest(chatId *string) *[]tccore.StatisticsDoc {
 		chatResultMsg.Name = &name
 		chatResultMsg.Response = new(string)
 		chatResultMsg.Query = &[]string{"trcdb"}
-		chatResultMsg.TrcdbExchange = &tccore.TrcdbExchange{} //TODO: Securely load query for tenants
-		trcdbTenantQuery = &chatResultMsg
-		*configContext.ChatSenderChan <- trcdbTenantQuery
-		tenantIds := <-pipelineTenantIds
-		if tenantIds == nil || len(*tenantIds) == 0 {
-			configContext.Log.Println("No tenant ids found for statistics document")
+		chatResultMsg.TrcdbExchange = &tccore.TrcdbExchange{} //TODO: Securely load query for argos ids
+		trcdbArgosQuery = &chatResultMsg
+		*configContext.ChatSenderChan <- trcdbArgosQuery
+		argosIds := <-pipelineArgosIds
+		if argosIds == nil || len(*argosIds) == 0 {
+			configContext.Log.Println("No argos ids found for statistics document")
 			return nil
 		}
-		return &[]tccore.StatisticsDoc{
-			{
-				Tenants: *tenantIds,
-			},
+		statDocs := make([]any, len(*argosIds))
+		for i, v := range *argosIds {
+			statDocs[i] = v
+		}
+		return &tccore.StatisticsDoc{
+			StatDocs: statDocs,
 		}
 	default:
 		configContext.Log.Println("Unknown chat ID")
