@@ -1421,6 +1421,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		fmt.Println("Session Authorized")
 	}
 
+	// Set up a separate deployer config for the deployer process.
 	var deployerDriverConfig config.DriverConfig
 	deployerDriverConfig.CoreConfig = trcshDriverConfig.DriverConfig.CoreConfig
 	deployerDriverConfig.SubOutputMemCache = true
@@ -1491,6 +1492,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 				return
 			}
 			deployerDriverConfig.ServicesWanted = strings.Split(projectService, ",")
+			// Also need this later on for running scripts, within the deployment.
+			trcshDriverConfig.DriverConfig.ServicesWanted = deployerDriverConfig.ServicesWanted
 		}
 
 		deployerDriverConfig.OutputMemCache = true
