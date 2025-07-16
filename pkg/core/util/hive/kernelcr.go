@@ -1111,10 +1111,11 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
-					Name:          &q,
-					KernelId:      &pluginHandler.Id,
-					Query:         &[]string{},
-					TrcdbExchange: msg.TrcdbExchange,
+					Name:           &q,
+					KernelId:       &pluginHandler.Id,
+					Query:          &[]string{},
+					TrcdbExchange:  msg.TrcdbExchange,
+					StatisticsDocs: msg.StatisticsDocs,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
