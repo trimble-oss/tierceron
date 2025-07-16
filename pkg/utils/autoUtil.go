@@ -264,7 +264,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 						fmt.Print("approleID: ")
 						scanner.Scan()
 						approleID = scanner.Text()
-						(*appRoleSecret)[0] = secretID
+						(*appRoleSecret)[0] = approleID
 					}
 				}
 
@@ -280,9 +280,13 @@ func AutoAuth(driverConfig *config.DriverConfig,
 					return err
 				}
 			}
-			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+			if envPtr != nil {
+				fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+				v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+			} else {
+				return errors.New("envPtr is nil")
+			}
 
-			v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 			if v != nil {
 				defer v.Close()
 			} else {
