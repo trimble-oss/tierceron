@@ -24,7 +24,7 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.12.0+incompatible // indirect
-	github.com/trimble-oss/tierceron-hat v1.2.9
+	github.com/trimble-oss/tierceron-hat v1.2.10
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 )
 
@@ -219,7 +219,7 @@ require (
 	github.com/armon/go-radix v1.0.0 // indirect
 	github.com/aws/aws-sdk-go v1.43.30 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/dolthub/vitess v0.0.0-20241211024425-b00987f7ba54
+	github.com/dolthub/vitess v0.0.0-20250512224608-8fb9c6ea092c
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/go-kit/kit v0.12.0 // indirect
