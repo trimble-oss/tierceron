@@ -200,8 +200,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failure to init to vault")
 		return nil, err
 	}
-	envParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, "-")
-	mod.Env = envParts[0]
+	envBasisParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, "-")
+	mod.Env = envBasisParts[0]
+
+	envParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
 	kernelId := "0"
 	if len(envParts) > 1 {
 		kernelId = envParts[1]
@@ -274,12 +276,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 					if instances, ok := validEnv.(string); ok {
 						if len(instances) > 0 {
 							instancesList := strings.Split(instances, ",")
-							if len(instancesList) > 0 {
-								for _, instance := range instancesList {
-									if instance == kernelId || instance == "*" {
-										isValidInstance = true
-										break
-									}
+							for _, instance := range instancesList {
+								if instance == kernelId || instance == "*" {
+									isValidInstance = true
+									break
 								}
 							}
 						}
