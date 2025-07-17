@@ -1061,7 +1061,8 @@ func roleBasedRunner(
 	switch control {
 	case "trcplgtool":
 		envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
-		if gTrcshConfig.IsShellRunner {
+		if gTrcshConfig.IsShellRunner || trcshDriverConfig.DriverConfig.IsDrone {
+			// Drone and shell do not need special access.
 			tokenName = *trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 		} else {
 			tokenName = "config_token_pluginany"
