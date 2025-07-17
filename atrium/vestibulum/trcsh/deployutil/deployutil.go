@@ -202,6 +202,10 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 	}
 	envParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, "-")
 	mod.Env = envParts[0]
+	kernelId := "0"
+	if len(envParts) > 1 {
+		kernelId = envParts[1]
+	}
 
 	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if deploymentListDataErr != nil {
@@ -265,7 +269,25 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
 					}
 				}
-				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+				isValidInstance := false
+				if validEnv, ok := deploymentConfig["instances"]; ok && kernelopts.BuildOptions.IsKernel() {
+					if instances, ok := validEnv.(string); ok {
+						if len(instances) > 0 {
+							instancesList := strings.Split(instances, ",")
+							if len(instancesList) > 0 {
+								for _, instance := range instancesList {
+									if instance == kernelId || instance == "*" {
+										isValidInstance = true
+										break
+									}
+								}
+							}
+						}
+					} else {
+						return nil, errors.New("unexpected type of instances returned from vault for " + deployment)
+					}
+				}
+				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") {
 					deploymentList = append(deploymentList, deployment)
 				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)
