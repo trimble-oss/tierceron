@@ -47,6 +47,8 @@ func CommonMain(ctx config.ProcessContext,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) {
+
+	isProd := strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")
 	// Executable input arguments(flags)
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
@@ -181,7 +183,7 @@ func CommonMain(ctx config.ProcessContext,
 	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
 		fmt.Println("-restricted flags cannot be used with -versions flag")
 		os.Exit(1)
-	} else if (strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")) && *addrPtr == "" {
+	} else if isProd && *addrPtr == "" {
 		fmt.Println("The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
 	} else if (len(*fieldsPtr) == 0) && len(*seedPathPtr) != 0 {
@@ -341,16 +343,24 @@ skipDiff:
 	}
 
 	regions := []string{}
-	appRole := []string{*appRoleIDPtr, *secretIDPtr}
-	driverConfigBase.CoreConfig.TokenCache.AddRole("bamboo", &appRole)
-	driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	if !isProd {
+		if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
+			appRole := []string{*appRoleIDPtr, *secretIDPtr}
+			driverConfigBase.CoreConfig.TokenCache.AddRole("bamboo", &appRole)
+		}
+		if eUtils.RefLength(addrPtr) > 0 {
+			driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		} else {
+			addrPtr = driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr
+		}
+	}
 
 	if len(configCtx.EnvSlice) == 1 && !*noVaultPtr {
-		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
+		if isProd {
 			secretIDPtr = nil
 			appRoleIDPtr = nil
 		}
-		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
+		if isProd {
 			regions = eUtils.GetSupportedProdRegions()
 		}
 		roleEntityPtr := new(string)
@@ -598,10 +608,11 @@ skipDiff:
 					if driverConfig != nil {
 						coreConfig = driverConfig.CoreConfig
 					} else {
+						//						driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", baseEnv), tokenPtr)
 						coreConfig = &coreconfig.CoreConfig{
 							ExitOnFailure:       true,
 							CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
-							TokenCache:          cache.NewTokenCache(fmt.Sprintf("config_token_%s", baseEnv), tokenPtr, addrPtr),
+							TokenCache:          driverConfigBase.CoreConfig.TokenCache,
 							Insecure:            *insecurePtr,
 							Log:                 logger,
 						}
@@ -728,9 +739,12 @@ skipDiff:
 	go receiver(configCtx) //Channel receiver
 	if len(*dynamicPathPtr) == 0 {
 		tokenNameEnvPtr := new(string)
-		tokenEnvPtr := new(string)
-		*tokenEnvPtr = *tokenPtr
+		var tokenEnvPtr *string
 		for _, env := range configCtx.EnvSlice {
+			if tokenEnvPtr == nil {
+				tokenEnvPtr = new(string)
+				*tokenEnvPtr = *tokenPtr
+			}
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			for _, section := range sectionSlice {
@@ -739,7 +753,7 @@ skipDiff:
 					roleEntityPtr := new(string)
 					if tokenNameEnvPtr == nil || !strings.Contains(*tokenNameEnvPtr, *envPtr) {
 						*tokenNameEnvPtr = fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-						*tokenEnvPtr = ""
+						tokenEnvPtr = nil
 					}
 
 					authErr := eUtils.AutoAuth(&config.DriverConfig{
