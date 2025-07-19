@@ -10,9 +10,9 @@ type Option func(*OptionsBuilder)
 type OptionsBuilder struct {
 	// Flow
 	AllowTrcdbInterfaceOverride func() bool
-	GetAdditionalFlows          func() []flowcore.FlowNameType
-	GetAdditionalTestFlows      func() []flowcore.FlowNameType
-	GetAdditionalFlowsByState   func(string) []flowcore.FlowNameType
+	GetAdditionalFlows          func() []flowcore.FlowDefinitionType
+	GetAdditionalTestFlows      func() []flowcore.FlowDefinitionType
+	GetAdditionalFlowsByState   func(string) []flowcore.FlowDefinitionType
 	ProcessTestFlowController   func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	ProcessFlowController       func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	GetFlowDatabaseName         func() string

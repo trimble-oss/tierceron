@@ -151,7 +151,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 						case xi, ok := <-currentReceiver:
 							if ok {
 								x := xi.(flowcorehelper.FlowStateUpdate)
-								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.FlowNameType{Name: flowcorehelper.TierceronFlowConfigurationTableName, Instances: "*"}}, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowDefinitionType{flowcore.FlowDefinitionType{Name: flowcorehelper.TierceronFlowConfigurationTableName, Instances: "*"}}, "")
 							}
 						}
 					}

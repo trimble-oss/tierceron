@@ -152,7 +152,7 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 		return
 	}
 	if len(trcdbExchange.Flows) > 0 {
-		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType{Name: trcdbExchange.Flows[0], Instances: "*"})
+		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
 		if tfCtx == nil {
 			configContext.Log.Println("No flow context available for TrcdbExchange processing")
 			trcdbExchange.Response = core.TrcdbResponse{}
@@ -249,16 +249,16 @@ func GetFlowMachineTemplates() map[string]any {
 	return flowMachineTemplates
 }
 
-func GetBusinessFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetBusinessFlows() []flowcore.FlowDefinitionType {
+	return []flowcore.FlowDefinitionType{}
 }
 
-func GetTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetTestFlows() []flowcore.FlowDefinitionType {
+	return []flowcore.FlowDefinitionType{}
 }
 
-func GetTestFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetTestFlowsByState(teststate string) []flowcore.FlowDefinitionType {
+	return []flowcore.FlowDefinitionType{}
 }
 
 func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
@@ -278,7 +278,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
 				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 				tableFlows = append(tableFlows, flowcore.FlowDefinition{
-					FlowName:         flowcore.FlowNameType{Name: tableName, Instances: "*"},
+					FlowName:         flowcore.FlowDefinitionType{Name: flowcore.FlowNameType(tableName), Instances: "*"},
 					FlowTemplatePath: template,
 					FlowSource:       flowSource,
 				})

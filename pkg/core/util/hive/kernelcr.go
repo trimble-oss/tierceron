@@ -924,7 +924,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 	// tfmContext := &flowcore.TrcFlowMachineContext{
 	// 	Env:                       driverConfig.CoreConfig.Env,
 	// 	GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
-	// 	FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
+	// 	FlowMap:                   map[flowcore.FlowDefinitionType]*flowcore.TrcFlowContext{},
 	// }
 	// tfContext := &flowcore.TrcFlowContext{
 	// 	GoMod:    mod,

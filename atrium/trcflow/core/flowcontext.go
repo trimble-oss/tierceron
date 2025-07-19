@@ -34,9 +34,9 @@ type TrcFlowContext struct {
 	// from vault.
 	CustomSeedTrcDb func(flowcore.FlowMachineContext, flowcore.FlowContext) error
 
-	FlowSource            string                // The name of the flow source identified by project.
-	FlowSourceAlias       string                // May be a database name
-	Flow                  flowcore.FlowNameType // May be a table name.
+	FlowSource            string                      // The name of the flow source identified by project.
+	FlowSourceAlias       string                      // May be a database name
+	Flow                  flowcore.FlowDefinitionType // May be a table name.
 	ChangeIdKeys          []string
 	FlowPath              string
 	FlowData              any

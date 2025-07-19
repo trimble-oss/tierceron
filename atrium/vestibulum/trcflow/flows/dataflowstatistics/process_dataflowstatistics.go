@@ -148,7 +148,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 											if coreopts.BuildOptions.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsSparseArrayToMap(value)) { //If equal-> do nothing
 												continue
 											} else { //If not equal -> update
-												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdateById(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType{Name: tfContext.Flow.TableName(), Instances: "*"}}, "")
+												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdateById(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowDefinitionType{tcflow.FlowDefinitionType{Name: tcflow.FlowNameType(tfContext.Flow.TableName()), Instances: "*"}}, "")
 											}
 										}
 									}
@@ -156,7 +156,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 							} else {
 								if len(dfGroup.MashupDetailedElement.Data) > 0 {
 									dfgStatMap := dfGroup.StatisticToMap()
-									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfgStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType{Name: tfContext.Flow.TableName(), Instances: "*"}}, "")
+									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfgStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowDefinitionType{tcflow.FlowDefinitionType{Name: tcflow.FlowNameType(tfContext.Flow.TableName()), Instances: "*"}}, "")
 								}
 							}
 						}

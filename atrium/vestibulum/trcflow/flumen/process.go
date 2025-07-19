@@ -367,15 +367,15 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		controllerInitWG.Add(1)
 		tfmFlumeContext.InitConfigWG.Add(1)
 		flowWG.Add(1)
-		tableFlow := flowcore.FlowNameType{Name: table, Instances: "*"}
+		tableFlow := flowcore.FlowDefinitionType{Name: flowcore.FlowNameType(table), Instances: "*"}
 		tfContext.Flow = tableFlow
 		tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
 		tfmContext.FlowMapLock.Lock()
-		tfmContext.FlowMap[tfContext.Flow] = &tfContext
+		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.Flow.FlowName())] = &tfContext
 		tfmContext.FlowMapLock.Unlock()
 
-		go func(tFlow flowcore.FlowNameType, tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
+		go func(tFlow flowcore.FlowDefinitionType, tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tFlow.ServiceName())
 			defer flowWG.Done()
 			var initErr error
@@ -426,18 +426,18 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			continue
 		}
 		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
-		tableFlow := flowcore.FlowNameType(table.FlowName)
+		tableFlow := flowcore.FlowDefinitionType(table.FlowName)
 		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
 		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
 		tfContext.Flow = tableFlow
 		tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
 		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
 		tfmContext.FlowMapLock.Lock()
-		tfmContext.FlowMap[tfContext.Flow] = &tfContext
+		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.Flow.FlowName())] = &tfContext
 		tfmContext.FlowMapLock.Unlock()
 
 		flowWG.Add(1)
-		go func(tFlow flowcore.FlowNameType, dc *config.DriverConfig) {
+		go func(tFlow flowcore.FlowDefinitionType, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tFlow.ServiceName())
 			defer flowWG.Done()
 			var initErr error
@@ -498,7 +498,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 		flowWG.Add(1)
 
-		go func(bizFlow flowcore.FlowNameType, dc *config.DriverConfig) {
+		go func(bizFlow flowcore.FlowDefinitionType, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.ServiceName())
 			defer flowWG.Done()
 
@@ -507,7 +507,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.TableName()]
 			tfmContext.FlowMapLock.Lock()
-			tfmContext.FlowMap[tfContext.Flow] = &tfContext
+			tfmContext.FlowMap[flowcore.FlowNameType(tfContext.Flow.FlowName())] = &tfContext
 			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -531,7 +531,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	if testopts.BuildOptions != nil {
 		for _, test := range flowMachineInitContext.GetTestFlows() {
 			flowWG.Add(1)
-			go func(testFlow flowcore.FlowNameType, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
+			go func(testFlow flowcore.FlowDefinitionType, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.ServiceName())
 				defer flowWG.Done()
 				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
@@ -569,7 +569,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverConfig, tfmContext flowcore.FlowMachineContext) {
 	goMod.Reset()
-	if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow); flow != nil {
+	if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow.Name); flow != nil {
 		if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
 			pluginNameValues, err := goMod.List("super-secrets/Index/TrcVault/trcplugin", driverConfig.CoreConfig.Log)
 			argosId := 0

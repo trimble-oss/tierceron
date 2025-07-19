@@ -26,20 +26,20 @@ func AllowTrcdbInterfaceOverride() bool {
 // These business logic flows have direct access to other flow data via the internal
 // sql query engine, the ability to call other flows, and the ability to directly call
 // the secret provider for sensitive secrets to access services and features as needed.
-func GetAdditionalFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalFlows() []flowcore.FlowDefinitionType {
+	return []flowcore.FlowDefinitionType{}
 }
 
 // GetAdditionalTestFlows - override to provide a list of additional test flows.  These
 // test flows are used to test the flow machine.
-func GetAdditionalTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{} // Noop
+func GetAdditionalTestFlows() []flowcore.FlowDefinitionType {
+	return []flowcore.FlowDefinitionType{} // Noop
 }
 
 // GetAdditionalFlowsByState - override to provide a list of flows given a test state.
 // This list of flows will be notified when a given test state is reached.
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinitionType {
+	return []flowcore.FlowDefinitionType{}
 }
 
 // Process a test flow.

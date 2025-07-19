@@ -67,7 +67,7 @@ type TrcFlowMachineContext struct {
 	TierceronEngine           *trcengine.TierceronEngine
 	ExtensionAuthData         map[string]any
 	ExtensionAuthDataReloader map[string]any
-	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowNameType
+	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinitionType
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
@@ -97,7 +97,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNa
 func (tfmContext *TrcFlowMachineContext) GetFlowID(flowName flowcore.FlowNameType) *uint64 {
 	tfmContext.FlowIDMapLock.RLock()
 	defer tfmContext.FlowIDMapLock.RUnlock()
-	if flowID, ok := tfmContext.FlowIDMap[string(flowName.FlowName())]; ok {
+	if flowID, ok := tfmContext.FlowIDMap[string(flowName)]; ok {
 		return &flowID
 	}
 	return nil
@@ -144,8 +144,8 @@ func TableCollationIdGen(tableName string) sqle.CollationID {
 func (tfmContext *TrcFlowMachineContext) Init(
 	sdbConnMap map[string]map[string]any,
 	tableNames []string,
-	additionalFlowNames []flowcore.FlowNameType,
-	testFlowNames []flowcore.FlowNameType,
+	additionalFlowNames []flowcore.FlowDefinitionType,
+	testFlowNames []flowcore.FlowDefinitionType,
 ) error {
 	sourceDatabaseConnectionsMap = sdbConnMap
 
@@ -182,15 +182,15 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	tfmContext.ChannelMap = make(map[flowcore.FlowNameType]*bchan.Bchan)
 
 	for _, table := range tableNames {
-		tfmContext.ChannelMap[flowcore.FlowNameType{Name: table, Instances: "*"}] = bchan.New(1)
+		tfmContext.ChannelMap[flowcore.FlowNameType(table)] = bchan.New(1)
 	}
 
 	for _, f := range additionalFlowNames {
-		tfmContext.ChannelMap[flowcore.FlowNameType{Name: f.Name, Instances: f.Instances}] = bchan.New(1)
+		tfmContext.ChannelMap[flowcore.FlowNameType(f.Name)] = bchan.New(1)
 	}
 
 	for _, f := range testFlowNames {
-		tfmContext.ChannelMap[flowcore.FlowNameType{Name: f.Name, Instances: f.Instances}] = bchan.New(1)
+		tfmContext.ChannelMap[flowcore.FlowNameType(f.Name)] = bchan.New(1)
 	}
 
 	tfmContext.PermissionChan = make(chan PermissionUpdate, 10)
@@ -459,7 +459,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	mysqlPushEnabled := sqlState
-	flowChangedChannel := tfmContext.ChannelMap[tfContext.Flow]
+	flowChangedChannel := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.Flow.Name)]
 	//	flowChangedChannel.Bcast(true)
 
 	for {
@@ -702,7 +702,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 
 func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tcflowContext flowcore.FlowContext) <-chan any {
 	tfContext := tcflowContext.(*TrcFlowContext)
-	if notificationFlowChannel, ok := tfmContext.ChannelMap[tfContext.Flow]; ok {
+	if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.Flow.Name)]; ok {
 		return notificationFlowChannel.Ch
 	}
 	tfmContext.Log("Could not find channel for flow.", nil)
@@ -735,7 +735,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 	bindingsI map[string]any, // Optional param
 	changed bool,
 	operation string,
-	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
+	flowNotifications []flowcore.FlowDefinitionType, // On successful completion, which flows to notify.
 	flowtestState string) (*core.TrcdbExchange, bool) {
 	// Chewbacca:
 	if len(trcdbExchange.Flows) == 0 {
@@ -749,7 +749,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 	}
 	var queryID uint64 = 0
 	for _, flowName := range trcdbExchange.Flows {
-		flowID := tfmContext.GetFlowID(flowcore.FlowNameType{Name: flowName, Instances: "*"})
+		flowID := tfmContext.GetFlowID(flowcore.FlowNameType(flowName))
 		if flowID != nil {
 			queryID = queryID ^ *flowID
 		} else {
@@ -770,7 +770,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			tfmContext.Log("CallDBQueryN for INSERT: Expected only one flow name, got multiple.", errors.New("Expected only one flow name"))
 			return nil, false
 		}
-		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType{Name: trcdbExchange.Flows[0], Instances: "*"}).(*TrcFlowContext)
+		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0])).(*TrcFlowContext)
 
 		if bindingsI == nil {
 			_, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryID, *tfmContext.BitLock)
@@ -834,7 +834,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification)]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification.Name]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -843,7 +843,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			if flowtestState != "" {
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification.Name]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -859,7 +859,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			tfmContext.Log("CallDBQueryN for INSERT: Expected only one flow name, got multiple.", errors.New("Expected only one flow name"))
 			return nil, false
 		}
-		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType{Name: trcdbExchange.Flows[0], Instances: "*"}).(*TrcFlowContext)
+		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0])).(*TrcFlowContext)
 
 		if bindingsI == nil {
 			tableName, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryID, *tfmContext.BitLock)
@@ -934,7 +934,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification)]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification.Name)]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -943,7 +943,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			if flowtestState != "" {
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification.Name)]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -993,7 +993,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 	bindingsI map[string]any, // Optional param
 	changed bool,
 	operation string,
-	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
+	flowNotifications []flowcore.FlowDefinitionType, // On successful completion, which flows to notify.
 	flowtestState string) ([][]any, bool) {
 
 	tfContext := tcflowContext.(*TrcFlowContext)
@@ -1068,7 +1068,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification)]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification.Name)]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -1077,7 +1077,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			if flowtestState != "" {
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification.Name)]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -1164,7 +1164,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			if len(flowNotifications) > 0 {
 				// look up channels and notify them too.
 				for _, flowNotification := range flowNotifications {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification)]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification.Name)]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -1173,7 +1173,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			if flowtestState != "" {
 				additionalTestFlows := tfmContext.GetAdditionalFlowsByState(flowtestState)
 				for _, flowNotification := range additionalTestFlows {
-					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowNotification]; ok {
+					if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(flowNotification.Name)]; ok {
 						notificationFlowChannel.Bcast(true)
 					}
 				}
@@ -1263,7 +1263,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	processFlowController func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error,
 	vaultDatabaseConfig map[string]any, // TODO: actually use this to set up a mysql facade.
 	sourceDatabaseConnectionsMap map[string]map[string]any,
-	flow flowcore.FlowNameType,
+	flow flowcore.FlowDefinitionType,
 	flowType flowcore.FlowType) error {
 
 	tfContext := tcflowContext.(*TrcFlowContext)

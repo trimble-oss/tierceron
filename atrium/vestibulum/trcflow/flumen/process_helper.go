@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	TierceronControllerFlow flowcore.FlowNameType = flowcore.FlowNameType{Name: "TierceronFlow", Instances: "*"}
+	TierceronControllerFlow flowcore.FlowDefinitionType = flowcore.FlowDefinitionType{Name: "TierceronFlow", Instances: "*"}
 )
 
 var changesLock sync.Mutex
