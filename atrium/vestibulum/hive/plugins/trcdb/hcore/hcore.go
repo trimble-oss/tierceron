@@ -152,7 +152,7 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 		return
 	}
 	if len(trcdbExchange.Flows) > 0 {
-		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
+		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType{Name: trcdbExchange.Flows[0], Instances: "*"})
 		if tfCtx == nil {
 			configContext.Log.Println("No flow context available for TrcdbExchange processing")
 			trcdbExchange.Response = core.TrcdbResponse{}
@@ -278,7 +278,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
 				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 				tableFlows = append(tableFlows, flowcore.FlowDefinition{
-					FlowName:         flowcore.FlowNameType(tableName),
+					FlowName:         flowcore.FlowNameType{Name: tableName, Instances: "*"},
 					FlowTemplatePath: template,
 					FlowSource:       flowSource,
 				})

@@ -69,7 +69,7 @@ func main() {
 				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
 				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 				tableFlows = append(tableFlows, flowcore.FlowDefinition{
-					FlowName:         flowcore.FlowNameType(tableName),
+					FlowName:         flowcore.FlowNameType{Name: tableName, Instances: "*"},
 					FlowTemplatePath: template,
 					FlowSource:       flowSource,
 				})

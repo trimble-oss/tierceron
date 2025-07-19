@@ -97,6 +97,15 @@ func InitKernel(id string) *PluginHandler {
 	}
 }
 
+func (ph *PluginHandler) GetKernelId() string {
+	idParts := strings.Split(ph.Id, "-")
+	kernelId := "0"
+	if len(idParts) > 1 {
+		kernelId = idParts[1]
+	}
+	return kernelId
+}
+
 func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 	if pH == nil || pH.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to start dynamic reloading.")
@@ -832,6 +841,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						}
 					}
 				}
+
+				pluginConfig["kernelId"] = pluginHandler.GetKernelId()
 
 				// Needs certifyPath and connectionPath
 				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)

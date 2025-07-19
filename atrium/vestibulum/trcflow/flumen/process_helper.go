@@ -15,8 +15,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-const (
-	TierceronControllerFlow flowcore.FlowNameType = "TierceronFlow"
+var (
+	TierceronControllerFlow flowcore.FlowNameType = flowcore.FlowNameType{Name: "TierceronFlow", Instances: "*"}
 )
 
 var changesLock sync.Mutex

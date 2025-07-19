@@ -845,7 +845,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
 
-		serviceDeployments, err := deployutil.GetDeployers(trcshDriverConfig, dronePtr, &isShellRunner)
+		serviceDeployments, err := deployutil.GetDeployers(kernelPluginHandler, trcshDriverConfig, dronePtr, &isShellRunner)
 		if err != nil {
 			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())
 			os.Exit(124)

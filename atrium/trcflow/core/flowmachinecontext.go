@@ -97,7 +97,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNa
 func (tfmContext *TrcFlowMachineContext) GetFlowID(flowName flowcore.FlowNameType) *uint64 {
 	tfmContext.FlowIDMapLock.RLock()
 	defer tfmContext.FlowIDMapLock.RUnlock()
-	if flowID, ok := tfmContext.FlowIDMap[string(flowName)]; ok {
+	if flowID, ok := tfmContext.FlowIDMap[string(flowName.FlowName())]; ok {
 		return &flowID
 	}
 	return nil
@@ -182,15 +182,15 @@ func (tfmContext *TrcFlowMachineContext) Init(
 	tfmContext.ChannelMap = make(map[flowcore.FlowNameType]*bchan.Bchan)
 
 	for _, table := range tableNames {
-		tfmContext.ChannelMap[flowcore.FlowNameType(table)] = bchan.New(1)
+		tfmContext.ChannelMap[flowcore.FlowNameType{Name: table, Instances: "*"}] = bchan.New(1)
 	}
 
 	for _, f := range additionalFlowNames {
-		tfmContext.ChannelMap[flowcore.FlowNameType(f)] = bchan.New(1)
+		tfmContext.ChannelMap[flowcore.FlowNameType{Name: f.Name, Instances: f.Instances}] = bchan.New(1)
 	}
 
 	for _, f := range testFlowNames {
-		tfmContext.ChannelMap[flowcore.FlowNameType(f)] = bchan.New(1)
+		tfmContext.ChannelMap[flowcore.FlowNameType{Name: f.Name, Instances: f.Instances}] = bchan.New(1)
 	}
 
 	tfmContext.PermissionChan = make(chan PermissionUpdate, 10)
@@ -527,7 +527,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 		triggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 		if err == nil {
 			for _, trigger := range triggers {
-				if strings.HasSuffix(trigger.Name, "_"+string(tfContext.Flow)) {
+				if strings.HasSuffix(trigger.Name, "_"+string(tfContext.Flow.Name)) {
 					err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name)
 					if err == nil {
 						removedTriggers = append(removedTriggers, trigger)
@@ -749,7 +749,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 	}
 	var queryID uint64 = 0
 	for _, flowName := range trcdbExchange.Flows {
-		flowID := tfmContext.GetFlowID(flowcore.FlowNameType(flowName))
+		flowID := tfmContext.GetFlowID(flowcore.FlowNameType{Name: flowName, Instances: "*"})
 		if flowID != nil {
 			queryID = queryID ^ *flowID
 		} else {
@@ -770,7 +770,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			tfmContext.Log("CallDBQueryN for INSERT: Expected only one flow name, got multiple.", errors.New("Expected only one flow name"))
 			return nil, false
 		}
-		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0])).(*TrcFlowContext)
+		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType{Name: trcdbExchange.Flows[0], Instances: "*"}).(*TrcFlowContext)
 
 		if bindingsI == nil {
 			_, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryID, *tfmContext.BitLock)
@@ -859,7 +859,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			tfmContext.Log("CallDBQueryN for INSERT: Expected only one flow name, got multiple.", errors.New("Expected only one flow name"))
 			return nil, false
 		}
-		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0])).(*TrcFlowContext)
+		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType{Name: trcdbExchange.Flows[0], Instances: "*"}).(*TrcFlowContext)
 
 		if bindingsI == nil {
 			tableName, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryID, *tfmContext.BitLock)

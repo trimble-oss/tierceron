@@ -18,7 +18,7 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
+var AskFlumeFlow flowcore.FlowNameType = flowcore.FlowNameType{Name: "AskFlumeFlow", Instances: "*"}
 
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]any
@@ -95,7 +95,7 @@ func getDeleteTrigger(databaseName string, tableName string, idColumnNames []str
 
 func TriggerChangeChannel(table string) {
 	for _, tfmContext := range tfmContextMap {
-		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
+		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType{Name: table, Instances: "*"}]; notificationChannelOk {
 			notificationFlowChannel.Bcast(true)
 			return
 		}
@@ -107,7 +107,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		// If changIds identified, manually trigger a change.
 		if table != "" {
 			for changeIdKey, changeIdValue := range changeIds {
-				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
+				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType{Name: table, Instances: "*"}]; tfContextOk {
 					if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
 						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
 						bindings := map[string]sqle.Expression{
@@ -118,7 +118,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 					}
 				}
 			}
-			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
+			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType{Name: table, Instances: "*"}]; notificationChannelOk {
 				notificationFlowChannel.Bcast(true)
 				continue
 			}

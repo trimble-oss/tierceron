@@ -127,7 +127,7 @@ func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) 
 	case flowcore.DataFlowStatConfigurationsFlow.TableName():
 		fallthrough
 	case flowcorehelper.TierceronFlowConfigurationTableName:
-		if tfFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
+		if tfFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType{Name: tableName, Instances: "*"}]; refOk {
 			tfFlowContext.NotifyFlowComponentLoaded()
 		}
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -164,7 +165,7 @@ func MountPluginFileSystem(
 }
 
 // Gets list of supported deployers for current environment.
-func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...*bool) ([]string, error) {
+func GetDeployers(kernelPluginHandler *hive.PluginHandler, trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...*bool) ([]string, error) {
 	isDrone := false
 	isShellRunner := false
 	if len(exeTypeFlags) > 0 {
@@ -202,12 +203,6 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 	}
 	envBasisParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, "-")
 	mod.Env = envBasisParts[0]
-
-	envParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
-	kernelId := "0"
-	if len(envParts) > 1 {
-		kernelId = envParts[1]
-	}
 
 	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if deploymentListDataErr != nil {
@@ -273,6 +268,7 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 				}
 				isValidInstance := false
 				if validEnv, ok := deploymentConfig["instances"]; ok && kernelopts.BuildOptions.IsKernel() {
+					kernelId := kernelPluginHandler.GetKernelId()
 					if instances, ok := validEnv.(string); ok {
 						if len(instances) > 0 {
 							instancesList := strings.Split(instances, ",")
