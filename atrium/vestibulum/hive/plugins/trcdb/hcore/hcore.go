@@ -225,11 +225,11 @@ func GetConfigPaths(pluginName string) []string {
 // flow controller if you define any additional flows other than the default flows:
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
-	switch tfContext.GetFlowName() {
+	switch tfContext.GetFlowHeader().FlowName() {
 	case flowcore.ArgosSociiFlow.TableName():
-		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
+		tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
 	default:
-		return errors.New("Flow not implemented: " + tfContext.GetFlowName())
+		return errors.New("Flow not implemented: " + tfContext.GetFlowHeader().FlowName())
 	}
 
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
@@ -249,16 +249,16 @@ func GetFlowMachineTemplates() map[string]any {
 	return flowMachineTemplates
 }
 
-func GetBusinessFlows() []flowcore.FlowDefinitionType {
-	return []flowcore.FlowDefinitionType{}
+func GetBusinessFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
-func GetTestFlows() []flowcore.FlowDefinitionType {
-	return []flowcore.FlowDefinitionType{}
+func GetTestFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
-func GetTestFlowsByState(teststate string) []flowcore.FlowDefinitionType {
-	return []flowcore.FlowDefinitionType{}
+func GetTestFlowsByState(teststate string) []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
 func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
@@ -278,9 +278,11 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
 				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 				tableFlows = append(tableFlows, flowcore.FlowDefinition{
-					FlowName:         flowcore.FlowDefinitionType{Name: flowcore.FlowNameType(tableName), Instances: "*"},
+					FlowHeader: flowcore.FlowHeaderType{
+						Name:      flowcore.FlowNameType(tableName),
+						Source:    flowSource,
+						Instances: "*"},
 					FlowTemplatePath: template,
-					FlowSource:       flowSource,
 				})
 			}
 			return tableFlows

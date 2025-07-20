@@ -133,14 +133,14 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 								for _, dfstat := range dfGroup.ChildNodes {
 									dfStatMap := dfstat.StatisticToMap()
 									core.UpdateLastTestedDate(tfContext.GoMod, dfctx, dfStatMap)
-									rows, _ := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "SELECT", nil, "")
+									rows, _ := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticLM(tenantId.(string), dfStatMap, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName()), nil, false, "SELECT", nil, "")
 									//dfgroup to table
 									if len(rows) == 0 {
 										if strings.Contains(flowGroup.(string), flowGroupName) {
-											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "") //true gets ninja tested time inside statisticToMap
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfStatMap, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName()), nil, false, "INSERT", nil, "") //true gets ninja tested time inside statisticToMap
 										} else {
 											statMap := dfstat.StatisticToMap()
-											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", nil, "")
+											tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), statMap, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName()), nil, false, "INSERT", nil, "")
 										}
 									} else {
 										statMap := dfstat.StatisticToMap()
@@ -148,7 +148,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 											if coreopts.BuildOptions.CompareLastModified(dfStatMap, dfssql.DataFlowStatisticsSparseArrayToMap(value)) { //If equal-> do nothing
 												continue
 											} else { //If not equal -> update
-												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdateById(tenantId.(string), statMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowDefinitionType{tcflow.FlowDefinitionType{Name: tcflow.FlowNameType(tfContext.Flow.TableName()), Instances: "*"}}, "")
+												tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticUpdateById(tenantId.(string), statMap, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType(tfContext.FlowHeader.TableName())}, "")
 											}
 										}
 									}
@@ -156,7 +156,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 							} else {
 								if len(dfGroup.MashupDetailedElement.Data) > 0 {
 									dfgStatMap := dfGroup.StatisticToMap()
-									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfgStatMap, tfContext.FlowSourceAlias, tfContext.Flow.TableName()), nil, false, "INSERT", []tcflow.FlowDefinitionType{tcflow.FlowDefinitionType{Name: tcflow.FlowNameType(tfContext.Flow.TableName()), Instances: "*"}}, "")
+									tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(tenantId.(string), dfgStatMap, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName()), nil, false, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType(tfContext.FlowHeader.TableName())}, "")
 								}
 							}
 						}
@@ -167,7 +167,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 	}
 
 	if tfContext.Init { //Alert interface that the table is ready for permissions
-		tfmContext.PermissionChan <- trcflowcore.PermissionUpdate{TableName: tfContext.Flow.TableName(), CurrentState: tfContext.GetFlowStateState()}
+		tfmContext.PermissionChan <- trcflowcore.PermissionUpdate{TableName: tfContext.FlowHeader.TableName(), CurrentState: tfContext.GetFlowStateState()}
 		tfContext.Init = false
 	}
 
@@ -178,7 +178,7 @@ func CreateTableTriggers(tfmContextI flowcore.FlowMachineContext, tfContextI flo
 	tfmContext := tfmContextI.(*core.TrcFlowMachineContext)
 	tfContext := tfContextI.(*core.TrcFlowContext)
 	tfmContext.GetTableModifierLock().Lock()
-	changeTableName := tfContext.Flow.TableName() + "_Changes"
+	changeTableName := tfContext.FlowHeader.TableName() + "_Changes"
 	tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
 	changeTableErr := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
@@ -196,8 +196,8 @@ func CreateTableTriggers(tfmContextI flowcore.FlowMachineContext, tfContextI flo
 }
 
 func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
-	if tfContext.GetFlowDefinitionContext() == nil {
-		flowDefinitionContext := &flowcore.FlowDefinitionContext{
+	if tfContext.GetFlowLibraryContext() == nil {
+		flowDefinitionContext := &flowcore.FlowLibraryContext{
 			GetTableConfigurationById:   nil, //not pulling from remote
 			GetTableConfigurations:      nil, //not pulling from remote
 			CreateTableTriggers:         CreateTableTriggers,
@@ -212,7 +212,7 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 			GetIndexedPathExt:           GetDataflowStatIndexedPathExt,
 			GetTableIndexColumnNames:    getDataFlowStatisticsIndexColumnNames,
 		}
-		tfContext.SetFlowDefinitionContext(flowDefinitionContext)
+		tfContext.SetFlowLibraryContext(flowDefinitionContext)
 		tfContext.SetCustomSeedTrcdbFunc(dataFlowStatPullRemote)
 	}
 
@@ -222,7 +222,7 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 func KickOffTimedRefresh(tfContext *trcflowcore.TrcFlowContext, timing string) bool {
 	switch { //Always at midnight
 	case timing == "Daily":
-		tfContext.PushState("flowStateReceiver", flowcorehelper.FlowStateUpdate{FlowName: tfContext.Flow.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias})
+		tfContext.PushState("flowStateReceiver", flowcorehelper.FlowStateUpdate{FlowName: tfContext.FlowHeader.TableName(), StateUpdate: "2", SyncFilter: tfContext.FlowState.SyncFilter, SyncMode: "refreshingDaily", FlowAlias: tfContext.FlowState.FlowAlias})
 		loc, _ := time.LoadLocation("America/Los_Angeles")
 		now := time.Now().In(loc)
 		midnight := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, loc)

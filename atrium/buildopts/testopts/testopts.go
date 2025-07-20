@@ -7,12 +7,12 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
-func GetAdditionalTestFlows() []flowcore.FlowDefinitionType {
-	return []flowcore.FlowDefinitionType{}
+func GetAdditionalTestFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinitionType {
-	return []flowcore.FlowDefinitionType{}
+func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
 func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {

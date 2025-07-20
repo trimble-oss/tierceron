@@ -36,7 +36,7 @@ func GetTierceronFlowConfigurationIndexedPathExt(engine any, rowDataMap map[stri
 }
 
 func GetTierceronTableNames() []string {
-	return []string{flowcorehelper.TierceronFlowConfigurationTableName}
+	return []string{flowcorehelper.TierceronControllerFlow.TableName()}
 }
 
 func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
@@ -72,9 +72,9 @@ func arrayToTierceronFlow(arr []any) map[string]any {
 func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext, flowControllerMap map[string]chan flowcore.CurrentFlowState, tierceronFlowName string) {
 	var rows [][]any
 	if tierceronFlowName != "" {
-		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow.Name) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
+		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "select * from " + tfContext.FlowHeader.SourceAlias + "." + string(tfContext.FlowHeader.Name) + " WHERE " + tierceronFlowIdColumnName + "='" + tierceronFlowName + "'"}, nil, false, "SELECT", nil, "")
 	} else {
-		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "select * from " + tfContext.FlowSourceAlias + "." + string(tfContext.Flow.Name)}, nil, false, "SELECT", nil, "")
+		rows, _ = tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "select * from " + tfContext.FlowHeader.SourceAlias + "." + string(tfContext.FlowHeader.Name)}, nil, false, "SELECT", nil, "")
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
@@ -151,7 +151,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 						case xi, ok := <-currentReceiver:
 							if ok {
 								x := xi.(flowcorehelper.FlowStateUpdate)
-								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowDefinitionType{flowcore.FlowDefinitionType{Name: flowcorehelper.TierceronFlowConfigurationTableName, Instances: "*"}}, "")
+								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcorehelper.TierceronControllerFlow}, "")
 							}
 						}
 					}
@@ -169,7 +169,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 // Only pull from vault on init
 // Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
-	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.Flow.TableName()), tfContext)
+	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.FlowHeader.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, []string{tierceronFlowIdColumnName})
 
 	tfmContext.SyncTableCycle(tfContext, []string{tierceronFlowIdColumnName}, []string{tierceronFlowIdColumnName}, GetTierceronFlowConfigurationIndexedPathExt, nil, false)

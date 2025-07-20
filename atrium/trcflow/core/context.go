@@ -18,7 +18,9 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var AskFlumeFlow flowcore.FlowDefinitionType = flowcore.FlowDefinitionType{Name: "AskFlumeFlow", Instances: "*"}
+var AskFlumeFlow flowcore.FlowDefinition = flowcore.FlowDefinition{
+	FlowHeader: flowcore.FlowHeaderType{Name: "AskFlumeFlow", Instances: "*"},
+}
 
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]any
@@ -109,7 +111,7 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 			for changeIdKey, changeIdValue := range changeIds {
 				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
 					if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
-						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName)
 						bindings := map[string]sqle.Expression{
 							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						}

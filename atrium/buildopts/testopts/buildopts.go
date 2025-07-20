@@ -7,8 +7,8 @@ import (
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	GetAdditionalTestFlows    func() []flowcore.FlowDefinitionType
-	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinitionType
+	GetAdditionalTestFlows    func() []flowcore.FlowDefinition
+	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
 	ProcessTestFlowController func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
 	GetTestConfig             func(tokenPtr *string, wantPluginPaths bool) map[string]any
 }

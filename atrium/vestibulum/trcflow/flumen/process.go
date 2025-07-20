@@ -95,7 +95,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmContext = &trcflowcore.TrcFlowMachineContext{
 		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
-		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
+		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
 		FlowMapLock:               sync.RWMutex{},
 		FlowControllerUpdateLock:  sync.Mutex{},
@@ -222,25 +222,25 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	flowStateReceiverMap := map[string]chan flowcore.FlowStateUpdate{}
 
 	for _, tableFlow := range flowMachineInitContext.GetTableFlows() {
-		tableName := tableFlow.FlowName.TableName()
-		if tableName != flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
+		tableName := tableFlow.FlowHeader.Name.TableName()
+		if tableName != flowcorehelper.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+tableName)
 			}
 			continue
 		}
-		if tableName != flowcorehelper.TierceronFlowConfigurationTableName {
+		if tableName != flowcorehelper.TierceronControllerFlow.TableName() {
 			driverConfigBasis.VersionFilter = append(driverConfigBasis.VersionFilter, tableName)
 		}
 		flowTemplateMap[tableName] = tableFlow.FlowTemplatePath
-		flowSourceMap[tableName] = tableFlow.FlowSource
+		flowSourceMap[tableName] = tableFlow.FlowHeader.Source
 		flowStateControllerMap[tableName] = make(chan flowcore.CurrentFlowState, 1)
 		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
 	for _, enhancement := range flowMachineInitContext.GetFiltererBusinessFlows(kernelId) {
-		flowStateControllerMap[enhancement.TableName()] = make(chan flowcore.CurrentFlowState, 1)
-		flowStateReceiverMap[enhancement.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
+		flowStateControllerMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.CurrentFlowState, 1)
+		flowStateReceiverMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
 	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), flowMachineInitContext.GetDatabaseName())
@@ -313,7 +313,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmContext.Init(sourceDatabaseConnectionsMap, flowMachineInitContext.GetFiltererTableFlowNames(kernelId), flowMachineInitContext.GetFiltererBusinessFlows(kernelId), flowMachineInitContext.GetTestFlows())
+	tfmContext.Init(sourceDatabaseConnectionsMap, flowMachineInitContext.GetFiltererTableFlowNames(kernelId), flowMachineInitContext.GetFiltererBusinessFlowNames(kernelId), flowMachineInitContext.GetFiltererTestFlowNames(kernelId))
 
 	//Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
@@ -346,12 +346,12 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronFlowConfigurationTableName}, flowMachineInitContext.GetFiltererBusinessFlows(kernelId), flowMachineInitContext.GetTestFlows())
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronControllerFlow.FlowName()}, flowMachineInitContext.GetFiltererBusinessFlowNames(kernelId), flowMachineInitContext.GetFiltererTestFlowNames(kernelId))
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
 	for _, table := range GetTierceronTableNames() {
-		if table != flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(table) {
+		if table != flowcorehelper.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(table) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table)
 			}
@@ -367,16 +367,16 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		controllerInitWG.Add(1)
 		tfmFlumeContext.InitConfigWG.Add(1)
 		flowWG.Add(1)
-		tableFlow := flowcore.FlowDefinitionType{Name: flowcore.FlowNameType(table), Instances: "*"}
-		tfContext.Flow = tableFlow
-		tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
+		tableFlow := flowcore.FlowHeaderType{Name: flowcore.FlowNameType(table), Instances: "*"}
+		tfContext.FlowHeader = &tableFlow
+		tfContext.FlowHeader.Source = flowSourceMap[tableFlow.TableName()]
 		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
 		tfmContext.FlowMapLock.Lock()
-		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.Flow.FlowName())] = &tfContext
+		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
 		tfmContext.FlowMapLock.Unlock()
 
-		go func(tFlow flowcore.FlowDefinitionType, tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
-			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tFlow.ServiceName())
+		go func(tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
+			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tcfContext.FlowHeader.ServiceName())
 			defer flowWG.Done()
 			var initErr error
 			_, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -385,17 +385,17 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				return
 			}
 			tcfContext.GoMod.Env = tcfContext.GoMod.EnvBasis
-			tcfContext.FlowSourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
+			tcfContext.FlowHeader.SourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
 
 			tfmFlumeContext.ProcessFlow(
 				tcfContext,
 				FlumenProcessFlowController,
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
-				tFlow,
+				tfContext.FlowHeader.Name,
 				trcflowcore.TableSyncFlow,
 			)
-		}(tableFlow, &tfContext, &driverConfigBasis)
+		}(&tfContext, &driverConfigBasis)
 
 		controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
 		if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
@@ -419,43 +419,43 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, table := range flowMachineInitContext.GetTableFlows() {
-		if !coreopts.BuildOptions.IsSupportedFlow(table.FlowName.FlowName()) {
+		if !coreopts.BuildOptions.IsSupportedFlow(table.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
-				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table.FlowName.FlowName())
+				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table.FlowHeader.FlowName())
 			}
 			continue
 		}
 		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
-		tableFlow := flowcore.FlowDefinitionType(table.FlowName)
-		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.TableName()]
-		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.TableName()]
-		tfContext.Flow = tableFlow
-		tfContext.FlowSource = flowSourceMap[tableFlow.TableName()]
-		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+		tableFlow := table
+		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.FlowHeader.TableName()]
+		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.FlowHeader.TableName()]
+		tfContext.FlowHeader = &tableFlow.FlowHeader
+		tfContext.FlowHeader.Source = flowSourceMap[tableFlow.FlowHeader.TableName()]
+		tfContext.FlowPath = flowTemplateMap[tableFlow.FlowHeader.TableName()]
 		tfmContext.FlowMapLock.Lock()
-		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.Flow.FlowName())] = &tfContext
+		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
 		tfmContext.FlowMapLock.Unlock()
 
 		flowWG.Add(1)
-		go func(tFlow flowcore.FlowDefinitionType, dc *config.DriverConfig) {
-			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tFlow.ServiceName())
+		go func(tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
+			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tcfContext.FlowHeader.ServiceName())
 			defer flowWG.Done()
 			var initErr error
-			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
+			_, tcfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
 			tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
-			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tFlow.TableName())
+			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tcfContext.FlowHeader.TableName())
 			dataMap, readErr := tfContext.GoMod.ReadData(flowPath)
 			if readErr == nil && len(dataMap) > 0 {
 				if dataMap["flowAlias"] != nil {
 					tfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
 				}
 			}
-			tfContext.FlowSourceAlias = flowMachineInitContext.GetDatabaseName()
-			if tfContext.GetFlowName() == flowcore.ArgosSociiFlow.FlowName() {
+			tcfContext.FlowHeader.SourceAlias = flowMachineInitContext.GetDatabaseName()
+			if tcfContext.FlowHeader.FlowName() == flowcore.ArgosSociiFlow.FlowName() {
 				go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
 					for tableLoadedPerm := range tfmContext.PreloadChan {
 						if tableLoadedPerm.TableName == flowcore.ArgosSociiFlow.FlowName() {
@@ -468,46 +468,46 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}
 			tfmContext.ProcessFlow(
 				&tfContext,
-				func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
-					switch tfContext.GetFlowName() {
+				func(tfmContext flowcore.FlowMachineContext, tcfContext flowcore.FlowContext) error {
+					switch tcfContext.GetFlowHeader().FlowName() {
 					case flowcore.DataFlowStatConfigurationsFlow.FlowName():
 						// DFS flow always handled internally.
-						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tcfContext)
 					case flowcore.ArgosSociiFlow.FlowName():
-						tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
-						return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+						tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
+						return flowcore.ProcessTableConfigurations(tfmContext, tcfContext)
 					default:
-						return flowMachineInitContext.FlowController(tfmContext, tfContext)
+						return flowMachineInitContext.FlowController(tfmContext, tcfContext)
 					}
 				},
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
-				tFlow,
+				tcfContext.FlowHeader.Name,
 				trcflowcore.TableSyncFlow,
 			)
-		}(tableFlow, &driverConfigBasis)
+		}(&tfContext, &driverConfigBasis)
 	}
 
 	for _, businessFlow := range flowMachineInitContext.GetFiltererBusinessFlows(kernelId) {
-		if !coreopts.BuildOptions.IsSupportedFlow(businessFlow.FlowName()) {
+		if !coreopts.BuildOptions.IsSupportedFlow(businessFlow.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
-				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowName())
+				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowHeader.FlowName())
 			}
 			continue
 		}
 
 		flowWG.Add(1)
 
-		go func(bizFlow flowcore.FlowDefinitionType, dc *config.DriverConfig) {
-			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.ServiceName())
+		go func(bizFlow flowcore.FlowDefinition, dc *config.DriverConfig) {
+			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.FlowHeader.ServiceName())
 			defer flowWG.Done()
 
 			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
-			tfContext.Flow = bizFlow
-			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.TableName()]
-			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.TableName()]
+			tfContext.FlowHeader = &bizFlow.FlowHeader
+			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.FlowHeader.TableName()]
+			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.FlowHeader.TableName()]
 			tfmContext.FlowMapLock.Lock()
-			tfmContext.FlowMap[flowcore.FlowNameType(tfContext.Flow.FlowName())] = &tfContext
+			tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
 			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -522,7 +522,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				flowMachineInitContext.FlowController,
 				vaultDatabaseConfig, // unused.
 				sourceDatabaseConnectionsMap,
-				bizFlow,
+				bizFlow.FlowHeader.FlowNameType(),
 				trcflowcore.TableEnrichFlow,
 			)
 		}(businessFlow, &driverConfigBasis)
@@ -531,11 +531,11 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	if testopts.BuildOptions != nil {
 		for _, test := range flowMachineInitContext.GetTestFlows() {
 			flowWG.Add(1)
-			go func(testFlow flowcore.FlowDefinitionType, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
-				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.ServiceName())
+			go func(testFlow flowcore.FlowDefinition, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
+				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.FlowHeader.ServiceName())
 				defer flowWG.Done()
 				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
-				tfContext.Flow = testFlow
+				tfContext.FlowHeader = &testFlow.FlowHeader
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 				if initErr != nil {
@@ -549,7 +549,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					flowMachineInitContext.TestFlowController,
 					vaultDatabaseConfig, // unused..
 					sourceDatabaseConnectionsMap,
-					testFlow,
+					tfContext.FlowHeader.Name,
 					trcflowcore.TableTestFlow,
 				)
 			}(test, &driverConfigBasis, tfmContext)
@@ -570,7 +570,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverConfig, tfmContext flowcore.FlowMachineContext) {
 	goMod.Reset()
 	if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow.Name); flow != nil {
-		if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableConfigurationInsert != nil {
+		if flow.GetFlowLibraryContext() != nil && flow.GetFlowLibraryContext().GetTableConfigurationInsert != nil {
 			pluginNameValues, err := goMod.List("super-secrets/Index/TrcVault/trcplugin", driverConfig.CoreConfig.Log)
 			argosId := 0
 
@@ -596,7 +596,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 								data["argosServitium"] = projectServiceSlice[1]
 								data["argosNotitia"] = "Tierceron service"
 
-								flowInsertQueryMap := flow.GetFlowDefinitionContext().GetTableConfigurationInsert(data, flow.GetFlowSourceAlias(), flowcore.ArgosSociiFlow.FlowName())
+								flowInsertQueryMap := flow.GetFlowLibraryContext().GetTableConfigurationInsert(data, flow.GetFlowHeader().SourceAlias, flowcore.ArgosSociiFlow.FlowName())
 								tfmContext.CallDBQuery(flow, flowInsertQueryMap, nil, false, "INSERT", nil, "")
 							}
 						}

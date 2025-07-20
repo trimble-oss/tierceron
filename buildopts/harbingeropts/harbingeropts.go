@@ -126,7 +126,7 @@ func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) 
 	switch tableName {
 	case flowcore.DataFlowStatConfigurationsFlow.TableName():
 		fallthrough
-	case flowcorehelper.TierceronFlowConfigurationTableName:
+	case flowcorehelper.TierceronControllerFlow.TableName():
 		if tfFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
 			tfFlowContext.NotifyFlowComponentLoaded()
 		}
@@ -363,14 +363,14 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 										}
 									}
 
-								} else if strings.Contains(tableN, flowcorehelper.TierceronFlowConfigurationTableName) {
+								} else if strings.Contains(tableN, flowcorehelper.TierceronControllerFlow.FlowName()) {
 									_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
 								} else {
 									var grant string
 									var grantErr error
 									if flow := tfmContext.GetFlowContext(flowcore.FlowNameType(tableN)); flow != nil {
-										if flow.GetFlowDefinitionContext() != nil && flow.GetFlowDefinitionContext().GetTableGrant != nil {
-											grantcomponent, cidr, grantFlowErr := flow.GetFlowDefinitionContext().GetTableGrant(tableN)
+										if flow.GetFlowLibraryContext() != nil && flow.GetFlowLibraryContext().GetTableGrant != nil {
+											grantcomponent, cidr, grantFlowErr := flow.GetFlowLibraryContext().GetTableGrant(tableN)
 											if grantFlowErr == nil && len(grantcomponent) > 0 {
 												grantCheck := strings.Split(grantcomponent, ",")
 												invalidGrant := false
