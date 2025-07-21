@@ -165,7 +165,10 @@ func MountPluginFileSystem(
 }
 
 // Gets list of supported deployers for current environment.
-func GetDeployers(kernelPluginHandler *hive.PluginHandler, trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...*bool) ([]string, error) {
+func GetDeployers(kernelPluginHandler *hive.PluginHandler,
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	deploymentShardsSet map[string]struct{},
+	exeTypeFlags ...*bool) ([]string, error) {
 	isDrone := false
 	isShellRunner := false
 	if len(exeTypeFlags) > 0 {
@@ -226,6 +229,11 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler, trcshDriverConfig *ca
 
 			if len(deployment) == 0 {
 				continue
+			}
+			if len(deploymentShardsSet) > 0 {
+				if _, ok := deploymentShardsSet[deployment]; !ok {
+					continue
+				}
 			}
 
 			deploymentConfig, deploymentConfigErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))

@@ -845,19 +845,20 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Completed bootstrapping and continuing to initialize services.")
 
-		serviceDeployments, err := deployutil.GetDeployers(kernelPluginHandler, trcshDriverConfig, dronePtr, &isShellRunner)
-		if err != nil {
-			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())
-			os.Exit(124)
-		}
 		deploymentShards := strings.Split(deploymentsShard, ",")
-		deployments := []string{}
 
 		// This is a tad more complex but will scale more nicely.
 		deploymentShardsSet := map[string]struct{}{}
 		for _, str := range deploymentShards {
 			deploymentShardsSet[str] = struct{}{}
 		}
+
+		serviceDeployments, err := deployutil.GetDeployers(kernelPluginHandler, trcshDriverConfig, deploymentShardsSet, dronePtr, &isShellRunner)
+		if err != nil {
+			fmt.Printf("drone trcsh agent bootstrap get deployers failure: %s\n", err.Error())
+			os.Exit(124)
+		}
+		deployments := []string{}
 
 		if eUtils.IsWindows() || kernelopts.BuildOptions.IsKernel() {
 			for _, serviceDeployment := range serviceDeployments {

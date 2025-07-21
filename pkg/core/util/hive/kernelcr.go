@@ -61,6 +61,7 @@ type PluginHandler struct {
 	Name            string //service
 	State           int    //0 - initialized, 1 - running, 2 - failed
 	Id              string
+	KernelId        string
 	Signature       string //sha256 of plugin
 	ConfigContext   *core.ConfigContext
 	Services        *map[string]*PluginHandler
@@ -98,12 +99,14 @@ func InitKernel(id string) *PluginHandler {
 }
 
 func (ph *PluginHandler) GetKernelId() string {
-	idParts := strings.Split(ph.Id, "-")
-	kernelId := "0"
-	if len(idParts) > 1 {
-		kernelId = idParts[1]
+	if ph == nil {
+		return "0"
 	}
-	return kernelId
+	if len(ph.KernelId) == 0 && len(ph.Id) > 0 {
+		idParts := strings.Split(ph.Id, "-")
+		ph.KernelId = idParts[1]
+	}
+	return ph.KernelId
 }
 
 func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
