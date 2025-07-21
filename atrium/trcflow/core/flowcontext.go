@@ -46,6 +46,7 @@ type TrcFlowContext struct {
 	QueryLock             *sync.Mutex
 	Restart               bool
 	Init                  bool
+	WantsInitNotify       bool
 	ReadOnly              bool
 	DataFlowStatistic     FakeDFStat
 	Logger                *log.Logger
@@ -59,6 +60,10 @@ func (tfContext *TrcFlowContext) IsInit() bool {
 
 func (tfContext *TrcFlowContext) SetInit(init bool) {
 	tfContext.Init = init
+}
+
+func (tfContext *TrcFlowContext) InitNotify() {
+	tfContext.WantsInitNotify = true
 }
 
 func (tfContext *TrcFlowContext) IsRestart() bool {

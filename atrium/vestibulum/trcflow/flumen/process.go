@@ -238,7 +238,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
-	for _, enhancement := range flowMachineInitContext.GetFiltererBusinessFlows(kernelId) {
+	for _, enhancement := range flowMachineInitContext.GetFilteredBusinessFlows(kernelId) {
 		flowStateControllerMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.CurrentFlowState, 1)
 		flowStateReceiverMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
 	}
@@ -313,7 +313,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmContext.Init(sourceDatabaseConnectionsMap, flowMachineInitContext.GetFiltererTableFlowNames(kernelId), flowMachineInitContext.GetFiltererBusinessFlowNames(kernelId), flowMachineInitContext.GetFiltererTestFlowNames(kernelId))
+	tfmContext.Init(sourceDatabaseConnectionsMap, flowMachineInitContext.GetFilteredTableFlowNames(kernelId), flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
 
 	//Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
@@ -346,7 +346,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronControllerFlow.FlowName()}, flowMachineInitContext.GetFiltererBusinessFlowNames(kernelId), flowMachineInitContext.GetFiltererTestFlowNames(kernelId))
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronControllerFlow.FlowName()}, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
@@ -488,7 +488,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}(&tfContext, &driverConfigBasis)
 	}
 
-	for _, businessFlow := range flowMachineInitContext.GetFiltererBusinessFlows(kernelId) {
+	for _, businessFlow := range flowMachineInitContext.GetFilteredBusinessFlows(kernelId) {
 		if !coreopts.BuildOptions.IsSupportedFlow(businessFlow.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowHeader.FlowName())
@@ -646,14 +646,11 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 		}
 	} else {
 		go func(tfC *trcflowcore.TrcFlowMachineContext) {
-			for {
-				select {
-				case permUpdate := <-tfC.PermissionChan:
-					tableName := permUpdate.TableName
+			for permUpdate := range tfC.PermissionChan {
+				tableName := permUpdate.TableName
 
-					if tableName != flowcore.ArgosSociiFlow.TableName() {
-						harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
-					}
+				if tableName != flowcore.ArgosSociiFlow.TableName() {
+					harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
 				}
 			}
 		}(tfmFlumeContext)
@@ -680,14 +677,11 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 		}
 	} else {
 		go func(tfC *trcflowcore.TrcFlowMachineContext) {
-			for {
-				select {
-				case permUpdate := <-tfC.PermissionChan:
-					tableName := permUpdate.TableName
+			for permUpdate := range tfC.PermissionChan {
+				tableName := permUpdate.TableName
 
-					if tableName != flowcore.ArgosSociiFlow.TableName() {
-						harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
-					}
+				if tableName != flowcore.ArgosSociiFlow.TableName() {
+					harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
 				}
 			}
 		}(tfmContext)

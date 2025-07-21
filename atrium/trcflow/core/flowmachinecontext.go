@@ -276,7 +276,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI any, tcflow
 
 		if err != nil {
 			tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""})
-			tfmContext.Log("Could not create table.", err)
+			tfmContext.Log("AddTableSchema could not create table.", err)
 		} else {
 			if tfContext.FlowHeader.TableName() == flowcorehelper.TierceronControllerFlow.FlowName() {
 				tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: 2, SyncMode: "nosync", SyncFilter: ""})
@@ -284,15 +284,15 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI any, tcflow
 				select {
 				case newFlowState := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcore.CurrentFlowState):
 					tfContext.SetFlowState(newFlowState)
-					tfmContext.Log("Flow ready for use: "+tfContext.FlowHeader.TableName(), nil)
-					if tfContext.GetFlowStateState() != 2 {
-						// Chewbacca -- why?
-					} else {
+					if tfContext.GetFlowStateState() == 2 {
+						flowChangedChannel := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]
+						flowChangedChannel.Bcast(true)
 					}
+					tfmContext.Log("AddTableSchema Flow ready for use: "+tfContext.FlowHeader.TableName(), nil)
 				case <-time.After(15 * time.Second):
 					{
 						tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: 0, SyncMode: "nosync", SyncFilter: ""})
-						tfmContext.Log("Flow ready for use (but inactive due to invalid setup): "+tfContext.FlowHeader.TableName(), nil)
+						tfmContext.Log("AddTableSchemaFlow ready for use (but inactive due to invalid setup): "+tfContext.FlowHeader.TableName(), nil)
 					}
 				}
 			}
@@ -628,7 +628,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
 	var df *core.TTDINode = nil
-	if tfContext.Init && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
+	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
 		df = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
 		if tfContext.GetFlowStateAlias() != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
@@ -657,7 +657,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if tfContext.Init && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
+	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
 		if tfContext.GetFlowStateAlias() != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
 		} else {
@@ -667,7 +667,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	if tfContext.Init && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
+	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
 		dsc, _, err := df.GetDeliverStatCtx()
 		if err == nil {
@@ -683,18 +683,18 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		tfmContext.InitConfigWG.Done()
 	}
 	tfmContext.FlowControllerLock.Unlock()
-	if tfContext.Init { //Alert interface that the table is ready for permissions
+	if tfContext.WantsInitNotify { //Alert interface that the table is ready for permissions
+		tfContext.WantsInitNotify = false
 		go func() {
 			tfmContext.PreloadChan <- PermissionUpdate{tfContext.FlowHeader.TableName(), tfContext.GetFlowStateState()}
 		}()
 		go func() {
 			tfmContext.PermissionChan <- PermissionUpdate{tfContext.FlowHeader.TableName(), tfContext.GetFlowStateState()}
 		}()
-		tfContext.Init = false
 	} else if tfContext.GetFlowStateState() == 2 {
-		tfmContext.Log("Flow ready for use: "+tfContext.FlowHeader.TableName(), nil)
+		tfmContext.Log("SyncTableCycle Flow ready for use: "+tfContext.FlowHeader.TableName(), nil)
 	} else {
-		tfmContext.Log("Unexpected flow state: "+tfContext.FlowHeader.TableName(), nil)
+		tfmContext.Log("SyncTableCycle Unexpected flow state: "+tfContext.FlowHeader.TableName(), nil)
 	}
 
 	go tfmContext.seedVaultCycle(tfContext, identityColumnNames, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
@@ -1531,7 +1531,13 @@ func (tfmContext *TrcFlowMachineContext) GetLogger() *log.Logger {
 }
 
 func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
+	tfmContext.FlowMapLock.RLock()
+	flows := make([]*TrcFlowContext, 0, len(tfmContext.FlowMap))
 	for _, flow := range tfmContext.FlowMap {
+		flows = append(flows, flow)
+	}
+	tfmContext.FlowMapLock.RUnlock()
+	for _, flow := range flows {
 		tfmContext.DriverConfig.CoreConfig.Log.Printf("Waiting for flow to unlock: %s\n", flow.FlowHeader.FlowName())
 		flow.WaitFlowLoaded()
 		tfmContext.DriverConfig.CoreConfig.Log.Printf("Flow unlocked: %s\n", flow.FlowHeader.FlowName())

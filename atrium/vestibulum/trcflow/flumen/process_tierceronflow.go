@@ -2,6 +2,7 @@ package flumen
 
 import (
 	"errors"
+	"strings"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
@@ -82,54 +83,79 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 			tfmContext.FlowControllerUpdateLock.Lock()
 			stateChannel := flowControllerMap[flowId]
 			tfmContext.FlowControllerUpdateLock.Unlock()
+			theFlow := tfmContext.GetFlowContext(flowcore.FlowNameType(flowId))
 			if stateChannel == nil {
-				tfmContext.Log("Tierceron Flow could not find the flow:"+tfFlow[tierceronFlowIdColumnName].(string), errors.New("State channel for flow controller was nil."))
 				continue
 			}
-			if stateMsg, ok := tfFlow["state"].(int64); ok {
-				if syncModeMsg, ok := tfFlow["syncMode"].(string); ok {
-					if syncFilterMsg, ok := tfFlow["syncFilter"].(string); ok {
-						if flowAliasMsg, ok := tfFlow["flowAlias"].(string); ok {
-							go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
-								tfmContext.Log("Queuing state change: "+fId, nil)
-								sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
-							}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId, flowAliasMsg)
-						}
+			var stateMsg int64
+			var stateChanged, syncModeChanged, syncFilterChanged bool
+			var syncModeMsg, syncFilterMsg, flowAliasMsg string
+			var ok bool
+			if stateMsg, ok = tfFlow["state"].(int64); ok {
+				if theFlow != nil {
+					stateChanged = theFlow.GetFlowStateState() != stateMsg
+				}
+			}
+			if syncModeMsg, ok = tfFlow["syncMode"].(string); ok {
+				if theFlow != nil {
+					syncModeChanged = TrimFlowColumnForCompare(theFlow.GetFlowSyncMode()) != TrimFlowColumnForCompare(syncModeMsg)
+					if syncModeChanged {
+						tfContext.FlowState.SyncMode = syncModeMsg
 					}
 				}
+			}
+			if syncFilterMsg, ok = tfFlow["syncFilter"].(string); ok {
+				if theFlow != nil {
+					syncFilterChanged = TrimFlowColumnForCompare(theFlow.GetFlowStateSyncFilterRaw()) != TrimFlowColumnForCompare(syncFilterMsg)
+					if syncFilterChanged {
+						tfContext.FlowState.SyncFilter = syncFilterMsg
+					}
+				}
+			}
+			if flowAliasMsg, ok = tfFlow["flowAlias"].(string); !ok {
+				flowAliasMsg = ""
+			}
+			if tfmContext.FlowControllerInit || stateChanged || syncModeChanged || syncFilterChanged {
+				go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
+					tfmContext.Log("Queuing state change: "+fId, nil)
+					sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
+				}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId, flowAliasMsg)
 			}
 		}
 	}
 }
 
+func TrimFlowColumnForCompare(flowSyncFilter string) string {
+	flowSyncFilterForCompare := strings.ToLower(flowSyncFilter)
+	flowSyncFilterForCompare = strings.Trim(flowSyncFilterForCompare, "'")
+	flowSyncFilterForCompare = strings.Replace(flowSyncFilterForCompare, "nosync", "", 1)
+	flowSyncFilterForCompare = strings.Replace(flowSyncFilterForCompare, "n/a", "", 1)
+	return flowSyncFilterForCompare
+}
+
 func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) ([]map[string]any, error) {
 	if flowControllerMap, ok := tfContext.RemoteDataSource["flowStateControllerMap"].(map[string]chan flowcore.CurrentFlowState); ok {
 		if flowControllerMap == nil {
-			return nil, errors.New("Channel map for flow controller was nil.")
+			return nil, errors.New("channel map for flow controller was nil")
 		}
 
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
 		if tfmContext.FlowControllerInit { //Sending off listener for state updates
 			go func(tfmc *trcflowcore.TrcFlowMachineContext, tfc *trcflowcore.TrcFlowContext, fcmap map[string]chan flowcore.CurrentFlowState) {
-				for {
-					select {
-					case tierceronFlowName, ok := <-tfmContext.FlowControllerUpdateAlert:
-						if ok {
-							sendUpdates(tfmc, tfc, fcmap, tierceronFlowName)
-						}
-					}
+				for tierceronFlowName := range tfmc.FlowControllerUpdateAlert {
+					sendUpdates(tfmc, tfc, fcmap, tierceronFlowName)
 				}
 			}(tfmContext, tfContext, flowControllerMap)
 		}
 	} else {
-		return nil, errors.New("Flow controller map is the wrong type.")
+		return nil, errors.New("flow controller map is the wrong type")
 	}
 
 	if tfmContext.FlowControllerInit { //Used to signal other flows to begin, now that states have been loaded on init
 		if initAlertChan, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			if initAlertChan == nil {
-				return nil, errors.New("Alert channel for flow controller was nil.")
+				return nil, errors.New("alert channel for flow controller was nil")
 			}
 			select {
 			case initAlertChan <- tfmContext.FlowControllerInit:
@@ -137,29 +163,24 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 			default:
 			}
 		} else {
-			return nil, errors.New("Alert channel for flow controller is wrong type.")
+			return nil, errors.New("alert channel for flow controller is wrong type")
 		}
 
 		if flowStateReceiverMap, ok := tfContext.RemoteDataSource["flowStateReceiverMap"].(map[string]chan flowcore.FlowStateUpdate); ok {
 			if flowStateReceiverMap == nil {
-				return nil, errors.New("Receiver map channel for flow controller was nil.")
+				return nil, errors.New("receiver map channel for flow controller was nil")
 			}
 			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
 				go func(currentReceiver chan flowcore.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
-					for {
-						select {
-						case xi, ok := <-currentReceiver:
-							if ok {
-								x := xi.(flowcorehelper.FlowStateUpdate)
-								tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcorehelper.TierceronControllerFlow}, "")
-							}
-						}
+					for xi := range currentReceiver {
+						x := xi.(flowcorehelper.FlowStateUpdate)
+						tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcorehelper.TierceronControllerFlow}, "")
 					}
 				}(receiver, tfmContext)
 			}
 			return nil, nil
 		} else {
-			return nil, errors.New("Receiver map for flow controller is wrong type.")
+			return nil, errors.New("receiver map for flow controller is wrong type")
 		}
 	}
 
@@ -177,18 +198,21 @@ func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfCont
 	if sqlIngestInterval > 0 {
 		// Implement pull from remote data source.
 		// Only pull if ingest interval is set to > 0 value.
-		afterTime := time.Duration(0)
-		for {
-			select {
-			case <-time.After(time.Millisecond * afterTime):
-				afterTime = sqlIngestInterval
-				tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
-				// Periodically checks the table for updates and send out state changes to flows.
-				_, err := tierceronFlowImport(tfmContext, tfContext)
-				if err != nil {
-					tfmContext.Log("Error grabbing configurations for tierceron flows", err)
-					continue
-				}
+		_, err := tierceronFlowImport(tfmContext, tfContext)
+		if err != nil {
+			tfmContext.Log("Error grabbing configurations for tierceron flows", err)
+		}
+
+		ticker := time.NewTicker(time.Second * sqlIngestInterval)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
+			// Periodically checks the table for updates and send out state changes to flows.
+			_, err := tierceronFlowImport(tfmContext, tfContext)
+			if err != nil {
+				tfmContext.Log("Error grabbing configurations for tierceron flows", err)
+				continue
 			}
 		}
 	}
