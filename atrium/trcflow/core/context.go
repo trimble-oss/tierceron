@@ -18,7 +18,9 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
+var AskFlumeFlow flowcore.FlowDefinition = flowcore.FlowDefinition{
+	FlowHeader: flowcore.FlowHeaderType{Name: "AskFlumeFlow", Instances: "*"},
+}
 
 var signalChannel chan os.Signal
 var sourceDatabaseConnectionsMap map[string]map[string]any
@@ -107,15 +109,19 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 		// If changIds identified, manually trigger a change.
 		if table != "" {
 			for changeIdKey, changeIdValue := range changeIds {
+				tfmContext.FlowMapLock.RLock()
 				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
+					tfmContext.FlowMapLock.RUnlock()
 					if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
-						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName)
 						bindings := map[string]sqle.Expression{
 							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						}
 						_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.QueryLock)
 						break
 					}
+				} else {
+					tfmContext.FlowMapLock.RUnlock()
 				}
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {

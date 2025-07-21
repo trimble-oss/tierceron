@@ -296,9 +296,8 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 					flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
 					tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 					tableFlows = append(tableFlows, flowcore.FlowDefinition{
-						FlowName:         flowcore.FlowNameType(tableName),
+						FlowHeader:       flowcore.FlowHeaderType{Name: flowcore.FlowNameType(tableName), Instances: "*", Source: flowSource},
 						FlowTemplatePath: template,
-						FlowSource:       flowSource,
 					})
 				}
 				return tableFlows
