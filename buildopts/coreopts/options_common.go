@@ -127,8 +127,8 @@ func IsSupportedFlow(flow string) bool {
 // the name of the column that is to be treated as the index for the table.
 // TODO: This function is miss-named.  It should be called FindIndexForFlow where project = databaseName and service = tableName.
 func FindIndexForService(project string, service string) (string, []string, string, error) {
-	if project == flowcorehelper.TierceronFlowDB {
-		if service == flowcorehelper.TierceronFlowConfigurationTableName {
+	if project == flowcorehelper.TierceronFlowDBName {
+		if service == flowcorehelper.TierceronControllerFlow.FlowName() {
 			return "flowName", nil, "", nil
 		} else {
 			return "", nil, "", errors.New("not implemented")

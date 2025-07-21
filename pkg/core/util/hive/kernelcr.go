@@ -61,6 +61,7 @@ type PluginHandler struct {
 	Name            string //service
 	State           int    //0 - initialized, 1 - running, 2 - failed
 	Id              string
+	KernelId        string
 	Signature       string //sha256 of plugin
 	ConfigContext   *core.ConfigContext
 	Services        *map[string]*PluginHandler
@@ -95,6 +96,17 @@ func InitKernel(id string) *PluginHandler {
 			PluginRestartChan: &pluginRestart,
 		},
 	}
+}
+
+func (ph *PluginHandler) GetKernelId() string {
+	if ph == nil {
+		return "0"
+	}
+	if len(ph.KernelId) == 0 && len(ph.Id) > 0 {
+		idParts := strings.Split(ph.Id, "-")
+		ph.KernelId = idParts[1]
+	}
+	return ph.KernelId
 }
 
 func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
@@ -833,6 +845,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				}
 
+				pluginConfig["kernelId"] = pluginHandler.GetKernelId()
+
 				// Needs certifyPath and connectionPath
 				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 				if err != nil || tfmContext == nil {
@@ -913,7 +927,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 	// tfmContext := &flowcore.TrcFlowMachineContext{
 	// 	Env:                       driverConfig.CoreConfig.Env,
 	// 	GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
-	// 	FlowMap:                   map[flowcore.FlowNameType]*flowcore.TrcFlowContext{},
+	// 	FlowMap:                   map[flowcore.FlowDefinitionType]*flowcore.TrcFlowContext{},
 	// }
 	// tfContext := &flowcore.TrcFlowContext{
 	// 	GoMod:    mod,

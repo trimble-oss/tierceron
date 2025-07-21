@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb
 go 1.24.4
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.7.3
+	github.com/trimble-oss/tierceron-core/v2 v2.7.4
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250609162306-04fdcac49140
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -25,4 +25,4 @@ require (
 
 replace github.com/cespare/xxhash => github.com/joel-rieke/xxhash v1.1.0-patch
 
-//replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core

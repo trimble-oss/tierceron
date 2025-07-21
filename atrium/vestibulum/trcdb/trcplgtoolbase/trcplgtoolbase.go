@@ -394,6 +394,7 @@ func CommonMain(envPtr *string,
 		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
 			kernelPluginHandler = mainPluginHandler[0]
 			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
+			pluginHandler.KernelId = kernelPluginHandler.KernelId
 		}
 	}
 
