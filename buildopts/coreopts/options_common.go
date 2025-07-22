@@ -120,7 +120,7 @@ func ActiveSessions(db *sql.DB) ([]map[string]any, error) {
 }
 
 func IsSupportedFlow(flow string) bool {
-	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+	return flow != "" && (flow == flowcore.TierceronControllerFlow.FlowName() || flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 // FindIndexForService - override to provide a custom index for a given service.  This should return
@@ -128,7 +128,7 @@ func IsSupportedFlow(flow string) bool {
 // TODO: This function is miss-named.  It should be called FindIndexForFlow where project = databaseName and service = tableName.
 func FindIndexForService(project string, service string) (string, []string, string, error) {
 	if project == flowcorehelper.TierceronFlowDBName {
-		if service == flowcorehelper.TierceronControllerFlow.FlowName() {
+		if service == flowcore.TierceronControllerFlow.FlowName() {
 			return "flowName", nil, "", nil
 		} else {
 			return "", nil, "", errors.New("not implemented")
