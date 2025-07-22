@@ -23,7 +23,6 @@ import (
 	"github.com/dolthub/go-mysql-server/sql/mysql_db"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/insecure"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcutil "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
@@ -126,7 +125,7 @@ func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) 
 	switch tableName {
 	case flowcore.DataFlowStatConfigurationsFlow.TableName():
 		fallthrough
-	case flowcorehelper.TierceronControllerFlow.TableName():
+	case flowcore.TierceronControllerFlow.TableName():
 		trcTfmContext.FlowMapLock.RLock()
 		if tfFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
 			trcTfmContext.FlowMapLock.RUnlock()
@@ -367,7 +366,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 										}
 									}
 
-								} else if strings.Contains(tableN, flowcorehelper.TierceronControllerFlow.FlowName()) {
+								} else if strings.Contains(tableN, flowcore.TierceronControllerFlow.FlowName()) {
 									_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
 								} else {
 									var grant string

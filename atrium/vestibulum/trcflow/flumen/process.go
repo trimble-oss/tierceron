@@ -27,7 +27,6 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -223,13 +222,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	for _, tableFlow := range flowMachineInitContext.GetTableFlows() {
 		tableName := tableFlow.FlowHeader.Name.TableName()
-		if tableName != flowcorehelper.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
+		if tableName != flowcore.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+tableName)
 			}
 			continue
 		}
-		if tableName != flowcorehelper.TierceronControllerFlow.TableName() {
+		if tableName != flowcore.TierceronControllerFlow.TableName() {
 			driverConfigBasis.VersionFilter = append(driverConfigBasis.VersionFilter, tableName)
 		}
 		flowTemplateMap[tableName] = tableFlow.FlowTemplatePath
@@ -346,12 +345,12 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcorehelper.TierceronControllerFlow.FlowName()}, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcore.TierceronControllerFlow.FlowName()}, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
 	for _, table := range GetTierceronTableNames() {
-		if table != flowcorehelper.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(table) {
+		if table != flowcore.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(table) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table)
 			}
@@ -447,7 +446,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				return
 			}
 			tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
-			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/TierceronFlow", tcfContext.FlowHeader.TableName())
+			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/%s", tcfContext.FlowHeader.TableName(), flowcore.TierceronControllerFlow.FlowName())
 			dataMap, readErr := tfContext.GoMod.ReadData(flowPath)
 			if readErr == nil && len(dataMap) > 0 {
 				if dataMap["flowAlias"] != nil {
