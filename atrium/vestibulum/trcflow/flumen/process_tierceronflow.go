@@ -37,7 +37,7 @@ func GetTierceronFlowConfigurationIndexedPathExt(engine any, rowDataMap map[stri
 }
 
 func GetTierceronTableNames() []string {
-	return []string{flowcorehelper.TierceronControllerFlow.TableName()}
+	return []string{flowcore.TierceronControllerFlow.TableName()}
 }
 
 func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
@@ -174,7 +174,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 				go func(currentReceiver chan flowcore.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
 					for xi := range currentReceiver {
 						x := xi.(flowcorehelper.FlowStateUpdate)
-						tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcorehelper.TierceronControllerFlow}, "")
+						tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.TierceronControllerFlow.Name}, "")
 					}
 				}(receiver, tfmContext)
 			}

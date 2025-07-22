@@ -278,7 +278,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI any, tcflow
 			tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: -1, SyncMode: "Could not create table.", SyncFilter: ""})
 			tfmContext.Log("AddTableSchema could not create table.", err)
 		} else {
-			if tfContext.FlowHeader.TableName() == flowcorehelper.TierceronControllerFlow.FlowName() {
+			if tfContext.FlowHeader.TableName() == flowcore.TierceronControllerFlow.FlowName() {
 				tfContext.SetFlowState(flowcorehelper.CurrentFlowState{State: 2, SyncMode: "nosync", SyncFilter: ""})
 			} else {
 				select {
@@ -628,7 +628,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
 	var df *core.TTDINode = nil
-	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
+	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		df = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
 		if tfContext.GetFlowStateAlias() != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
@@ -657,7 +657,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		seedInitComplete <- true
 	}
 	<-seedInitComplete
-	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
+	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		if tfContext.GetFlowStateAlias() != "" {
 			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
 		} else {
@@ -667,7 +667,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 
 	// Second row here
 	// Not sure if necessary to copy entire ReportStatistics method
-	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcorehelper.TierceronControllerFlow.FlowName() {
+	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
 		dsc, _, err := df.GetDeliverStatCtx()
 		if err == nil {
@@ -892,7 +892,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 			// If triggers are ever fixed, this can be removed.
 			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"].(string); changeIdValueOk {
 				var changeQuery string
-				if strings.Contains(tfContext.ChangeFlowName, flowcorehelper.TierceronControllerFlow.FlowName()) {
+				if strings.Contains(tfContext.ChangeFlowName, flowcore.TierceronControllerFlow.FlowName()) {
 					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
 				} else {
 					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
@@ -1122,7 +1122,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			// If triggers are ever fixed, this can be removed.
 			if changeIdValue, changeIdValueOk := queryMap["TrcChangeId"].(string); changeIdValueOk {
 				var changeQuery string
-				if strings.Contains(tfContext.ChangeFlowName, flowcorehelper.TierceronControllerFlow.FlowName()) {
+				if strings.Contains(tfContext.ChangeFlowName, flowcore.TierceronControllerFlow.FlowName()) {
 					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
 				} else {
 					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(), tfContext.ChangeFlowName)
@@ -1290,7 +1290,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		}
 		//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
 		// Create remote data source with only what is needed.
-		if flow.FlowName() != flowcorehelper.TierceronControllerFlow.TableName() {
+		if flow.FlowName() != flowcore.TierceronControllerFlow.TableName() {
 			if region, ok := sDC["dbsourceregion"].(string); ok {
 				tfContext.RemoteDataSource["region-"+region] = sDC
 				if _, ok := sDC["dbsourceurl"].(string); ok {

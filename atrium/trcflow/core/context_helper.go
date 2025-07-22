@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -502,7 +503,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 
 		index, secondaryI, indexExt, indexErr := func(tfCtx *TrcFlowContext) (string, []string, string, error) {
 			if tfCtx.FlowHeader.Source == flowcorehelper.TierceronFlowDBName {
-				if tfCtx.FlowHeader.ServiceName() == flowcorehelper.TierceronControllerFlow.FlowName() {
+				if tfCtx.FlowHeader.ServiceName() == flowcore.TierceronControllerFlow.FlowName() {
 					return "flowName", nil, "", nil
 				} else {
 					return "", nil, "", errors.New("not implemented")
@@ -532,7 +533,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 
 	rows := make([][]any, 0)
 	for _, indexValue := range indexValues {
-		if tfContext.FlowHeader.FlowName() == flowcorehelper.TierceronControllerFlow.FlowName() && !coreopts.BuildOptions.IsSupportedFlow(indexValue) {
+		if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() && !coreopts.BuildOptions.IsSupportedFlow(indexValue) {
 			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
 			}
