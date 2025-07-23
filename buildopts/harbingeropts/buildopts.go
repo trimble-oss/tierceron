@@ -10,7 +10,6 @@ type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
 	GetFolderPrefix    func(custom []string) string
-	GetDatabaseName    func() string
 	IsValidProjectName func(projectName string) bool
 	BuildInterface     func(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext any, vaultDatabaseConfig map[string]any, serverListener any) error
 	BuildTableGrant    func(tableName string) (string, error)
@@ -20,7 +19,6 @@ type OptionsBuilder struct {
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
 		optionsBuilder.GetFolderPrefix = GetFolderPrefix
-		optionsBuilder.GetDatabaseName = GetDatabaseName
 		optionsBuilder.IsValidProjectName = IsValidProjectName
 		optionsBuilder.BuildInterface = BuildInterface
 		optionsBuilder.BuildTableGrant = BuildTableGrant

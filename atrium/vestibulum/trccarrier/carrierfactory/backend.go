@@ -25,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
-	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -473,7 +472,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		logger.Println("Initiate process flow for env: " + pec["env"].(string) + " and plugin: " + pec["trcplugin"].(string))
 		flowMachineInitContext := flowcore.FlowMachineInitContext{
 			FlowMachineInterfaceConfigs: map[string]any{},
-			GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+			GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
 			GetTableFlows: func() []flowcore.FlowDefinition {
 				tableFlows := []flowcore.FlowDefinition{}
 				for _, template := range pec["templatePath"].([]string) {

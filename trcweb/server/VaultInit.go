@@ -114,7 +114,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings {
 		mod.Env = e
-		warn, err = il.UploadTemplateDirectory(coreConfig, mod, templatePath, nil)
+		warn, err = il.UploadTemplateDirectory(nil, coreConfig, mod, templatePath, nil)
 		eUtils.LogErrorObject(coreConfig, err, false)
 		eUtils.LogWarningsObject(coreConfig, warn, false)
 	}

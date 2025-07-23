@@ -13,7 +13,6 @@ import (
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
-	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -224,7 +223,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		tableName := tableFlow.FlowHeader.Name.TableName()
 		if tableName != flowcore.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
-				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+tableName)
+				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported process flow: "+tableName)
 			}
 			continue
 		}
@@ -242,7 +241,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowStateReceiverMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
-	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), flowMachineInitContext.GetDatabaseName())
+	tfmContext.SetFlumeDbType(flowcore.TrcDb)
+	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb))
 	tfmContext.DriverConfig = &driverConfigBasis
 
 	if err != nil {
@@ -339,7 +339,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished building engine & changes tables")
 
-	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), flowopts.BuildOptions.GetFlowDatabaseName())
+	tfmFlumeContext.SetFlumeDbType(flowcore.TrcFlumeDb)
+	tfmFlumeContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), coreopts.BuildOptions.GetDatabaseName(flowcore.TrcFlumeDb))
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +376,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		tfmContext.FlowMapLock.Unlock()
 
 		go func(tcfContext *trcflowcore.TrcFlowContext, dc *config.DriverConfig) {
-			eUtils.LogInfo(dc.CoreConfig, "Beginning flow: "+tcfContext.FlowHeader.ServiceName())
+			eUtils.LogInfo(dc.CoreConfig, "Beginning controller flow: "+tcfContext.FlowHeader.ServiceName())
 			defer flowWG.Done()
 			var initErr error
 			_, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
@@ -384,7 +385,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				return
 			}
 			tcfContext.GoMod.Env = tcfContext.GoMod.EnvBasis
-			tcfContext.FlowHeader.SourceAlias = flowopts.BuildOptions.GetFlowDatabaseName()
+			tcfContext.FlowHeader.SourceAlias = coreopts.BuildOptions.GetDatabaseName(flowcore.TrcFlumeDb)
 
 			tfmFlumeContext.ProcessFlow(
 				tcfContext,
@@ -418,7 +419,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, table := range flowMachineInitContext.GetTableFlows() {
-		if !coreopts.BuildOptions.IsSupportedFlow(table.FlowHeader.FlowName()) {
+		if table.FlowHeader.TableName() == flowcore.TierceronControllerFlow.TableName() || !coreopts.BuildOptions.IsSupportedFlow(table.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table.FlowHeader.FlowName())
 			}
@@ -453,7 +454,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					tfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
 				}
 			}
-			tcfContext.FlowHeader.SourceAlias = flowMachineInitContext.GetDatabaseName()
+			tcfContext.FlowHeader.SourceAlias = coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb)
 			if tcfContext.FlowHeader.FlowName() == flowcore.ArgosSociiFlow.FlowName() {
 				go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
 					for tableLoadedPerm := range tfmContext.PreloadChan {

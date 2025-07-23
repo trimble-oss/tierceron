@@ -174,7 +174,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 				go func(currentReceiver chan flowcore.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
 					for xi := range currentReceiver {
 						x := xi.(flowcorehelper.FlowStateUpdate)
-						tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.TierceronControllerFlow.Name}, "")
+						tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(tfmContext, x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.TierceronControllerFlow.Name}, "")
 					}
 				}(receiver, tfmContext)
 			}
@@ -192,7 +192,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.FlowHeader.TableName()), tfContext)
 	tfmContext.CreateTableTriggers(tfContext, []string{tierceronFlowIdColumnName})
-
+	tfContext.InitNotify()
 	tfmContext.SyncTableCycle(tfContext, []string{tierceronFlowIdColumnName}, []string{tierceronFlowIdColumnName}, GetTierceronFlowConfigurationIndexedPathExt, nil, false)
 	sqlIngestInterval := tfContext.RemoteDataSource["dbingestinterval"].(time.Duration)
 	if sqlIngestInterval > 0 {
