@@ -11,7 +11,7 @@ import (
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 	rcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore"
 	score "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore"
-	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
 
 // GetConfigPaths - Override GetConfigPaths calls.
@@ -53,7 +53,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 		flowMachineInitContext := trcdbcore.GetFlowMachineInitContext(coreConfig, pluginName)
 		if flowMachineInitContext != nil {
 			if flowMachineInitContext.GetDatabaseName == nil {
-				flowMachineInitContext.GetDatabaseName = harbingeropts.GetDatabaseName
+				flowMachineInitContext.GetDatabaseName = coreopts.BuildOptions.GetDatabaseName
 			}
 		}
 		return flowMachineInitContext
