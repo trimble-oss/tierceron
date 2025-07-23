@@ -13,7 +13,7 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -339,7 +339,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []tcflow.FlowNameType{tcflow.FlowNameType("DataFlowStatistics")}, "")
+				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(id, statMap, coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics"), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType("DataFlowStatistics")}, "")
 				if !changed {
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.

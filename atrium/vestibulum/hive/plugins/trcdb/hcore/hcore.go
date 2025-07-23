@@ -242,9 +242,9 @@ func GetDbProject() string {
 func GetFlowMachineTemplates() map[string]any {
 	flowMachineTemplates := map[string]any{}
 	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                             // implemented.
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", GetDbProject()), // implemented.
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", GetDbProject()),                 // implemented.
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",   // implemented.
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
 	}
 	return flowMachineTemplates
 }
