@@ -14,7 +14,6 @@ import (
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
-	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	sqlememory "github.com/dolthub/go-mysql-server/memory"
@@ -60,6 +59,21 @@ func getCompositeDeleteChangeQuery(databaseName string, changeTable string, inde
 		return fmt.Sprintf("DELETE FROM %s.%s WHERE %s='%s' AND %s='%s'", databaseName, changeTable, indexColumnNames.([]string)[0], indexColumnValues.([]string)[0], indexColumnNames.([]string)[1], indexColumnValues.([]string)[1])
 	}
 	return ""
+}
+
+func (tfmContext *TrcFlowMachineContext) NotifyFlowComponentLoaded(tableName string) {
+	switch tableName {
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
+		fallthrough
+	case flowcore.TierceronControllerFlow.TableName():
+		tfmContext.FlowMapLock.RLock()
+		if tfFlowContext, refOk := tfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
+			tfmContext.FlowMapLock.RUnlock()
+			tfFlowContext.NotifyFlowComponentLoaded()
+		} else {
+			tfmContext.FlowMapLock.RUnlock()
+		}
+	}
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
@@ -502,7 +516,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		tfContext.GoMod.Version = "0"
 
 		index, secondaryI, indexExt, indexErr := func(tfCtx *TrcFlowContext) (string, []string, string, error) {
-			if tfCtx.FlowHeader.Source == flowcorehelper.TierceronFlowDBName {
+			if tfCtx.FlowHeader.Source == tfmContext.GetDatabaseName(tfmContext.GetFlumeDbType()) {
 				if tfCtx.FlowHeader.ServiceName() == flowcore.TierceronControllerFlow.FlowName() {
 					return "flowName", nil, "", nil
 				} else {
@@ -512,7 +526,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 				if flowDefinitionContext := tfCtx.GetFlowLibraryContext(); flowDefinitionContext != nil && flowDefinitionContext.GetFlowIndexComplex != nil {
 					return flowDefinitionContext.GetFlowIndexComplex()
 				} else {
-					return coreopts.BuildOptions.FindIndexForService(tfCtx.FlowHeader.Source, tfCtx.FlowHeader.ServiceName())
+					return coreopts.BuildOptions.FindIndexForService(tfmContext, tfCtx.FlowHeader.Source, tfCtx.FlowHeader.ServiceName())
 				}
 			}
 		}(tfContext)
@@ -540,6 +554,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			continue
 		}
 		if indexValue != "" {
+			// Loading the tables now from vault.
 			tfContext.GoMod.SectionKey = "/Index/"
 			var subSection string
 			if tfContext.GoMod.SubSectionName != "" {

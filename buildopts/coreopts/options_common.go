@@ -9,7 +9,6 @@ import (
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 
-	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/pkg/trcnet"
 )
 
@@ -134,8 +133,15 @@ func IsSupportedFlow(flow string) bool {
 // FindIndexForService - override to provide a custom index for a given service.  This should return
 // the name of the column that is to be treated as the index for the table.
 // TODO: This function is miss-named.  It should be called FindIndexForFlow where project = databaseName and service = tableName.
-func FindIndexForService(project string, service string) (string, []string, string, error) {
-	if project == flowcorehelper.TierceronFlowDBName {
+func FindIndexForService(tfmContext flowcore.FlowMachineContext, project string, service string) (string, []string, string, error) {
+	var projectName string
+	if tfmContext != nil {
+		projectName = tfmContext.GetDatabaseName(tfmContext.GetFlumeDbType())
+	} else {
+		projectName = BuildOptions.GetDatabaseName(flowcore.TrcFlumeDb)
+	}
+
+	if project == projectName {
 		if service == flowcore.TierceronControllerFlow.FlowName() {
 			return "flowName", nil, "", nil
 		} else {
@@ -170,8 +176,14 @@ func GetDFSPathName() (string, string) {
 }
 
 // GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return "tiercerondb"
+func GetDatabaseName(flumeDbType flowcore.FlumeDbType) string {
+	switch flumeDbType {
+	case flowcore.TrcDb:
+		return "TrcDb"
+	case flowcore.TrcFlumeDb:
+		return "TrcFlumeDb"
+	}
+	return "TrcDb"
 }
 
 const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"

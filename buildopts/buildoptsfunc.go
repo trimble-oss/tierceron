@@ -7,7 +7,6 @@ import (
 	"io"
 
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
-	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
 // SetLogger is called by TrcDb and other utilities to provide the extensions
@@ -70,7 +69,7 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
 
 	pluginConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
 		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
 	}
 
@@ -133,8 +132,8 @@ func GetTestDeployConfig(tokenPtr *string) map[string]any {
 func ProcessPluginEnvConfig(pluginEnvConfig map[string]any) map[string]any {
 	pluginEnvConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
 	}
 	pluginEnvConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",

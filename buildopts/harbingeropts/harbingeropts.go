@@ -50,11 +50,6 @@ func GetFolderPrefix(custom []string) string {
 	return "trc"
 }
 
-// GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return "fieldtechservice"
-}
-
 func IsValidProjectName(project string) bool {
 	return project != "" && !strings.HasPrefix(project, "TrcVault") && !strings.HasPrefix(project, "Vault") && !strings.HasPrefix(project, "TrcDb") && !strings.HasPrefix(project, "FlumeDatabase") && !strings.HasPrefix(project, "Azure")
 }
@@ -121,19 +116,7 @@ func BuildTableGrant(tableName string) (string, error) {
 }
 
 func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) {
-	trcTfmContext := tfmContext.(*trcflowcore.TrcFlowMachineContext)
-	switch tableName {
-	case flowcore.DataFlowStatConfigurationsFlow.TableName():
-		fallthrough
-	case flowcore.TierceronControllerFlow.TableName():
-		trcTfmContext.FlowMapLock.RLock()
-		if tfFlowContext, refOk := trcTfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
-			trcTfmContext.FlowMapLock.RUnlock()
-			tfFlowContext.NotifyFlowComponentLoaded()
-		} else {
-			trcTfmContext.FlowMapLock.RUnlock()
-		}
-	}
+	tfmContext.NotifyFlowComponentLoaded(tableName)
 }
 
 // Used to define a database interface for querying TrcDb.

@@ -16,7 +16,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
-	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -62,7 +62,7 @@ func main() {
 	}
 	flowMachineInitContext := flowcore.FlowMachineInitContext{
 		FlowMachineInterfaceConfigs: map[string]any{},
-		GetDatabaseName:             harbingeropts.BuildOptions.GetDatabaseName,
+		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {

@@ -155,7 +155,7 @@ func CommonMain(envPtr *string,
 	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	mod.Env = envBasis
 
-	warn, err := il.UploadTemplateDirectory(driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
+	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)

@@ -5,8 +5,6 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-const TierceronFlowDBName = "FlumeDatabase"
-
 type FlowStateUpdate struct {
 	FlowName    string
 	StateUpdate string
@@ -22,13 +20,9 @@ type CurrentFlowState struct {
 	FlowAlias  string
 }
 
-func GetFlowDBName() string {
-	return TierceronFlowDBName
-}
-
-func UpdateTierceronFlowState(flowName string, newState string, syncFilter string, syncMode string, flowAlias string) map[string]any {
+func UpdateTierceronFlowState(tfmContext flowcore.FlowMachineContext, flowName string, newState string, syncFilter string, syncMode string, flowAlias string) map[string]any {
 	return map[string]any{
-		"TrcQuery":    "update " + TierceronFlowDBName + "." + flowcore.TierceronControllerFlow.TableName() + " set lastModified=current_timestamp(), syncMode='" + syncMode + "', state=" + newState + ", SyncFilter='" + syncFilter + "', flowAlias='" + flowAlias + "' where flowName='" + flowName + "'",
+		"TrcQuery":    "update " + tfmContext.GetDatabaseName(flowcore.TrcFlumeDb) + "." + flowcore.TierceronControllerFlow.TableName() + " set lastModified=current_timestamp(), syncMode='" + syncMode + "', state=" + newState + ", SyncFilter='" + syncFilter + "', flowAlias='" + flowAlias + "' where flowName='" + flowName + "'",
 		"TrcChangeId": flowName,
 	}
 }
