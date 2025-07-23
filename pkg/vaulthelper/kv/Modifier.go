@@ -282,6 +282,7 @@ func (m *Modifier) Reset() {
 	m.SectionPath = ""
 	m.SubSectionName = ""
 	m.SubSectionValue = ""
+	m.VersionFilter = []string{}
 }
 
 func (m *Modifier) CleanCache(limit uint64) {
