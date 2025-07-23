@@ -445,6 +445,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flow
 	// Get the flow configuration from vault.
 	flowProject, flowService, _, flowConfigTemplatePath := coreutil.GetProjectService("", "trc_templates", flowTemplatePath)
 	flowConfigTemplateName := coreutil.GetTemplateFileName(flowConfigTemplatePath, flowService)
+	tfContext.GoMod.Reset()
 	tfContext.GoMod.SectionKey = "/Restricted/"
 	tfContext.GoMod.SectionName = flowService
 	if refreshErr := tfContext.Vault.RefreshClient(); refreshErr != nil {
@@ -456,7 +457,16 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flow
 	if err != nil {
 		return nil, false
 	}
-	return properties.GetConfigValues(flowService, flowConfigTemplateName)
+	configs, success := properties.GetConfigValues(flowService, flowConfigTemplateName)
+	if !success {
+		configs, err = tfContext.GoMod.ReadData(tfContext.GoMod.SectionPath)
+		if err != nil {
+			return nil, false
+		}
+		return configs, true
+	} else {
+		return configs, success
+	}
 }
 
 // seedVaultCycle - looks for changes in TrcDb and seeds vault with changes and pushes them also to remote
