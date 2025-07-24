@@ -126,6 +126,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 		}
 
 		changeLock.Lock()
+		// Main query entry point for changes to any tables... notification follows.
 		flowcore.TriggerAllChangeChannel(tableName, changeIds)
 		changeLock.Unlock()
 	}

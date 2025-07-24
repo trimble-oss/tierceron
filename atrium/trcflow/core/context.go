@@ -125,13 +125,10 @@ func TriggerAllChangeChannel(table string, changeIds map[string]string) {
 				}
 			}
 			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
+				// Notify the affected flow that a change has occured.
 				notificationFlowChannel.Bcast(true)
 				continue
 			}
-		}
-
-		for _, notificationFlowChannel := range tfmContext.ChannelMap {
-			notificationFlowChannel.Bcast(true)
 		}
 	}
 }

@@ -312,7 +312,12 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
-	tfmContext.Init(sourceDatabaseConnectionsMap, flowMachineInitContext.GetFilteredTableFlowNames(kernelId), flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
+	var filteredFlowNames []string
+	for _, flow := range flowMachineInitContext.GetFilteredTableFlowDefinitions(kernelId) {
+		filteredFlowNames = append(filteredFlowNames, flow.FlowHeader.FlowName())
+	}
+
+	tfmContext.Init(sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
 
 	//Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
@@ -346,7 +351,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcore.TierceronControllerFlow.FlowName()}, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
+	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcore.TierceronControllerFlow.FlowName()}, []flowcore.FlowNameType{}, []flowcore.FlowNameType{})
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
@@ -369,8 +374,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowWG.Add(1)
 		tableFlow := flowcore.FlowHeaderType{Name: flowcore.FlowNameType(table), Instances: "*"}
 		tfContext.FlowHeader = &tableFlow
-		tfContext.FlowHeader.Source = flowSourceMap[tableFlow.TableName()]
-		tfContext.FlowPath = flowTemplateMap[tableFlow.TableName()]
+		flowSource, _, _, flowPath := eUtils.GetProjectService(nil, pluginConfig["flumeTemplatePath"].([]string)[0])
+		tfContext.FlowHeader.Source = flowSource
+		tfContext.FlowPath = flowPath
 		tfmContext.FlowMapLock.Lock()
 		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
 		tfmContext.FlowMapLock.Unlock()
