@@ -296,6 +296,7 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI any, tcflow
 			} else {
 				select {
 				case newFlowState := <-tfContext.RemoteDataSource["flowStateController"].(chan flowcore.CurrentFlowState):
+					// Send message to set up initial flow state.
 					tfContext.SetFlowState(newFlowState)
 					if tfContext.GetFlowStateState() == 2 {
 						flowChangedChannel := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]
@@ -501,14 +502,42 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 			}
 			os.Exit(0)
 		case <-flowChangedChannel.Ch:
-			tfmContext.vaultPersistPushRemoteChanges(
-				tfContext,
-				identityColumnNames,
-				indexColumnNames,
-				mysqlPushEnabled,
-				getIndexedPathExt,
-				flowPushRemote)
-			flowChangedChannel.Clear()
+			// Receive notification that a change has occurred in TierceronFlow
+			// for a particular flow... This is the end of the message chain
+			// where the change is serialized to vault.
+			fcc := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]
+			if &flowChangedChannel.Ch != &fcc.Ch {
+				// TODO: this may no longer be necessary.
+				flowChangedChannel.Clear()
+				var foundFlowName flowcore.FlowNameType
+				for flowName, ch := range tfmContext.ChannelMap {
+					if ch == flowChangedChannel {
+						foundFlowName = flowName
+						break
+					}
+				}
+				correctTfContext := tfmContext.FlowMap[foundFlowName]
+				if correctTfContext != nil {
+					tfmContext.vaultPersistPushRemoteChanges(
+						correctTfContext,
+						identityColumnNames,
+						indexColumnNames,
+						mysqlPushEnabled,
+						getIndexedPathExt,
+						flowPushRemote)
+				} else {
+					tfmContext.Log(fmt.Sprintf("Could not find flow for channel: %p", flowChangedChannel), nil)
+				}
+			} else {
+				flowChangedChannel.Clear()
+				tfmContext.vaultPersistPushRemoteChanges(
+					tfContext,
+					identityColumnNames,
+					indexColumnNames,
+					mysqlPushEnabled,
+					getIndexedPathExt,
+					flowPushRemote)
+			}
 		case <-tfContext.Context.Done():
 			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.FlowHeader.Name), nil)
 			tfmContext.vaultPersistPushRemoteChanges(
@@ -1308,7 +1337,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 		if _, ok := sDC["dbingestinterval"]; ok {
 			tfContext.RemoteDataSource["dbingestinterval"] = sDC["dbingestinterval"]
 		} else {
-			var d time.Duration = 60000
+			var d time.Duration = 60
 			tfContext.RemoteDataSource["dbingestinterval"] = d
 		}
 		//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller

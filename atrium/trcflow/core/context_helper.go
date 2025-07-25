@@ -107,6 +107,7 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	var changedEntriesQuery string
 
 	changesLock.Lock()
+	defer changesLock.Unlock()
 
 	/*if isInit {
 		changedEntriesQuery = `SELECT ` + identityColumnName + ` FROM ` + databaseName + `.` + tableName
@@ -127,7 +128,6 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 			return nil, err
 		}
 	}
-	changesLock.Unlock()
 	return matrixChangedEntries, nil
 }
 
