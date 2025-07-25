@@ -268,7 +268,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}
 		} else {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Ingest interval invalid - Defaulting to 60 minutes.", false)
-			dbSourceConnBundle["dbingestinterval"] = time.Duration(60000)
+			dbSourceConnBundle["dbingestinterval"] = time.Duration(60)
 		}
 
 		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
@@ -336,7 +336,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		sourceDatabaseConnectionsMap = make(map[string]map[string]any, 1)
 		sourceDatabaseDetails := make(map[string]any, 1)
 		sourceDatabaseDetails["dbsourceregion"] = "NA"
-		var d time.Duration = 60000
+		var d time.Duration = 60
 		sourceDatabaseDetails["dbingestinterval"] = d
 		sourceDatabaseConnectionsMap["NA"] = sourceDatabaseDetails
 		sourceDatabaseDetails["sqlConn"] = nil

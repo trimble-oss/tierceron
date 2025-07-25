@@ -2,6 +2,7 @@ package flumen
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -117,6 +118,8 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 			}
 			if tfmContext.FlowControllerInit || stateChanged || syncModeChanged || syncFilterChanged {
 				go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
+					// If a flow is changed the fields are checked here for actual changes.
+					// If there are any we trigger a flow state change.
 					tfmContext.Log("Queuing state change: "+fId, nil)
 					sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
 				}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId, flowAliasMsg)
@@ -144,6 +147,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 		if tfmContext.FlowControllerInit { //Sending off listener for state updates
 			go func(tfmc *trcflowcore.TrcFlowMachineContext, tfc *trcflowcore.TrcFlowContext, fcmap map[string]chan flowcore.CurrentFlowState) {
 				for tierceronFlowName := range tfmc.FlowControllerUpdateAlert {
+					// Every time a message is sent, this triggers...
 					sendUpdates(tfmc, tfc, fcmap, tierceronFlowName)
 				}
 			}(tfmContext, tfContext, flowControllerMap)
@@ -173,6 +177,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
 				go func(currentReceiver chan flowcore.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
 					for xi := range currentReceiver {
+						// Controller receives updates from queries here...
 						x := xi.(flowcorehelper.FlowStateUpdate)
 						tfmc.CallDBQuery(tfContext, flowcorehelper.UpdateTierceronFlowState(tfmContext, x.FlowName, x.StateUpdate, x.SyncFilter, x.SyncMode, x.FlowAlias), nil, true, "UPDATE", []flowcore.FlowNameType{flowcore.TierceronControllerFlow.Name}, "")
 					}
