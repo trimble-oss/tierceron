@@ -1129,6 +1129,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 					KernelId:      &pluginHandler.Id,
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
+					// StatisticsDoc: msg.StatisticsDoc,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
