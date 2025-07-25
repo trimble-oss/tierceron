@@ -62,10 +62,13 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 func GetFlowMachineTemplates() map[string]any {
 	pluginConfig := map[string]any{}
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",            // implemented.
 		"trc_templates/TenantDatabase/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
 		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                          // implemented.
 	}
+	pluginConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	}
+
 	return pluginConfig
 }
 
