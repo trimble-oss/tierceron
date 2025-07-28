@@ -1,0 +1,1 @@
+Sends an array of StatisticsDoc with relevant training data for Vico
