@@ -1328,8 +1328,8 @@ github.com/trimble-oss/cli-runtime v0.0.7 h1:aLq5HKtAPqgX8aOAD7m7t2pPQ0Vi2KWeNRb
 github.com/trimble-oss/cli-runtime v0.0.7/go.mod h1:vHZb1K0wxLPJhnJVfdZCh8PJomSsJgd4olTvxLqZt+0=
 github.com/trimble-oss/client-go v0.0.3 h1:rxcoZH3dTWZd53jc6Er12vYN/TAkQ78gM1clqx6KfmU=
 github.com/trimble-oss/client-go v0.0.3/go.mod h1:3Qc+Y86+D1z30j+NDDjSW63z4Oi9VGUWgR6vujMT2yQ=
-github.com/trimble-oss/go-mysql-server v0.12.0-1.26 h1:sMy5W3CcPELkGuuwEXbi09fnFWKxgkb2iZOythlpUjk=
-github.com/trimble-oss/go-mysql-server v0.12.0-1.26/go.mod h1:Fx5WqhwndjwRjWZ3m3Gs2LbHvCDrBRudeihcpIlzp+M=
+github.com/trimble-oss/go-mysql-server v0.12.0-1.28 h1:lY9OKW5PCt5Zxn0Xb+1lSpHVL52IdrjVk7SaKeAWUug=
+github.com/trimble-oss/go-mysql-server v0.12.0-1.28/go.mod h1:BjVA7gHh8UXnf5Yd19NqUlqYVcsMUe5IUZF7ufZayhM=
 github.com/trimble-oss/kubectl v0.0.5 h1:8faeUC0kYp4vvY7cbymrOehUm2bj74JU+s330CTJ3Pw=
 github.com/trimble-oss/kubectl v0.0.5/go.mod h1:V+ivAn0PvtBhgnjiBq1rk9EcijMNmAbD+Bc4SrMFP50=
 github.com/trimble-oss/tierceron-hat v1.2.10 h1:eRNf2RYLQz/OqkSeOU+6yJvM5fWNERu+y0RuikzhRjw=
