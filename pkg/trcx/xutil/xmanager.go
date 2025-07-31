@@ -471,7 +471,11 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				return
 			}
 
-			templateResult.Env = env + "_" + version
+			if strings.Contains(dc.CoreConfig.Env, "_") {
+				templateResult.Env = env + "_" + version
+			} else {
+				templateResult.Env = env
+			}
 			templateResult.SubSectionValue = dc.SubSectionValue
 			templateResultChan <- &templateResult
 		}(templatePath, multiService, driverConfig, commonPaths)
