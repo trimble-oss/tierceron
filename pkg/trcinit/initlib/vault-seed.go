@@ -150,19 +150,18 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 		driverConfig.CoreConfig.Regions = regions
 
 		var tempPaths []string
+		tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+		if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
+			driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
+			tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+		}
+
+		mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+		if err != nil {
+			return eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, -1)
+		}
 		for _, templatePath := range templatePaths {
 			var err error
-			tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
-			if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
-				driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
-				tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
-			}
-
-			mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
-			if err != nil {
-				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-				continue
-			}
 
 			mod.Env = driverConfig.CoreConfig.Env
 			if len(driverConfig.ProjectSections) > 0 {

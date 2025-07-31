@@ -1115,7 +1115,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		}
 		tokenName := fmt.Sprintf("vault_pub_token_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 		currentRoleEntityPtr := new(string)
-		*currentRoleEntityPtr = "configpub.yml"
+		*currentRoleEntityPtr = "pubrole"
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr = currentRoleEntityPtr
 		trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 		trcshDriverConfig.DriverConfig.CoreConfig.WantCerts = true
