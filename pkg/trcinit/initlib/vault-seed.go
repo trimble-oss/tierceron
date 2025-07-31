@@ -162,7 +162,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 		}
 		for _, templatePath := range templatePaths {
 			var err error
-
+			mod.Reset()
 			mod.Env = driverConfig.CoreConfig.Env
 			if len(driverConfig.ProjectSections) > 0 {
 				mod.ProjectIndex = driverConfig.ProjectSections
