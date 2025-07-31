@@ -308,6 +308,11 @@ func CommonMain(envPtr *string,
 			os.Exit(1)
 		}
 	}
+	if driverConfig.CoreConfig.IsShell {
+		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
+			roleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
+		}
+	}
 
 	// If logging production directory does not exist and is selected log to local directory
 	autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, roleEntityPtr, *pingPtr)
