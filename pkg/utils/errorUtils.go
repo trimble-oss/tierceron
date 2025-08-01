@@ -26,6 +26,7 @@ func CheckError(config *coreconfig.CoreConfig, err error, exit bool) {
 	// If code wants to exit and ExitOnFailure is specified,
 	// then we can exit here.
 	if err != nil && exit && config.ExitOnFailure {
+		config.Log.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
 		log.Fatal(err)
 	}
 }
@@ -49,6 +50,7 @@ func CheckWarning(config *coreconfig.CoreConfig, warning string, exit bool) {
 			fmt.Println(warning)
 		}
 		if exit && config.ExitOnFailure {
+			config.Log.Println(warning)
 			os.Exit(1)
 		}
 	}

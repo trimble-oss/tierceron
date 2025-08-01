@@ -188,7 +188,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 			_, fileError := os.Stat(wd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + templateParam)
 			if fileError != nil {
 				if os.IsNotExist(fileError) {
-					eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("File does not exist\n"+templateParam), false)
+					eUtils.LogErrorObject(driverConfig.CoreConfig, fmt.Errorf("file does not exist: %s", templateParam), false)
 					continue
 				}
 			} else {
