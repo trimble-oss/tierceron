@@ -33,7 +33,7 @@ func defaultEmpty() *string {
 }
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.37")
+	fmt.Println("trcshinit Version: " + "1.38")
 }
 
 // This assumes that the vault is completely new, and should only be run for the purpose
