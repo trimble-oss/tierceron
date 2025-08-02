@@ -201,7 +201,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	if IsCmdLineTool {
 		var err1 error
 		fmt.Printf("Cmd tool auth\n")
-		appRoleSecret, IsApproleEmpty, addrPtr, err1 = cmdAutoAuthHelper(appRoleSecret, IsApproleEmpty, tokenPtr, driverConfig, wantedTokenNamePtr, cEnvCtx, addrPtr, envPtr, v, err, ping, envCtxPtr)
+		appRoleSecret, IsApproleEmpty, addrPtr, err1 = cmdAutoAuthHelper(appRoleSecret, IsApproleEmpty, tokenPtr, driverConfig, wantedTokenNamePtr, cEnvCtx, addrPtr, envPtr, &v, err, ping, envCtxPtr)
+		if v != nil {
+			defer v.Close()
+		}
 		if err1 != nil || ping {
 			return err1
 		}
@@ -365,7 +368,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 }
 
 // cmdAutoAuthHelper is a helper function to handle command line authentication.
-func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *string, driverConfig *config.DriverConfig, wantedTokenNamePtr *string, cEnvCtx string, addrPtr *string, envPtr *string, v *sys.Vault, err error, ping bool, envCtxPtr *string) (*[]string, bool, *string, error) {
+func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *string, driverConfig *config.DriverConfig, wantedTokenNamePtr *string, cEnvCtx string, addrPtr *string, envPtr *string, v **sys.Vault, err error, ping bool, envCtxPtr *string) (*[]string, bool, *string, error) {
 	var override bool
 	var exists bool
 	var vaultHost string
@@ -449,17 +452,12 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 		}
 		if envPtr != nil {
 			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
-			v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+			*v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 		} else {
 			return nil, false, nil, errors.New("envPtr is nil")
 		}
-
-		if v != nil {
-			defer v.Close()
-		} else {
-			if ping {
-				return nil, false, nil, nil
-			}
+		if ping {
+			return nil, false, nil, nil
 		}
 		if err != nil {
 			return nil, false, nil, err
