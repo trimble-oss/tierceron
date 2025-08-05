@@ -897,9 +897,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 									rattanToken := new(string)
 
 									autoErr := eUtils.AutoAuth(bootDriverConfig, currentTokenNamePtr, &rattanToken, &rattanEnv, nil, &currentRattanRoleEntity, false)
-									if autoErr != nil {
-										bootDriverConfig.CoreConfig.TokenCache.AddToken(*currentTokenNamePtr, rattanToken)
+									if autoErr == nil {
+										// Satisfy requirements for flow machine.
+										// It expects a token named unrestricted.
+										// Although we'll hand it a restricted token for now.
+										rattanTokenAlias := fmt.Sprintf("config_token_%s_unrestricted", rattanEnv)
+										bootDriverConfig.CoreConfig.TokenCache.AddToken(rattanTokenAlias, rattanToken)
+										currentTokenNamePtr = &rattanTokenAlias
 									}
+
 									bootDriverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr
 								}
 							}
