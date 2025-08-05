@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
@@ -694,8 +695,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 						// Get certs...
 						driverConfig.CoreConfig.WantCerts = true
-						configErr := trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-							&driverConfig.CoreConfig.Env,
+						kernelEnvBasis := driverConfig.CoreConfig.EnvBasis
+						configErr := trcconfigbase.CommonMain(&kernelEnvBasis,
+							&kernelEnvBasis,
 							wantedTokenName, // wantedTokenName
 							nil,             // regionPtr
 							flagset,
@@ -721,8 +723,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = false
 						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
-						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-							&driverConfig.CoreConfig.Env,
+						kernelEnvBasis = driverConfig.CoreConfig.EnvBasis
+						trcconfigbase.CommonMain(&kernelEnvBasis,
+							&kernelEnvBasis,
 							wantedTokenName, // tokenName
 							nil,             // regionPtr
 							flagset,
@@ -740,7 +743,27 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 									err := yaml.Unmarshal(configBytes, &harbingerConfig)
 									if err == nil {
 										flowMachineInitContext.(*flow.FlowMachineInitContext).FlowMachineInterfaceConfigs = harbingerConfig
-										delete(serviceConfig, flow.HARBINGER_INTERFACE_CONFIG)
+										serviceConfig[flow.HARBINGER_INTERFACE_CONFIG] = harbingerConfig
+									} else {
+										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
+										return
+									}
+								}
+							}
+						} else {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+								// Make plugin configs available to flowMachineContext
+								var harbingerConfig map[string]any
+								if configBytes, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG].([]byte); ok {
+									err := yaml.Unmarshal(configBytes, &harbingerConfig)
+									delete(harbingerConfig, "controllerdbport")
+									delete(harbingerConfig, "controllerdbuser")
+									delete(harbingerConfig, "controllerdbpassword")
+									delete(harbingerConfig, "dbport")
+									delete(harbingerConfig, "dbuser")
+									delete(harbingerConfig, "dbpassword")
+									if err == nil {
+										serviceConfig[flow.HARBINGER_INTERFACE_CONFIG] = harbingerConfig
 									} else {
 										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
 										return
@@ -847,8 +870,54 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 				pluginConfig["kernelId"] = pluginHandler.GetKernelId()
 
+				//Grab app role and secret and addr and env from service config and call auto auth
+				// auto auth will return token
+				// Create own driver config
+				var bootDriverConfig *config.DriverConfig
+				if flowConfigs, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG]; ok {
+					if flowMachineConfig, ok := flowConfigs.(map[string]any); ok {
+						if rattanRole, ok := flowMachineConfig["rattan_role"].(string); ok {
+							if rattanEnv, ok := flowMachineConfig["rattan_env"].(string); ok {
+								if rattanAddress, ok := flowMachineConfig["vault_addr"].(string); ok {
+									insecure := false
+
+									bootDriverConfig = &config.DriverConfig{
+										CoreConfig: &coreconfig.CoreConfig{
+											ExitOnFailure: true,
+											TokenCache:    cache.NewTokenCacheEmpty(&rattanAddress),
+											Insecure:      insecure,
+											Log:           driverConfig.CoreConfig.Log,
+											Env:           rattanEnv,
+											EnvBasis:      rattanEnv,
+										},
+									}
+									bootDriverConfig.CoreConfig.TokenCache.AddRoleStr("rattan", &rattanRole)
+									tokenPtr := fmt.Sprintf("config_token_plugin%s", rattanEnv)
+									currentTokenNamePtr := &tokenPtr
+									currentRattanRoleEntity := "rattan"
+									rattanToken := new(string)
+
+									autoErr := eUtils.AutoAuth(bootDriverConfig, currentTokenNamePtr, &rattanToken, &rattanEnv, nil, &currentRattanRoleEntity, false)
+									if autoErr == nil {
+										// Satisfy requirements for flow machine.
+										// It expects a token named unrestricted.
+										// Although we'll hand it a restricted token for now.
+										rattanTokenAlias := fmt.Sprintf("config_token_%s_unrestricted", rattanEnv)
+										bootDriverConfig.CoreConfig.TokenCache.AddToken(rattanTokenAlias, rattanToken)
+										currentTokenNamePtr = &rattanTokenAlias
+									}
+
+									bootDriverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr
+								}
+							}
+						}
+					}
+
+				} else {
+					bootDriverConfig = driverConfig
+				}
 				// Needs certifyPath and connectionPath
-				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), bootDriverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 				if err != nil || tfmContext == nil {
 					driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
 					return
