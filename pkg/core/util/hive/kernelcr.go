@@ -695,8 +695,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 						// Get certs...
 						driverConfig.CoreConfig.WantCerts = true
-						configErr := trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-							&driverConfig.CoreConfig.Env,
+						kernelEnvBasis := driverConfig.CoreConfig.EnvBasis
+						configErr := trcconfigbase.CommonMain(&kernelEnvBasis,
+							&kernelEnvBasis,
 							wantedTokenName, // wantedTokenName
 							nil,             // regionPtr
 							flagset,
@@ -722,7 +723,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = false
 						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
-						kernelEnvBasis := driverConfig.CoreConfig.EnvBasis
+						kernelEnvBasis = driverConfig.CoreConfig.EnvBasis
 						trcconfigbase.CommonMain(&kernelEnvBasis,
 							&kernelEnvBasis,
 							wantedTokenName, // tokenName
