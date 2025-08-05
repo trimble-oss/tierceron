@@ -10,72 +10,92 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
+	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trccertmgmtbase"
 )
 
-func CommonMain(envDefaultPtr *string,
-	addrPtr *string,
-	tokenPtr *string,
+func CommonMain(envPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	trcshDriverConfig *capauth.TrcshDriverConfig) error {
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	mainPluginHandler ...*hive.PluginHandler) error {
 
 	var flagEnvPtr *string
+	var tokenPtr *string
+	var addrPtr *string
+	var logFilePtr *string
+
 	// Main functions are as follows:
 	if flagset == nil {
-		fmt.Println("Version: " + "1.05")
+		if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig != nil {
+			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, "Version: "+"1.05")
+		} else {
+			fmt.Println("Version: " + "1.05")
+		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
 		// set and ignore..
 		flagEnvPtr = flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+		flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
 		}
+	} else {
+		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
+		if flagset.Lookup("log") == nil {
+			logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+		}
 	}
-	defineServicePtr := flagset.Bool("defineService", false, "Service is defined.")
+	defineServicePtr := flagset.Bool("defineService", false, "Specified when defining a service.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
 	// These functions only valid for pluginType trcshservice
+	pluginservicestartPtr := flagset.Bool("pluginservicestart", false, "To start a trcshell kernel service for a particular plugin.")
+	pluginservicestopPtr := flagset.Bool("pluginservicestop", false, "To stop a trcshell kernel service for a particular plugin.")
 	winservicestopPtr := flagset.Bool("winservicestop", false, "To stop a windows service for a particular plugin.")
 	winservicestartPtr := flagset.Bool("winservicestart", false, "To start a windows service for a particular plugin.")
 	codebundledeployPtr := flagset.Bool("codebundledeploy", false, "To deploy a code bundle.")
 	agentdeployPtr := flagset.Bool("agentdeploy", false, "To initiate deployment on agent.")
-	projectservicePtr := flagset.String("projectservice", "", "Provide template root path in form project/service")
-	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
+	projectservicePtr := flagset.String("projectservice", "", "Provide template path in form project/service")
 	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
-	pushimagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
+	pushImagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
+	pushAliasPtr := flagset.String("pushAlias", "", "Image name:tag to push to registry, separated by commas (eg: egg:plant,egg:salad,egg:bar).")
 
 	// Common flags...
 	startDirPtr := flagset.String("startDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Template directory")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
-	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 
 	// defineService flags...
 	deployrootPtr := flagset.String("deployroot", "", "Optional path for deploying services to.")
+	deploysubpathPtr := flagset.String("deploysubpath", "", "Subpath under root to deliver code bundles.")
 	serviceNamePtr := flagset.String("serviceName", "", "Optional name of service to use in managing service.")
 	pathParamPtr := flagset.String("pathParam", "", "Optional path placeholder replacement to use in managing service.")
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
 	expandTargetPtr := flagset.Bool("expandTarget", false, "Used to unzip files at deploy path")
+	trcbootstrapPtr := flagset.String("trcbootstrap", "/deploy/deploy.trc", "Used to unzip files at deploy path")
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
@@ -99,7 +119,7 @@ func CommonMain(envDefaultPtr *string,
 	// Cert flags
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 
-	if trcshDriverConfig == nil || !trcshDriverConfig.DriverConfig.IsShellSubProcess {
+	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -118,6 +138,13 @@ func CommonMain(envDefaultPtr *string,
 			flagset.Usage()
 			return errors.New("invalid input parameters")
 		}
+
+		if eUtils.RefLength(tokenNamePtr) == 0 {
+			tokenNamePtr = new(string)
+			*tokenNamePtr = fmt.Sprintf("config_token_plugin%s", *envPtr)
+		}
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	} else {
 		err := flagset.Parse(argLines)
 		if err != nil {
@@ -126,6 +153,25 @@ func CommonMain(envDefaultPtr *string,
 		err = flagset.Parse(argLines[1:])
 		if err != nil {
 			return err
+		}
+		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+	}
+
+	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil && logFilePtr != nil {
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			fmt.Println("Error creating log file: " + *logFilePtr)
+			return errors.New("Error creating log file: " + *logFilePtr)
+		}
+		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
+	}
+
+	if !kernelopts.BuildOptions.IsKernel() {
+		if utils.RefLength(addrPtr) == 0 {
+			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 		}
 	}
 
@@ -154,7 +200,12 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("must use -pluginName flag to use -defineService flag")
 	}
 
-	if *pushimagePtr && (len(*pluginNamePtr) == 0) {
+	if *defineServicePtr && !regexp.MustCompile(`^[a-z0-9._/-]+$`).MatchString(*pluginNamePtr) {
+		fmt.Println("pluginName can only include lowercase alphanumeric characters, periods, dashes, underscores, and forward slashes")
+		return errors.New("pluginName can only include lowercase alphanumeric characters, periods, dashes, underscores, and forward slashes")
+	}
+
+	if *pushImagePtr && (len(*pluginNamePtr) == 0) {
 		fmt.Println("Must use -pluginName flag to use -pushimage flag")
 		return errors.New("must use -pluginName flag to use -pushimage flag")
 	}
@@ -162,6 +213,16 @@ func CommonMain(envDefaultPtr *string,
 	if len(*buildImagePtr) > 0 && len(*pluginNamePtr) == 0 {
 		fmt.Println("Must use -pluginName flag to use -buildImage flag")
 		return errors.New("must use -pluginName flag to use -buildImage flag")
+	}
+
+	if len(*buildImagePtr) > 0 && len(strings.Split(*pluginNamePtr, ":")[0]) > 128 {
+		fmt.Println("Image tag cannot be longer than 128 characters")
+		return errors.New("image tag cannot be longer than 128 characters")
+	}
+
+	if len(*pushAliasPtr) > 0 && !*pushImagePtr {
+		fmt.Println("Must use -pushImage flag to use -pushAlias flag")
+		return errors.New("must use -pushImage flag to use -pushAlias flag")
 	}
 
 	if len(*certPathPtr) > 0 && !*updateAPIMPtr {
@@ -181,14 +242,14 @@ func CommonMain(envDefaultPtr *string,
 			return errors.New("-pathParam can only contain alphanumberic characters or underscores")
 		}
 	}
-	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr {
+	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr || *pluginservicestopPtr || *pluginservicestartPtr {
 		*pluginTypePtr = "trcshservice"
 	}
 
-	if !*updateAPIMPtr {
+	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -200,7 +261,7 @@ func CommonMain(envDefaultPtr *string,
 			}
 
 		case "agent": // A deployment agent tool.
-			if trcshDriverConfig != nil {
+			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 				// TODO: do we want to support Deployment certifications in the pipeline at some point?
 				// If so this is a config check to remove.
 				fmt.Printf("Plugin type %s not supported in trcsh.\n", *pluginTypePtr)
@@ -210,7 +271,13 @@ func CommonMain(envDefaultPtr *string,
 				fmt.Printf("codebundledeploy not supported for plugin type %s in trcsh\n", *pluginTypePtr)
 				return fmt.Errorf("codebundledeploy not supported for plugin type %s in trcsh", *pluginTypePtr)
 			}
+		case "trccmdtool": // A trc command line tool.
 		case "trcshservice": // A trcshservice managed microservice
+		case "trcshkubeservice":
+		case "trcshpluginservice":
+		case "trcshmutabilispraefecto":
+		case "trcshcmdtoolplugin":
+		case "trcflowpluginservice":
 		default:
 			if !*agentdeployPtr {
 				fmt.Println("Unsupported plugin type: " + *pluginTypePtr)
@@ -221,86 +288,67 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	if *pluginTypePtr != "vault" {
-		*regionPtr = ""
-	}
+	// if *pluginTypePtr != "vault" {
+	// 	*regionPtr = ""
+	// }
 
-	var appRoleConfigPtr *string
+	var currentRoleEntityPtr *string
 	var trcshDriverConfigBase *capauth.TrcshDriverConfig
-	var logger *log.Logger
 	if trcshDriverConfig != nil {
 		trcshDriverConfigBase = trcshDriverConfig
-		logger = trcshDriverConfig.DriverConfig.CoreConfig.Log
-		if *pluginNameAliasPtr != "" {
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
+
+		if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
+			if *agentdeployPtr {
+				fmt.Println("Unsupported agentdeploy outside trcsh")
+				return errors.New("unsupported agentdeploy outside trcsh")
+			}
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure = *insecurePtr
+			trcshDriverConfigBase.DriverConfig.StartDir = []string{*startDirPtr}
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
 		} else {
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
+			if *pluginNameAliasPtr != "" {
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
+			} else {
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
+			}
+			currentRoleEntityPtr = trcshDriverConfigBase.DriverConfig.CoreConfig.CurrentRoleEntityPtr
+			*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
 		}
-		appRoleConfigPtr = &(trcshDriverConfigBase.DriverConfig.CoreConfig.AppRoleConfig)
-		*insecurePtr = trcshDriverConfigBase.DriverConfig.CoreConfig.Insecure
+
 	} else {
-		if *agentdeployPtr {
-			fmt.Println("Unsupported agentdeploy outside trcsh")
-			return errors.New("unsupported agentdeploy outside trcsh")
-		}
-
-		// If logging production directory does not exist and is selected log to local directory
-		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log" {
-			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "plgtool.log"
-		}
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-		logger = log.New(f, "[INIT]", log.LstdFlags)
-
-		trcshDriverConfigBase = &capauth.TrcshDriverConfig{
-			DriverConfig: eUtils.DriverConfig{
-				CoreConfig: core.CoreConfig{
-					ExitOnFailure: true,
-					Insecure:      *insecurePtr,
-					Log:           logger,
-				},
-				StartDir:        []string{*startDirPtr},
-				SubSectionValue: *pluginNamePtr,
-			},
-		}
-
-		appRoleConfigPtr = new(string)
-		if err != nil {
-			return err
-		}
+		fmt.Println("Unsupported agentdeploy outside trcsh")
+		return errors.New("unsupported agentdeploy outside trcsh")
 	}
 
-	//
-	if tokenNamePtr == nil || *tokenNamePtr == "" || tokenPtr == nil || *tokenPtr == "" {
-		autoErr := eUtils.AutoAuth(&trcshDriverConfigBase.DriverConfig, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envDefaultPtr, addrPtr, envCtxPtr, *appRoleConfigPtr, false)
+	if eUtils.RefLength(trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
+		autoErr := eUtils.AutoAuth(trcshDriverConfigBase.DriverConfig, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, false)
 		if autoErr != nil {
-			eUtils.LogErrorMessage(&trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
+			eUtils.LogErrorMessage(trcshDriverConfigBase.DriverConfig.CoreConfig, "Auth failure: "+autoErr.Error(), false)
 			return errors.New("auth failure")
 		}
 	}
-	if logger != nil {
-		logger.Printf("Certify begin gathering certify configs\n")
-	}
+	trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin gathering certify configs\n")
 
 	regions := []string{}
 
-	pluginConfig := map[string]interface{}{}
+	pluginConfig := map[string]any{}
 	pluginConfig = buildopts.BuildOptions.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
 	if pluginConfig == nil {
 		fmt.Println("Error: Could not find plugin config")
 		return errors.New("could not find plugin config")
 	}
-	pluginConfig["env"] = *envDefaultPtr
-	pluginConfig["vaddress"] = *addrPtr
-	if tokenPtr != nil {
-		pluginConfig["token"] = *tokenPtr
+	pluginConfig["env"] = *envPtr
+	pluginConfig["vaddress"] = *trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr
+	if trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr) != nil {
+		pluginConfig["tokenptr"] = trcshDriverConfigBase.DriverConfig.CoreConfig.TokenCache.GetToken(*tokenNamePtr)
 	}
 	pluginConfig["ExitOnFailure"] = true
 	if *regionPtr != "" {
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
-	config, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, logger)
+	driverConfig, mod, vault, err := eUtils.InitVaultModForTool(pluginConfig, trcshDriverConfigBase.DriverConfig)
 	trcshConfig := &capauth.TrcshDriverConfig{
-		DriverConfig: *config,
+		DriverConfig: driverConfig,
 	}
 	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
 	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
@@ -310,22 +358,49 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if err != nil {
-		logger.Println("Error: " + err.Error() + " - 1")
-		logger.Println("Failed to init mod for deploy update")
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Error: " + err.Error() + " - 1")
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Failed to init mod for deploy update")
 		return err
 	}
-	config.StartDir = []string{*startDirPtr}
+	driverConfig.StartDir = []string{*startDirPtr}
 	if *pluginNameAliasPtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
-	} else {
-		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNamePtr
-	}
-	mod.Env = *envDefaultPtr
-	if logger != nil {
-		logger.Printf("Certify mod initialized\n")
+	} else if *pluginNamePtr != "" {
+		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
+	} else if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+		if subsv, k := deploy_plugin.(string); k {
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
+			*pluginNamePtr = subsv
+		}
 	}
 
-	if strings.HasPrefix(*envDefaultPtr, "staging") || strings.HasPrefix(*envDefaultPtr, "prod") || strings.HasPrefix(*envDefaultPtr, "dev") {
+	var pluginHandler *hive.PluginHandler = nil
+	var kernelPluginHandler *hive.PluginHandler = nil
+	if *pluginNamePtr == "" {
+		if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+			if dep, k := deploy_plugin.(string); k {
+				*pluginNamePtr = dep
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
+			}
+		} else {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
+		}
+	}
+	if kernelopts.BuildOptions.IsKernel() {
+		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
+			kernelPluginHandler = mainPluginHandler[0]
+			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
+			pluginHandler.KernelId = kernelPluginHandler.KernelId
+		}
+	}
+
+	mod.Env = *envPtr
+	if trcshDriverConfigBase.DriverConfig.CoreConfig.Log != nil {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify mod initialized\n")
+	}
+
+	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if *regionPtr != "" {
 			for _, supportedRegion := range supportedRegions {
@@ -345,9 +420,9 @@ func CommonMain(envDefaultPtr *string,
 	if *updateAPIMPtr {
 		var apimError error
 		if len(*certPathPtr) > 0 {
-			apimError = trccertmgmtbase.CommonMain(certPathPtr, config, mod)
+			apimError = trccertmgmtbase.CommonMain(certPathPtr, driverConfig, mod)
 		} else {
-			apimError = trcapimgmtbase.CommonMain(envDefaultPtr, addrPtr, tokenPtr, nil, secretIDPtr, appRoleIDPtr, tokenNamePtr, regionPtr, startDirPtr, config, mod)
+			apimError = trcapimgmtbase.CommonMain(envPtr, nil, tokenNamePtr, regionPtr, startDirPtr, driverConfig, mod)
 		}
 		if apimError != nil {
 			fmt.Println(apimError.Error())
@@ -357,13 +432,13 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(&trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.ProcessDeployPluginEnvConfig(map[string]interface{}{}), *defineServicePtr)
+	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
 	if plcErr != nil {
 		fmt.Println(plcErr.Error())
 		return plcErr
 	}
-	if logger != nil {
-		logger.Printf("Certify begin activities\n")
+	if *certifyImagePtr {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
 	}
 
 	if len(*sha256Ptr) > 0 {
@@ -413,11 +488,19 @@ func CommonMain(envDefaultPtr *string,
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 	pluginToolConfig["codebundledeployPtr"] = *codebundledeployPtr //for optimization change in certify
+	pluginToolConfig["buildImagePtr"] = *buildImagePtr
+	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
+	pluginToolConfig["trcbootstrapPtr"] = *trcbootstrapPtr
 
 	if _, ok := pluginToolConfig["trcplugin"].(string); !ok {
-		pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
-		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok {
+		if *defineServicePtr {
+			pluginToolConfig["trcplugin"] = pluginToolConfig["pluginNamePtr"].(string)
+		}
+		if _, ok := pluginToolConfig["serviceNamePtr"].(string); ok && len(pluginToolConfig["serviceNamePtr"].(string)) > 0 {
 			pluginToolConfig["trcservicename"] = pluginToolConfig["serviceNamePtr"].(string)
+		}
+		if _, ok := pluginToolConfig["trcbootstrapPtr"].(string); ok && len(pluginToolConfig["trcbootstrapPtr"].(string)) > 0 {
+			pluginToolConfig["trcbootstrap"] = pluginToolConfig["trcbootstrapPtr"].(string)
 		}
 		if *certifyImagePtr {
 			certifyInit = true
@@ -429,7 +512,7 @@ func CommonMain(envDefaultPtr *string,
 			!*codebundledeployPtr &&
 			!*certifyImagePtr {
 
-			if trcshDriverConfig != nil {
+			if trcshDriverConfigBase.DriverConfig.CoreConfig.IsShell {
 				fmt.Println("Service definition not supported in trcsh.")
 				os.Exit(-1)
 			}
@@ -460,10 +543,56 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
+	if len(*buildImagePtr) > 0 || *pushImagePtr || *certifyImagePtr {
+		if val, ok := pluginToolConfig["trcplugin"]; !ok || len(val.(string)) == 0 {
+			err := errors.New("trcplugin not defined, can not continue")
+			fmt.Println(err)
+			return err
+		}
+	}
+
+	if len(*buildImagePtr) > 0 {
+		fmt.Println("Building image using local docker repository...")
+		err := docker.BuildDockerImage(trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		} else {
+			fmt.Println("Image successfully built")
+		}
+	}
+
+	if *pushImagePtr {
+		if len(pluginToolConfig["pushAliasPtr"].(string)) > 0 {
+			aliases := strings.Split(pluginToolConfig["pushAliasPtr"].(string), ",")
+			for _, alias := range aliases {
+				if strings.Split(alias, ":")[0] != strings.Split(pluginToolConfig["pluginNamePtr"].(string), ":")[0] {
+					err := errors.New("pushAlias can only alias image tags, not image names")
+					fmt.Println(err)
+					return err
+				}
+			}
+		}
+
+		fmt.Println("Pushing image to registry...")
+		err := repository.PushImage(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		if err != nil {
+			fmt.Println(err.Error())
+		} else {
+			fmt.Println("Image successfully pushed")
+		}
+	}
+
+	if len(*buildImagePtr) > 0 {
+		// We don't want to allow other functionality due to us not validating the
+		// plugintype
+		return nil
+	}
+
 	//Define Service Image
 	if *defineServicePtr {
-		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-		writeMap := make(map[string]interface{})
+		eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
+		writeMap := make(map[string]any)
 		writeMap["trcplugin"] = *pluginNamePtr
 		writeMap["trctype"] = *pluginTypePtr
 		writeMap["trcprojectservice"] = *projectservicePtr
@@ -482,6 +611,10 @@ func CommonMain(envDefaultPtr *string,
 		if _, ok := pluginToolConfig["trcprojectservice"]; ok {
 			writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"]
 		}
+		if _, ok := pluginToolConfig["trcbootstrap"]; ok {
+			writeMap["trcbootstrap"] = pluginToolConfig["trcbootstrap"]
+		}
+
 		if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
 			writeMap["trcpathparam"] = pluginToolConfig["trcpathparam"]
 		}
@@ -526,13 +659,32 @@ func CommonMain(envDefaultPtr *string,
 		}
 		fmt.Printf("Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
+		if plugincoreopts.BuildOptions.IsPluginHardwired() {
+			var deployRoot string
+			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
+				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
+			} else {
+				deployRoot = pluginToolConfig["trcdeployroot"].(string)
+			}
+			if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
+				err = os.MkdirAll(deployRoot, 0700)
+				if err != nil && !os.IsPermission(err) {
+					fmt.Println(err.Error())
+					fmt.Println("Could not prepare needed directory for deployment.")
+				}
+			}
+
+			eUtils.LogInfo(trcshDriverConfigBase.DriverConfig.CoreConfig, fmt.Sprintf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string)))
+			return nil
+		}
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
 			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"] != nil && len(trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"].(string)) > 0 {
 				pluginToolConfig["trcsha256"] = trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"]
 			}
 		}
+
 		if pluginToolConfig["trcsha256"] != nil && len(pluginToolConfig["trcsha256"].(string)) > 0 {
-			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if err != nil {
 				fmt.Println("Image download failure.")
 				if trcshDriverConfigBase.FeatherCtx != nil {
@@ -546,13 +698,16 @@ func CommonMain(envDefaultPtr *string,
 	} else if *certifyImagePtr {
 		//Certify Image
 		carrierCertify := false
-		if strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
+		// Certification always operates on env basis.
+		mod.EnvBasis = driverConfig.CoreConfig.EnvBasis
+		mod.Env = mod.EnvBasis
+		if ptc, ok := pluginToolConfig["trcplugin"].(string); ok && strings.Contains(ptc, "carrier") {
 			fmt.Println("Skipping checking for existing image due to carrier deployment.")
 			carrierCertify = true
 		} else if !certifyInit {
 			// Already certified...
 			fmt.Println("Checking for existing image.")
-			err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+			err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 			if _, ok := pluginToolConfig["imagesha256"].(string); err != nil || !ok {
 				fmt.Println("Invalid or nonexistent image on download.")
 				if err != nil {
@@ -571,8 +726,8 @@ func CommonMain(envDefaultPtr *string,
 				fmt.Println("Valid image found.")
 			}
 			//SHA MATCHES
-			fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-			logger.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
+			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
 			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
@@ -584,34 +739,25 @@ func CommonMain(envDefaultPtr *string,
 					pluginSource = *pluginNamePtr
 				}
 				mod.SubSectionValue = pluginSource
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = pluginSource
 
-				if trcshDriverConfig == nil {
-					trcshDriverConfig = &capauth.TrcshDriverConfig{
-						DriverConfig: eUtils.DriverConfig{
-							CoreConfig: core.CoreConfig{
-								ExitOnFailure: true,
-								Insecure:      false,
-								Log:           logger,
-							},
-							StartDir:        []string{""},
-							SubSectionValue: pluginSource,
-						},
-					}
+				if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
+					trcshDriverConfigBase.DriverConfig.StartDir = []string{""}
 				}
 
-				properties, err := trcvutils.NewProperties(&trcshDriverConfig.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
+				properties, err := trcvutils.NewProperties(trcshDriverConfigBase.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
 				if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
 					fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
 					return err
 				}
 
-				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", logger)
+				writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 
 				pluginTarget := pluginToolConfig["trcplugin"].(string)
 				if strings.HasPrefix(*pluginNamePtr, pluginTarget) {
 					pluginTarget = *pluginNamePtr
 				}
-				writeErr := properties.WritePluginData(WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, trcshDriverConfig.DriverConfig.CoreConfig.Log, *regionPtr, pluginTarget)
+				writeErr := properties.WritePluginData(certify.WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, trcshDriverConfigBase.DriverConfig.CoreConfig.Log, *regionPtr, pluginTarget)
 				if writeErr != nil {
 					fmt.Println(writeErr)
 					return err
@@ -620,11 +766,15 @@ func CommonMain(envDefaultPtr *string,
 			} else { //Non region certify
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
+					if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
+						mod.EmptyCache()
+						trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.Clear()
+					}
 					fmt.Println(readErr)
 					return err
 				}
 
-				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
+				_, err = mod.Write(pluginToolConfig["pluginpath"].(string), certify.WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 				if err != nil {
 					fmt.Println(err)
 					return err
@@ -646,27 +796,27 @@ func CommonMain(envDefaultPtr *string,
 			fmt.Println("Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if len(*buildImagePtr) > 0 {
-		fmt.Println("Building image using local docker repository...")
-		err := docker.BuildDockerImage(&trcshDriverConfigBase.DriverConfig, *buildImagePtr, *pluginNamePtr)
-		if err != nil {
-			fmt.Println(err.Error())
-			return err
+	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
+		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
+			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
+				fmt.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
+				driverConfig.CoreConfig.Log.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Starting plugin service: %s\n", *pluginNamePtr)
+				pluginHandler.PluginserviceStart(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+			}
 		} else {
-			fmt.Println("Image successfully built")
+			fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
+		}
+	} else if *pluginservicestopPtr && kernelopts.BuildOptions.IsKernel() {
+		if pluginHandler != nil && pluginHandler.State != 2 {
+			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
+		} else {
+			fmt.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
 		}
 	}
-
-	if *pushimagePtr {
-		fmt.Println("Pushing image to registry...")
-		err := repository.PushImage(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-		if err != nil {
-			fmt.Println(err.Error())
-		} else {
-			fmt.Println("Image successfully pushed")
-		}
-	}
-
 	//Checks if image has been copied & deployed
 	if *checkDeployedPtr {
 		if (pluginToolConfig["copied"] != nil && pluginToolConfig["copied"].(bool)) &&
@@ -676,7 +826,7 @@ func CommonMain(envDefaultPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -699,7 +849,7 @@ func CommonMain(envDefaultPtr *string,
 			return nil
 		}
 
-		err := repository.GetImageAndShaFromDownload(&trcshDriverConfigBase.DriverConfig, pluginToolConfig)
+		err := repository.GetImageAndShaFromDownload(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
 		if err != nil {
 			fmt.Println(err.Error())
 			return err
@@ -716,42 +866,4 @@ func CommonMain(envDefaultPtr *string,
 		return nil
 	}
 	return nil
-}
-
-func WriteMapUpdate(writeMap map[string]interface{}, pluginToolConfig map[string]interface{}, defineServicePtr bool, pluginTypePtr string, pathParamPtr string) map[string]interface{} {
-	if pluginTypePtr != "trcshservice" {
-		writeMap["trcplugin"] = pluginToolConfig["trcplugin"].(string)
-		writeMap["trctype"] = pluginTypePtr
-		if pluginToolConfig["instances"] == nil {
-			pluginToolConfig["instances"] = "0"
-		}
-		writeMap["instances"] = pluginToolConfig["instances"].(string)
-	}
-	if defineServicePtr {
-		writeMap["trccodebundle"] = pluginToolConfig["trccodebundle"].(string)
-		writeMap["trcservicename"] = pluginToolConfig["trcservicename"].(string)
-		writeMap["trcprojectservice"] = pluginToolConfig["trcprojectservice"].(string)
-		writeMap["trcdeployroot"] = pluginToolConfig["trcdeployroot"].(string)
-	}
-	if _, imgShaOk := pluginToolConfig["imagesha256"].(string); imgShaOk {
-		writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
-	} else {
-		writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
-	}
-	if pathParamPtr != "" { //optional if not found.
-		writeMap["trcpathparam"] = pathParamPtr
-	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
-		writeMap["trcpathparam"] = pathParam
-	}
-
-	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK && pluginTypePtr == "vault" { //optional if not found.
-		writeMap["newrelic_app_name"] = newRelicAppName
-	}
-	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK && pluginTypePtr == "vault" { //optional if not found.
-		writeMap["newrelic_license_key"] = newRelicLicenseKey
-	}
-
-	writeMap["copied"] = false
-	writeMap["deployed"] = false
-	return writeMap
 }

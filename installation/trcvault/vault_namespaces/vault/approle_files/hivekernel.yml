@@ -1,0 +1,3 @@
+Approle_Name: "hivekernel"
+Token_Permissions: 
+    trcsh_agent_dev: true

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
 	"google.golang.org/api/chat/v1"
 )
@@ -16,7 +16,7 @@ import (
 // correct endpoint for google chat
 func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 	log.Printf("Message is ready to send to Google Chat user")
-	var infos [][]interface{}
+	var infos [][]any
 
 	err := json.Unmarshal([]byte(msg.Data), &infos)
 	if err != nil {

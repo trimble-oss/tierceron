@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 )
 
 var headlessService bool
@@ -21,16 +22,17 @@ func InitHeadless(headless bool) {
 }
 
 // CheckError Simplifies the error checking process
-func CheckError(config *core.CoreConfig, err error, exit bool) {
+func CheckError(config *coreconfig.CoreConfig, err error, exit bool) {
 	// If code wants to exit and ExitOnFailure is specified,
 	// then we can exit here.
 	if err != nil && exit && config.ExitOnFailure {
+		config.Log.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
 		log.Fatal(err)
 	}
 }
 
 // CheckErrorNoStack Simplifies the error checking process
-func CheckErrorNoStack(config *core.CoreConfig, err error, exit bool) {
+func CheckErrorNoStack(config *coreconfig.CoreConfig, err error, exit bool) {
 	if err != nil {
 		if !headlessService {
 			fmt.Println(err)
@@ -42,19 +44,20 @@ func CheckErrorNoStack(config *core.CoreConfig, err error, exit bool) {
 }
 
 // CheckWarnings Checks warnings returned from various vault relation operations
-func CheckWarning(config *core.CoreConfig, warning string, exit bool) {
+func CheckWarning(config *coreconfig.CoreConfig, warning string, exit bool) {
 	if len(warning) > 0 {
 		if !headlessService {
 			fmt.Println(warning)
 		}
 		if exit && config.ExitOnFailure {
+			config.Log.Println(warning)
 			os.Exit(1)
 		}
 	}
 }
 
 // CheckWarnings Checks warnings returned from various vault relation operations
-func CheckWarnings(config *core.CoreConfig, warnings []string, exit bool) {
+func CheckWarnings(config *coreconfig.CoreConfig, warnings []string, exit bool) {
 	if len(warnings) > 0 {
 		if !headlessService {
 			for _, w := range warnings {
@@ -68,7 +71,7 @@ func CheckWarnings(config *core.CoreConfig, warnings []string, exit bool) {
 }
 
 // LogError Writes error to the log file and terminates if an error occurs
-func LogError(config *core.CoreConfig, err error, f *os.File, exit bool) {
+func LogError(config *coreconfig.CoreConfig, err error, f *os.File, exit bool) {
 	if err != nil {
 		_prefix := log.Prefix()
 		log.SetOutput(f)
@@ -90,7 +93,7 @@ func LogError(config *core.CoreConfig, err error, f *os.File, exit bool) {
 }
 
 // LogWarnings Writes array of warnings to the log file and terminates
-func LogWarnings(config *core.CoreConfig, warnings []string, f *os.File, exit bool) {
+func LogWarnings(config *coreconfig.CoreConfig, warnings []string, f *os.File, exit bool) {
 	if len(warnings) > 0 {
 		_prefix := log.Prefix()
 		log.SetOutput(f)
@@ -112,7 +115,7 @@ func LogWarnings(config *core.CoreConfig, warnings []string, f *os.File, exit bo
 }
 
 // LogErrorObject writes errors to the passed logger object and exits
-func LogWarningMessage(config *core.CoreConfig, errorMessage string, exit bool) {
+func LogWarningMessage(config *coreconfig.CoreConfig, errorMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[WARN]")
 	if exit && config.ExitOnFailure {
@@ -127,7 +130,7 @@ func LogWarningMessage(config *core.CoreConfig, errorMessage string, exit bool) 
 }
 
 // LogErrorObject writes errors to the passed logger object and exits
-func LogMessageErrorObject(config *core.CoreConfig, errorMessage string, err error, exit bool) {
+func LogMessageErrorObject(config *coreconfig.CoreConfig, errorMessage string, err error, exit bool) {
 	if err != nil {
 		_prefix := config.Log.Prefix()
 		config.Log.SetPrefix("[ERROR]")
@@ -147,12 +150,16 @@ func LogMessageErrorObject(config *core.CoreConfig, errorMessage string, err err
 }
 
 // LogErrorObject writes errors to the passed logger object and exits
-func LogErrorMessage(config *core.CoreConfig, errorMessage string, exit bool) {
+func LogErrorMessage(config *coreconfig.CoreConfig, errorMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[ERROR]")
 	if exit && config.ExitOnFailure {
 		if !headlessService {
 			fmt.Printf("Errors encountered, exiting and writing to log file\n")
+		}
+		if config.IsEditor {
+			fmt.Print("\033c")
+			exec.Command("stty", "sane").Run()
 		}
 		config.Log.Fatal(errorMessage)
 	} else {
@@ -162,7 +169,7 @@ func LogErrorMessage(config *core.CoreConfig, errorMessage string, exit bool) {
 }
 
 // LogErrorObject writes errors to the passed logger object and exits
-func LogErrorObject(config *core.CoreConfig, err error, exit bool) {
+func LogErrorObject(config *coreconfig.CoreConfig, err error, exit bool) {
 	if err != nil {
 		_prefix := config.Log.Prefix()
 		config.Log.SetPrefix("[ERROR]")
@@ -179,8 +186,8 @@ func LogErrorObject(config *core.CoreConfig, err error, exit bool) {
 }
 
 // LogErrorObject writes errors to the passed logger object and exits
-func LogInfo(config *core.CoreConfig, msg string) {
-	if !headlessService {
+func LogInfo(config *coreconfig.CoreConfig, msg string) {
+	if !headlessService && !config.IsEditor {
 		fmt.Println(SanitizeForLogging(msg))
 	}
 	if config != nil && config.Log != nil {
@@ -192,7 +199,7 @@ func LogInfo(config *core.CoreConfig, msg string) {
 }
 
 // LogWarningsObject writes warnings to the passed logger object and exits
-func LogWarningsObject(config *core.CoreConfig, warnings []string, exit bool) {
+func LogWarningsObject(config *coreconfig.CoreConfig, warnings []string, exit bool) {
 	if len(warnings) > 0 {
 		_prefix := config.Log.Prefix()
 		config.Log.SetPrefix("[WARNS]")
@@ -211,7 +218,7 @@ func LogWarningsObject(config *core.CoreConfig, warnings []string, exit bool) {
 }
 
 // LogAndSafeExit -- provides isolated location of os.Exit to ensure os.Exit properly processed.
-func LogAndSafeExit(config *core.CoreConfig, message string, code int) error {
+func LogAndSafeExit(config *coreconfig.CoreConfig, message string, code int) error {
 	if config.Log != nil && message != "" {
 		LogInfo(config, message)
 	}
@@ -224,7 +231,7 @@ func LogAndSafeExit(config *core.CoreConfig, message string, code int) error {
 }
 
 // LogErrorAndSafeExit -- provides isolated location of os.Exit to ensure os.Exit properly processed.
-func LogErrorAndSafeExit(config *core.CoreConfig, err error, code int) error {
+func LogErrorAndSafeExit(config *coreconfig.CoreConfig, err error, code int) error {
 	if config.Log != nil && err != nil {
 		LogInfo(config, err.Error())
 	}

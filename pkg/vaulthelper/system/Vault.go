@@ -25,14 +25,14 @@ type Vault struct {
 
 // KeyTokenWrapper Contains the unseal keys and root token
 type KeyTokenWrapper struct {
-	Keys  []string // Base 64 encoded keys
-	Token string   // Root token for the vault
+	Keys     []string // Base 64 encoded keys
+	TokenPtr *string  // Root token for the vault
 }
 
 // NewVault Constructs a new vault at the given address with the given access token
-func NewVault(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, logger *log.Logger) (*Vault, error) {
+func NewVault(insecure bool, addressPtr *string, env string, newVault bool, pingVault bool, scanVault bool, logger *log.Logger) (*Vault, error) {
 	return NewVaultWithNonlocal(insecure,
-		address,
+		addressPtr,
 		env,
 		newVault,
 		pingVault,
@@ -42,23 +42,23 @@ func NewVault(insecure bool, address string, env string, newVault bool, pingVaul
 }
 
 // NewVault Constructs a new vault at the given address with the given access token allowing insecure for non local.
-func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bool, pingVault bool, scanVault bool, allowNonLocal bool, logger *log.Logger) (*Vault, error) {
+func NewVaultWithNonlocal(insecure bool, addressPtr *string, env string, newVault bool, pingVault bool, scanVault bool, allowNonLocal bool, logger *log.Logger) (*Vault, error) {
 	var httpClient *http.Client
 	var err error
 
 	if allowNonLocal {
-		httpClient, err = helperkv.CreateHTTPClientAllowNonLocal(insecure, address, env, scanVault, true)
+		httpClient, err = helperkv.CreateHTTPClientAllowNonLocal(insecure, *addressPtr, env, scanVault, true)
 	} else {
-		httpClient, err = helperkv.CreateHTTPClient(insecure, address, env, scanVault)
+		httpClient, err = helperkv.CreateHTTPClient(insecure, *addressPtr, env, scanVault)
 	}
 
 	if err != nil {
-		logger.Println("Connection to vault couldn't be made - vaultHost: " + address)
+		logger.Println("Connection to vault couldn't be made - vaultHost: " + *addressPtr)
 		return nil, err
 	}
-	client, err := api.NewClient(&api.Config{Address: address, HttpClient: httpClient})
+	client, err := api.NewClient(&api.Config{Address: *addressPtr, HttpClient: httpClient})
 	if err != nil {
-		logger.Println("vaultHost: " + address)
+		logger.Println("vaultHost: " + *addressPtr)
 		return nil, err
 	}
 
@@ -74,7 +74,7 @@ func NewVaultWithNonlocal(insecure bool, address string, env string, newVault bo
 	}
 
 	if !newVault && health.Sealed {
-		return nil, errors.New("Vault is sealed at " + address)
+		return nil, errors.New("Vault is sealed at " + *addressPtr)
 	}
 
 	return &Vault{
@@ -111,17 +111,18 @@ func (v *Vault) RefreshClient() error {
 }
 
 // SetToken Stores the access token for this vault
-func (v *Vault) SetToken(token string) {
-	v.client.SetToken(token)
+func (v *Vault) SetToken(token *string) {
+	v.client.SetToken(*token)
 }
 
 // GetToken Fetches current token from client
-func (v *Vault) GetToken() string {
-	return v.client.Token()
+func (v *Vault) GetToken() *string {
+	token := v.client.Token()
+	return &token
 }
 
 // GetTokenInfo fetches data regarding this token
-func (v *Vault) GetTokenInfo(tokenName string) (map[string]interface{}, error) {
+func (v *Vault) GetTokenInfo(tokenName string) (map[string]any, error) {
 	token, err := v.client.Auth().Token().Lookup(tokenName)
 	if token == nil {
 		return nil, err
@@ -146,7 +147,11 @@ func (v *Vault) RenewSelf(increment int) error {
 }
 
 // GetOrRevokeTokensInScope()
-func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenExpiration bool, logger *log.Logger) error {
+func (v *Vault) GetOrRevokeTokensInScope(dir string,
+	tokenFileFiltersSet map[string]bool,
+	tokenExpiration bool,
+	doTidy bool,
+	logger *log.Logger) error {
 	var tokenPath = dir
 	var tokenPolicies = []string{}
 
@@ -159,10 +164,20 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 		if f.IsDir() {
 			continue
 		}
-		if tokenFilter != "" && !strings.HasPrefix(f.Name(), tokenFilter) {
-			// Token doesn't match filter...  Skipping.
-			continue
+		if len(tokenFileFiltersSet) > 0 {
+			found := false
+
+			for tokenFilter, _ := range tokenFileFiltersSet {
+				if strings.HasPrefix(f.Name(), tokenFilter) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
 		}
+
 		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
 		if file != nil {
 			defer file.Close()
@@ -176,6 +191,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 		yaml.Unmarshal(byteValue, &token)
 		tokenPolicies = append(tokenPolicies, token.Policies...)
 	}
+
 	r := v.client.NewRequest("LIST", "/v1/auth/token/accessors")
 	response, err := v.client.RawRequest(r)
 
@@ -187,18 +203,18 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 		log.Fatal(err)
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return err
 	}
 
-	if data, ok := jsonData["data"].(map[string]interface{}); ok {
-		if accessors, ok := data["keys"].([]interface{}); ok {
+	if data, ok := jsonData["data"].(map[string]any); ok {
+		if accessors, ok := data["keys"].([]any); ok {
 			for _, accessor := range accessors {
 				b := v.client.NewRequest("POST", "/v1/auth/token/lookup-accessor")
 
-				payload := map[string]interface{}{
+				payload := map[string]any{
 					"accessor": accessor,
 				}
 
@@ -219,19 +235,19 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 						return err
 					}
 				}
-				var accessorDataMap map[string]interface{}
+				var accessorDataMap map[string]any
 				if err = response.DecodeJSON(&accessorDataMap); err != nil {
 					return err
 				}
 				var expirationDate string
 				var expirationDateOk bool
 				var matchedPolicy string
-				if accessorData, ok := accessorDataMap["data"].(map[string]interface{}); ok {
+				if accessorData, ok := accessorDataMap["data"].(map[string]any); ok {
 					if expirationDate, expirationDateOk = accessorData["expire_time"].(string); expirationDateOk {
 						currentTime := time.Now()
 						expirationTime, timeError := time.Parse(time.RFC3339Nano, expirationDate)
 						if timeError == nil && currentTime.Before(expirationTime) {
-							if policies, ok := accessorData["policies"].([]interface{}); ok {
+							if policies, ok := accessorData["policies"].([]any); ok {
 								for _, policy := range policies {
 									for _, tokenPolicy := range tokenPolicies {
 										if policy.(string) == "root" || strings.EqualFold(policy.(string), tokenPolicy) {
@@ -251,7 +267,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 					} else {
 						b := v.client.NewRequest("POST", "/v1/auth/token/revoke-accessor")
 
-						payload := map[string]interface{}{
+						payload := map[string]any{
 							"accessor": accessor,
 						}
 
@@ -278,7 +294,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 				}
 			}
 
-			if !tokenExpiration {
+			if !tokenExpiration && (doTidy || len(tokenFileFiltersSet) == 0) {
 				b := v.client.NewRequest("POST", "/v1/auth/token/tidy")
 				response, err := v.client.RawRequest(b)
 				if response != nil && response.Body != nil {
@@ -291,11 +307,11 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string, tokenFilter string, tokenEx
 				fmt.Printf("Tidy success status: %s\n", response.Status)
 
 				if response.StatusCode == 202 {
-					var tidyResponseMap map[string]interface{}
+					var tidyResponseMap map[string]any
 					if err = response.DecodeJSON(&tidyResponseMap); err != nil {
 						return err
 					}
-					if warnings, ok := tidyResponseMap["warnings"].([]interface{}); ok {
+					if warnings, ok := tidyResponseMap["warnings"].([]any); ok {
 						for _, warning := range warnings {
 							fmt.Println(warning.(string))
 						}
@@ -344,8 +360,8 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 	fmt.Printf("Root token: %s\n\n", response.RootToken)
 
 	keyToken := KeyTokenWrapper{
-		Keys:  response.KeysB64,
-		Token: response.RootToken}
+		Keys:     response.KeysB64,
+		TokenPtr: &response.RootToken}
 
 	return &keyToken, nil
 }
@@ -375,12 +391,12 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 		return false, err
 	}
 
-	var jsonData map[string]interface{}
+	var jsonData map[string]any
 	if err = response.DecodeJSON(&jsonData); err != nil {
 		return false, err
 	}
 
-	if _, ok := jsonData["data"].(map[string]interface{}); ok {
+	if _, ok := jsonData["data"].(map[string]any); ok {
 		return true, nil
 	}
 
@@ -500,11 +516,11 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 }
 
 // CreateTokenFromMap takes a map and generates a vault token, returning the token
-func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) {
+func (v *Vault) CreateTokenFromMap(data map[string]any) (string, error) {
 	token := &api.TokenCreateRequest{}
 
 	// Parse input data and create request
-	if policies, ok := data["policies"].([]interface{}); ok {
+	if policies, ok := data["policies"].([]any); ok {
 		newPolicies := []string{}
 		for _, p := range policies {
 			if newP, ok := p.(string); ok {
@@ -549,12 +565,12 @@ func (v *Vault) CreateTokenFromMap(data map[string]interface{}) (string, error) 
 }
 
 // GetStatus checks the health of the vault and retrieves version and status of init/seal
-func (v *Vault) GetStatus() (map[string]interface{}, error) {
+func (v *Vault) GetStatus() (map[string]any, error) {
 	health, err := v.client.Sys().Health()
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"initialized": health.Initialized,
 		"sealed":      health.Sealed,
 		"version":     health.Version,

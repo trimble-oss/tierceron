@@ -10,10 +10,10 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
-func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageName string) error {
+func BuildDockerImage(driverConfig *config.DriverConfig, dockerfilePath, imageName string) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -21,15 +21,22 @@ func BuildDockerImage(driverConfig *eUtils.DriverConfig, dockerfilePath, imageNa
 	}
 
 	// Create a tar archive of the Dockerfile
-	dockerfileTar, err := createTarContext(filepath.Dir(dockerfilePath))
+	cwd, err := os.Getwd()
+
+	if err != nil {
+		return err
+	}
+
+	dockerfileTar, err := createTarContext(cwd)
 	if err != nil {
 		return err
 	}
 
 	buildOptions := types.ImageBuildOptions{
 		Context:    dockerfileTar,
-		Dockerfile: filepath.Base(dockerfilePath),
+		Dockerfile: dockerfilePath,
 		Tags:       []string{imageName},
+		Remove:     true,
 	}
 
 	response, err := cli.ImageBuild(ctx, dockerfileTar, buildOptions)

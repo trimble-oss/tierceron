@@ -8,20 +8,22 @@ import (
 	"os"
 	"strings"
 
+	memonly "github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/localopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	memonly "github.com/trimble-oss/tierceron/buildopts/memonly"
+	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -49,17 +51,19 @@ func main() {
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
+	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
+	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	tiercerontls.InitRoot()
 
 	eUtils.InitHeadless(true)
-	logFile := "/var/log/trcplugincarrier.log"
+	logFile := cursoropts.BuildOptions.GetLogPath()
 	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
-		logFile = "./trcplugincarrier.log"
+		logFile = "./trcplugincurator.log"
 		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	}
-	logger := log.New(f, "[trcplugincarrier]", log.LstdFlags)
-	eUtils.CheckError(&core.CoreConfig{
+	logger := log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName(true)), log.LstdFlags)
+	eUtils.CheckError(&coreconfig.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
 	}, logErr, true)
@@ -67,15 +71,18 @@ func main() {
 	if strings.HasSuffix(executableName, "-prod") {
 		logger.Println("Running prod plugin")
 		prod.SetProd(true)
+	} else {
+		logger.Println("Running non-prod plugin")
 	}
 	buildopts.BuildOptions.SetLogger(logger.Writer())
 	carrierfactory.InitLogger(logger)
 
-	e := os.Remove("/tmp/trccarrier/trcsnap.sock")
+	e := os.Remove(fmt.Sprintf("%s/trcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
 	if e != nil {
 		logger.Println("Unable to refresh socket.  Uneccessary.")
 	}
-	carrierfactory.Init(coreopts.BuildOptions.ProcessDeployPluginEnvConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
+
+	carrierfactory.Init(coreopts.BuildOptions.InitPluginConfig, deploy.PluginDeployEnvFlow, deploy.PluginDeployFlow, true, logger)
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

@@ -1,0 +1,12 @@
+# If we start hive plugin as a mysql interface....
+#Flow controller configs
+controllerdbport: {{.controllerdbport}}
+controllerdbuser: {{.controllerdbuser}}
+controllerdbpassword: {{.controllerdbpassword}}
+#trcdb standard user configs
+dbport: {{.dbport}}
+dbuser: {{.dbuser}}
+dbpassword: {{.dbpassword}}
+# Access control to any databases started by this plugin
+cidrblock: {{.cidrblock}}
+maxconn: {{or .maxconn "100"}}

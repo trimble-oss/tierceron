@@ -8,8 +8,6 @@ import (
 
 //	"time"
 
-const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"
-
 // Whether to perform additional processing via the CheckFlowDataIncoming function...
 // This flow logic section is essentially used to help decide whether a row in a table
 // in trcdb has changed or not and requires serialization to the backend secret store.
@@ -43,6 +41,6 @@ func CheckIncomingAliasColumnName(col string) bool {
 // This can be used to perform direct queries against the TrcDb database using the go sql package.
 // The data map is provided by the caller as convenience to provide things like dbport, etc...
 // The override should return a jdbc compliant connection url to the TrcDb database.
-func GetTrcDbUrl(data map[string]interface{}) string {
+func GetTrcDbUrl(data map[string]any) string {
 	return ""
 }

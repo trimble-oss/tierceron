@@ -3,8 +3,9 @@ package trcchat
 import (
 	"log"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type WorldClientInitHandler struct {
@@ -57,7 +58,8 @@ func (msdk *GoogleChatHandler) TweakStates(elementStateBundle *mashupsdk.MashupE
 func (msdk *GoogleChatHandler) ResetStates() {
 }
 
-func (msdk *GoogleChatHandler) TweakStatesByMotiv(mashupsdk.Motiv) {
+func (msdk *GoogleChatHandler) TweakStatesByMotiv(*mashupsdk.Motiv) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (msdk *GoogleChatHandler) GetMashupElements() (*mashupsdk.MashupDetailedElementBundle, error) {

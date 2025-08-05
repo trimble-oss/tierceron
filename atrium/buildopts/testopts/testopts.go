@@ -1,38 +1,43 @@
 package testopts
 
 import (
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-func GetAdditionalTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalTestFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
-func ProcessTestFlowController(tfmContext *flowcore.TrcFlowMachineContext, trcFlowContext *flowcore.TrcFlowContext) error {
+func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	return nil
 }
 
-func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
-	pluginConfig := map[string]interface{}{}
+func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
+	pluginConfig := map[string]any{}
 
 	//env = "dev"
 	pluginConfig["vaddress"] = "TODO"
 	pluginConfig["env"] = "dev"
-	pluginConfig["token"] = token
+	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["logNamespace"] = "db"
 
+	// Main controller flow definition, but also other flows defined here.
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
+	}
+	pluginConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
 	}
 
-	// plugin configs here...
+	// Service connection configurations defined here.
 	pluginConfig["connectionPath"] = []string{
-		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
-		"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
+		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // implemented
+		//		"trc_templates/TrcVault/Database/config.yml.tmpl",       // Optional.
 		"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
 	}
 	pluginConfig["certifyPath"] = []string{

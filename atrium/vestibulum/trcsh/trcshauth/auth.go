@@ -17,8 +17,11 @@ import (
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-hat/cap"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -113,11 +116,20 @@ func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentCo
 	var err error
 	var vaultAddress *string
 
-	if featherCtx != nil {
-		vaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 0")
-		vaultAddress, err = capauth.PenseQuery(trcshDriverConfig, "caddress")
+	// Chewbacca: scrub before checkin
+	// if true {
+	// 	vaddress := os.Getenv("VAULT_ADDR")
+	// 	vaultAddress = &vaddress
+	// }
+	//	Chewbacca: end scrub
+
+	if eUtils.RefLength(vaultAddress) == 0 {
+		if featherCtx != nil {
+			vaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 0")
+			vaultAddress, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+		}
 	}
 	return vaultAddress, err
 }
@@ -125,103 +137,154 @@ func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentCo
 // Helper function for obtaining auth components.
 func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, trcshDriverConfig *capauth.TrcshDriverConfig) (*capauth.TrcShConfig, error) {
 	trcshConfig := &capauth.TrcShConfig{}
+	if trcshDriverConfig != nil &&
+		trcshDriverConfig.DriverConfig != nil &&
+		trcshDriverConfig.DriverConfig.CoreConfig != nil &&
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
+		trcshConfig.TokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
+	} else {
+		return nil, errors.New("trcsh auth: missing required auth component")
+	}
 	var err error
+	var vaultAddressPtr *string
+	var configRolePtr *string
+	var pubRolePtr *string
+	var pluginAnyPtr *string
+	var kubeConfigPtr *string
 
-	if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "staging" || trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "prod" || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
-		dir, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Println("No homedir for current user")
-			os.Exit(1)
-		}
-		fileBytes, err := os.ReadFile(dir + "/.kube/config")
-		if err != nil {
-			fmt.Println("No local kube config found...")
-			os.Exit(1)
-		}
-		kc := base64.StdEncoding.EncodeToString(fileBytes)
-		trcshConfig.KubeConfig = &kc
+	// Chewbacca: scrub before checkin
+	// if true {
+	// 	vaultAddress := os.Getenv("VAULT_ADDR")
+	// 	configRole := os.Getenv("CONFIG_ROLE")
+	// 	pubRole := os.Getenv("PUB_ROLE")
+	// 	pluginAny := os.Getenv("PLUGIN_ANY")
+	// 	kubeConfig := os.Getenv("KUBE_CONFIG")
+	// 	vaultAddressPtr = &vaultAddress
+	// 	configRolePtr = &configRole
+	// 	pubRolePtr = &pubRole
+	// 	pluginAnyPtr = &pluginAny
+	// 	kubeConfigPtr = &kubeConfig
+	// }
+	//	Chewbacca: end scrub
 
-		if len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
-			return trcshConfig, nil
-		}
-	} else {
-		if featherCtx == nil {
+	if eUtils.RefLength(kubeConfigPtr) == 0 {
+		if prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+			dir, err := os.UserHomeDir()
+			if err != nil {
+				fmt.Println("No homedir for current user")
+				os.Exit(1)
+			}
+			fileBytes, err := os.ReadFile(dir + "/.kube/config")
+			if err != nil {
+				fmt.Println("No local kube config found...")
+				os.Exit(1)
+			}
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
-			trcshConfig.KubeConfig, err = capauth.PenseQuery(trcshDriverConfig, "kubeconfig")
+			kc := base64.StdEncoding.EncodeToString(fileBytes)
+			trcshConfig.KubeConfigPtr = &kc
+
+			if len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+				return trcshConfig, nil
+			}
+		} else {
+			if featherCtx == nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
+				kubeConfigPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "kubeconfig")
+			}
+		}
+
+		if err != nil {
+			return trcshConfig, err
 		}
 	}
 
-	if err != nil {
-		return trcshConfig, err
-	}
-	if trcshConfig.KubeConfig != nil {
-		memprotectopts.MemProtect(nil, trcshConfig.KubeConfig)
-	}
-
-	if featherCtx != nil {
-		trcshConfig.VaultAddress, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
-		trcshConfig.VaultAddress, err = capauth.PenseQuery(trcshDriverConfig, "caddress")
-	}
-	if err != nil {
-		return trcshConfig, err
+	if eUtils.RefLength(kubeConfigPtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		trcshConfig.KubeConfigPtr = kubeConfigPtr
+		memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
 	}
 
-	memprotectopts.MemProtect(nil, trcshConfig.VaultAddress)
+	if eUtils.RefLength(vaultAddressPtr) == 0 {
+		if featherCtx != nil {
+			vaultAddressPtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "caddress")
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 2")
+			vaultAddressPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "caddress")
+		}
+		if !kernelopts.BuildOptions.IsKernel() && err != nil {
+			var addrPort string
+			var env, envContext string
 
-	if err != nil {
-		var addrPort string
-		var env, envContext string
-
-		fmt.Println(err)
-		//Env should come from command line - not context here. but addr port is needed.
-		trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
-		if err != nil {
 			fmt.Println(err)
-			return trcshConfig, err
+			//Env should come from command line - not context here. but addr port is needed.
+			trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
+			if err != nil {
+				fmt.Println(err)
+				return trcshConfig, err
+			}
+			vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
+			vaultAddressPtr = &vAddr
+			trcshDriverConfig.DriverConfig.CoreConfig.Env = env
+			trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
 		}
-		vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
-		trcshConfig.VaultAddress = &vAddr
-
-		trcshDriverConfig.DriverConfig.CoreConfig.Env = env
-		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis = env
+	}
+	if eUtils.RefLength(vaultAddressPtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		memprotectopts.MemProtect(nil, vaultAddressPtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr = vaultAddressPtr
+		memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 	}
 
-	trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress = *trcshConfig.VaultAddress
-	memprotectopts.MemProtect(nil, &trcshDriverConfig.DriverConfig.CoreConfig.VaultAddress)
-
-	if featherCtx != nil {
-		trcshConfig.ConfigRole, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
-	} else {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
-		trcshConfig.ConfigRole, err = capauth.PenseQuery(trcshDriverConfig, "configrole")
-	}
-	if err != nil {
-		return trcshConfig, err
-	}
-
-	memprotectopts.MemProtect(nil, trcshConfig.ConfigRole)
-
-	if featherCtx == nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
-		trcshConfig.PubRole, err = capauth.PenseQuery(trcshDriverConfig, "pubrole")
+	if eUtils.RefLength(configRolePtr) == 0 {
+		if featherCtx != nil {
+			configRolePtr, err = retryingPenseFeatherQuery(featherCtx, agentConfigs, "configrole")
+		} else {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 3")
+			configRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "configrole")
+		}
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.PubRole)
+	}
+	if eUtils.RefLength(configRolePtr) > 0 && strings.Contains(*configRolePtr, ":") {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		memprotectopts.MemProtect(nil, configRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", configRolePtr) // alias to old name.
 	}
 
-	if featherCtx == nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 5")
-		trcshConfig.CToken, err = capauth.PenseQuery(trcshDriverConfig, "ctoken")
+	if eUtils.RefLength(pubRolePtr) == 0 {
+		if featherCtx == nil {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 4")
+			pubRolePtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "pubrole")
+			if err != nil {
+				return trcshConfig, err
+			}
+			memprotectopts.MemProtect(nil, pubRolePtr)
+		}
+	}
+	if eUtils.RefLength(pubRolePtr) > 0 && strings.Contains(*pubRolePtr, ":") {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", pubRolePtr) // alias to old name.
+	}
+
+	if eUtils.RefLength(pluginAnyPtr) == 0 {
+		if featherCtx == nil {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 6")
+			pluginAnyPtr, err = capauth.PenseQuery(trcshDriverConfig, cursoropts.BuildOptions.GetCapPath(), "token")
+			if err != nil {
+				return trcshConfig, err
+			}
+			memprotectopts.MemProtect(nil, pluginAnyPtr)
+		}
 		if err != nil {
 			return trcshConfig, err
 		}
-		memprotectopts.MemProtect(nil, trcshConfig.CToken)
 	}
-	if err != nil {
-		return trcshConfig, err
+	if eUtils.RefLength(pluginAnyPtr) > 0 {
+		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
+		trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 	}
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth complete.")
@@ -229,12 +292,12 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	return trcshConfig, err
 }
 
-func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{}, logger *log.Logger) (bool, error) {
-	certifyPath := "super-secrets/Index/TrcVault/trcplugin/trcsh/Certify"
-	if plugin, ok := pluginConfig["plugin"].(string); ok {
-		certifyPath = "super-secrets/Index/TrcVault/trcplugin/" + plugin + "/Certify"
+func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger *log.Logger) (bool, error) {
+	pluginName := cursoropts.BuildOptions.GetPluginName(false)
+	if len(pluginName) == 0 {
+		pluginName = pluginConfig["plugin"].(string)
 	}
-	certifyMap, err := mod.ReadData(certifyPath)
+	certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 	if err != nil {
 		fmt.Printf("Error reading data from vault: %s\n", err)
 		logger.Printf("Error reading data from vault: %s\n", err)
@@ -249,11 +312,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 	}
 	exPath := filepath.Dir(ex)
 	trcshaPath := exPath + string(os.PathSeparator)
-	if eUtils.IsWindows() {
-		trcshaPath = trcshaPath + "trcsh.exe"
-	} else {
-		trcshaPath = trcshaPath + "trcsh"
-	}
+	trcshaPath = trcshaPath + pluginName
 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
@@ -265,8 +324,6 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 
 		defer peerExe.Close()
 
-		// TODO: Check previous 10 versions?  If any match, then
-		// return ok....
 		h := sha256.New()
 		if _, err := io.Copy(h, peerExe); err != nil {
 			fmt.Printf("Unable to copy file: %s\n", err)
@@ -275,13 +332,13 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]interface{},
 		}
 		sha := hex.EncodeToString(h.Sum(nil))
 		if certifyMap["trcsha256"].(string) == sha {
-			logger.Println("Validated drone")
+			logger.Println("Self validation complete")
 			return true, nil
 		} else {
-			logger.Printf("Error obtaining authorization components from drone: %s\n", errors.New("missing certification"))
-			return false, errors.New("missing certification from drone")
+			logger.Printf("Error obtaining authorization components: %s\n", errors.New("missing certification"))
+			return false, errors.New("missing certification")
 		}
 	}
-	logger.Printf("Missing certification from Vault")
-	return false, errors.New("missing certification from Vault")
+	logger.Printf("Plugin not certified: %s", pluginName)
+	return false, fmt.Errorf("plugin not certified: %s", pluginName)
 }

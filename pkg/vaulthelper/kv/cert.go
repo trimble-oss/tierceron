@@ -63,7 +63,7 @@ func (fi bindataFileInfo) ModTime() time.Time {
 func (fi bindataFileInfo) IsDir() bool {
 	return false
 }
-func (fi bindataFileInfo) Sys() interface{} {
+func (fi bindataFileInfo) Sys() any {
 	return nil
 }
 

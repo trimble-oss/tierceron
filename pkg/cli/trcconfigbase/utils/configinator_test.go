@@ -2,11 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 func TestGeneratePaths_nil(t *testing.T) {
@@ -19,8 +18,33 @@ func TestGeneratePaths_nil(t *testing.T) {
 
 func TestGeneratePaths_BaseCase(t *testing.T) {
 	// Single starting Dir, ServicesWanted
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	// If this test fails, drone will fail
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"foo/bar/fake path./ to _see if it Panics....",
+		},
+		EndDir:         ".",
+		ServicesWanted: []string{"Project/Service"},
+	}
+
+	_, _, err := generatePaths(driverConfig)
+
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestGeneratePaths_BaseCaseWin(t *testing.T) {
+	// Single starting Dir, ServicesWanted
+	// If this test fails, drone will fail
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
@@ -36,29 +60,30 @@ func TestGeneratePaths_BaseCase(t *testing.T) {
 		fmt.Printf("Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	if len(templatePaths) == 0 || len(endPaths) == 0 {
-		fmt.Print("Expected non-empty paths\n")
-		t.Fatal("Expected non-empty paths\n")
+	if len(templatePaths) != 1 || len(endPaths) != 1 {
+		fmt.Println("Expected different amount of paths returned")
+		t.Fatal("Expected different amount of paths returned\n")
 	}
-	if !strings.Contains(templatePaths[0], "foo/bar/fake path./ to _see if it Panics....") {
+	if templatePaths[0] != "foo\\bar\\fake path.\\ to _see if it Panics....\\" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
-	if !strings.Contains(endPaths[0], ".") {
+	if endPaths[0] != "." {
 		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
 
 func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
+	ConfiginatorOsPathSeparator = "/"
 	f.Add(5, "hello")
 	f.Fuzz(func(t *testing.T, i int, s string) {
-		driverConfig := &eUtils.DriverConfig{
-			CoreConfig: core.CoreConfig{
+		driverConfig := &config.DriverConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				WantCerts: false,
 			},
 			StartDir:         []string{},
-			DeploymentConfig: make(map[string]interface{}),
+			DeploymentConfig: make(map[string]any),
 			EndDir:           ".",
 			ServicesWanted:   []string{"hello/Service"},
 		}
@@ -93,19 +118,20 @@ func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
 
 func TestGeneratePaths_CaseOne(t *testing.T) {
 	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
 			"foo/project/",
 			"bar/notProject/",
-			"hello/Project ",
+			"hello/nProject ",
 			"aijfiosdfc/Project /",
 			".Project/",
-			"foo/Project/Service",
+			"foo/nopeProject/Service",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"Project/Service"},
 	}
@@ -120,8 +146,9 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 
 func TestGeneratePaths_BadProjServ(t *testing.T) {
 	// Multiple invalid starting directories, multiple project/services defined, ServicesWanted specified incorrectly
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
@@ -132,7 +159,7 @@ func TestGeneratePaths_BadProjServ(t *testing.T) {
 			".Project/",
 			"foo/Project/Service",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"ProjectService"},
 	}
@@ -147,8 +174,9 @@ func TestGeneratePaths_BadProjServ(t *testing.T) {
 
 func TestGeneratePaths_CaseTwo(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
@@ -156,7 +184,7 @@ func TestGeneratePaths_CaseTwo(t *testing.T) {
 			"~/bar/Project/",
 			"~/hello.world/Project",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"Project/Service"},
 	}
@@ -172,31 +200,34 @@ func TestGeneratePaths_CaseTwo(t *testing.T) {
 		fmt.Println("Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
-	if !strings.Contains(templatePaths[0], "~/bar/Project/") && !strings.Contains(templatePaths[1], "~/hello.world/Project/") {
+	if templatePaths[0] != "~/bar/Project/" && templatePaths[1] != "~/hello.world/Project/" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 
-	if !strings.Contains(endPaths[0], "~/checking...if\\other characters _/will_cause_panic-!") && !strings.Contains(endPaths[1], "~/checking...if\\other characters _/will_cause_panic-!") {
+	if endPaths[0] != "~/checking...if\\other characters _/will_cause_panic-!" && endPaths[1] != "~/checking...if\\other characters _/will_cause_panic-!" {
 		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
 
-func TestGeneratePaths_CaseThree(t *testing.T) {
+func TestGeneratePaths_CaseTwoWin(t *testing.T) {
 	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
-			"hello/bonjour/fake.tmpl",
-			"hello",
+			"~/foo/Project1",
+			"~/bar/Project/",
+			"~/hello.world/Project",
 		},
-		DeploymentConfig: make(map[string]interface{}),
-		EndDir:           "hello/bonjour",
-		ServicesWanted:   []string{"hello/world/seeing/if/it/works//with random words"},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
+		ServicesWanted:   []string{"Project/Service"},
 	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 
@@ -204,30 +235,78 @@ func TestGeneratePaths_CaseThree(t *testing.T) {
 		fmt.Printf("Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
-	if len(templatePaths) != 1 || len(endPaths) != 1 {
+	if len(templatePaths) != 2 || len(endPaths) != 2 {
 		fmt.Println("Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
-	if !strings.Contains(templatePaths[0], "hello/") {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
-		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
+	if templatePaths[0] != "~\\bar\\Project\\" && templatePaths[1] != "~\\hello.world\\Project\\" {
+		fmt.Printf("Expected different template path, instead got: %s and %s\n", templatePaths[0], templatePaths[1])
+		t.Fatalf("Expected different template path, instead got: %sand %s\n", templatePaths[0], templatePaths[1])
 	}
-	if !strings.Contains(endPaths[0], "hello/bonjour") {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
-		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+
+	if endPaths[0] != "~/checking...if\\other characters _/will_cause_panic-!" && endPaths[1] != "~/checking...if\\other characters _/will_cause_panic-!" {
+		fmt.Printf("Expected different end path, instead got: %s and %s\n", endPaths[0], endPaths[1])
+		t.Fatalf("Expected different end path, instead got: %s and %s\n", endPaths[0], endPaths[1])
+	}
+}
+
+func TestGeneratePaths_CaseThree(t *testing.T) {
+	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"hellos/bonjour/fake.tmpl",
+			"hello",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/bonjour",
+		ServicesWanted:   []string{"hello/world/seeing/if/it/works//with random words"},
+	}
+
+	_, _, err := generatePaths(driverConfig)
+	if err == nil {
+		fmt.Printf("Expected error, got %s\n", err)
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
+
+func TestGeneratePaths_CaseThreeWin(t *testing.T) {
+	// Multiple starting directories, multiple project/services defined, ServicesWanted specified
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"hellos/bonjour/fake.tmpl",
+			"hello",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/bonjour",
+		ServicesWanted:   []string{"hello/world/seeing/if/it/works//with random words"},
+	}
+
+	_, _, err := generatePaths(driverConfig)
+	if err == nil {
+		fmt.Printf("Expected error, got %s\n", err)
+		t.Fatalf("Expected error, got %v", err)
 	}
 }
 
 func TestGeneratePaths_CaseFour(t *testing.T) {
 	// Single starting directory, single project/service defined, ServicesWanted not specified, no scrubbing
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
-			"hello/bonjour",
+			"hello/bonjour/Project",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{},
 	}
@@ -244,11 +323,48 @@ func TestGeneratePaths_CaseFour(t *testing.T) {
 		fmt.Println("Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
-	if !strings.Contains(templatePaths[0], "hello/bonjour") {
+	if templatePaths[0] != "hello/bonjour/Project/" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
-	if !strings.Contains(endPaths[0], "hello/bonjour") {
+	if endPaths[0] != "hello/bonjour" {
+		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+	}
+}
+
+func TestGeneratePaths_CaseFourWin(t *testing.T) {
+	// Single starting directory, single project/service defined, ServicesWanted not specified, no scrubbing
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"hello/bonjour/Project",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/bonjour",
+		ServicesWanted:   []string{},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
+	}
+
+	if len(templatePaths) != 1 || len(endPaths) != 1 {
+		fmt.Println("Expected different amount of paths returned")
+		t.Fatal("Expected different amount of paths returned\n")
+	}
+	if templatePaths[0] != "hello\\bonjour\\Project\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
+	}
+	if endPaths[0] != "hello/bonjour" {
 		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
@@ -256,12 +372,35 @@ func TestGeneratePaths_CaseFour(t *testing.T) {
 
 func TestGeneratePaths_CaseFive(t *testing.T) {
 	// Single starting directory, single project/service defined w/out separator, ServicesWanted not specified, no scrubbing
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{},
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{},
 		StartDir: []string{
 			"hello/bonjour",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/bonjour",
+		ServicesWanted:   []string{},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "ProjectService"
+
+	_, _, err := generatePaths(driverConfig)
+
+	if err == nil {
+		fmt.Printf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
+	}
+}
+
+func TestGeneratePaths_CaseFiveWin(t *testing.T) {
+	// Single starting directory, single project/service defined w/out separator, ServicesWanted not specified, no scrubbing
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{},
+		StartDir: []string{
+			"hello/bonjour",
+		},
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{},
 	}
@@ -277,8 +416,9 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 
 func TestGeneratePaths_CaseSix(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: false,
 		},
 		StartDir: []string{
@@ -286,7 +426,7 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 			"~./Project",
 			"~\\hello\\/Project",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
@@ -302,36 +442,79 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 		fmt.Println("Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
-	if !strings.Contains(templatePaths[0], "hello/bonjour/Project") {
+	if templatePaths[0] != "hello/bonjour/Project/" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
-	if !strings.Contains(templatePaths[1], "~./Project") {
+	if templatePaths[1] != "~./Project/" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[1])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[1])
 	}
-	if !strings.Contains(templatePaths[2], "~/hello//Project") {
+	if templatePaths[2] != "~/hello//Project/" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[2])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[2])
 	}
 	for i := 0; i < 3; i++ {
-		if !strings.Contains(endPaths[i], "hello/world/bonjour/monde") {
+		if endPaths[i] != "hello/world/bonjour/monde" {
 			fmt.Printf("Expected different end path, instead got: %s\n", endPaths[i])
 			t.Fatalf("Expected different end path, instead got: %s\n", endPaths[i])
 		}
 	}
 }
 
+func TestGeneratePaths_CaseSixWin(t *testing.T) {
+	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"hello/bonjour/Project",
+			"~./Project",
+			"~\\hello\\/Project",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello\\world\\Project\\Service\\bonjour\\monde",
+		ServicesWanted:   []string{},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(templatePaths) != 3 || len(endPaths) != 3 {
+		fmt.Println("Expected different amount of paths returned")
+		t.Fatal("Expected different amount of paths returned\n")
+	}
+	if templatePaths[0] != "hello\\bonjour\\Project\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
+	}
+	if templatePaths[1] != "~.\\Project\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[1])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[1])
+	}
+	if templatePaths[2] != "~\\hello\\\\Project\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[2])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[2])
+	}
+}
+
 func TestGeneratePaths_CaseSeven(t *testing.T) {
 	// Single starting directory, single project/service, ServicesWanted not specified, no scrubbing
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	ConfiginatorOsPathSeparator = "/"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts: true,
 		},
 		StartDir: []string{
 			"hello/bonjour",
 		},
-		DeploymentConfig: make(map[string]interface{}),
+		DeploymentConfig: make(map[string]any),
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
@@ -347,11 +530,120 @@ func TestGeneratePaths_CaseSeven(t *testing.T) {
 		fmt.Println("Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
-	if !strings.Contains(templatePaths[0], "hello/bonjour") {
+	if templatePaths[0] != "hello/bonjour/" {
 		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
-	if !strings.Contains(endPaths[0], "hello/world/Project/Service/bonjour/monde") {
+	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
+		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+	}
+}
+
+func TestGeneratePaths_CaseSevenWin(t *testing.T) {
+	// Single starting directory, single project/service, ServicesWanted not specified, no scrubbing
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: true,
+		},
+		StartDir: []string{
+			"C:\\hello\\bonjour",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/world/Project/Service/bonjour/monde",
+		ServicesWanted:   []string{},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(templatePaths) != 1 || len(endPaths) != 1 {
+		fmt.Println("Expected different amount of paths returned")
+		t.Fatal("Expected different amount of paths returned\n")
+	}
+	if templatePaths[0] != "C:\\hello\\bonjour\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
+	}
+	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
+		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+	}
+}
+
+func TestGeneratePaths_CaseEightWin(t *testing.T) {
+	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"D:\\hello\\bonjour",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/world/Project/Service/bonjour/monde",
+		ServicesWanted:   []string{},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(templatePaths) != 1 || len(endPaths) != 1 {
+		fmt.Println("Expected different amount of paths returned")
+		t.Fatal("Expected different amount of paths returned\n")
+	}
+	if templatePaths[0] != "D:\\hello\\bonjour\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
+	}
+	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
+		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
+	}
+}
+
+func TestGeneratePaths_CaseNineWin(t *testing.T) {
+	// Single starting directory, single project/service, ServicesWanted not specified, scrubbing
+	ConfiginatorOsPathSeparator = "\\"
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts: false,
+		},
+		StartDir: []string{
+			"D:\\hello\\bonjour",
+			"C:\\hello\\Project\\",
+		},
+		DeploymentConfig: make(map[string]any),
+		EndDir:           "hello/world/Project/Service/bonjour/monde",
+		ServicesWanted:   []string{},
+	}
+	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+
+	if err != nil {
+		fmt.Printf("Expected no error, got %s\n", err)
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(templatePaths) != 1 || len(endPaths) != 1 {
+		fmt.Println("Expected different amount of paths returned")
+		t.Fatal("Expected different amount of paths returned\n")
+	}
+	if templatePaths[0] != "C:\\hello\\Project\\" {
+		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
+	}
+	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
 		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}

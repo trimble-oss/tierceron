@@ -3,7 +3,8 @@
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip dos2unix
-sudo apt-get install -y coreutils 
+sudo apt-get install -y coreutils
+sudo apt-get install uuid-runtime
 sudo apt-get install -y docker.io
 sudo apt-get install -y openjdk-11-jre-headless
 # sudo apt-get install -y maven
@@ -57,8 +58,8 @@ sudo mkdir -p {{or .vaultRoot "/usr/local/vault"}}/data/
 sudo mkdir -p {{or .vaultRoot "/usr/local/vault"}}/plugins/
 sudo chmod 0700 {{or .vaultRoot "/usr/local/vault"}}/plugins/
 # Download 
-# Manually Download/copy carrier to plugins directory
-# sudo mv trc-vault-carrier-plugin {{or .vaultRoot "/usr/local/vault"}}/plugins/
+# Manually Download/copy curator to plugins directory
+# sudo mv trcsh-curator {{or .vaultRoot "/usr/local/vault"}}/plugins/
 sudo mkdir -p {{or .vaultRoot "/usr/local/vault"}}/certs/
 #copy everything from /tmp
 sudo mv /tmp/serv_*.pem {{or .vaultRoot "/usr/local/vault"}}/certs/

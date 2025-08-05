@@ -5,7 +5,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"io"
+	"math/rand"
 	"net"
 	"net/url"
 	"os"
@@ -15,15 +17,18 @@ import (
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/server"
+	"github.com/dolthub/go-mysql-server/sql"
 	sqles "github.com/dolthub/go-mysql-server/sql"
 	"github.com/dolthub/go-mysql-server/sql/information_schema"
-	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/dolthub/go-mysql-server/sql/mysql_db"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/insecure"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	trcutil "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
-
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 // Folder prefix for _seed and _templates.  This function takes a list of paths and looking
@@ -45,19 +50,18 @@ func GetFolderPrefix(custom []string) string {
 	return "trc"
 }
 
-// GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return ""
+func IsValidProjectName(project string) bool {
+	return project != "" && !strings.HasPrefix(project, "TrcVault") && !strings.HasPrefix(project, "Vault") && !strings.HasPrefix(project, "TrcDb") && !strings.HasPrefix(project, "FlumeDatabase") && !strings.HasPrefix(project, "Azure")
 }
 
-func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]interface{}, error) {
+func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string, []string, [][]any, error) {
 	schema, r, queryErr := engine.Query(ctx, query)
 	if queryErr != nil {
 		return "", nil, nil, queryErr
 	}
 
 	columns := []string{}
-	matrix := [][]interface{}{}
+	matrix := [][]any{}
 	tableName := ""
 
 	for _, col := range schema {
@@ -76,7 +80,7 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 			if err == io.EOF {
 				break
 			}
-			rowData := []interface{}{}
+			rowData := []any{}
 			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
 				okResult = true
 				if len(row) > 0 {
@@ -101,32 +105,56 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 	return tableName, columns, matrix, nil
 }
 
+func BuildTableGrant(tableName string) (string, error) {
+	switch tableName {
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
+		fallthrough
+	case flowcore.ArgosSociiFlow.TableName():
+		return "GRANT SELECT ON %s.%s TO '%s'@'%s'", nil
+	}
+	return "", errors.New("use default grant")
+}
+
+func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) {
+	tfmContext.NotifyFlowComponentLoaded(tableName)
+}
+
 // Used to define a database interface for querying TrcDb.
 // Builds interface for TrcDB
-func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmContextInterface interface{}, vaultDatabaseConfig map[string]interface{}, serverListenerInterface interface{}) error {
+func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContextInterface any, vaultDatabaseConfig map[string]any, serverListenerInterface any) error {
 	serverListener := serverListenerInterface.(server.ServerEventListener)
-	tfmContext := tfmContextInterface.(*flowcore.TrcFlowMachineContext)
+	tfmContext := tfmContextInterface.(*trcflowcore.TrcFlowMachineContext)
 	interfaceUrl, parseErr := url.Parse(vaultDatabaseConfig["vaddress"].(string))
 
 	if parseErr != nil {
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Could not parse address for interface. Failing to start interface", false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not parse address for interface. Failing to start interface", false)
 		return parseErr
 	}
 
 	if _, ok := vaultDatabaseConfig["dbport"]; ok {
-		vaultDatabaseConfig["vaddress"] = strings.Split(interfaceUrl.Host, ":")[0] + ":" + vaultDatabaseConfig["dbport"].(string)
+		interfaceHost := interfaceUrl.Host
+		if len(interfaceHost) == 0 {
+			interfaceHost = interfaceUrl.Path
+		} else {
+			interfaceHost = strings.Split(interfaceUrl.Host, ":")[0]
+		}
+		if _, ok := vaultDatabaseConfig["dbport"].(int); ok {
+			vaultDatabaseConfig["dbport"] = fmt.Sprintf("%d", vaultDatabaseConfig["dbport"])
+		}
+		vaultDatabaseConfig["vaddress"] = interfaceHost + ":" + vaultDatabaseConfig["dbport"].(string)
 	} else {
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Missing port. Failing to start interface", false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Missing port. Failing to start interface", false)
 		return errors.New("Missing port for interface")
 	}
-	driverConfig.CoreConfig.Log.Println("Starting SQL Interface.")
+	eUtils.LogInfo(driverConfig.CoreConfig, "Starting SQL Interface.")
 	engine := sqle.NewDefault(
 		sqles.NewDatabaseProvider(
 			tfmContext.TierceronEngine.Database,
 			information_schema.NewInformationSchemaDatabase(),
 		))
+	engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 
-	driverConfig.CoreConfig.Log.Println("Loading cert from vault.")
+	eUtils.LogInfo(driverConfig.CoreConfig, "Loading cert from vault.")
 	pwd, _ := os.Getwd()
 
 	//Grab certs
@@ -134,7 +162,7 @@ func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmCo
 	_, certData, certLoaded, ctErr := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_cert.pem.mf.tmpl", true, "Common", "db_cert", true, true)
 	if ctErr != nil || !certLoaded || len(certData) == 0 {
 		if ctErr != nil {
-			eUtils.LogErrorMessage(&driverConfig.CoreConfig, ctErr.Error(), false)
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, ctErr.Error(), false)
 		}
 		return errors.New("Failed to retrieve cert.")
 	}
@@ -142,20 +170,21 @@ func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmCo
 	_, keyData, keyLoaded, key_Err := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_key.pem.mf.tmpl", true, "Common", "db_key", true, true)
 	if ctErr != nil || !keyLoaded || len(keyData) == 0 {
 		if key_Err != nil {
-			eUtils.LogErrorMessage(&driverConfig.CoreConfig, key_Err.Error(), false)
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, key_Err.Error(), false)
 		}
 		return errors.New("Failed to retrieve key.")
 	}
 
 	key_pair, key_pair_err := tls.X509KeyPair([]byte(certData[1]), []byte(keyData[1]))
 	if key_pair_err != nil {
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, key_pair_err.Error(), false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, key_pair_err.Error(), false)
 	}
 
 	certPool, _ := x509.SystemCertPool()
 	if certPool == nil {
 		certPool = x509.NewCertPool()
 	}
+
 	serverConfig := server.Config{
 		Protocol: "tcp",
 		Address:  ":" + strings.TrimSpace(vaultDatabaseConfig["dbport"].(string)),
@@ -189,7 +218,10 @@ func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmCo
 
 	dbserver, serverErr := server.NewServer(serverConfig, engine, server.DefaultSessionBuilder, serverListener)
 	if serverErr != nil {
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to start server:"+serverErr.Error(), false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to start server:"+serverErr.Error(), false)
+		if driverConfig.CoreConfig.IsEditor {
+			os.Exit(-1)
+		}
 		return serverErr
 	}
 
@@ -202,77 +234,248 @@ func BuildInterface(driverConfig *eUtils.DriverConfig, goMod *kv.Modifier, tfmCo
 
 		engine.Analyzer.Catalog.MySQLDb.AddSuperUser("", "", superRandom) //Use for permission set up -> deleted before setup finishes
 		ctx := tfmContext.TierceronEngine.Context
+
+		if _, ok := vaultDatabaseConfig["controller"].(bool); !ok {
+			_, _, _, placeHolderErr := engineQuery(engine, ctx, "CREATE TABLE "+tfmContext.TierceronEngine.Database.Name()+".placeholder (placeholder int);")
+			if placeHolderErr != nil {
+				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to create placeholder table to keep connection alive - "+placeHolderErr.Error(), false)
+			}
+		}
+
 		cidrBlockSlice := strings.Split(vaultDatabaseConfig["cidrblock"].(string), ",")
 		for _, cidrBlock := range cidrBlockSlice {
+			dfsUserCreated := ""
 			cidrBlock = strings.TrimSpace(cidrBlock)
 			_, _, _, queryErr := engineQuery(engine, ctx, "CREATE USER '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"' IDENTIFIED BY '"+vaultDatabaseConfig["dbpassword"].(string)+"'")
+
 			if queryErr != nil {
-				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to select user - "+queryErr.Error(), false)
-			}
-
-			_, _, tableNameMatrix, showQueryErr := engineQuery(engine, ctx, "SHOW TABLES FROM "+tfmContext.TierceronEngine.Database.Name())
-			if showQueryErr != nil {
-				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 1 :"+showQueryErr.Error(), false)
-			}
-
-			for _, tableNameListInterface := range tableNameMatrix {
-				for _, tableName := range tableNameListInterface {
-					if !strings.Contains(tableName.(string), "Changes") {
-						if strings.Contains(tableName.(string), "DataFlowStatistics") {
-							_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON "+tfmContext.TierceronEngine.Database.Name()+"."+tableName.(string)+" TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
-						} else if strings.Contains(tableName.(string), "TierceronFlow") {
-							_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE ON "+tfmContext.TierceronEngine.Database.Name()+"."+tableName.(string)+" TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
-						} else {
-							_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+tableName.(string)+" TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
-						}
-						if queryErr != nil {
-							eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 2a :"+queryErr.Error(), false)
-						}
-					} else {
-						_, _, _, queryErr = engineQuery(engine, ctx, "GRANT INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+tableName.(string)+" TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
-						if queryErr != nil {
-							eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 2b :"+queryErr.Error(), false)
-						}
-					}
-				}
+				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to create user for cidr - %s", cidrBlock), false)
 			}
 
 			_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON INFORMATION_SCHEMA.* TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
 			if queryErr != nil {
-				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 3 :"+queryErr.Error(), false)
+				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 3 - %s", cidrBlock), false)
+			}
+
+			if _, ok := vaultDatabaseConfig["controller"].(bool); !ok {
+				_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON "+tfmContext.TierceronEngine.Database.Name()+".placeholder TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
+				if queryErr != nil {
+					eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 4 - %s", cidrBlock), false)
+				}
+			}
+
+			if len(dfsUserCreated) > 0 {
+				_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON INFORMATION_SCHEMA.* TO '"+dfsUserCreated+"'@'"+cidrBlock+"'")
+				if queryErr != nil {
+					eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 5 - %s", cidrBlock), false)
+				}
+
+				if _, ok := vaultDatabaseConfig["controller"].(bool); !ok {
+					_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON placeholder TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
+					if queryErr != nil {
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 6 - %s", cidrBlock), false)
+					}
+				}
 			}
 
 			_, _, _, queryErr = engineQuery(engine, ctx, "REVOKE INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+"DataFlowStatistics FROM '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
 			if queryErr != nil {
-				eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to grant user permissions - 4 :"+queryErr.Error(), false)
+				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 7 - %s", cidrBlock), false)
 			}
+
+			_, _, _, queryErr = engineQuery(engine, ctx, "REVOKE INSERT,UPDATE,DELETE ON "+tfmContext.TierceronEngine.Database.Name()+"."+"placeholder FROM '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")
+			if queryErr != nil {
+				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 8 - %s", cidrBlock), false)
+			}
+			ctx.Done()
+			tfmContext.TierceronEngine.Context = sql.NewEmptyContext()
 		}
 		_, _, _, queryErr := engineQuery(engine, ctx, "FLUSH PRIVILEGES")
 		if queryErr != nil {
-			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed refresh permissions for users- "+queryErr.Error(), false)
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed refresh permissions for users", false)
 			dbserver = nil
 			goto permsfailure
 		}
 
 		_, _, _, queryErr = engineQuery(engine, ctx, "DELETE USER FROM Mysql.user where USER=''")
 		if queryErr != nil {
-			eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Failed to delete user used to set up permissions:"+queryErr.Error(), false)
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to delete user used to set up permissions.", false)
 			dbserver = nil
 			goto permsfailure
 		}
 
-		eUtils.LogErrorMessage(&driverConfig.CoreConfig, "Permissions have been set up.", false)
-	}
+		eUtils.LogInfo(driverConfig.CoreConfig, "Permissions have been set up.")
 
-	go func(tfC *flowcore.TrcFlowMachineContext, vdc map[string]interface{}) {
-		for {
-			select {
-			case <-tfmContext.PermissionChan:
-				// TODO: Do something if you feel like it...
-				break
+		//Set off listeners for when tables are ready.
+		go func(tfC *trcflowcore.TrcFlowMachineContext, vdc map[string]any) {
+			for permUpdate := range tfmContext.PermissionChan {
+				tableName := permUpdate.TableName
+				tablePermsGiven := false
+				permission := false
+				if permUpdate.CurrentState == 2 {
+					permission = true
+				}
+
+				var queryErr error
+				h := md5.New()
+				randomTime := rand.Int63n(time.Now().Unix()-int64(rand.Intn(99999999))) + int64(rand.Intn(99999999))
+				randomNow := time.Unix(randomTime, 0)
+				io.WriteString(h, randomNow.String())
+				superRandom := string(h.Sum(nil))
+
+				engine.Analyzer.Catalog.MySQLDb.AddSuperUser("", "", superRandom) //Use for permission set up -> deleted before setup finishes
+				cidrBlockSlice := strings.Split(vdc["cidrblock"].(string), ",")
+				tables := []string{tableName, tableName + "_Changes"}
+
+				if permission {
+					for _, tableN := range tables {
+						for _, cidrBlock := range cidrBlockSlice {
+							if !strings.HasSuffix(tableN, "Changes") {
+								if strings.HasPrefix(tableN, "DataFlowStatistics") {
+									_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
+
+									//If DFS user configs are loaded, create that user.
+									if dfsUser, ok := vaultDatabaseConfig["dfsUser"].(string); ok {
+										if dfsPass, ok := vaultDatabaseConfig["dfsPass"].(string); ok {
+											dfsUserCreated := dfsUser
+											_, _, _, queryErr := engineQuery(engine, ctx, "CREATE USER '"+dfsUser+"'@'"+cidrBlock+"' IDENTIFIED BY '"+dfsPass+"'")
+											if len(dfsUserCreated) > 0 {
+												_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+dfsUserCreated+"'@'"+cidrBlock+"'")
+											}
+
+											if queryErr != nil {
+												eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to create dfs interface user - %s", cidrBlock), false)
+											}
+										}
+									}
+
+								} else if strings.Contains(tableN, flowcore.TierceronControllerFlow.FlowName()) {
+									_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
+								} else {
+									var grant string
+									var grantErr error
+									if flow := tfmContext.GetFlowContext(flowcore.FlowNameType(tableN)); flow != nil {
+										if flow.GetFlowLibraryContext() != nil && flow.GetFlowLibraryContext().GetTableGrant != nil {
+											grantcomponent, cidr, grantFlowErr := flow.GetFlowLibraryContext().GetTableGrant(tableN)
+											if grantFlowErr == nil && len(grantcomponent) > 0 {
+												grantCheck := strings.Split(grantcomponent, ",")
+												invalidGrant := false
+												for _, g := range grantCheck {
+													if g == "SELECT" || g == "INSERT" || g == "UPDATE" || g == "DELETE" {
+														continue
+													} else {
+														invalidGrant = true
+													}
+												}
+												if len(cidr) == 0 || cidr == "%s" {
+													cidr = cidrBlock
+												} else {
+													if net.ParseIP(cidr) != nil || func(c string) bool { _, _, err := net.ParseCIDR(c); return err == nil }(cidr) {
+														cidr = cidrBlock
+													} else {
+														invalidGrant = true
+													}
+												}
+
+												if !invalidGrant {
+													grant = fmt.Sprintf("GRANT %s ON %s.%s TO '%s'@'%s'", grantcomponent, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string), cidr)
+												} else {
+													grantErr = fmt.Errorf("unsupported grant format: %s, %s", grantcomponent, cidr)
+												}
+											} else {
+												grantErr = grantFlowErr
+											}
+										}
+									}
+									if len(grant) == 0 {
+										grant, grantErr = BuildOptions.BuildTableGrant(tableN)
+									}
+									// Override the default grant when provided.
+									if grantErr == nil {
+										if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 4 {
+											_, _, _, queryErr = engineQuery(engine, ctx, fmt.Sprintf(grant, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string), cidrBlock))
+										} else if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 3 {
+											_, _, _, queryErr = engineQuery(engine, ctx, fmt.Sprintf(grant, tfC.TierceronEngine.Database.Name(), tableN, vdc["dbuser"].(string)))
+										} else if strings.Contains(grant, "GRANT") && strings.Count(grant, "%s") == 0 {
+											_, _, _, queryErr = engineQuery(engine, ctx, grant)
+										} else {
+											queryErr = errors.New("unexpected grant format")
+										}
+									} else {
+										if grantErr.Error() == "use default grant" {
+											_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT,INSERT,UPDATE,DELETE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
+										} else {
+											queryErr = grantErr
+										}
+									}
+								}
+							} else {
+								_, _, _, queryErr = engineQuery(engine, ctx, "GRANT TRIGGER,INSERT,UPDATE,DELETE ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
+								if queryErr != nil {
+									eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to grant user permissions - 2b for %s", tableN), false)
+								}
+							}
+
+							if queryErr != nil {
+								eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to grant user permissions - 2a for"+tableN+":"+queryErr.Error(), false)
+							} else {
+								tablePermsGiven = true
+							}
+						}
+					}
+					// Notify that the table grant has been provided.
+					if tablePermsGiven && tableName != "" {
+						BuildOptions.TableGrantNotify(tfmContext, tableName)
+					}
+
+					_, _, _, queryErr = engineQuery(engine, ctx, "FLUSH PRIVILEGES")
+					if queryErr != nil {
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed refresh permissions for users for %s", tableName), false)
+					}
+
+					_, _, _, queryErr = engineQuery(engine, ctx, "DELETE USER FROM Mysql.user where USER=''")
+					if queryErr != nil {
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to delete user used to set up permissions for"+tableName+":"+queryErr.Error(), false)
+					}
+					eUtils.LogInfo(driverConfig.CoreConfig, "Permissions have been enabled for "+tableName+".")
+				} else {
+					//disable permissions
+					for _, tableN := range tables {
+						for _, cidrBlock := range cidrBlockSlice {
+							if !strings.HasSuffix(tableN, "Changes") {
+								if strings.HasPrefix(tableN, "DataFlowStatistics") {
+									if dfsUser, ok := vaultDatabaseConfig["dfsUser"].(string); ok {
+										if len(dfsUser) > 0 {
+											_, _, _, queryErr = engineQuery(engine, ctx, "REVOKE ALL ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" FROM '"+dfsUser+"'@'"+cidrBlock+"'")
+										}
+
+										if queryErr != nil {
+											eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to create dfs interface user -  %s", tableName), false)
+										}
+									}
+								}
+							}
+
+							_, _, _, queryErr = engineQuery(engine, ctx, "REVOKE ALL ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" FROM '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
+							if queryErr != nil {
+								eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed refresh permissions for users for"+tableName, false)
+							}
+						}
+					}
+					_, _, _, queryErr = engineQuery(engine, ctx, "FLUSH PRIVILEGES")
+					if queryErr != nil {
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed refresh permissions for users for"+tableName+":"+queryErr.Error(), false)
+					}
+
+					_, _, _, queryErr = engineQuery(engine, ctx, "DELETE USER FROM Mysql.user where USER=''")
+					if queryErr != nil {
+						eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to delete user used to set up permissions for"+tableName+":"+queryErr.Error(), false)
+					}
+					eUtils.LogInfo(driverConfig.CoreConfig, "Permissions have been disabled for "+tableName+".")
+				}
 			}
-		}
-	}(tfmContext, vaultDatabaseConfig)
+		}(tfmContext, vaultDatabaseConfig)
+	}
 
 	go dbserver.Start()
 

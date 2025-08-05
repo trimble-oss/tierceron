@@ -7,16 +7,18 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	twp "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 	"github.com/trimble-oss/tierceron/trcweb/server"
 
-	jwt "github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v5"
 	rtr "github.com/julienschmidt/httprouter"
 	"github.com/rs/cors"
 )
@@ -33,6 +35,36 @@ var noAuthRoutes = map[string]bool{
 	"Unseal":          true,
 	"UpdateAPI":       true,
 	"Environments":    true,
+}
+
+func validateClaims(claims jwt.MapClaims) error {
+	now := time.Now()
+
+	if exp, ok := claims["exp"].(float64); ok {
+		if now.After(time.Unix(int64(exp), 0)) {
+			return fmt.Errorf("token has expired")
+		}
+	} else {
+		return fmt.Errorf("exp claim is missing or invalid")
+	}
+
+	if nbf, ok := claims["nbf"].(float64); ok {
+		if now.Before(time.Unix(int64(nbf), 0)) {
+			return fmt.Errorf("token is not valid yet (nbf)")
+		}
+	}
+
+	if iat, ok := claims["iat"].(float64); ok {
+		if now.Before(time.Unix(int64(iat), 0)) {
+			return fmt.Errorf("token used before issued (iat)")
+		}
+	}
+
+	if iss, ok := claims["iss"].(string); !ok || iss == "" {
+		return fmt.Errorf("issuer is missing or invalid")
+	}
+
+	return nil
 }
 
 // Handle auth tokens through POST request and route without auth through GET request
@@ -64,7 +96,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		if len(authString) > 0 { // Ensure a token was actually sent
 			splitAuth := strings.SplitN(authString, " ", 2)
 			if splitAuth[0] == "Bearer" {
-				token, err := jwt.Parse(splitAuth[1], func(token *jwt.Token) (interface{}, error) { // Parse token and verify formatting
+				token, err := jwt.Parse(splitAuth[1], func(token *jwt.Token) (any, error) { // Parse token and verify formatting
 					if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
 						return s.TrcAPITokenSecret, nil
 					}
@@ -74,7 +106,7 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 				})
 				if err == nil { // Continue if token parsed without error
 					if claims, ok := token.Claims.(jwt.MapClaims); ok { // Verify token claim formatting
-						err = claims.Valid()
+						err = validateClaims(claims)
 						if err == nil { // Verify that token had valid issuing time/date
 							if claims["iss"] != "Viewpoint, Inc." { // Verify issuer
 								errMsg = fmt.Sprintf("Invalid token issuer: %s", util.Sanitize(claims["iss"]))
@@ -193,23 +225,23 @@ func main() {
 
 	flag.Parse()
 
-	s = server.NewServer(*addrPtr, *tokenPtr)
+	s = server.NewServer(addrPtr, tokenPtr)
 	localHost = *localPtr
-	driverConfig := &eUtils.DriverConfig{
-		CoreConfig: core.CoreConfig{
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 		},
 	}
 
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	eUtils.CheckError(&driverConfig.CoreConfig, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	s.Log.SetOutput(f)
 	memprotectopts.MemProtectInit(nil)
 
 	status, err := s.GetStatus(context.Background(), nil)
-	eUtils.LogErrorObject(&driverConfig.CoreConfig, err, true)
+	eUtils.LogErrorObject(driverConfig.CoreConfig, err, true)
 
-	if !status.Sealed && s.VaultToken != "" {
+	if !status.Sealed && !eUtils.RefEquals(s.VaultTokenPtr, "") {
 		s.Log.Println("Vault is unsealed. Initializing GQL")
 		s.InitGQL()
 	}

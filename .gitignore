@@ -55,6 +55,9 @@ atrium/speculatio/spiralis/tls/mashup.*
 atrium/speculatio/fenestra/tls/mashup.*
 atrium/speculatio/spiralis/__debug_bin
 atrium/speculatio/fenestra/__debug_bin
+atrium/vestibulum/pluginutil/__debug*
+atrium/vestibulum/pluginutil/pluginutil_test.go
+pkg/core/util/cert/certutil_test.go
 
 cmd/shell/deploy/trc_seeds/*
 
@@ -71,11 +74,12 @@ installation/trclocal/trchelloworld/deploy/*.trc
 installation/trclocal/trchelloworld/deploy/*.yaml
 installation/trclocal/trchelloworld/deploy/*/*.trc
 
-installation/trcsh/trc_seeds/*
-installation/trcsh/scripts/*.sh
+installation/trcshhive/trcsh-cursor/trc_seeds/*
 
 installation/trccarrier/deploy/
 installation/trccarrier/trc_seeds/
+installation/trcsh-curator/deploy/
+installation/trcsh-curator/trc_seeds/
 installation/trcagent/trc_seeds/
 installation/trcagent/setup.cmd
 installation/trcagent/install.sh
@@ -83,4 +87,6 @@ installation/trccloud/terraform/azure/kubeboot/*.tf
 installation/trccloud/terraform/azure/kubeboot/*.sh
 installation/trccloud/terraform/azure/kubeboot/scripts/
 
+buildopts/saltyopts/saltguard.txt
+zeroconfiglib/zccommon/zccommon_test.go
 

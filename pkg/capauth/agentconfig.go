@@ -3,7 +3,9 @@ package capauth
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
@@ -13,14 +15,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -38,7 +45,7 @@ type AgentConfigs struct {
 }
 
 type TrcshDriverConfig struct {
-	DriverConfig eUtils.DriverConfig
+	DriverConfig *config.DriverConfig
 	FeatherCtx   *cap.FeatherContext
 	FeatherCtlCb func(*cap.FeatherContext, string) error
 }
@@ -66,6 +73,29 @@ func ValidateVhostDomain(host string) error {
 		}
 	}
 	return errors.New("Bad host: " + host)
+}
+
+// IsCertValidBySupportedDomains accepts a certificate
+func IsCertValidBySupportedDomains(byteCert []byte,
+	certValidationHelper func(cert *x509.Certificate, host string, selfSignedOk bool) (bool, error),
+) (bool, *x509.Certificate, error) {
+	var ok bool
+	var err error
+	block, _ := pem.Decode(byteCert)
+	if block == nil {
+		return false, nil, errors.New("failed to parse certificate PEM")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return false, nil, errors.New("failed to parse certificate: " + err.Error())
+	}
+
+	for _, domain := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
+		if ok, err = certValidationHelper(cert, domain, prod.IsProd()); ok {
+			return ok, cert, err
+		}
+	}
+	return ok, cert, err
 }
 
 func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort bool, logger ...*log.Logger) error {
@@ -179,8 +209,9 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
+	penseSum = penseSum + saltyopts.BuildOptions.GetSaltyGuardian()
 
-	creds, credErr := tls.GetTransportCredentials(agentconfig.Drone)
+	creds, credErr := tls.GetTransportCredentials(false, agentconfig.Drone)
 
 	if credErr != nil {
 		return nil, credErr
@@ -198,14 +229,13 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
 
-	// Contact the server and print out its response.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-
 	var r *cap.PenseReply
 	retry := 0
 
 	for {
+		// Contact the server and print out its response.
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer cancel()
 		_, err := c.Pense(ctx, &cap.PenseRequest{Pense: "", PenseIndex: ""})
 		if err != nil {
 			st, ok := status.FromError(err)
@@ -227,7 +257,9 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	}
 
 	for {
-		r, err = c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+		penseCtx, penseCancel := context.WithTimeout(context.Background(), time.Second*3)
+		defer penseCancel()
+		r, err = c.Pense(penseCtx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 		if err != nil {
 			st, ok := status.FromError(err)
 
@@ -250,20 +282,37 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	return penseProtect, nil
 }
 
-func NewAgentConfig(address string,
-	agentToken string,
+func NewAgentConfig(tokenCache *cache.TokenCache,
+	agentTokenName string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
+	initNewTrcsh bool,
+	isShellRunner bool,
 	logger *log.Logger,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
+
+	if isShellRunner {
+		tokenCache.SetVaultAddress(tokenCache.VaultAddressPtr)
+		return &AgentConfigs{Env: &env}, &TrcShConfig{
+			IsShellRunner: isShellRunner,
+			Env:           env,
+			EnvContext:    env,
+			TokenCache:    tokenCache,
+		}, nil
+	}
+	agentTokenPtr := tokenCache.GetToken(agentTokenName)
+	if agentTokenPtr == nil {
+		logger.Println("trcsh Failed to bootstrap")
+		return nil, nil, errors.New("missing required agent auth")
+	}
 	if logger != nil {
 		logger.Printf(".")
 	} else {
 		fmt.Printf(".")
 	}
 
-	mod, modErr := helperkv.NewModifier(false, agentToken, address, env, nil, true, nil)
+	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, tokenCache.VaultAddressPtr, env, nil, true, nil)
 	if modErr != nil {
 		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
@@ -277,7 +326,8 @@ func NewAgentConfig(address string,
 	} else {
 		fmt.Printf(".")
 	}
-	data, readErr := mod.ReadData("super-secrets/Restricted/TrcshAgent/config")
+
+	data, readErr := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
 	defer func(m *helperkv.Modifier, e string) {
 		m.Env = e
 	}(mod, env)
@@ -291,6 +341,11 @@ func NewAgentConfig(address string,
 	if readErr != nil {
 		return nil, nil, readErr
 	} else {
+		if logger != nil {
+			logger.Printf(".")
+		} else {
+			fmt.Printf(".")
+		}
 		if data["trcHatEncryptPass"] == nil ||
 			data["trcHatEncryptSalt"] == nil ||
 			data["trcHatHandshakeCode"] == nil ||
@@ -338,7 +393,7 @@ func NewAgentConfig(address string,
 				&sessionIdentifier,
 				&env,
 				acceptRemoteFunc, interruptedFunc),
-			&agentToken,
+			agentTokenPtr,
 			&hatFeatherHostAddr,
 			new(string),
 			&deployments,
@@ -346,41 +401,81 @@ func NewAgentConfig(address string,
 			&isDrone,
 		}
 
+		if !initNewTrcsh {
+			return agentconfig, nil, nil
+		}
+
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
-			EnvContext: trcHatEnv,
+			IsShellRunner: isShellRunner,
+			EnvContext:    trcHatEnv,
 		}
 
+		var bambooRolePtr *string
+		var pluginAnyPtr *string
+		var vaultAddressPtr *string
 		var penseError error
-		trcshConfig.ConfigRole, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
-		if penseError != nil {
-			return nil, nil, penseError
+		// Chewbacca -- Local debug
+		// if true {
+		// 	configRole := os.Getenv("CONFIG_ROLE")
+		// 	bambooRolePtr = &configRole
+		// 	vaddress := os.Getenv("VAULT_ADDR")
+		// 	vaultAddressPtr = &vaddress
+		// 	pluginAny := os.Getenv("PLUGIN_ANY")
+		// 	pluginAnyPtr = &pluginAny
+		// }
+		// End Chewbacca
+		if eUtils.RefLength(bambooRolePtr) == 0 {
+			bambooRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
+			if penseError != nil {
+				return nil, nil, penseError
+			}
+			if logger != nil {
+				logger.Printf(".")
+			} else {
+				fmt.Printf(".")
+			}
 		}
-		if logger != nil {
-			logger.Printf(".")
-		} else {
-			fmt.Printf(".")
-		}
+		tokenCache.AddRoleStr("bamboo", bambooRolePtr)
 
-		trcshConfig.VaultAddress, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
-		if penseError != nil {
-			return nil, nil, penseError
+		if eUtils.RefLength(vaultAddressPtr) == 0 {
+			vaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+			if penseError != nil {
+				return nil, nil, penseError
+			}
+			if logger != nil {
+				logger.Printf(".")
+			} else {
+				fmt.Printf(".")
+			}
 		}
-		if logger != nil {
-			logger.Printf(".")
-		} else {
-			fmt.Printf(".")
+		tokenCache.SetVaultAddress(vaultAddressPtr)
+
+		if eUtils.RefLength(pluginAnyPtr) == 0 {
+			if kernelopts.BuildOptions.IsKernel() && tokenCache.GetToken("config_token_pluginany") == nil {
+				pluginAnyPtr, penseError = agentconfig.RetryingPenseFeatherQuery("token")
+				if penseError != nil {
+					return nil, nil, penseError
+				}
+
+				if logger != nil {
+					logger.Printf(".")
+				} else {
+					fmt.Printf(".")
+				}
+			}
 		}
+		tokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 
 		return agentconfig, trcshConfig, nil
 	}
 }
 
-func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, error) {
+func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense string) (*string, error) {
 	penseCode := randomString(12 + rand.Intn(7))
 	penseArray := sha256.Sum256([]byte(penseCode))
 	penseSum := hex.EncodeToString(penseArray[:])
 
-	penseEye, capWriteErr := tap.TapWriter(penseSum)
+	penseEye, capWriteErr := tap.TapWriter(capPath, penseSum)
 
 	if trcHtSp, trcHSPOk := penseEye["trcHatSecretsPort"]; trcHSPOk {
 		if gTrcHatSecretsPort != trcHtSp {
@@ -388,27 +483,34 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 		}
 	}
 
+	wantsFeathering := false
+	if trcHtWf, trcHWFOk := penseEye["trcHatWantsFeathering"]; trcHWFOk {
+		if trcHtWf == "true" {
+			wantsFeathering = true
+		}
+	}
+
 	if capWriteErr != nil || gTrcHatSecretsPort == "" {
 		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
-		// 2023-06-30T01:29:21.7020686Z read unix @->/tmp/trccarrier/trcsnap.sock: read: connection reset by peer
-		//		os.Exit(-1) // restarting carrier will rebuild necessary resources...
 		return new(string), errors.New("tap writer error")
 	}
 
-	// TODO: add domain if it's missing because that might actually happen...  Pull the domain from
-	// vaddress in config..  that should always be the same...
-
-	creds, err := tls.GetTransportCredentials()
+	creds, err := tls.GetTransportCredentials(true)
 	if err != nil {
 		return nil, err
 	}
 	dialOptions := grpc.WithTransportCredentials(creds)
 
-	localHost, localHostErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-	if localHostErr != nil {
-		return nil, localHostErr
+	capHatIpAddr := LoopBackAddr()
+	if wantsFeathering {
+		capHatIpAddr, err = TrcNetAddr()
+		if err != nil {
+			fmt.Println("Code 55 failure...  Possible deploy components mismatch..")
+			return new(string), errors.New("tap writer error")
+		}
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", localHost, gTrcHatSecretsPort), dialOptions)
+
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", capHatIpAddr, gTrcHatSecretsPort), dialOptions)
 	if err != nil {
 		return new(string), err
 	}
@@ -418,14 +520,6 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, pense string) (*string, er
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-
-	localHostConfirm, localHostConfirmErr := LocalAddr(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-	if localHostConfirmErr != nil {
-		return nil, localHostConfirmErr
-	}
-	if localHost != localHostConfirm {
-		return nil, errors.New("host selection flux - cannot continue")
-	}
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 	if penseErr != nil {
