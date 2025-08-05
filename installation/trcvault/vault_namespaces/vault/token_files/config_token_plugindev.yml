@@ -2,5 +2,7 @@ policies: ["config_plugindev"]
 metadata:
   user : "Configinator"
 
+role_name: "rattan_role"
+
 ttl: "8760h"
 display_name: "Configinator Plugin Token"
