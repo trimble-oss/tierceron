@@ -341,6 +341,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		case "hivekernel":
 			mod.EnvBasis = "hivekernel"
 			mod.Env = "hivekernel"
+		case "rattan":
+			mod.EnvBasis = "rattan"
+			mod.Env = "rattan"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
 		token, err := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr)

@@ -195,7 +195,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished retrieving configs")
 	sourceDatabaseConnectionsMap := map[string]map[string]any{}
-	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_plugin%s")
 
 	// 4. Create config for vault for queries to vault.
 	driverConfigBasis := config.DriverConfig{

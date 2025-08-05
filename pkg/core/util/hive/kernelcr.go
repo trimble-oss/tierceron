@@ -741,7 +741,21 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 									err := yaml.Unmarshal(configBytes, &harbingerConfig)
 									if err == nil {
 										flowMachineInitContext.(*flow.FlowMachineInitContext).FlowMachineInterfaceConfigs = harbingerConfig
-										delete(serviceConfig, flow.HARBINGER_INTERFACE_CONFIG)
+										serviceConfig[flow.HARBINGER_INTERFACE_CONFIG] = harbingerConfig
+									} else {
+										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
+										return
+									}
+								}
+							}
+						} else {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+								// Make plugin configs available to flowMachineContext
+								var harbingerConfig map[string]any
+								if configBytes, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG].([]byte); ok {
+									err := yaml.Unmarshal(configBytes, &harbingerConfig)
+									if err == nil {
+										serviceConfig[flow.HARBINGER_INTERFACE_CONFIG] = harbingerConfig
 									} else {
 										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
 										return
@@ -852,23 +866,38 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				// auto auth will return token
 				// Create own driver config
 				var bootDriverConfig *config.DriverConfig
-				if _, ok := serviceConfig["rattan_role"]; ok {
-					bootDriverConfig = &config.DriverConfig{
-						CoreConfig: &coreconfig.CoreConfig{
-							ExitOnFailure: true,
-							TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
-							Insecure:      *insecure,
-							Log:           logger,
-						},
-					}
-					tokenPtr := new(string)
-					currentRoleEntityPtr := new(string)
-					empty := ""
+				if flowConfigs, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG]; ok {
+					if flowMachineConfig, ok := flowConfigs.(map[string]any); ok {
+						if rattanRole, ok := flowMachineConfig["rattan_role"].(string); ok {
+							if rattanEnv, ok := flowMachineConfig["rattan_env"].(string); ok {
+								if rattanAddress, ok := flowMachineConfig["vault_addr"].(string); ok {
+									insecure := false
 
-					autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
-					eUtils.CheckError(driverConfig.CoreConfig, autoErr, true)
-					// autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
-					driverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr // config_token_plugin_%s, env
+									bootDriverConfig = &config.DriverConfig{
+										CoreConfig: &coreconfig.CoreConfig{
+											ExitOnFailure: true,
+											TokenCache:    cache.NewTokenCacheEmpty(&rattanAddress),
+											Insecure:      insecure,
+											Log:           driverConfig.CoreConfig.Log,
+											Env:           rattanEnv,
+											EnvBasis:      rattanEnv,
+										},
+									}
+									bootDriverConfig.CoreConfig.TokenCache.AddRoleStr("rattan", &rattanRole)
+									tokenPtr := fmt.Sprintf("config_token_plugin%s", rattanEnv)
+									currentTokenNamePtr := &tokenPtr
+									currentRattanRoleEntity := "rattan"
+									rattanToken := new(string)
+
+									autoErr := eUtils.AutoAuth(bootDriverConfig, currentTokenNamePtr, &rattanToken, &rattanEnv, nil, &currentRattanRoleEntity, false)
+									if autoErr != nil {
+										bootDriverConfig.CoreConfig.TokenCache.AddToken(*currentTokenNamePtr, rattanToken)
+									}
+									bootDriverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr
+								}
+							}
+						}
+					}
 
 				} else {
 					bootDriverConfig = driverConfig
