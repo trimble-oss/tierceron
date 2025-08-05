@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
@@ -847,8 +848,33 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 				pluginConfig["kernelId"] = pluginHandler.GetKernelId()
 
+				//Grab app role and secret and addr and env from service config and call auto auth
+				// auto auth will return token
+				// Create own driver config
+				var bootDriverConfig *config.DriverConfig
+				if _, ok := serviceConfig["rattan_role"]; ok {
+					bootDriverConfig = &config.DriverConfig{
+						CoreConfig: &coreconfig.CoreConfig{
+							ExitOnFailure: true,
+							TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
+							Insecure:      *insecure,
+							Log:           logger,
+						},
+					}
+					tokenPtr := new(string)
+					currentRoleEntityPtr := new(string)
+					empty := ""
+
+					autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
+					eUtils.CheckError(driverConfig.CoreConfig, autoErr, true)
+					// autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
+					driverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr // config_token_plugin_%s, env
+
+				} else {
+					bootDriverConfig = driverConfig
+				}
 				// Needs certifyPath and connectionPath
-				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), driverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
+				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), bootDriverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 				if err != nil || tfmContext == nil {
 					driverConfig.CoreConfig.Log.Printf("Error initializing flow machine for %s: %v\n", service, err)
 					return
