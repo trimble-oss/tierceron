@@ -32,7 +32,7 @@ func CreateEngine(driverConfig *config.DriverConfig,
 	te := &engine.TierceronEngine{Database: sqlememory.NewDatabase(dbname), Engine: nil, TableCache: map[string]*engine.TierceronTable{}, Context: sqles.NewEmptyContext(), Config: *driverConfig}
 
 	var goMod *helperkv.Modifier
-	tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+	tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_plugin%s")
 	goMod, errModInit := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.Env, false)
 	if errModInit != nil {
 		return nil, errModInit

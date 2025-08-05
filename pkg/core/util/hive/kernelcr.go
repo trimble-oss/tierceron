@@ -722,8 +722,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = false
 						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
-						trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-							&driverConfig.CoreConfig.Env,
+						kernelEnvBasis := driverConfig.CoreConfig.EnvBasis
+						trcconfigbase.CommonMain(&kernelEnvBasis,
+							&kernelEnvBasis,
 							wantedTokenName, // tokenName
 							nil,             // regionPtr
 							flagset,
@@ -754,6 +755,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 								var harbingerConfig map[string]any
 								if configBytes, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG].([]byte); ok {
 									err := yaml.Unmarshal(configBytes, &harbingerConfig)
+									delete(harbingerConfig, "controllerdbport")
+									delete(harbingerConfig, "controllerdbuser")
+									delete(harbingerConfig, "controllerdbpassword")
+									delete(harbingerConfig, "dbport")
+									delete(harbingerConfig, "dbuser")
+									delete(harbingerConfig, "dbpassword")
 									if err == nil {
 										serviceConfig[flow.HARBINGER_INTERFACE_CONFIG] = harbingerConfig
 									} else {
