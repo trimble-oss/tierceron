@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.24.4
+go 1.24.6
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0

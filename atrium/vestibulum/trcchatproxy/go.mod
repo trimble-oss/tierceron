@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy
 
-go 1.24.4
+go 1.24.6
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect

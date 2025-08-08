@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdescartes
 
-go 1.24.4
+go 1.24.6
 
 require (
 	github.com/trimble-oss/tierceron-core/v2 v2.7.6
