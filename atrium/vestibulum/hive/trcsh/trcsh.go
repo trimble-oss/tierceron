@@ -26,6 +26,7 @@ import (
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
+	_ "go.uber.org/automaxprocs"
 )
 
 // This is a controller program that can act as any command line utility.
