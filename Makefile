@@ -38,6 +38,8 @@ config:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcconfig
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "windows azure memonly" -o $(GOBIN)/trcconfig.exe github.com/trimble-oss/tierceron/cmd/trcconfig
+configmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go build  -tags "darwin azure memonly" -o $(GOBIN)/trcconfig github.com/trimble-oss/tierceron/cmd/trcconfig
 seed:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcinit
 seedp:
