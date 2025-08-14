@@ -184,7 +184,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		roleEntityPtr = new(string)
 	}
 
-	IsCmdLineTool := !driverConfig.IsDrone && !driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel())
+	IsCmdLineTool := driverConfig.CoreConfig.IsEditor || (!driverConfig.IsDrone && !driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel()))
 	IsApproleEmpty := len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
 	// If no token provided but context is provided, prefer the context over env.
