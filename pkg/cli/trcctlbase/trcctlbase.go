@@ -279,7 +279,7 @@ func CommonMain(envDefaultPtr *string,
 				}
 			},
 			CoreConfig: &coreconfig.CoreConfig{
-				IsShell:             true, // Pretent to be shell to keep things in memory
+				IsShell:             true, // Pretend to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,

@@ -45,7 +45,11 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	_, goMod, vault, err = eUtils.InitVaultMod(driverConfig)
 	if err != nil {
-		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
+		if driverConfig != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
+		} else {
+			logger.Println("Could not access vault.  Failure to start.")
+		}
 		return nil, err
 	}
 	goMod.Env = goMod.EnvBasis
