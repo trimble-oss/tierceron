@@ -41,7 +41,6 @@ require (
 	github.com/trimble-oss/tierceron-core/v2 v2.7.7
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
-	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
