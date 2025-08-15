@@ -8,11 +8,13 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
@@ -92,6 +94,7 @@ func send_err(err error) {
 		fmt.Println("Failure to send error message, error channel not initialized properly for trcdb.")
 		return
 	}
+	configContext.Log.Println("trcdb sending error message to kernel: ", err)
 	if dfstat != nil {
 		dfsctx, _, err := dfstat.GetDeliverStatCtx()
 		if err != nil {
@@ -107,8 +110,150 @@ func send_err(err error) {
 				configContext.Log.Println(msg, err)
 			})
 		tccore.SendDfStat(configContext, dfsctx, dfstat)
+		configContext.Log.Println("Sent dataflow statistic with error to kernel: ", dfstat.Name)
 	}
 	*configContext.ErrorChan <- err
+}
+
+func GetWantedTests(event *core.ChatMsg) (map[string]bool, string) {
+	var argosId string
+	testsSet := map[string]bool{}
+	if event.ChatId != nil && strings.Contains(*(*event).ChatId, ":") {
+		argosTestsSlice := strings.Split(*(*event).ChatId, ":")
+		// Scrub tenantId to only alphabetic characters
+		origArgosId := argosTestsSlice[0]
+		var scrubbedTenantId strings.Builder
+		for _, r := range origArgosId {
+			if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
+				scrubbedTenantId.WriteRune(r)
+			}
+		}
+		argosId = scrubbedTenantId.String()
+		testsCommaList := argosTestsSlice[1]
+		testsSlice := strings.Split(testsCommaList, ",")
+
+		for _, test := range testsSlice {
+			if len(test) > 0 {
+				testsSet[test] = true
+			}
+		}
+	}
+	if len(testsSet) == 0 {
+		testsSet = nil
+	}
+
+	return testsSet, argosId
+}
+
+func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
+	if event.ChatId != nil && strings.Contains(*(*event).ChatId, ":") {
+		testsSet, tenantId := GetWantedTests(event)
+		approvedProdTests := make(map[string]bool)
+		for test, _ := range testsSet {
+			if test == "TODO" {
+				// In production, we only want to run the EnterpriseRegistration test
+				approvedProdTests[test] = true
+			}
+		}
+		if IsProd() && len(approvedProdTests) == 0 {
+			return "Test not supported in production", nil
+		} else if IsProd() {
+			testsSet = approvedProdTests
+		}
+
+		for test := range testsSet {
+
+			trcdbExchange := &core.TrcdbExchange{
+				Flows:     []string{"DataFlowStatistics"},                                                                                                                                      // Flows
+				Query:     fmt.Sprintf("SELECT * FROM %s.DataFlowStatistics where flowName='%s' and argpsId like '%s' ORDER by CAST(stateCode as UNSIGNED) asc", "%s", test, string(tenantId)), // Query
+				Operation: "SELECT",                                                                                                                                                            // query operation
+			}
+			processTrcdb(trcdbExchange)
+
+			if len(trcdbExchange.Response.Rows) > 0 {
+				var report strings.Builder
+				report.WriteString("Report for " + tenantId + ":\n")
+				report.WriteString("Step # | Status | Result | Execution Date | Time Spent\n")
+				report.WriteString("-----------------------------------------------------------------------------\n")
+
+				// Get the lastTestedDate from the first row (assumed to be the same for all rows)
+				var baseTimestamp time.Time
+				var err error
+
+				if len(trcdbExchange.Response.Rows) > 0 && len(trcdbExchange.Response.Rows[0]) >= 9 {
+					baseTimestampStr := fmt.Sprint(trcdbExchange.Response.Rows[0][8]) // Index 8 for timestamp
+					baseTimestamp, err = time.Parse(time.RFC3339, baseTimestampStr)
+					if err != nil {
+						// If we can't parse the timestamp, continue but note the error
+						report.WriteString("Warning: Could not parse base timestamp. Execution times may be inaccurate.\n\n")
+					}
+				}
+
+				// Keep track of cumulative time to add to base timestamp
+				var cumulativeTime time.Duration
+
+				for _, row := range trcdbExchange.Response.Rows {
+					if len(row) >= 9 {
+						stateCode := fmt.Sprint(row[5])    // Start at index 5 for stateCode
+						modeStr := fmt.Sprint(row[4])      // Index 4 for mode
+						stateName := fmt.Sprint(row[6])    // Index 6 for stateName
+						timeSplitStr := fmt.Sprint(row[7]) // Index 7 for timeSplit, to be displayed unaltered
+
+						var modeText string
+						switch modeStr {
+						case "0":
+							modeText = "Skipped"
+						case "1":
+							modeText = "Success"
+						case "2":
+							modeText = "Failed"
+						default:
+							modeText = "Unknown (" + modeStr + ")"
+						}
+
+						var stepDuration time.Duration
+
+						// Check for millisecond suffix
+						if strings.HasSuffix(timeSplitStr, "ms") {
+							numericPart := strings.TrimSuffix(timeSplitStr, "ms")
+							valueFloat, err := strconv.ParseFloat(numericPart, 64)
+							if err == nil {
+								stepDuration = time.Duration(valueFloat) * time.Millisecond
+							}
+						} else if strings.HasSuffix(timeSplitStr, "s") { // Check for second suffix
+							numericPart := strings.TrimSuffix(timeSplitStr, "s")
+							valueFloat, err := strconv.ParseFloat(numericPart, 64)
+							if err == nil {
+								stepDuration = time.Duration(valueFloat * float64(time.Second))
+							}
+						} else {
+							valueFloat, err := strconv.ParseFloat(timeSplitStr, 64)
+							if err == nil {
+								stepDuration = time.Duration(valueFloat * float64(time.Second))
+							}
+						}
+
+						cumulativeTime += stepDuration
+
+						executionTime := baseTimestamp.Add(cumulativeTime)
+						executionTimeDisplay := executionTime.Format("15:04:05.000")
+
+						// Add to report
+						report.WriteString(fmt.Sprintf("%s | %s | %s | %s | %s\n",
+							stateCode, modeText, stateName, executionTimeDisplay, timeSplitStr))
+					}
+				}
+
+				// Add total duration at the end
+				if cumulativeTime > 0 {
+					report.WriteString(fmt.Sprintf("\nTotal Duration: %s\n", cumulativeTime.String()))
+				}
+
+				return report.String(), nil
+			}
+		}
+	}
+	return "", nil
 }
 
 func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
@@ -136,6 +281,22 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			configContext.Log.Println("Sending all test results back to kernel.")
 
 			*configContext.ChatSenderChan <- event
+		case event.ChatId == nil || (*event).ChatId == nil || (event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PIPELINETEST"):
+			GetConfigContext("trcdb").Log.Println("Trcdb received chat message")
+			response, err := TrcdbChatMessageHandler(event)
+			if err != nil {
+				GetConfigContext("trcdb").Log.Printf("Trcdb errored with %s\n", err.Error())
+			} else {
+				if event.Name != nil && *event.Name == "trcdb" {
+					GetConfigContext("trcdb").Log.Println("Received message from trcdb, not processing to avoid feedback loop")
+					continue
+				}
+				(*event).Response = &response
+				configContext := GetConfigContext("trcdb")
+				go func(csc *chan *core.ChatMsg) {
+					*csc <- event
+				}(configContext.ChatSenderChan)
+			}
 		default:
 			configContext.Log.Println("trcdb received chat message")
 		}
@@ -187,6 +348,9 @@ func start(pluginName string) {
 		*configContext.CmdSenderChan <- tccore.KernelCmd{
 			Command: tccore.PLUGIN_EVENT_START,
 		}
+		configContext.Log.Println("trcdb reported startup.")
+	} else {
+		configContext.Log.Println("No command sender channel available, trcdb cannot send start event.")
 	}
 }
 
@@ -225,18 +389,22 @@ func GetConfigPaths(pluginName string) []string {
 // flow controller if you define any additional flows other than the default flows:
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
-	switch tfContext.GetFlowHeader().FlowName() {
-	case flowcore.ArgosSociiFlow.TableName():
-		tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
-	default:
-		return errors.New("Flow not implemented: " + tfContext.GetFlowHeader().FlowName())
-	}
+	// switch tfContext.GetFlowHeader().FlowName() {
+	// case flowcore.ArgosSociiFlow.TableName():
+	// 	tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
+	// default:
+	// 	return errors.New("Flow not implemented: " + tfContext.GetFlowHeader().FlowName())
+	// }
 
 	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 }
 
-func GetDbProject() string {
+func GetDatabaseName() string {
 	return "TrcDb"
+}
+
+func GetFlowDatabaseName() string {
+	return "FlumeDb"
 }
 
 func GetFlowMachineTemplates() map[string]any {
@@ -252,7 +420,35 @@ func GetFlowMachineTemplates() map[string]any {
 	return flowMachineTemplates
 }
 
+func GetFlowMachineTemplatesHive() map[string]any {
+	flowMachineTemplates := map[string]any{}
+	flowMachineTemplates["templatePath"] = []string{
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+	}
+	flowMachineTemplates["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	}
+
+	return flowMachineTemplates
+}
+
+func GetFlowMachineTemplatesEditor() map[string]any {
+	flowMachineTemplates := map[string]any{}
+	flowMachineTemplates["templatePath"] = []string{
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+	}
+	flowMachineTemplates["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	}
+
+	return flowMachineTemplates
+}
+
 func GetBusinessFlows() []flowcore.FlowDefinition {
+	// Not implemented for hive infrastructure yet
+	// return tccutil.GetAdditionalFlows()
 	return []flowcore.FlowDefinition{}
 }
 
@@ -269,15 +465,29 @@ func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowco
 }
 
 func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
-	pluginConfig := GetFlowMachineTemplates()
+	var flowMachineTemplatesFunc func() map[string]any
+	if coreConfig != nil && coreConfig.IsEditor {
+		flowMachineTemplatesFunc = GetFlowMachineTemplatesEditor
+	} else {
+		flowMachineTemplatesFunc = GetFlowMachineTemplatesHive
+	}
+	flowMachineTemplates := flowMachineTemplatesFunc()
 
 	return &flowcore.FlowMachineInitContext{
-		GetFlowMachineTemplates:     GetFlowMachineTemplates,
+		GetFlowMachineTemplates:     flowMachineTemplatesFunc,
 		FlowMachineInterfaceConfigs: map[string]any{},
-		GetDatabaseName:             nil,
+		GetDatabaseName: func(flumeDbType flowcore.FlumeDbType) string {
+			switch flumeDbType {
+			case flowcore.TrcDb:
+				return GetDatabaseName()
+			case flowcore.TrcFlumeDb:
+				return GetFlowDatabaseName()
+			}
+			return GetDatabaseName()
+		},
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
-			for _, template := range pluginConfig["templatePath"].([]string) {
+			for _, template := range flowMachineTemplates["templatePath"].([]string) {
 				flowSource, service, _, tableTemplateName := coreutil.GetProjectService("", "trc_templates", template)
 				tableName := coreutil.GetTemplateFileName(tableTemplateName, service)
 				tableFlows = append(tableFlows, flowcore.FlowDefinition{
@@ -321,13 +531,13 @@ func Init(pluginName string, properties *map[string]any) {
 		return
 	}
 	if _, ok := (*properties)[flowcore.HARBINGER_INTERFACE_CONFIG]; !ok {
-		fmt.Println("Missing common config components")
+		configContext.Log.Println("Missing common config components")
 		return
 	}
 	if tfmCtx, ok := (*properties)[tccore.TRCDB_RESOURCE].(flowcore.FlowMachineContext); ok {
 		tfmContext = tfmCtx
 	} else {
-		fmt.Println("No flow context available for trcdb plugin.")
+		configContext.Log.Println("No flow context available for trcdb plugin.")
 		return
 	}
 }
