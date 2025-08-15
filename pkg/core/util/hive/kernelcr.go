@@ -912,8 +912,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							}
 						}
 					}
-
 				} else {
+					bootDriverConfig = driverConfig
+				}
+
+				if bootDriverConfig == nil && driverConfig != nil && driverConfig.CoreConfig.IsEditor {
 					bootDriverConfig = driverConfig
 				}
 				// Needs certifyPath and connectionPath

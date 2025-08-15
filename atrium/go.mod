@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
@@ -41,7 +41,6 @@ require (
 	github.com/trimble-oss/tierceron-core/v2 v2.7.7
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
-	go.uber.org/automaxprocs v1.6.0
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1
@@ -305,7 +304,7 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hc
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
 
 replace github.com/trimble-oss/tierceron => ../
 
