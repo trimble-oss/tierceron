@@ -236,7 +236,7 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 }
 
 func GetDbProject() string {
-	return "TrcDb"
+	return "TenantDatabase"
 }
 
 func GetFlowMachineTemplates() map[string]any {

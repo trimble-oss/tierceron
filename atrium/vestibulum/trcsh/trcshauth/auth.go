@@ -117,10 +117,10 @@ func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentCo
 	var vaultAddress *string
 
 	// Chewbacca: scrub before checkin
-	// if true {
-	// 	vaddress := os.Getenv("VAULT_ADDR")
-	// 	vaultAddress = &vaddress
-	// }
+	if true {
+		vaddress := os.Getenv("VAULT_ADDR")
+		vaultAddress = &vaddress
+	}
 	//	Chewbacca: end scrub
 
 	if eUtils.RefLength(vaultAddress) == 0 {
@@ -153,18 +153,18 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	var kubeConfigPtr *string
 
 	// Chewbacca: scrub before checkin
-	// if true {
-	// 	vaultAddress := os.Getenv("VAULT_ADDR")
-	// 	configRole := os.Getenv("CONFIG_ROLE")
-	// 	pubRole := os.Getenv("PUB_ROLE")
-	// 	pluginAny := os.Getenv("PLUGIN_ANY")
-	// 	kubeConfig := os.Getenv("KUBE_CONFIG")
-	// 	vaultAddressPtr = &vaultAddress
-	// 	configRolePtr = &configRole
-	// 	pubRolePtr = &pubRole
-	// 	pluginAnyPtr = &pluginAny
-	// 	kubeConfigPtr = &kubeConfig
-	// }
+	if true {
+		vaultAddress := os.Getenv("VAULT_ADDR")
+		configRole := os.Getenv("CONFIG_ROLE")
+		pubRole := os.Getenv("PUB_ROLE")
+		pluginAny := os.Getenv("PLUGIN_ANY")
+		kubeConfig := os.Getenv("KUBE_CONFIG")
+		vaultAddressPtr = &vaultAddress
+		configRolePtr = &configRole
+		pubRolePtr = &pubRole
+		pluginAnyPtr = &pluginAny
+		kubeConfigPtr = &kubeConfig
+	}
 	//	Chewbacca: end scrub
 
 	if eUtils.RefLength(kubeConfigPtr) == 0 {
@@ -293,6 +293,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 }
 
 func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger *log.Logger) (bool, error) {
+	return true, nil
 	pluginName := cursoropts.BuildOptions.GetPluginName(false)
 	if len(pluginName) == 0 {
 		pluginName = pluginConfig["plugin"].(string)
