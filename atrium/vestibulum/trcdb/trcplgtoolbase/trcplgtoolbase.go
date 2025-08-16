@@ -3,7 +3,6 @@ package trcplgtoolbase
 import (
 	"bufio"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -14,9 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
@@ -490,6 +487,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
+	pluginToolConfig["codebundledeployPtr"] = *codebundledeployPtr //for optimization change in certify
 	pluginToolConfig["buildImagePtr"] = *buildImagePtr
 	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
 	pluginToolConfig["trcbootstrapPtr"] = *trcbootstrapPtr
@@ -695,143 +693,6 @@ func CommonMain(envPtr *string,
 					fmt.Println(err.Error())
 				}
 				return err
-			}
-		}
-
-		if pluginToolConfig["trcsha256"] != nil &&
-			pluginToolConfig["imagesha256"] != nil &&
-			pluginToolConfig["trcsha256"].(string) == pluginToolConfig["imagesha256"].(string) {
-			// Write the image to the destination...
-			var deployPath string
-			var deployRoot string
-			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
-				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
-			} else {
-				deployRoot = pluginToolConfig["trcdeployroot"].(string)
-			}
-
-			//check if there is a place holder, if there is replace it
-			if strings.Contains(deployRoot, "{{.trcpathparam}}") {
-				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
-					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
-					if !r.MatchString(pathParam) {
-						fmt.Println("trcpathparam can only contain alphanumberic characters or underscores")
-						return errors.New("trcpathparam can only contain alphanumberic characters or underscores")
-					}
-					deployRoot = strings.Replace(deployRoot, "{{.trcpathparam}}", pathParam, -1)
-				} else {
-					return errors.New("Unable to replace path placeholder with pathParam.")
-				}
-			}
-			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
-
-			if !plugincoreopts.BuildOptions.IsPluginHardwired() {
-				fmt.Printf("Deploying image to: %s\n", deployPath)
-				if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
-					err = os.MkdirAll(deployRoot, 0700)
-					if err != nil && !os.IsPermission(err) {
-						fmt.Println(err.Error())
-						fmt.Println("Could not prepare needed directory for deployment.")
-						return err
-					}
-				}
-				if rif, ok := pluginToolConfig["rawImageFile"]; ok {
-					err = os.WriteFile(deployPath, rif.([]byte), 0700)
-					if err != nil {
-						fmt.Println(err.Error())
-						fmt.Println("Image write failure.")
-						return err
-					}
-				}
-
-				if expandTarget, ok := pluginToolConfig["trcexpandtarget"].(string); ok && expandTarget == "true" {
-					// TODO: provide archival of existing directory.
-					if ok, errList := trcvutils.UncompressZipFile(deployPath); !ok {
-						fmt.Printf("Uncompressing zip file in place failed. %v\n", errList)
-						return errList[0]
-					} else {
-						os.Remove(deployPath)
-					}
-				} else {
-					if strings.HasSuffix(deployPath, ".war") {
-						explodedWarPath := strings.TrimSuffix(deployPath, ".war")
-						fmt.Printf("Checking exploded war path: %s\n", explodedWarPath)
-						if _, err := os.Stat(explodedWarPath); err == nil {
-							if depRoot, ok := pluginToolConfig["trcdeployroot"]; ok {
-								deployRoot = depRoot.(string)
-							}
-							archiveDirPath := filepath.Join(deployRoot, "archive")
-							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
-							err := os.MkdirAll(archiveDirPath, 0700)
-							if err == nil {
-								currentTime := time.Now()
-								formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
-								archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), "archive", formattedTime)
-								fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
-								err := os.MkdirAll(archiveRoot, 0700)
-								if err == nil {
-									archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
-									archivePath = strings.TrimSuffix(archivePath, ".war")
-									fmt.Printf("Archiving: %s to %s\n", explodedWarPath, archivePath)
-									os.Rename(explodedWarPath, archivePath)
-								}
-							}
-						}
-					}
-				}
-				fmt.Printf("Image deployed to: %s\n", deployPath)
-			}
-		} else {
-			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
-			if trcshDriverConfigBase.FeatherCtx != nil {
-				fmt.Printf("%s\n", errMessage)
-				trcshDriverConfigBase.FeatherCtx.Log.Print(errMessage)
-			} else {
-				fmt.Printf("%s\n", errMessage)
-			}
-			return errors.New(errMessage)
-		}
-		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && kernelopts.BuildOptions.IsKernel() {
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
-			h := sha256.New()
-			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0600)
-			if err != nil {
-				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Could not load plugin due to bad deploy path in certification: %s\n", pathToSO)
-				return err
-			}
-			defer f.Close()
-			err = memprotectopts.SetChattr(f)
-			if err != nil {
-				fmt.Println(err)
-				return err
-			}
-			if _, err := io.Copy(h, f); err != nil {
-				fmt.Printf("Unable to copy file: %s\n", err)
-				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Unable to copy file: %s\n", err)
-				return err
-			}
-			sha := hex.EncodeToString(h.Sum(nil))
-			if plugincoreopts.BuildOptions.IsPluginHardwired() || (ptcsha256.(string) == sha) {
-				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Verified plugin module sha.")
-				err = memprotectopts.UnsetChattr(f)
-				if err != nil {
-					return err
-				}
-				if pluginHandler != nil {
-					if pluginHandler.State == 2 && sha == pluginHandler.Signature { //make sure this won't break...not set yet
-						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
-						// do we want to remove from available services???
-					} else {
-						if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
-							pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
-						}
-						pluginHandler.Signature = sha
-					}
-				} else {
-					fmt.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
-					trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
-				}
 			}
 		}
 	} else if *certifyImagePtr {
