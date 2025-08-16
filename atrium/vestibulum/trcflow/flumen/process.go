@@ -22,6 +22,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -138,6 +139,11 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			goMod.SectionKey = "/Protected/"
 		}
 
+		// Filter by allowed if in kernel mode.
+		if kernelopts.BuildOptions.IsKernel() {
+			regionValues = eUtils.FilterSupportedRegions(driverConfig, regionValues)
+		}
+
 		for _, regionValue := range regionValues {
 			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Processing region: %s", regionValue))
 			goMod.SubSectionValue = regionValue
@@ -160,7 +166,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				}
 				for _, supportedRegion := range buildopts.BuildOptions.GetSupportedSourceRegions() {
 					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
-						eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Loading service: %s for region: %s", services[i], regionValue))
+						eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Loading data source: %s for region: %s", services[i], regionValue))
 						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 					}
 				}

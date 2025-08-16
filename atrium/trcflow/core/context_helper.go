@@ -500,7 +500,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	return nil
 }
 */
-// seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
+
+// seedTrcDbFromVault - This loads all data from vault into TrcDb
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	tfContext *TrcFlowContext) error {
 	var indexValues []string = []string{}

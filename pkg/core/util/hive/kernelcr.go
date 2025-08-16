@@ -848,23 +848,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
 				pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
 				pluginConfig["pluginName"] = pluginHandler.Name
-				if !driverConfig.IsShellSubProcess {
+				if kernelopts.BuildOptions.IsKernel() {
+					// Kernel provides it's own templates generally through plugin itself.
+					// Add a 'debugging' interface for hardwired only.
+					if plugincoreopts.BuildOptions.IsPluginHardwired() {
+						pluginConfig["connectionPath"] = append(
+							pluginConfig["connectionPath"].([]string),
+							"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // providing for setup.
+						)
+					}
+				} else {
 					// Presently trcshk does not have permissions it needs to access this area of vault.
 					pluginConfig["connectionPath"] = []string{
 						// No interfaces
 						"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",  // implemented
 						"trc_templates/TrcVault/Database/config.yml.tmpl",       // implemented
 						"trc_templates/TrcVault/SpiralDatabase/config.yml.tmpl", // implemented
-					}
-				} else {
-					if plugincoreopts.BuildOptions.IsPluginHardwired() {
-						pluginConfig["connectionPath"] = []string{
-							"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl", // providing for setup.
-						}
-					} else {
-						pluginConfig["connectionPath"] = []string{
-							"trc_templates/TrcVault/Database/config.yml.tmpl", // sync interface
-						}
 					}
 				}
 
@@ -885,6 +884,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 										CoreConfig: &coreconfig.CoreConfig{
 											ExitOnFailure: true,
 											TokenCache:    cache.NewTokenCacheEmpty(&rattanAddress),
+											Regions:       driverConfig.CoreConfig.Regions,
 											Insecure:      insecure,
 											Log:           driverConfig.CoreConfig.Log,
 											Env:           rattanEnv,

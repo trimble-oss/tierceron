@@ -34,6 +34,7 @@ import (
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 
 	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
@@ -46,6 +47,20 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
+
+type SkipRowError struct {
+	Reason string
+}
+
+func (e *SkipRowError) Error() string {
+	return fmt.Sprintf("Row skipped: %s", e.Reason)
+}
+
+// Helper function to check if an error is a SkipRowError
+func IsSkipRowError(err error) bool {
+	_, ok := err.(*SkipRowError)
+	return ok
+}
 
 type TrcFlowLock struct {
 	QueryLock sync.Mutex // Lock for query execution
@@ -1157,7 +1172,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			}
 
 			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, tfContext.QueryLock)
-
 			if err == nil && tableName == "ok" {
 				changed = true
 				matrix = append(matrix, []any{})
@@ -1422,6 +1436,15 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 		}
 	}
 	row := tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
+
+	if region, exists := rowDataMap["region"]; exists {
+		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsRegionSupported(tfmContext.DriverConfig, region) {
+			return nil, &SkipRowError{
+				Reason: fmt.Sprintf("Region mismatch: %s (row) vs %v (current)",
+					region, tfmContext.DriverConfig.CoreConfig.Regions),
+			}
+		}
+	}
 
 	if row != nil {
 		return row, nil
