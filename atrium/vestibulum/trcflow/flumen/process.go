@@ -127,6 +127,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				continue
 			}
 			regionValues = regions
+			// Filter by allowed if in kernel mode.
+			if kernelopts.BuildOptions.IsKernel() {
+				regionValues = eUtils.FilterSupportedRegions(driverConfig, regionValues)
+			}
 		} else {
 			regionValues = []string{""}
 		}
@@ -137,11 +141,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		} else if services[i] == "SpiralDatabase" {
 			goMod.SectionName = "config"
 			goMod.SectionKey = "/Protected/"
-		}
-
-		// Filter by allowed if in kernel mode.
-		if kernelopts.BuildOptions.IsKernel() {
-			regionValues = eUtils.FilterSupportedRegions(driverConfig, regionValues)
 		}
 
 		for _, regionValue := range regionValues {
