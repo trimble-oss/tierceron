@@ -110,6 +110,10 @@ func (ph *PluginHandler) GetKernelId() string {
 	return ph.KernelId
 }
 
+var (
+	pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid blocking
+)
+
 func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 	if pH == nil || pH.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to start dynamic reloading.")
@@ -512,7 +516,6 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	}
 	(*serviceConfig)["certify"] = certifyMap
 
-	go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, kernelvault)
 	go pluginHandler.receiver(driverConfig)
 	pluginHandler.Init(serviceConfig)
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
@@ -621,6 +624,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		defer vault.Close()
 	}
 	if pluginprojserv, ok := pluginToolConfig["trcprojectservice"]; ok {
+		var bootDriverConfig *config.DriverConfig
 		if projserv, k := pluginprojserv.(string); k {
 			projServ := strings.Split(projserv, "/")
 			if len(projServ) != 2 {
@@ -841,8 +845,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 			(serviceConfig)["certify"] = certifyMap
 
-			go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, kernelvault)
-			go pluginHandler.receiver(driverConfig)
+			go func() {
+				pendingPluginHandlers <- pluginHandler
+			}()
 
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
 			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
@@ -872,7 +877,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				//Grab app role and secret and addr and env from service config and call auto auth
 				// auto auth will return token
 				// Create own driver config
-				var bootDriverConfig *config.DriverConfig
 				if flowConfigs, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG]; ok {
 					if flowMachineConfig, ok := flowConfigs.(map[string]any); ok {
 						if rattanRole, ok := flowMachineConfig["rattan_role"].(string); ok {
@@ -916,9 +920,25 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					bootDriverConfig = driverConfig
 				}
 
+				go func() {
+					// Process all handlers that need the boot config
+					for handler := range pendingPluginHandlers {
+						_, statMod, _, err := eUtils.InitVaultMod(bootDriverConfig)
+						if err != nil {
+							bootDriverConfig.CoreConfig.Log.Printf("Problem initializing stat mod for %s: %s\n",
+								handler.Name, err)
+							continue
+						}
+
+						go handler.handle_dataflowstat(bootDriverConfig, statMod, nil)
+						go handler.receiver(bootDriverConfig)
+					}
+				}()
+
 				if bootDriverConfig == nil && driverConfig != nil && driverConfig.CoreConfig.IsEditor {
 					bootDriverConfig = driverConfig
 				}
+
 				// Needs certifyPath and connectionPath
 				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), bootDriverConfig, pluginConfig, pluginHandler.ConfigContext.Log)
 				if err != nil || tfmContext == nil {
@@ -1016,7 +1036,11 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 				driverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
 				return
 			}
-			flowcore.DeliverStatistic(nil, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
+			trcDfsFlowMachineContext := &flowcore.TrcFlowMachineContext{
+				Env:          driverConfig.CoreConfig.Env,
+				DriverConfig: driverConfig,
+			}
+			flowcore.DeliverStatistic(trcDfsFlowMachineContext, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
 			driverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		case dfstat == nil:
 			driverConfig.CoreConfig.Log.Println("Shutting down dataflow statistic receiver in kernel")
