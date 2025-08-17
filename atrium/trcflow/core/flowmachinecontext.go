@@ -694,13 +694,13 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// tfContext.DataFlowStatistic["flume"] = "" //Used to be argosid
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
-	var df *core.TTDINode = nil
+	var dfstat *core.TTDINode = nil
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
-		df = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
+		dfstat = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
 		if tfContext.GetFlowStateAlias() != "" {
-			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
 		} else {
-			df.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Loading", "1", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Loading", "1", 1, tfmContext.Log)
 		}
 	}
 	// Do we need to account for that here?
@@ -726,9 +726,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	<-seedInitComplete
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		if tfContext.GetFlowStateAlias() != "" {
-			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
 		} else {
-			df.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Load complete", "2", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Load complete", "2", 1, tfmContext.Log)
 		}
 	}
 
@@ -736,9 +736,17 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// Not sure if necessary to copy entire ReportStatistics method
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-		dsc, _, err := df.GetDeliverStatCtx()
+		dsc, _, err := dfstat.GetDeliverStatCtx()
 		if err == nil {
-			df.FinishStatistic("flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false, dsc)
+			dfstat.FinishStatistic("flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false, dsc)
+
+			tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
+			if len(tenantIndexPath) == 0 || len(tenantDFSIdPath) == 0 {
+				tfmContext.DriverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
+				return
+			}
+			DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, true)
+			tfmContext.DriverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		} else {
 			tfmContext.Log("deliver stat ctx extraction error: "+tfContext.FlowHeader.TableName(), err)
 		}

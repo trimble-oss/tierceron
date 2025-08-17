@@ -122,7 +122,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 								continue
 							}
 							if listData != nil {
-								err := core.RetrieveStatistic(tfContext.GoMod, dfGroup, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
+								err := core.RetrieveFlowMachineStatistic(tfmContext, tfContext, dfGroup, tenantId.(string), tenantIndexPath, tenantDFSIdPath, flowGroup.(string), testName.(string), tfmContext.DriverConfig.CoreConfig.Log)
 								if err != nil {
 									tfmContext.Log("Failed to retrieve statistic", err)
 								}
