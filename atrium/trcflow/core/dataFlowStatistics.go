@@ -29,8 +29,8 @@ import (
 
 var PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"
 var HIVE_STAT_DFG_PATH string = fmt.Sprintf("%s%s", PUBLIC_INDEX_BASIS_PATH, "/%s/%s/DataFlowStatistics/DataFlowGroup")
-var HIVE_STAT_PATH string = fmt.Sprintf("%s/%s/%s/dataFlowName/%s", HIVE_STAT_DFG_PATH, "%s", "%s", "%s")
-var HIVE_STAT_CODE_PATH string = fmt.Sprintf("%s/%s", HIVE_STAT_PATH, "%s")
+var HIVE_STAT_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_DFG_PATH, "/%s-%s/dataFlowName/%s")
+var HIVE_STAT_CODE_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
 
 // New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tccore.TTDINode, error) {
@@ -330,13 +330,16 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 		statMap := dataFlowStatistic.FinishStatistic(id, indexPath, idName, logger, vaultWriteBack, dsc)
 
 		mod.SectionPath = ""
+		region := getDfsRegion(tfmContext)
+		statMap["argosId"] = id
+		statMap["flowGroup"] = fmt.Sprintf("%s-%s", dfStatDeliveryCtx.FlowGroup, region)
 		statPath := fmt.Sprintf(
 			HIVE_STAT_CODE_PATH,
 			indexPath,
 			idName,
 			id,
 			dfStatDeliveryCtx.FlowGroup,
-			getDfsRegion(tfmContext),
+			region,
 			dfStatDeliveryCtx.FlowName,
 			dfStatDeliveryCtx.StateCode,
 		)
@@ -365,14 +368,29 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 }
 
 func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
+
+	flowG = strings.TrimSuffix(flowG, "/")
+	region := getDfsRegion(tfmContext)
+	regionless := false
+	if strings.HasSuffix(flowG, region) {
+		// If flowG ends with region, remove it to prevent a broken path
+		flowG = strings.TrimSuffix(flowG, "-"+region)
+	} else {
+		regionless = true
+	}
+
 	statPath := fmt.Sprintf(
 		HIVE_STAT_PATH,
 		indexPath,
 		idName,
 		id,
 		flowG,
-		getDfsRegion(tfmContext),
+		region,
 		flowN)
+	if regionless {
+		// Strip region from path...
+		statPath = strings.Replace(statPath, fmt.Sprintf("/%s-%s/dataFlowName", flowG, region), fmt.Sprintf("/%s/dataFlowName", flowG), 1)
+	}
 	return RetrieveStatistic(tfContext.GoMod, statPath, dfs, id, indexPath, idName, flowG, flowN, logger)
 }
 
