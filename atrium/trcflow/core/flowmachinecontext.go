@@ -745,7 +745,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 				tfmContext.DriverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
 				return
 			}
-			DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, true)
+			DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfstat, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, true)
 			tfmContext.DriverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		} else {
 			tfmContext.Log("deliver stat ctx extraction error: "+tfContext.FlowHeader.TableName(), err)
