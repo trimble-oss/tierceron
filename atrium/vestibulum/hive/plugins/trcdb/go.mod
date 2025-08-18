@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb
 go 1.25.0
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.7.7
+	github.com/trimble-oss/tierceron-core/v2 v2.7.8
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250609162306-04fdcac49140
 	gopkg.in/yaml.v2 v2.4.0
 )
