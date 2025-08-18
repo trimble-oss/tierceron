@@ -1040,6 +1040,7 @@ func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.Dri
 			}
 			trcDfsFlowMachineContext := &flowcore.TrcFlowMachineContext{
 				Env:          driverConfig.CoreConfig.Env,
+				KernelId:     pluginHandler.KernelId,
 				DriverConfig: driverConfig,
 			}
 			flowcore.DeliverStatistic(trcDfsFlowMachineContext, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
