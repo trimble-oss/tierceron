@@ -218,6 +218,10 @@ func parseToken(e *logical.StorageEntry) (map[string]any, error) {
 	return tokenMap, nil
 }
 
+func IsSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+}
+
 func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	// processFlowInit is a function that initializes the process flow for the backend.
 	// It takes a parameter of type trcvutils.ProcessFlowFunc.
@@ -289,6 +293,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		flowMachineInitContext := flowcore.FlowMachineInitContext{
 			FlowMachineInterfaceConfigs: map[string]any{},
 			GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
+			IsSupportedFlow:             coreopts.BuildOptions.IsSupportedFlow,
 			GetTableFlows: func() []flowcore.FlowDefinition {
 				tableFlows := []flowcore.FlowDefinition{}
 				for _, template := range pec["templatePath"].([]string) {
