@@ -4,7 +4,6 @@ go 1.25.0
 
 require (
 	github.com/trimble-oss/tierceron-core/v2 v2.7.8
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250609162306-04fdcac49140
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -13,7 +12,9 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
+	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.35.0 // indirect
+	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
@@ -25,4 +26,4 @@ require (
 
 replace github.com/cespare/xxhash => github.com/joel-rieke/xxhash v1.1.0-patch
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
