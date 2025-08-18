@@ -548,7 +548,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 
 	rows := make([][]any, 0)
 	for _, indexValue := range indexValues {
-		if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() && !coreopts.BuildOptions.IsSupportedFlow(indexValue) {
+		if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() && !tfmContext.IsSupportedFlow(indexValue) {
 			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
 			}

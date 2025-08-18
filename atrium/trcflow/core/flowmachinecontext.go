@@ -81,9 +81,11 @@ type TrcFlowMachineContext struct {
 	Vault                     *sys.Vault
 	FlumeDbType               flowcore.FlumeDbType
 	TierceronEngine           *trcengine.TierceronEngine
+	DfsChan                   *chan *tccore.TTDINode // Channel for sending data flow statistics
 	ExtensionAuthData         map[string]any
 	ExtensionAuthDataReloader map[string]any
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
+	IsSupportedFlow           func(flowName string) bool // Required
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
@@ -474,6 +476,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flow
 		return nil, false
 	}
 	configs, success := properties.GetConfigValues(flowService, flowConfigTemplateName)
+
 	if !success {
 		configs, err = tfContext.GoMod.ReadData(tfContext.GoMod.SectionPath)
 		if err != nil {
@@ -1625,4 +1628,8 @@ func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
 		flow.WaitFlowLoaded()
 		tfmContext.DriverConfig.CoreConfig.Log.Printf("Flow unlocked: %s\n", flow.FlowHeader.FlowName())
 	}
+}
+
+func (tfmContext *TrcFlowMachineContext) GetDfsChan() *chan *tccore.TTDINode {
+	return tfmContext.DfsChan
 }
