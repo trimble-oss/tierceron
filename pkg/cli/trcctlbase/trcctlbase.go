@@ -251,7 +251,6 @@ func CommonMain(envDefaultPtr *string,
 		<-pluginCompleteChan
 
 	case "edit":
-		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow // This is not overridable in edit mode.
 		var tokenName string
 		if eUtils.RefLength(tokenPtr) > 0 {
 			tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))

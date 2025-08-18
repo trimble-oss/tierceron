@@ -239,6 +239,10 @@ func GetDbProject() string {
 	return "TrcDb"
 }
 
+func IsSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+}
+
 func GetFlowMachineTemplates() map[string]any {
 	flowMachineTemplates := map[string]any{}
 	flowMachineTemplates["templatePath"] = []string{
@@ -275,6 +279,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 		GetFlowMachineTemplates:     GetFlowMachineTemplates,
 		FlowMachineInterfaceConfigs: map[string]any{},
 		GetDatabaseName:             nil,
+		IsSupportedFlow:             IsSupportedFlow,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {
