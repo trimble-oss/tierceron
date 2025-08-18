@@ -938,6 +938,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				if bootDriverConfig == nil && driverConfig != nil && driverConfig.CoreConfig.IsEditor {
 					bootDriverConfig = driverConfig
 				}
+				// Use the plugin dfs channel
+				flowMachineInitContext.(*flow.FlowMachineInitContext).DfsChan = pluginHandler.ConfigContext.DfsChan
 
 				// Needs certifyPath and connectionPath
 				tfmContext, err := trcflow.BootFlowMachine(flowMachineInitContext.(*flow.FlowMachineInitContext), bootDriverConfig, pluginConfig, pluginHandler.ConfigContext.Log)

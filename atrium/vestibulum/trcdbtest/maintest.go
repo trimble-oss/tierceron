@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 
+	core "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 
@@ -60,6 +61,7 @@ func main() {
 			}
 		}
 	}
+	ttdi_receiver := make(chan *core.TTDINode)
 	flowMachineInitContext := flowcore.FlowMachineInitContext{
 		FlowMachineInterfaceConfigs: map[string]any{},
 		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
@@ -84,6 +86,7 @@ func main() {
 		GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
 		FlowController:      flowopts.BuildOptions.ProcessFlowController,
 		TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
+		DfsChan:             &ttdi_receiver,
 	}
 	currentTokenName := fmt.Sprintf("config_token_%s_unrestricted", pluginConfig["env"])
 	tokenCache := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
