@@ -18,8 +18,13 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
+
+func IsSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+}
 
 // This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
@@ -34,6 +39,7 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&coreconfig.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
+	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 
 	pluginConfig := testopts.BuildOptions.GetTestConfig(tokenPtr, false)
 	pluginConfig["address"] = os.Getenv("VAULT_ADDR")
@@ -82,6 +88,7 @@ func main() {
 			return tableFlows
 		},
 		GetBusinessFlows:    flowopts.BuildOptions.GetAdditionalFlows,
+		IsSupportedFlow:     IsSupportedFlow,
 		GetTestFlows:        testopts.BuildOptions.GetAdditionalTestFlows,
 		GetTestFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
 		FlowController:      flowopts.BuildOptions.ProcessFlowController,
