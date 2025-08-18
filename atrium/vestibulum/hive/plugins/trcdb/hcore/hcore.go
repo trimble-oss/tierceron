@@ -402,9 +402,12 @@ func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flo
 func GetDatabaseName() string {
 	return "TrcDb"
 }
-
 func GetFlowDatabaseName() string {
 	return "FlumeDb"
+}
+
+func IsSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 func GetFlowMachineTemplates() map[string]any {
@@ -485,6 +488,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 			}
 			return GetDatabaseName()
 		},
+		IsSupportedFlow: IsSupportedFlow,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range flowMachineTemplates["templatePath"].([]string) {

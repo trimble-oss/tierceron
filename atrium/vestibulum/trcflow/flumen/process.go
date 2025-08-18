@@ -22,6 +22,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -97,6 +98,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmContext = &trcflowcore.TrcFlowMachineContext{
 		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
+		KernelId:                  kernelId,
+		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
 		FlowMapLock:               sync.RWMutex{},
@@ -104,6 +107,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		FlowControllerUpdateAlert: make(chan string, 1),
 		PreloadChan:               make(chan trcflowcore.PermissionUpdate, 1),
 		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
+		DfsChan:                   flowMachineInitContext.DfsChan, // Channel for sending data flow statistics
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]any
@@ -126,6 +130,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				continue
 			}
 			regionValues = regions
+			// Filter by allowed if in kernel mode.
+			if kernelopts.BuildOptions.IsKernel() {
+				regionValues = eUtils.FilterSupportedRegions(driverConfig, regionValues)
+			}
 		} else {
 			regionValues = []string{""}
 		}
@@ -160,7 +168,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				}
 				for _, supportedRegion := range buildopts.BuildOptions.GetSupportedSourceRegions() {
 					if sourceDatabaseConfig["dbsourceregion"] == supportedRegion {
-						eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Loading service: %s for region: %s", services[i], regionValue))
+						eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Loading data source: %s for region: %s", services[i], regionValue))
 						sourceDatabaseConfigs = append(sourceDatabaseConfigs, sourceDatabaseConfig)
 					}
 				}
@@ -197,6 +205,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}
 
 	}
+
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished retrieving configs")
 	sourceDatabaseConnectionsMap := map[string]map[string]any{}
 	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
@@ -225,7 +234,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	for _, tableFlow := range flowMachineInitContext.GetTableFlows() {
 		tableName := tableFlow.FlowHeader.Name.TableName()
-		if tableName != flowcore.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(tableName) {
+		if tableName != flowcore.TierceronControllerFlow.TableName() && !flowMachineInitContext.IsSupportedFlow(tableName) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported process flow: "+tableName)
 			}
@@ -327,6 +336,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
+		KernelId:                  kernelId,
+		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   tfmContext.FlowMap, // In order to support flow notifications, we need this here.
 		FlowControllerInit:        true,
@@ -334,6 +345,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		FlowControllerUpdateAlert: make(chan string, 1),
 		PreloadChan:               make(chan trcflowcore.PermissionUpdate, 1),
 		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
+		DfsChan:                   flowMachineInitContext.DfsChan, // Channel for sending data flow statistics
 	}
 
 	if len(sourceDatabaseConnectionsMap) == 0 {
@@ -360,7 +372,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	var flowWG sync.WaitGroup
 
 	for _, table := range GetTierceronTableNames() {
-		if table != flowcore.TierceronControllerFlow.TableName() && !coreopts.BuildOptions.IsSupportedFlow(table) {
+		if table != flowcore.TierceronControllerFlow.TableName() && !flowMachineInitContext.IsSupportedFlow(table) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table)
 			}
@@ -429,7 +441,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, table := range flowMachineInitContext.GetTableFlows() {
-		if table.FlowHeader.TableName() == flowcore.TierceronControllerFlow.TableName() || !coreopts.BuildOptions.IsSupportedFlow(table.FlowHeader.FlowName()) {
+		if table.FlowHeader.TableName() == flowcore.TierceronControllerFlow.TableName() || !flowMachineInitContext.IsSupportedFlow(table.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(driverConfigBasis.CoreConfig, "Skipping unsupported flow: "+table.FlowHeader.FlowName())
 			}
@@ -499,7 +511,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	for _, businessFlow := range flowMachineInitContext.GetFilteredBusinessFlows(kernelId) {
-		if !coreopts.BuildOptions.IsSupportedFlow(businessFlow.FlowHeader.FlowName()) {
+		if !flowMachineInitContext.IsSupportedFlow(businessFlow.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowHeader.FlowName())
 			}
