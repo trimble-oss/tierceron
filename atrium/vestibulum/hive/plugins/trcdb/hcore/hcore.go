@@ -145,13 +145,137 @@ func GetWantedTests(event *core.ChatMsg) (map[string]bool, string) {
 	return testsSet, argosId
 }
 
+func CheckFlowStatusReport(region string, argosId string, flowGroupKey string) (string, error) {
+	trcdbExchange := &core.TrcdbExchange{
+		Flows:     []string{"DataFlowStatistics"},                                                                                                                                                                                // Flows
+		Query:     fmt.Sprintf("SELECT * FROM %s.DataFlowStatistics where flowGroup like '%s-%s-%s' and argosId like '%s' ORDER by flowName, CAST(stateCode as UNSIGNED) asc", "%s", flowGroupKey, region, "%", string(argosId)), // Query
+		Operation: "SELECT",                                                                                                                                                                                                      // query operation
+	}
+	processTrcdb(trcdbExchange)
+
+	if len(trcdbExchange.Response.Rows) > 0 {
+		var report strings.Builder
+		report.WriteString("Report for " + argosId + ":\n")
+		report.WriteString("Pod | Flow | Step # | Result | Execution Date | Time Spent |  Status\n")
+		report.WriteString("-----------------------------------------------------------------------------\n")
+
+		// Get the lastTestedDate from the first row (assumed to be the same for all rows)
+		var baseTimestamp time.Time
+		var err error
+
+		if len(trcdbExchange.Response.Rows) > 0 && len(trcdbExchange.Response.Rows[0]) >= 8 {
+			baseTimestampStr := fmt.Sprint(trcdbExchange.Response.Rows[0][7]) // Index 7 for timestamp
+			baseTimestamp, err = time.Parse(time.RFC3339, baseTimestampStr)
+			if err != nil {
+				// If we can't parse the timestamp, continue but note the error
+				report.WriteString("Warning: Could not parse base timestamp. Execution times may be inaccurate.\n\n")
+			}
+		}
+
+		// Keep track of cumulative time to add to base timestamp
+		var cumulativeTime time.Duration
+		var currentFlowName string
+
+		for _, row := range trcdbExchange.Response.Rows {
+			if len(row) >= 8 {
+				flowName := fmt.Sprint(row[0]) // Start at index 0 for flowName
+
+				// Reset cumulative time when flow name changes
+				if currentFlowName != flowName {
+					currentFlowName = flowName
+					cumulativeTime = 0
+
+					// Reset base timestamp for the new flow
+					baseTimestampStr := fmt.Sprint(row[7])
+					newBaseTimestamp, err := time.Parse(time.RFC3339, baseTimestampStr)
+					if err == nil {
+						baseTimestamp = newBaseTimestamp
+					}
+				}
+
+				stateCode := fmt.Sprint(row[4]) // Start at index 4 for stateCode
+				modeStr := fmt.Sprint(row[3])   // Index 3 for mode
+				flowGroup := fmt.Sprint(row[1]) // Index 1 for flowGroup
+
+				// Extract pod ID from the flowGroup (should be in the format 'prefix-region-podId')
+				podId := "0"
+				if strings.Contains(flowGroup, "-") {
+					parts := strings.Split(flowGroup, "-")
+					// Get only the last segment as the pod ID
+					podId = parts[len(parts)-1]
+				}
+
+				stateName := fmt.Sprint(row[5])    // Index 5 for stateName
+				timeSplitStr := fmt.Sprint(row[6]) // Index 6 for timeSplit, to be displayed unaltered
+
+				var modeText string
+				switch modeStr {
+				case "0":
+					modeText = "Skipped"
+				case "1":
+					modeText = "Success"
+				case "2":
+					modeText = "Failed"
+				default:
+					modeText = "Unknown (" + modeStr + ")"
+				}
+
+				var stepDuration time.Duration
+
+				// Check for millisecond suffix
+				if strings.HasSuffix(timeSplitStr, "ms") {
+					numericPart := strings.TrimSuffix(timeSplitStr, "ms")
+					valueFloat, err := strconv.ParseFloat(numericPart, 64)
+					if err == nil {
+						stepDuration = time.Duration(valueFloat) * time.Millisecond
+					}
+				} else if strings.HasSuffix(timeSplitStr, "s") { // Check for second suffix
+					numericPart := strings.TrimSuffix(timeSplitStr, "s")
+					valueFloat, err := strconv.ParseFloat(numericPart, 64)
+					if err == nil {
+						stepDuration = time.Duration(valueFloat * float64(time.Second))
+					}
+				} else {
+					valueFloat, err := strconv.ParseFloat(timeSplitStr, 64)
+					if err == nil {
+						stepDuration = time.Duration(valueFloat * float64(time.Second))
+					}
+				}
+
+				cumulativeTime += stepDuration
+
+				var executionTimeDisplay string
+				if currentFlowName == flowName && stateCode != "1" {
+					executionTimeDisplay = "                " // Same width as time format
+				} else {
+					executionTime := baseTimestamp.Add(cumulativeTime)
+					executionTimeDisplay = executionTime.Format("2006-01-02 15:04:05.000")
+				}
+
+				// Add to report
+				report.WriteString(fmt.Sprintf("%s | %s - %s. %s » %s %s %s\n",
+					podId, flowName, stateCode, stateName, executionTimeDisplay, timeSplitStr, modeText))
+			}
+		}
+
+		// Add total duration at the end
+		if cumulativeTime > 0 {
+			report.WriteString(fmt.Sprintf("\nTotal Duration: %s\n", cumulativeTime.String()))
+		}
+
+		return report.String(), nil
+	}
+	return "", nil
+}
+
 func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
 	if event.ChatId != nil && strings.Contains(*(*event).ChatId, ":") {
-		testsSet, tenantId := GetWantedTests(event)
+		testsSet, _ := GetWantedTests(event)
 		approvedProdTests := make(map[string]bool)
 		for test, _ := range testsSet {
-			if test == "TODO" {
-				// In production, we only want to run the EnterpriseRegistration test
+			switch test {
+			case "FlowStatus":
+			case "PluginStatus":
 				approvedProdTests[test] = true
 			}
 		}
@@ -161,96 +285,10 @@ func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
 			testsSet = approvedProdTests
 		}
 
-		for test := range testsSet {
-
-			trcdbExchange := &core.TrcdbExchange{
-				Flows:     []string{"DataFlowStatistics"},                                                                                                                                      // Flows
-				Query:     fmt.Sprintf("SELECT * FROM %s.DataFlowStatistics where flowName='%s' and argpsId like '%s' ORDER by CAST(stateCode as UNSIGNED) asc", "%s", test, string(tenantId)), // Query
-				Operation: "SELECT",                                                                                                                                                            // query operation
-			}
-			processTrcdb(trcdbExchange)
-
-			if len(trcdbExchange.Response.Rows) > 0 {
-				var report strings.Builder
-				report.WriteString("Report for " + tenantId + ":\n")
-				report.WriteString("Step # | Status | Result | Execution Date | Time Spent\n")
-				report.WriteString("-----------------------------------------------------------------------------\n")
-
-				// Get the lastTestedDate from the first row (assumed to be the same for all rows)
-				var baseTimestamp time.Time
-				var err error
-
-				if len(trcdbExchange.Response.Rows) > 0 && len(trcdbExchange.Response.Rows[0]) >= 9 {
-					baseTimestampStr := fmt.Sprint(trcdbExchange.Response.Rows[0][8]) // Index 8 for timestamp
-					baseTimestamp, err = time.Parse(time.RFC3339, baseTimestampStr)
-					if err != nil {
-						// If we can't parse the timestamp, continue but note the error
-						report.WriteString("Warning: Could not parse base timestamp. Execution times may be inaccurate.\n\n")
-					}
-				}
-
-				// Keep track of cumulative time to add to base timestamp
-				var cumulativeTime time.Duration
-
-				for _, row := range trcdbExchange.Response.Rows {
-					if len(row) >= 9 {
-						stateCode := fmt.Sprint(row[5])    // Start at index 5 for stateCode
-						modeStr := fmt.Sprint(row[4])      // Index 4 for mode
-						stateName := fmt.Sprint(row[6])    // Index 6 for stateName
-						timeSplitStr := fmt.Sprint(row[7]) // Index 7 for timeSplit, to be displayed unaltered
-
-						var modeText string
-						switch modeStr {
-						case "0":
-							modeText = "Skipped"
-						case "1":
-							modeText = "Success"
-						case "2":
-							modeText = "Failed"
-						default:
-							modeText = "Unknown (" + modeStr + ")"
-						}
-
-						var stepDuration time.Duration
-
-						// Check for millisecond suffix
-						if strings.HasSuffix(timeSplitStr, "ms") {
-							numericPart := strings.TrimSuffix(timeSplitStr, "ms")
-							valueFloat, err := strconv.ParseFloat(numericPart, 64)
-							if err == nil {
-								stepDuration = time.Duration(valueFloat) * time.Millisecond
-							}
-						} else if strings.HasSuffix(timeSplitStr, "s") { // Check for second suffix
-							numericPart := strings.TrimSuffix(timeSplitStr, "s")
-							valueFloat, err := strconv.ParseFloat(numericPart, 64)
-							if err == nil {
-								stepDuration = time.Duration(valueFloat * float64(time.Second))
-							}
-						} else {
-							valueFloat, err := strconv.ParseFloat(timeSplitStr, 64)
-							if err == nil {
-								stepDuration = time.Duration(valueFloat * float64(time.Second))
-							}
-						}
-
-						cumulativeTime += stepDuration
-
-						executionTime := baseTimestamp.Add(cumulativeTime)
-						executionTimeDisplay := executionTime.Format("15:04:05.000")
-
-						// Add to report
-						report.WriteString(fmt.Sprintf("%s | %s | %s | %s | %s\n",
-							stateCode, modeText, stateName, executionTimeDisplay, timeSplitStr))
-					}
-				}
-
-				// Add total duration at the end
-				if cumulativeTime > 0 {
-					report.WriteString(fmt.Sprintf("\nTotal Duration: %s\n", cumulativeTime.String()))
-				}
-
-				return report.String(), nil
-			}
+		if testsSet["FlowStatus"] {
+			return CheckFlowStatusReport(configContext.Region, "flume", "Flows")
+		} else if testsSet["PluginStatus"] {
+			return CheckFlowStatusReport(configContext.Region, "hiveplugin", "System")
 		}
 	}
 	return "", nil
@@ -287,7 +325,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			if err != nil {
 				GetConfigContext("trcdb").Log.Printf("Trcdb errored with %s\n", err.Error())
 			} else {
-				if event.Name != nil && *event.Name == "trcdb" {
+				if event.Name != nil && *event.Name == "trcdb" && (event.Query == nil || len(*event.Query) == 0) {
 					GetConfigContext("trcdb").Log.Println("Received message from trcdb, not processing to avoid feedback loop")
 					continue
 				}
@@ -406,10 +444,6 @@ func GetFlowDatabaseName() string {
 	return "FlumeDb"
 }
 
-func IsSupportedFlow(flow string) bool {
-	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
-}
-
 func GetFlowMachineTemplates() map[string]any {
 	flowMachineTemplates := map[string]any{}
 	flowMachineTemplates["templatePath"] = []string{
@@ -434,6 +468,14 @@ func GetFlowMachineTemplatesHive() map[string]any {
 	}
 
 	return flowMachineTemplates
+}
+
+func IsSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+}
+
+func IsHiveSupportedFlow(flow string) bool {
+	return flow != "" && (flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 func GetFlowMachineTemplatesEditor() map[string]any {
@@ -469,10 +511,14 @@ func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowco
 
 func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
 	var flowMachineTemplatesFunc func() map[string]any
+	var isSupportedFlow func(flowName string) bool
+
 	if coreConfig != nil && coreConfig.IsEditor {
 		flowMachineTemplatesFunc = GetFlowMachineTemplatesEditor
+		isSupportedFlow = IsSupportedFlow
 	} else {
 		flowMachineTemplatesFunc = GetFlowMachineTemplatesHive
+		isSupportedFlow = IsHiveSupportedFlow
 	}
 	flowMachineTemplates := flowMachineTemplatesFunc()
 
@@ -488,7 +534,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 			}
 			return GetDatabaseName()
 		},
-		IsSupportedFlow: IsSupportedFlow,
+		IsSupportedFlow: isSupportedFlow,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range flowMachineTemplates["templatePath"].([]string) {
@@ -524,8 +570,8 @@ func Init(pluginName string, properties *map[string]any) {
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
-		"", // No additional config file used/managed by the trcdb plugin itself.
-		"trcdb",
+		"",           // No additional config file used/managed by the trcdb plugin itself.
+		"hiveplugin", // Categorize as hiveplugin
 		start,
 		receiver,
 		chat_receiver,
