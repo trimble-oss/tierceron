@@ -293,7 +293,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		flowMachineInitContext := flowcore.FlowMachineInitContext{
 			FlowMachineInterfaceConfigs: map[string]any{},
 			GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
-			IsSupportedFlow:             IsSupportedFlow,
+			IsSupportedFlow:             coreopts.BuildOptions.IsSupportedFlow,
 			GetTableFlows: func() []flowcore.FlowDefinition {
 				tableFlows := []flowcore.FlowDefinition{}
 				for _, template := range pec["templatePath"].([]string) {
