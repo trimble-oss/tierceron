@@ -500,7 +500,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	return nil
 }
 */
-// seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
+
+// seedTrcDbFromVault - This loads all data from vault into TrcDb
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	tfContext *TrcFlowContext) error {
 	var indexValues []string = []string{}
@@ -547,7 +548,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 
 	rows := make([][]any, 0)
 	for _, indexValue := range indexValues {
-		if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() && !coreopts.BuildOptions.IsSupportedFlow(indexValue) {
+		if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() && !tfmContext.IsSupportedFlow(indexValue) {
 			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
 			}

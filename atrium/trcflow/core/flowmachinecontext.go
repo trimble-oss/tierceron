@@ -34,6 +34,7 @@ import (
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 
 	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
@@ -47,6 +48,20 @@ import (
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
+type SkipRowError struct {
+	Reason string
+}
+
+func (e *SkipRowError) Error() string {
+	return fmt.Sprintf("Row skipped: %s", e.Reason)
+}
+
+// Helper function to check if an error is a SkipRowError
+func IsSkipRowError(err error) bool {
+	_, ok := err.(*SkipRowError)
+	return ok
+}
+
 type TrcFlowLock struct {
 	QueryLock sync.Mutex // Lock for query execution
 	FlowCount atomic.Int64
@@ -59,6 +74,7 @@ type TrcFlowMachineContext struct {
 	ShellRunner               func(*config.DriverConfig, string, string)
 	Region                    string
 	Env                       string
+	KernelId                  string
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
 	FlowControllerUpdateAlert chan string
@@ -66,9 +82,11 @@ type TrcFlowMachineContext struct {
 	Vault                     *sys.Vault
 	FlumeDbType               flowcore.FlumeDbType
 	TierceronEngine           *trcengine.TierceronEngine
+	DfsChan                   *chan *tccore.TTDINode // Channel for sending data flow statistics
 	ExtensionAuthData         map[string]any
 	ExtensionAuthDataReloader map[string]any
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
+	IsSupportedFlow           func(flowName string) bool // Required
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
@@ -459,6 +477,7 @@ func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flow
 		return nil, false
 	}
 	configs, success := properties.GetConfigValues(flowService, flowConfigTemplateName)
+
 	if !success {
 		configs, err = tfContext.GoMod.ReadData(tfContext.GoMod.SectionPath)
 		if err != nil {
@@ -679,13 +698,13 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// tfContext.DataFlowStatistic["flume"] = "" //Used to be argosid
 	// tfContext.DataFlowStatistic["Flows"] = "" //Used to be flowGroup
 	// tfContext.DataFlowStatistic["mode"] = ""
-	var df *core.TTDINode = nil
+	var dfstat *core.TTDINode = nil
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
-		df = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
+		dfstat = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
 		if tfContext.GetFlowStateAlias() != "" {
-			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
 		} else {
-			df.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Loading", "1", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Loading", "1", 1, tfmContext.Log)
 		}
 	}
 	// Do we need to account for that here?
@@ -711,9 +730,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	<-seedInitComplete
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		if tfContext.GetFlowStateAlias() != "" {
-			df.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Load complete", "2", 1, tfmContext.Log)
 		} else {
-			df.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Load complete", "2", 1, tfmContext.Log)
+			dfstat.UpdateDataFlowStatistic("Flows", tfContext.FlowHeader.TableName(), "Load complete", "2", 1, tfmContext.Log)
 		}
 	}
 
@@ -721,9 +740,17 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// Not sure if necessary to copy entire ReportStatistics method
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
 		tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
-		dsc, _, err := df.GetDeliverStatCtx()
+		dsc, _, err := dfstat.GetDeliverStatCtx()
 		if err == nil {
-			df.FinishStatistic("flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false, dsc)
+			dfstat.FinishStatistic("flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, false, dsc)
+
+			tenantIndexPath, tenantDFSIdPath := coreopts.BuildOptions.GetDFSPathName()
+			if len(tenantIndexPath) == 0 || len(tenantDFSIdPath) == 0 {
+				tfmContext.DriverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
+				return
+			}
+			DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfstat, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, true)
+			tfmContext.DriverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		} else {
 			tfmContext.Log("deliver stat ctx extraction error: "+tfContext.FlowHeader.TableName(), err)
 		}
@@ -1157,7 +1184,6 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			}
 
 			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, tfContext.QueryLock)
-
 			if err == nil && tableName == "ok" {
 				changed = true
 				matrix = append(matrix, []any{})
@@ -1423,6 +1449,15 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 	}
 	row := tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
 
+	if region, exists := rowDataMap["region"]; exists {
+		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsRegionSupported(tfmContext.DriverConfig, region) {
+			return nil, &SkipRowError{
+				Reason: fmt.Sprintf("Region mismatch: %s (row) vs %v (current)",
+					region, tfmContext.DriverConfig.CoreConfig.Regions),
+			}
+		}
+	}
+
 	if row != nil {
 		return row, nil
 	}
@@ -1594,4 +1629,8 @@ func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
 		flow.WaitFlowLoaded()
 		tfmContext.DriverConfig.CoreConfig.Log.Printf("Flow unlocked: %s\n", flow.FlowHeader.FlowName())
 	}
+}
+
+func (tfmContext *TrcFlowMachineContext) GetDfsChan() *chan *tccore.TTDINode {
+	return tfmContext.DfsChan
 }
