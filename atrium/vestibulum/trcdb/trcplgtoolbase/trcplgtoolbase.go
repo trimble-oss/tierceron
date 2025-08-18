@@ -937,6 +937,9 @@ func CommonMain(envPtr *string,
 		}
 	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
+			if regions, ok := pluginToolConfig["regions"].([]string); ok && len(regions) == 1 {
+				pluginHandler.ConfigContext.Region = regions[0]
+			}
 			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
 				fmt.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
 				driverConfig.CoreConfig.Log.Printf("Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
