@@ -62,7 +62,7 @@ func IsRegionSupported(driverConfig *config.DriverConfig, region string) bool {
 	}
 
 	for _, supportedRegion := range driverConfig.CoreConfig.Regions {
-		if region == supportedRegion {
+		if strings.HasSuffix(region, supportedRegion) {
 			return true
 		}
 	}
