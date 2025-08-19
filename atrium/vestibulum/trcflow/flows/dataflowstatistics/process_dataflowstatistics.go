@@ -109,16 +109,41 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 					}
 
 					if listErr != nil {
-						return listErr
+						// Log the error
+						tfmContext.Log("Error listing flow data, retrying: "+flowGroup.(string), listErr)
+
+						// Retry logic (3 attempts with exponential backoff)
+						maxRetries := 3
+						for retryCount := 0; retryCount < maxRetries; retryCount++ {
+							// Exponential backoff (100ms, 200ms, 400ms)
+							time.Sleep(time.Duration(100*(1<<retryCount)) * time.Millisecond)
+
+							// Retry the operation
+							listData, listErr = tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup/"+flowGroup.(string)+"/dataFlowName/", tfmContext.DriverConfig.CoreConfig.Log)
+
+							// If successful, break out of retry loop
+							if listErr == nil && listData != nil {
+								break
+							}
+						}
+
+						// If still failing after retries, skip this flow group but log it
+						if listErr != nil || listData == nil {
+							tfmContext.Log("Failed to list flow data after retries, skipping: "+flowGroup.(string), listErr)
+							continue
+						}
 					}
 
 					for _, testNameList := range listData.Data {
 						for _, testName := range testNameList.([]any) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
 							dfGroup := tccore.InitDataFlow(nil, flowGroup.(string), false)
+							if dfGroup == nil {
+								continue
+							}
 							dfctx, _, err := dfGroup.GetDeliverStatCtx()
 							if err != nil {
-								tfmContext.Log("Failed to retrieve statistic", err)
+								tfmContext.Log("Failed to retrieve statistic.  Unexpected data.  Skipping.", err)
 								continue
 							}
 							if listData != nil {
