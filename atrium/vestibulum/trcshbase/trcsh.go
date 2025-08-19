@@ -99,7 +99,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	}
 
 	regions := []string{}
-	if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
+	if kernelopts.BuildOptions.IsKernel() || strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
 		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") {
 			prod.SetProd(true)
 		}
