@@ -956,6 +956,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
 			}
 
+			if len(driverConfig.CoreConfig.Regions) > 0 {
+				serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
+			}
+
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 			go func(senderChan chan core.KernelCmd, pluginName string) {
