@@ -72,7 +72,7 @@ func getDataFlowStatisticsSchema(tableName string) any {
 	return sqle.NewPrimaryKeySchema(sqle.Schema{
 		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true}, //composite key
 		{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: tableName, PrimaryKey: true},
-		{Name: "flowGroup", Type: sqle.Text, Source: tableName},
+		{Name: "flowGroup", Type: sqle.Text, Source: tableName, PrimaryKey: true},
 		{Name: "mode", Type: sqle.Text, Source: tableName},
 		{Name: "stateCode", Type: sqle.Text, Source: tableName, PrimaryKey: true},
 		{Name: "stateName", Type: sqle.Text, Source: tableName},
@@ -81,6 +81,7 @@ func getDataFlowStatisticsSchema(tableName string) any {
 	})
 }
 
+// Pulls stats from encrypted storage
 func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI flowcore.FlowContext) error {
 	tfmContext := tfmContextI.(*trcflowcore.TrcFlowMachineContext)
 	tfContext := tfContextI.(*trcflowcore.TrcFlowContext)
@@ -96,6 +97,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 
 	for _, tenantIdList := range tenantListData.Data {
 		for _, tenantId := range tenantIdList.([]any) {
+			tenantId = strings.ReplaceAll(tenantId.(string), "/", "")
 			flowGroupNameListData, flowGroupNameListErr := tfContext.GoMod.List("super-secrets/PublicIndex/"+tenantIndexPath+"/"+tenantDFSIdPath+"/"+tenantId.(string)+"/DataFlowStatistics/DataFlowGroup", tfmContext.DriverConfig.CoreConfig.Log)
 			if flowGroupNameListErr != nil {
 				return flowGroupNameListErr
@@ -137,6 +139,7 @@ func dataFlowStatPullRemote(tfmContextI flowcore.FlowMachineContext, tfContextI 
 					for _, testNameList := range listData.Data {
 						for _, testName := range testNameList.([]any) {
 							testName = strings.ReplaceAll(testName.(string), "/", "")
+							flowGroup = strings.ReplaceAll(flowGroup.(string), "/", "")
 							dfGroup := tccore.InitDataFlow(nil, flowGroup.(string), false)
 							if dfGroup == nil {
 								continue

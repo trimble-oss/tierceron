@@ -31,7 +31,9 @@ func GetDataFlowStatisticInsertById(argosId string, statisticData map[string]any
 func GetDataFlowStatisticLM(argosId string, statisticData map[string]any, dbName string, tableName string) map[string]any {
 	argosId = strings.ReplaceAll(argosId, "/", "")
 	sqlstr := map[string]any{
-		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + ` where ` + flowcoreopts.DataflowTestNameColumn + `='` + statisticData["flowName"].(string) + `' and ` +
+		"TrcQuery": `select lastTestedDate from ` + dbName + `.` + tableName + ` where ` +
+			flowcoreopts.DataflowGroupTestNameColumn + `='` + statisticData["flowGroup"].(string) + `' and ` +
+			flowcoreopts.DataflowTestNameColumn + `='` + statisticData["flowName"].(string) + `' and ` +
 			flowcoreopts.DataflowTestIdColumn + "='" + argosId + `' and ` + flowcoreopts.DataflowTestStateCodeColumn + ` = '` + statisticData["stateCode"].(string) + `'`,
 	}
 	return sqlstr
