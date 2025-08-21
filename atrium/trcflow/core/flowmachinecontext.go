@@ -764,6 +764,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	tfmContext.FlowControllerLock.Unlock()
 	if tfContext.WantsInitNotify { //Alert interface that the table is ready for permissions
 		tfContext.WantsInitNotify = false
+		tfContext.Preloaded = true
 		go func() {
 			tfmContext.PreloadChan <- PermissionUpdate{tfContext.FlowHeader.TableName(), tfContext.GetFlowStateState()}
 		}()

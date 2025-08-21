@@ -47,6 +47,7 @@ type TrcFlowContext struct {
 	Restart               bool
 	Init                  bool
 	WantsInitNotify       bool
+	Preloaded             bool //
 	ReadOnly              bool
 	DataFlowStatistic     FakeDFStat
 	Logger                *log.Logger
@@ -60,6 +61,10 @@ func (tfContext *TrcFlowContext) IsInit() bool {
 
 func (tfContext *TrcFlowContext) SetInit(init bool) {
 	tfContext.Init = init
+}
+
+func (tfContext *TrcFlowContext) IsPreloaded() bool {
+	return tfContext.Preloaded
 }
 
 func (tfContext *TrcFlowContext) InitNotify() {
