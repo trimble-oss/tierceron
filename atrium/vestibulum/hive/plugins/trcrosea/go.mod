@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.7.11
+	github.com/trimble-oss/tierceron-core/v2 v2.7.12
 	golang.org/x/term v0.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
