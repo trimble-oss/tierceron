@@ -780,10 +780,12 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	go tfmContext.seedVaultCycle(tfContext, identityColumnNames, indexColumnNames, getIndexedPathExt, flowPushRemote, sqlState)
 }
 
-func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tcflowContext flowcore.FlowContext) <-chan any {
+func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tcflowContext flowcore.FlowContext) any {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]; ok {
-		return notificationFlowChannel.Ch
+		result := <-notificationFlowChannel.Ch
+		notificationFlowChannel.BcastAck()
+		return result
 	}
 	tfmContext.Log("Could not find channel for flow.", nil)
 
