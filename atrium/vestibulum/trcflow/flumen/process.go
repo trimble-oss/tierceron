@@ -494,6 +494,11 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					switch tcfContext.GetFlowHeader().FlowName() {
 					case flowcore.DataFlowStatConfigurationsFlow.FlowName():
 						// DFS flow always handled internally.
+						// TODO: Enhance to wait for all but dfs flow...
+						// Then the existing WaitAllFlowsLoaded should
+						// wait just for dfs to load.
+						// This ensured dfs has latest data.
+						//						tfmContext.WaitAllFlowsLoaded()
 						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tcfContext)
 					case flowcore.ArgosSociiFlow.FlowName():
 						tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
