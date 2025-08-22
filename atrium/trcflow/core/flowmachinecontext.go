@@ -792,6 +792,14 @@ func (tfmContext *TrcFlowMachineContext) SelectFlowChannel(tcflowContext flowcor
 	return nil
 }
 
+func (tfmContext *TrcFlowMachineContext) BcastFlowChannel(tcflowContext flowcore.FlowContext, changed bool) {
+	tfContext := tcflowContext.(*TrcFlowContext)
+	if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]; ok {
+		notificationFlowChannel.Bcast(changed)
+	}
+	tfmContext.Log("Could not find channel for flow.", nil)
+}
+
 func (tfmContext *TrcFlowMachineContext) GetAuthExtended(getExtensionAuthComponents func(config map[string]any) map[string]any, refresh bool) (map[string]any, error) {
 	if tfmContext.ExtensionAuthData != nil && !refresh {
 		return tfmContext.ExtensionAuthData, nil
