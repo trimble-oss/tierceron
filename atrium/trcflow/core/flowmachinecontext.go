@@ -497,11 +497,18 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 	indexColumnNames any,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
-	sqlState bool) {
+	syncPushRemoteEnabled bool) {
 
 	tfContext := tcflowContext.(*TrcFlowContext)
+	syncPushRemoteEnabled = syncPushRemoteEnabled || tfContext.GetFlowSyncMode() == "push"
+	shouldSyncFunc := func(flowcore.SyncRemoteMode) bool { return false }
 
-	mysqlPushEnabled := sqlState
+	if flowDefinitionContext := tfContext.GetFlowLibraryContext(); flowDefinitionContext != nil {
+		if ssF := flowDefinitionContext.ShouldSyncRemote; ssF != nil {
+			shouldSyncFunc = ssF
+		}
+	}
+
 	flowChangedChannel := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]
 	//	flowChangedChannel.Bcast(true)
 
@@ -514,7 +521,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					tfContext,
 					identityColumnNames,
 					indexColumnNames,
-					mysqlPushEnabled,
+					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
 					getIndexedPathExt,
 					flowPushRemote)
 				// Chewbacca: This is only 1 flow.  All flows should be persisted before exiting.
@@ -524,6 +531,11 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 			// Receive notification that a change has occurred in TierceronFlow
 			// for a particular flow... This is the end of the message chain
 			// where the change is serialized to vault.
+			if tfContext.TablesChangesInitted {
+				syncPushRemoteEnabled = syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeFlowDataChanged)
+			} else {
+				tfContext.TablesChangesInitted = true
+			}
 			fcc := tfmContext.ChannelMap[flowcore.FlowNameType(tfContext.FlowHeader.Name)]
 			if &flowChangedChannel.Ch != &fcc.Ch {
 				// TODO: this may no longer be necessary.
@@ -541,7 +553,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 						correctTfContext,
 						identityColumnNames,
 						indexColumnNames,
-						mysqlPushEnabled,
+						syncPushRemoteEnabled,
 						getIndexedPathExt,
 						flowPushRemote)
 				} else {
@@ -553,7 +565,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					tfContext,
 					identityColumnNames,
 					indexColumnNames,
-					mysqlPushEnabled,
+					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeFlowDataChanged),
 					getIndexedPathExt,
 					flowPushRemote)
 			}
@@ -563,7 +575,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 				tfContext,
 				identityColumnNames,
 				indexColumnNames,
-				mysqlPushEnabled,
+				syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
 				getIndexedPathExt,
 				flowPushRemote)
 			if tfContext.Restart {
@@ -574,7 +586,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					indexColumnNames,
 					getIndexedPathExt,
 					flowPushRemote,
-					sqlState)
+					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
+				)
 				tfContext.Restart = false
 			}
 			return
@@ -765,6 +778,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	if tfContext.WantsInitNotify { //Alert interface that the table is ready for permissions
 		tfContext.WantsInitNotify = false
 		tfContext.Preloaded = true
+		tfContext.TablesChangesInitted = false
 		go func() {
 			tfmContext.PreloadChan <- PermissionUpdate{tfContext.FlowHeader.TableName(), tfContext.GetFlowStateState()}
 		}()
