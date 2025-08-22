@@ -81,6 +81,7 @@ func GetProcessFlowDefinition() *flowcore.FlowLibraryContext {
 		GetIndexedPathExt:           getIndexedPathExt,
 		GetTableIndexColumnNames:    getIndexColumnNames,
 		GetTableGrant:               getTableGrant,
+		ShouldSyncRemote:            nil, // Don't sync remote.
 		GetFlowIndexComplex:         getFlowIndexComplex,
 	}
 }

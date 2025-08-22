@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -48,6 +49,7 @@ type TrcFlowContext struct {
 	Init                  bool
 	WantsInitNotify       bool
 	Preloaded             bool //
+	TablesChangesInitted  bool //
 	ReadOnly              bool
 	DataFlowStatistic     FakeDFStat
 	Logger                *log.Logger
@@ -359,6 +361,12 @@ func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribut
 
 	if remoteDataSourceAttribute, ok := tfContext.RemoteDataSource[dataSourceAttribute]; ok {
 		return remoteDataSourceAttribute
+	} else {
+		lookup := fmt.Sprintf("region-%s", dataSourceAttribute)
+		if remoteDataSourceAttribute, ok := tfContext.RemoteDataSource[lookup]; ok {
+			return remoteDataSourceAttribute
+		}
+
 	}
 	return nil
 }
