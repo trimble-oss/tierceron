@@ -239,6 +239,7 @@ func ProcessDataFlowStatConfigurations(tfmContext flowcore.FlowMachineContext, t
 			GetTableSchema:              getDataFlowStatisticsSchema,
 			GetIndexedPathExt:           GetDataflowStatIndexedPathExt,
 			GetTableIndexColumnNames:    getDataFlowStatisticsIndexColumnNames,
+			ShouldSyncRemote:            nil, // Don't sync remote.
 		}
 		tfContext.SetFlowLibraryContext(flowDefinitionContext)
 		tfContext.SetCustomSeedTrcdbFunc(dataFlowStatPullRemote)
