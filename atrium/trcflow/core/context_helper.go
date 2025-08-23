@@ -15,9 +15,6 @@ import (
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
-
-	sqlememory "github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var changesLock sync.Mutex
@@ -546,24 +543,36 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
-	rows := make([][]any, 0)
-	for _, indexValue := range indexValues {
-		if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() && !tfmContext.IsSupportedFlow(indexValue) {
-			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
-				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
+	var filteredIndexValues []string = []string{}
+
+	if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() {
+		for _, indexValue := range indexValues {
+			if !tfmContext.IsSupportedFlow(indexValue) {
+				if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+					eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
+				}
+				continue
+			} else {
+				filteredIndexValues = append(filteredIndexValues, indexValue)
 			}
-			continue
 		}
+	} else {
+		filteredIndexValues = indexValues
+	}
+
+	var subSection string
+	tfContext.GoMod.SectionKey = "/Index/"
+	if tfContext.GoMod.SubSectionName != "" {
+		subSection = tfContext.GoMod.SubSectionName
+	} else {
+		subSection = tfContext.FlowHeader.ServiceName()
+	}
+	pathTemplate := "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/%s/" + subSection
+
+	for i, indexValue := range filteredIndexValues {
 		if indexValue != "" {
 			// Loading the tables now from vault.
-			tfContext.GoMod.SectionKey = "/Index/"
-			var subSection string
-			if tfContext.GoMod.SubSectionName != "" {
-				subSection = tfContext.GoMod.SubSectionName
-			} else {
-				subSection = tfContext.FlowHeader.ServiceName()
-			}
-			tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection
+			tfContext.GoMod.SectionPath = fmt.Sprintf(pathTemplate, indexValue)
 			if len(secondaryIndexes) > 0 {
 				for _, secondaryIndex := range secondaryIndexes {
 					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex
@@ -572,72 +581,47 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 						if subIndexValues != nil {
 							for _, subIndexValue := range subIndexValues {
 								tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex + "/" + subIndexValue + "/" + tfContext.FlowHeader.ServiceName()
-								row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+								_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 								if rowErr != nil {
 									eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 									continue
 								}
-								rows = append(rows, row)
 							}
 						} else {
-							row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+							_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 							if rowErr != nil {
 								eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 								continue
 							}
-							rows = append(rows, row)
 						}
 					} else {
-						row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+						_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 						if rowErr != nil {
 							eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 							continue
 						}
-						rows = append(rows, row)
 					}
 				}
 			} else {
-				row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+				_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 				if rowErr != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 					continue
 				}
-				rows = append(rows, row)
 			}
 		} else {
-			row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+			_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 			if rowErr != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 				continue
 			}
-			rows = append(rows, row)
 		}
 	}
 
-	var inserter sql.RowInserter
-	//Writes accumlated rows to the table.
-	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.FlowHeader.TableName())
-	if tableOk {
-		inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
-	} else {
-		insertErr := errors.New("Unable to insert rows into:" + tfContext.FlowHeader.TableName())
-		eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, insertErr, false)
-		return insertErr
+	if tfContext.Inserter != nil {
+		tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+		tfContext.Inserter = nil
 	}
-	for _, row := range rows {
-		if row == nil {
-			continue
-		}
-		if err := inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
-			if !strings.Contains(err.Error(), "duplicate primary key") && !strings.Contains(err.Error(), "invalid type") {
-				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
-			}
-			continue
-		}
-	}
-	inserter.Close(tfmContext.TierceronEngine.Context)
-
-	inserter = nil
 
 	return nil
 }
