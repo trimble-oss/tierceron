@@ -412,6 +412,25 @@ retryQuery:
 	return Secret.Warnings, err
 }
 
+// Helper function to handle version-specific read logic
+func (m *Modifier) getVersionSpecificRead(path string, fullPath string, versionMap map[string][]string) (*api.Secret, error) {
+	if strings.HasSuffix(m.Version, "***X-Mode") { //x path
+		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
+			m.Version = strings.Split(m.Version, "***")[0]
+			versionSlice := []string{m.Version}
+			versionMap["version"] = versionSlice
+			return m.logical.ReadWithData(fullPath, versionMap)
+		}
+	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
+		versionSlice := []string{m.Version}
+		versionMap["version"] = versionSlice
+		return m.logical.ReadWithData(fullPath, versionMap)
+	} else {
+		return m.logical.Read(fullPath)
+	}
+	return m.logical.Read(fullPath)
+}
+
 // ReadData Reads the most recent data from the path referenced by this Modifier
 // @return	A Secret pointer that contains key,value pairs and metadata
 //
@@ -440,24 +459,88 @@ func (m *Modifier) ReadData(path string) (map[string]any, error) {
 	retryCount := 0
 retryVaultAccess:
 
-	var secret *api.Secret
-	var err error
-	var versionMap = make(map[string][]string)
-	if strings.HasSuffix(m.Version, "***X-Mode") { //x path
-		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
-			m.Version = strings.Split(m.Version, "***")[0]
-			versionSlice := []string{m.Version}
-			versionMap["version"] = versionSlice
-			secret, err = m.logical.ReadWithData(fullPath, versionMap)
+	// Add these variable declarations at the top of the function
+	var (
+		secret     *api.Secret
+		err        error
+		versionMap = make(map[string][]string)
+	)
+
+	// Create a timeout context and channel for results
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resultChan := make(chan struct {
+		s *api.Secret
+		e error
+	})
+
+	// Launch the vault operation in a goroutine
+	go func() {
+		var s *api.Secret
+		var e error
+
+		s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
+
+		// Try to send the result, but don't block if the context is already done
+		select {
+		case resultChan <- struct {
+			s *api.Secret
+			e error
+		}{s, e}:
+		case <-ctx.Done():
+			// Context expired, we don't need to send results anymore
 		}
-	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
-		versionSlice := []string{m.Version}
-		versionMap["version"] = versionSlice
-		secret, err = m.logical.ReadWithData(fullPath, versionMap)
-	} else {
-		secret, err = m.logical.Read(fullPath)
+	}()
+
+	// Wait for the result or timeout
+	timeoutRetry := 0
+	maxTimeoutRetries := 3
+
+	for {
+		select {
+		case result := <-resultChan:
+			// Got a result, process it
+			secret = result.s
+			err = result.e
+			goto processResult
+
+		case <-ctx.Done():
+			// Timeout occurred
+			timeoutRetry++
+			if timeoutRetry >= maxTimeoutRetries {
+				// Max retries exceeded, mark as stale and return error
+				m.Stale = true
+				m.httpClient.CloseIdleConnections()
+				err = fmt.Errorf("vault operation timed out after %d retries: %s", maxTimeoutRetries, fullPath)
+				goto processResult
+			}
+
+			// Create new context for retry
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			// Launch a new attempt
+			go func() {
+				var s *api.Secret
+				var e error
+
+				s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
+
+				select {
+				case resultChan <- struct {
+					s *api.Secret
+					e error
+				}{s, e}:
+				case <-ctx.Done():
+					// Context expired
+				}
+			}()
+		}
 	}
 
+processResult:
+	// Continue with existing processing
 	if err != nil {
 		if retryCount < 7 {
 			retryCount = retryCount + 1
