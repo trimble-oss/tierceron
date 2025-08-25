@@ -412,6 +412,25 @@ retryQuery:
 	return Secret.Warnings, err
 }
 
+// Helper function to handle version-specific read logic
+func (m *Modifier) getVersionSpecificRead(path string, fullPath string, versionMap map[string][]string) (*api.Secret, error) {
+	if strings.HasSuffix(m.Version, "***X-Mode") { //x path
+		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
+			m.Version = strings.Split(m.Version, "***")[0]
+			versionSlice := []string{m.Version}
+			versionMap["version"] = versionSlice
+			return m.logical.ReadWithData(fullPath, versionMap)
+		}
+	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
+		versionSlice := []string{m.Version}
+		versionMap["version"] = versionSlice
+		return m.logical.ReadWithData(fullPath, versionMap)
+	} else {
+		return m.logical.Read(fullPath)
+	}
+	return m.logical.Read(fullPath)
+}
+
 // ReadData Reads the most recent data from the path referenced by this Modifier
 // @return	A Secret pointer that contains key,value pairs and metadata
 //
@@ -461,20 +480,7 @@ retryVaultAccess:
 		var s *api.Secret
 		var e error
 
-		if strings.HasSuffix(m.Version, "***X-Mode") { //x path
-			if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
-				m.Version = strings.Split(m.Version, "***")[0]
-				versionSlice := []string{m.Version}
-				versionMap["version"] = versionSlice
-				s, e = m.logical.ReadWithData(fullPath, versionMap)
-			}
-		} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
-			versionSlice := []string{m.Version}
-			versionMap["version"] = versionSlice
-			s, e = m.logical.ReadWithData(fullPath, versionMap)
-		} else {
-			s, e = m.logical.Read(fullPath)
-		}
+		s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
 
 		// Try to send the result, but don't block if the context is already done
 		select {
@@ -519,20 +525,7 @@ retryVaultAccess:
 				var s *api.Secret
 				var e error
 
-				if strings.HasSuffix(m.Version, "***X-Mode") { //x path
-					if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
-						m.Version = strings.Split(m.Version, "***")[0]
-						versionSlice := []string{m.Version}
-						versionMap["version"] = versionSlice
-						s, e = m.logical.ReadWithData(fullPath, versionMap)
-					}
-				} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
-					versionSlice := []string{m.Version}
-					versionMap["version"] = versionSlice
-					s, e = m.logical.ReadWithData(fullPath, versionMap)
-				} else {
-					s, e = m.logical.Read(fullPath)
-				}
+				s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
 
 				select {
 				case resultChan <- struct {
