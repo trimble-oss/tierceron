@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -45,14 +46,16 @@ type TrcFlowContext struct {
 	PreviousFlowState     flowcorehelper.CurrentFlowState // Temporary storage for previous state
 	PreviousFlowStateLock *sync.RWMutex
 	QueryLock             *sync.Mutex
-	Restart               bool
-	Init                  bool
-	WantsInitNotify       bool
-	Preloaded             bool //
-	TablesChangesInitted  bool //
-	ReadOnly              bool
-	DataFlowStatistic     FakeDFStat
-	Logger                *log.Logger
+	Inserter              sql.RowInserter
+
+	Restart              bool
+	Init                 bool
+	WantsInitNotify      bool
+	Preloaded            bool //
+	TablesChangesInitted bool //
+	ReadOnly             bool
+	DataFlowStatistic    FakeDFStat
+	Logger               *log.Logger
 }
 
 var _ flowcore.FlowContext = (*TrcFlowContext)(nil)

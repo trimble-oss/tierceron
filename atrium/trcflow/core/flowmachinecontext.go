@@ -1459,6 +1459,18 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 	if readErr != nil {
 		return nil, readErr
 	}
+	if tfContext.Inserter == nil {
+		//Writes accumlated rows to the table.
+		tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.FlowHeader.TableName())
+		if tableOk {
+			tfContext.Inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
+		} else {
+			insertErr := errors.New("Unable to insert rows into:" + tfContext.FlowHeader.TableName())
+			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, insertErr, false)
+			return nil, insertErr
+		}
+
+	}
 
 	rowDataMap := make(map[string]string, 1)
 	for columnName, columnData := range dataMap {
@@ -1484,7 +1496,12 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 	}
 
 	if row != nil {
-		return row, nil
+		if err := tfContext.Inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
+			if !strings.Contains(err.Error(), "duplicate primary key") && !strings.Contains(err.Error(), "invalid type") {
+				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
+			}
+		}
+		return nil, nil
 	}
 	return nil, nil
 }

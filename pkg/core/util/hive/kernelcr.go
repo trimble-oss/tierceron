@@ -1249,6 +1249,10 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 				if eUtils.RefLength(msg.RoutingId) > 0 && eUtils.RefLength((*msg).RoutingId) > 0 {
 					new_msg.RoutingId = (*msg).RoutingId
 				}
+				if eUtils.RefLength(msg.RoutingId) == 0 {
+					// If only ChatId is provided, use that for routing.
+					new_msg.RoutingId = (*msg).ChatId
+				}
 				var chatSenderChan chan *core.ChatMsg
 				if (*msg).IsBroadcast {
 					if (*plugin.ConfigContext).ChatBroadcastChan != nil {
