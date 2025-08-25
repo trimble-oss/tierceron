@@ -569,7 +569,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	}
 	pathTemplate := "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/%s/" + subSection
 
-	for i, indexValue := range filteredIndexValues {
+	for _, indexValue := range filteredIndexValues {
 		if indexValue != "" {
 			// Loading the tables now from vault.
 			tfContext.GoMod.SectionPath = fmt.Sprintf(pathTemplate, indexValue)
