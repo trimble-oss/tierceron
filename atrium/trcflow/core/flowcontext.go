@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/glycerine/bchan"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -28,7 +29,7 @@ type TrcFlowContext struct {
 	// This just means some analytic tools won't be able to
 	// perform analysis which are based on the Context.
 	ContextNotifyChan    chan bool
-	FlowLoadedNotifyChan chan bool
+	FlowLoadedNotifyChan *bchan.Bchan
 	Context              context.Context
 	CancelContext        context.CancelFunc
 	// I flow is complex enough, it can define
@@ -97,10 +98,8 @@ func (tfContext *TrcFlowContext) SetRestart(restart bool) {
 }
 
 func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
-	go func() {
-		// Notify machine flow is loaded.
-		tfContext.FlowLoadedNotifyChan <- true
-	}()
+	// Broadcast to all listeners that flow is loaded
+	tfContext.FlowLoadedNotifyChan.Bcast(true)
 	go func() {
 		// Notify flow context it's loaded.
 		tfContext.ContextNotifyChan <- true
@@ -108,7 +107,10 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
 }
 
 func (tfContext *TrcFlowContext) WaitFlowLoaded() {
-	<-tfContext.FlowLoadedNotifyChan
+	// Wait for broadcast signal
+	<-tfContext.FlowLoadedNotifyChan.Ch
+	// Must call BcastAck after receiving
+	tfContext.FlowLoadedNotifyChan.BcastAck()
 }
 
 func (tfContext *TrcFlowContext) FlowSyncModeMatchAny(syncModes []string) bool {
