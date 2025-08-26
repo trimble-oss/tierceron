@@ -246,10 +246,29 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		for _, cidrBlock := range cidrBlockSlice {
 			dfsUserCreated := ""
 			cidrBlock = strings.TrimSpace(cidrBlock)
-			_, _, _, queryErr := engineQuery(engine, ctx, "CREATE USER '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"' IDENTIFIED BY '"+vaultDatabaseConfig["dbpassword"].(string)+"'")
 
+			maxRetries := 3
+			var queryErr error
+			for attempt := 0; attempt < maxRetries; attempt++ {
+				_, _, _, queryErr = engineQuery(engine, ctx, "CREATE USER '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"' IDENTIFIED BY '"+vaultDatabaseConfig["dbpassword"].(string)+"'")
+
+				if queryErr == nil {
+					// Success, break out of retry loop
+					break
+				}
+
+				// Log the attempt but not as an error
+				if attempt < maxRetries-1 {
+					eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Attempt %d: Failed to create user for cidr - %s, retrying...", attempt+1, cidrBlock))
+
+					// Small delay before retry (exponential backoff)
+					time.Sleep(time.Duration(100*(1<<attempt)) * time.Millisecond)
+				}
+			}
+
+			// Only log as error if all retries failed
 			if queryErr != nil {
-				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to create user for cidr - %s", cidrBlock), false)
+				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Failed to create user for cidr - %s after %d attempts: %v", cidrBlock, maxRetries, queryErr), false)
 			}
 
 			_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON INFORMATION_SCHEMA.* TO '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"'")

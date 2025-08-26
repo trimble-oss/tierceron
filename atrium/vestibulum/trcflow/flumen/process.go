@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glycerine/bchan"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
@@ -379,7 +380,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			continue
 		}
 
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]any), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]any), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
 		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 		tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
@@ -447,7 +448,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}
 			continue
 		}
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
 		tableFlow := table
 		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.FlowHeader.TableName()]
 		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.FlowHeader.TableName()]
@@ -529,7 +530,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.FlowHeader.ServiceName())
 			defer flowWG.Done()
 
-			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
+			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
 			tfContext.FlowHeader = &bizFlow.FlowHeader
 			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.FlowHeader.TableName()]
 			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.FlowHeader.TableName()]
@@ -561,7 +562,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			go func(testFlow flowcore.FlowDefinition, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.FlowHeader.ServiceName())
 				defer flowWG.Done()
-				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: make(chan bool, 1)}
+				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
 				tfContext.FlowHeader = &testFlow.FlowHeader
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
