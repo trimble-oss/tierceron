@@ -524,19 +524,20 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			continue
 		}
 
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
+		tfContext.FlowHeader = &businessFlow.FlowHeader
+		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[businessFlow.FlowHeader.TableName()]
+		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[businessFlow.FlowHeader.TableName()]
+		tfmContext.FlowMapLock.Lock()
+		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
+		tfmContext.FlowMapLock.Unlock()
+
 		flowWG.Add(1)
 
 		go func(bizFlow flowcore.FlowDefinition, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.FlowHeader.ServiceName())
 			defer flowWG.Done()
 
-			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
-			tfContext.FlowHeader = &bizFlow.FlowHeader
-			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.FlowHeader.TableName()]
-			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.FlowHeader.TableName()]
-			tfmContext.FlowMapLock.Lock()
-			tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
-			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
@@ -667,7 +668,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 	if controllerCheck == 3 {
 		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting controller interface...")
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
-		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{Log: tfmFlumeContext.DriverConfig.CoreConfig.Log})
+		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmFlumeContext})
 		if controllerInterfaceErr != nil {
 			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
@@ -698,7 +699,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 			vaultDatabaseConfig["dfsPass"] = dfsPass
 		}
 		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting db interface...")
-		interfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{Log: tfmFlumeContext.DriverConfig.CoreConfig.Log})
+		interfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmContext})
 		if interfaceErr != nil {
 			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up database interface:"+interfaceErr.Error(), false)
 			return interfaceErr

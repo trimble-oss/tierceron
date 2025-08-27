@@ -7,6 +7,7 @@ import (
 	"os"
 
 	core "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 
@@ -104,7 +105,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	trcflow.BootFlowMachine(&flowMachineInitContext, driverConfig, pluginConfig, logger)
+	go func() {
+		tfmContext, err := trcflow.BootFlowMachine(&flowMachineInitContext, driverConfig, pluginConfig, logger)
+		if err != nil || tfmContext == nil {
+			driverConfig.CoreConfig.Log.Printf("Error initializing flow machine: %v\n", err)
+			return
+		}
+		tfmContext.(flow.FlowMachineContext).SetFlowIDs()
+	}()
 	wait := make(chan bool)
 	<-wait
 }
