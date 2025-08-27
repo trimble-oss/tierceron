@@ -524,19 +524,20 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			continue
 		}
 
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
+		tfContext.FlowHeader = &businessFlow.FlowHeader
+		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[businessFlow.FlowHeader.TableName()]
+		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[businessFlow.FlowHeader.TableName()]
+		tfmContext.FlowMapLock.Lock()
+		tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
+		tfmContext.FlowMapLock.Unlock()
+
 		flowWG.Add(1)
 
 		go func(bizFlow flowcore.FlowDefinition, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.FlowHeader.ServiceName())
 			defer flowWG.Done()
 
-			tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
-			tfContext.FlowHeader = &bizFlow.FlowHeader
-			tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[bizFlow.FlowHeader.TableName()]
-			tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[bizFlow.FlowHeader.TableName()]
-			tfmContext.FlowMapLock.Lock()
-			tfmContext.FlowMap[flowcore.FlowNameType(tfContext.FlowHeader.FlowName())] = &tfContext
-			tfmContext.FlowMapLock.Unlock()
 			var initErr error
 			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
