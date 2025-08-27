@@ -1338,8 +1338,8 @@ github.com/tidwall/pretty v1.2.0/go.mod h1:ITEVvHYasfjBbM0u2Pg8T2nJnzm8xPwvNhhso
 github.com/tidwall/sjson v1.2.5/go.mod h1:Fvgq9kS/6ociJEDnK0Fk1cpYF4FIW6ZF7LAe+6jwd28=
 github.com/tjfoc/gmsm v1.4.1 h1:aMe1GlZb+0bLjn+cKTPEvvn9oUEBlJitaZiiBwsbgho=
 github.com/tjfoc/gmsm v1.4.1/go.mod h1:j4INPkHWMrhJb38G+J6W4Tw0AbuN8Thu3PbdVYhVcTE=
-github.com/trimble-oss/go-mysql-server v0.12.0-1.29 h1:xyR7XzoVTiUMv+6sAVkpkaHyuUYCVekPVBSgCWe4ABU=
-github.com/trimble-oss/go-mysql-server v0.12.0-1.29/go.mod h1:BjVA7gHh8UXnf5Yd19NqUlqYVcsMUe5IUZF7ufZayhM=
+github.com/trimble-oss/go-mysql-server v0.12.0-1.30 h1:v44vgutBz55yGOiPxnD6d7rdoPTKjJnp52A3pWsQK7g=
+github.com/trimble-oss/go-mysql-server v0.12.0-1.30/go.mod h1:BjVA7gHh8UXnf5Yd19NqUlqYVcsMUe5IUZF7ufZayhM=
 github.com/trimble-oss/tierceron-core/v2 v2.8.2 h1:7FUnc5DqPpShQMPmfc9z2hkO/61UuoBQX2cMjSm44h8=
 github.com/trimble-oss/tierceron-core/v2 v2.8.2/go.mod h1:et02oOhnyvfnipOhV4gKwhMNvvXUzyP1ciqhvmVSqK0=
 github.com/trimble-oss/tierceron-hat v1.2.10 h1:eRNf2RYLQz/OqkSeOU+6yJvM5fWNERu+y0RuikzhRjw=
