@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
@@ -317,10 +318,11 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], driverConfigErr.Error())
 		}
 
-		_, flowErr := bootFlowMachineFunc(&flowMachineInitContext, driverConfig, pec, l)
+		tfmContextAny, flowErr := bootFlowMachineFunc(&flowMachineInitContext, driverConfig, pec, l)
 		if configCompleteChan != nil {
 			configCompleteChan <- true
 		}
+		tfmContextAny.(flow.FlowMachineContext).SetFlowIDs()
 		if flowErr != nil {
 			l.Println("Flow had an error: " + flowErr.Error())
 		}
