@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/trimble-oss/tierceron v1.38.9
-	github.com/trimble-oss/tierceron-core/v2 v2.8.2
+	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	google.golang.org/api v0.226.0
@@ -64,4 +64,4 @@ require (
 
 // replace github.com/trimble-oss/tierceron-nute => github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.29
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.30
