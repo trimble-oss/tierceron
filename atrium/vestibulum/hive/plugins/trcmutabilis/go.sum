@@ -18,8 +18,8 @@ github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/
 github.com/orcaman/concurrent-map/v2 v2.0.1/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
 github.com/trimble-oss/tierceron v1.38.9 h1:qr/vCzPaW0noz/vfx+/hoFa+XjK/t4Howv3r4hJwKBQ=
 github.com/trimble-oss/tierceron v1.38.9/go.mod h1:wAajygsGk9VKDbXQ2C37Pv2Ype3dCxN1sNx6+Xjprfc=
-github.com/trimble-oss/tierceron-core/v2 v2.8.2 h1:7FUnc5DqPpShQMPmfc9z2hkO/61UuoBQX2cMjSm44h8=
-github.com/trimble-oss/tierceron-core/v2 v2.8.2/go.mod h1:et02oOhnyvfnipOhV4gKwhMNvvXUzyP1ciqhvmVSqK0=
+github.com/trimble-oss/tierceron-core/v2 v2.8.3 h1:41C3DIuQmGDInz/8zwkutiwhNdSme6nLjIMwrK0AQcM=
+github.com/trimble-oss/tierceron-core/v2 v2.8.3/go.mod h1:et02oOhnyvfnipOhV4gKwhMNvvXUzyP1ciqhvmVSqK0=
 github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlCjxAOUzzJ7Igyid3Y=
 github.com/trimble-oss/tierceron-nute-core v1.0.3/go.mod h1:2M/uT8pm7AJMzRxsasQsQdjXvDXbXpBPCqd3ghb03ss=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377 h1:m0YHPS32Si7ZxkpQedlfV+2fCJZ2qJHBcWFTl8eUr1E=
