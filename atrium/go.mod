@@ -284,6 +284,8 @@ replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-2022112118
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.30
 
+replace github.com/docker/distribution => github.com/distribution/distribution v2.8.2+incompatible
+
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => ./vestibulum/hive/plugins/trchealthcheck
 
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis => ./vestibulum/hive/plugins/trcmutabilis
