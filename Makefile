@@ -95,6 +95,13 @@ hivepluginrelease: hivepluginbuild
 		exit 1; \
 	fi
 
+	# Check if we're on the main branch
+	@CURRENT_BRANCH=$$(git symbolic-ref --short HEAD); \
+	if [ "$$CURRENT_BRANCH" != "main" ]; then \
+		echo "ERROR: Tagging is only allowed on the main branch. Current branch: $$CURRENT_BRANCH"; \
+		exit 1; \
+	fi
+
 	# If build succeeds, proceed with tagging
 	@TAG_PREFIX=$$(echo $(PLUGIN) | tr '/' '-'); \
 	echo "==> Tagging $(PLUGIN) with tag $$TAG_PREFIX/$(VERSION)"; \
