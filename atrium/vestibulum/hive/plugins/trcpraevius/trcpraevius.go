@@ -8,10 +8,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-	"github.com/trimble-oss/tierceron-core/v2/flow"
-	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
+	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcpraevius/hcore"
 	// Update package path as needed
 )
 
@@ -23,16 +20,8 @@ func Init(pluginName string, properties *map[string]any) {
 	hcore.Init(pluginName, properties)
 }
 
-func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
-	return hcore.GetFlowMachineInitContext(coreConfig, pluginName)
-}
-
-func SetProd(prod bool) {
-	hcore.SetProd(prod)
-}
-
 func main() {
-	logFilePtr := flag.String("log", "./trcdb.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./trchelloworld.log", "Output path for log file")
 	flag.Parse()
 	config := make(map[string]any)
 
@@ -41,7 +30,7 @@ func main() {
 		fmt.Printf("Error opening log file: %v\n", err)
 		os.Exit(-1)
 	}
-	logger := log.New(f, "[trcdb]", log.LstdFlags)
+	logger := log.New(f, "[trchelloworld]", log.LstdFlags)
 	config["log"] = logger
 
 	data, err := os.ReadFile("config.yml")
@@ -59,8 +48,20 @@ func main() {
 		logger.Println("Error unmarshaling YAML:", err)
 		os.Exit(-1)
 	}
-	config[flow.HARBINGER_INTERFACE_CONFIG] = &configCommon
+	config[hcore.COMMON_PATH] = &configCommon
 
-	Init("trcdb", &config)
-	hcore.GetConfigContext("trcdb").Start("trcdb")
+	helloCertBytes, err := os.ReadFile("./hello.crt")
+	if err != nil {
+		log.Printf("Couldn't load cert: %v", err)
+	}
+
+	helloKeyBytes, err := os.ReadFile("./hellokey.key")
+	if err != nil {
+		log.Printf("Couldn't load key: %v", err)
+	}
+	config[hcore.HELLO_CERT] = helloCertBytes
+	config[hcore.HELLO_KEY] = helloKeyBytes
+
+	Init("praevius", &config)
+	hcore.GetConfigContext("praevius").Start("praevius")
 }
