@@ -2,6 +2,9 @@ package ttcore
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"slices"
@@ -200,6 +203,22 @@ func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRe
 		b,
 		GenMsgId,
 		mashupCertBytes,
+		func(serverName string, certBytes []byte) (*tls.Config, error) {
+			if certBytes == nil {
+				return nil, fmt.Errorf("nil cert bytes")
+			}
+			block, _ := pem.Decode(certBytes)
+			if block == nil {
+				return nil, fmt.Errorf("failed to decode cert pem")
+			}
+			parsed, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, err
+			}
+			pool := x509.NewCertPool()
+			pool.AddCert(parsed)
+			return &tls.Config{ServerName: serverName, RootCAs: pool}, nil
+		},
 		func(conn *grpc.ClientConn) any { return pb.NewTrcshTalkServiceClient(conn) },
 		func(client any, ctx context.Context, req proto.Message) (proto.Message, error) {
 			return client.(pb.TrcshTalkServiceClient).RunDiagnostics(ctx, req.(*pb.DiagnosticRequest))

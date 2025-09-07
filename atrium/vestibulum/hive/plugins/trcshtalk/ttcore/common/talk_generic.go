@@ -160,6 +160,7 @@ func ProcessTrcshTalkRequestGeneric(
 	broadcast bool,
 	genMsgID func(env, region string, broadcast bool) string,
 	mashupCertBytes []byte,
+	tlsConfigProvider func(serverName string, certBytes []byte) (*tls.Config, error),
 	newClient func(*grpc.ClientConn) any,
 	invokeDiagnostics func(client any, ctx context.Context, req proto.Message) (proto.Message, error),
 ) (proto.Message, error) {
@@ -240,22 +241,33 @@ func ProcessTrcshTalkRequestGeneric(
 		return diagRes, nil
 	}
 
-	// Local (hardwired) path via direct gRPC call.
-	if mashupCertBytes == nil {
+	// Local (hardwired) path via direct gRPC call (TLS config may be externally provided).
+	if mashupCertBytes == nil && tlsConfigProvider == nil {
 		ctx.Log.Printf("Cert not initialized.\n")
 		return nil, errors.New("cert initialization failure")
 	}
-	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
-	mashupClientCert, err := x509.ParseCertificate(mashupBlock.Bytes)
-	if err != nil {
-		ctx.Log.Printf("failed to serve: %v\n", err)
-		return nil, err
+	var tlsCfg *tls.Config
+	var err error
+	if tlsConfigProvider != nil {
+		tlsCfg, err = tlsConfigProvider(serverName, mashupCertBytes)
+		if err != nil {
+			ctx.Log.Printf("tlsConfigProvider error: %v\n", err)
+			return nil, err
+		}
+	} else {
+		mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
+		mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
+		if parseErr != nil {
+			ctx.Log.Printf("failed to parse cert: %v\n", parseErr)
+			return nil, parseErr
+		}
+		mashupCertPool := x509.NewCertPool()
+		mashupCertPool.AddCert(mashupClientCert)
+		tlsCfg = &tls.Config{ServerName: serverName, RootCAs: mashupCertPool}
 	}
-	mashupCertPool := x509.NewCertPool()
-	mashupCertPool.AddCert(mashupClientCert)
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", serverName, port),
 		grpc.WithDefaultCallOptions(),
-		grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: serverName, RootCAs: mashupCertPool, InsecureSkipVerify: true})))
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
 	if err != nil {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: fail to dial: %v\n", err)
 		return nil, err
