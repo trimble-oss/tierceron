@@ -8,7 +8,9 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	// Update package path as needed
 )
@@ -19,6 +21,14 @@ func GetConfigPaths(pluginName string) []string {
 
 func Init(pluginName string, properties *map[string]any) {
 	hcore.Init(pluginName, properties)
+}
+
+func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
+	return hcore.GetFlowMachineInitContext(coreConfig, pluginName)
+}
+
+func SetProd(prod bool) {
+	hcore.SetProd(prod)
 }
 
 func main() {

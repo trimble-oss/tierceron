@@ -14,7 +14,7 @@ require (
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377 // indirect
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect

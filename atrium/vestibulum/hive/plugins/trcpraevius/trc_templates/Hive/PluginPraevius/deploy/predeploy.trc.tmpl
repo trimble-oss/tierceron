@@ -1,0 +1,3 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=praevius -pluginType=trcshpluginservice -sha256=bin/praevius.so

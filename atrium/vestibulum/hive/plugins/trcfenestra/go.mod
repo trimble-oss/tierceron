@@ -3,10 +3,10 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenest
 go 1.25.0
 
 require (
-	github.com/trimble-oss/tierceron v1.38.9
+	github.com/trimble-oss/tierceron v1.44.3
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -45,7 +45,7 @@ require (
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.2 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
@@ -68,7 +68,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
-	golang.org/x/time v0.6.0 // indirect
+	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
