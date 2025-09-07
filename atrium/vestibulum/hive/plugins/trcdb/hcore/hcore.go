@@ -15,16 +15,18 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-
-	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/dataflowstatistics"
+
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var configContext *tccore.ConfigContext
+var configContext *core.ConfigContext
 var tfmContext flowcore.FlowMachineContext
 var sender chan error
-var dfstat *tccore.TTDINode
+var dfstat *core.TTDINode
 
 var isProd bool = false
 
@@ -36,17 +38,17 @@ func IsProd() bool {
 	return isProd
 }
 
-func receiver(receive_chan chan tccore.KernelCmd) {
+func receiver(receive_chan chan core.KernelCmd) {
 	for {
 		event := <-receive_chan
 		switch {
-		case event.Command == tccore.PLUGIN_EVENT_START:
+		case event.Command == core.PLUGIN_EVENT_START:
 			go start(event.PluginName)
-		case event.Command == tccore.PLUGIN_EVENT_STOP:
+		case event.Command == core.PLUGIN_EVENT_STOP:
 			go stop(event.PluginName)
 			sender <- errors.New("trcdb shutting down")
 			return
-		case event.Command == tccore.PLUGIN_EVENT_STATUS:
+		case event.Command == core.PLUGIN_EVENT_STATUS:
 			//TODO
 		default:
 			//TODO
@@ -86,7 +88,15 @@ func send_dfstat() {
 		send_err(err)
 		return
 	}
-	tccore.SendDfStat(configContext, dfsctx, dfstat)
+	dfstat.Name = configContext.ArgosId
+	dfstat.FinishStatistic("", "", "", configContext.Log, true, dfsctx)
+	configContext.Log.Printf("Sending dataflow statistic to kernel: %s\n", dfstat.Name)
+	dfstatClone := *dfstat
+	go func(dsc *core.TTDINode) {
+		if configContext != nil && *configContext.DfsChan != nil {
+			*configContext.DfsChan <- dsc
+		}
+	}(&dfstatClone)
 }
 
 func send_err(err error) {
@@ -109,40 +119,10 @@ func send_err(err error) {
 			func(msg string, err error) {
 				configContext.Log.Println(msg, err)
 			})
-		tccore.SendDfStat(configContext, dfsctx, dfstat)
+		core.SendDfStat(configContext, dfsctx, dfstat)
 		configContext.Log.Println("Sent dataflow statistic with error to kernel: ", dfstat.Name)
 	}
 	*configContext.ErrorChan <- err
-}
-
-func GetWantedTests(event *core.ChatMsg) (map[string]bool, string) {
-	var argosId string
-	testsSet := map[string]bool{}
-	if event.ChatId != nil && strings.Contains(*(*event).ChatId, ":") {
-		argosTestsSlice := strings.Split(*(*event).ChatId, ":")
-		// Scrub tenantId to only alphabetic characters
-		origArgosId := argosTestsSlice[0]
-		var scrubbedTenantId strings.Builder
-		for _, r := range origArgosId {
-			if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') {
-				scrubbedTenantId.WriteRune(r)
-			}
-		}
-		argosId = scrubbedTenantId.String()
-		testsCommaList := argosTestsSlice[1]
-		testsSlice := strings.Split(testsCommaList, ",")
-
-		for _, test := range testsSlice {
-			if len(test) > 0 {
-				testsSet[test] = true
-			}
-		}
-	}
-	if len(testsSet) == 0 {
-		testsSet = nil
-	}
-
-	return testsSet, argosId
 }
 
 func CheckFlowStatusReport(region string, argosId string, flowGroupKey string) (string, error) {
@@ -151,7 +131,7 @@ func CheckFlowStatusReport(region string, argosId string, flowGroupKey string) (
 		Query:     fmt.Sprintf("SELECT * FROM %s.DataFlowStatistics where flowGroup like '%s-%s-%s' and argosId like '%s' ORDER by flowName, CAST(stateCode as UNSIGNED) asc", "%s", flowGroupKey, region, "%", string(argosId)), // Query
 		Operation: "SELECT",                                                                                                                                                                                                      // query operation
 	}
-	processTrcdb(trcdbExchange)
+	ProcessTrcdb(trcdbExchange)
 
 	if len(trcdbExchange.Response.Rows) > 0 {
 		var report strings.Builder
@@ -268,10 +248,47 @@ func CheckFlowStatusReport(region string, argosId string, flowGroupKey string) (
 	return "", nil
 }
 
-func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
+var trcdbChatMessageHandlerFunc func(event *core.ChatMsg) (string, error) = defaultTrcdbChatMessageHandler
+
+func SetTrcdbChatMessageHandlerFunc(f func(event *core.ChatMsg) (string, error)) {
+	trcdbChatMessageHandlerFunc = f
+}
+
+func GetWantedTests(event *core.ChatMsg) (map[string]bool, string) {
+	var argosId string
+	testsSet := map[string]bool{}
+	if event.ChatId != nil && strings.Contains(*(*event).ChatId, ":") {
+		chatIdSlice := strings.Split(*(*event).ChatId, ":")
+		// Scrub id to only alphanumeric characters
+		origArgosId := chatIdSlice[0]
+		var scrubbedArgosId strings.Builder
+		for _, r := range origArgosId {
+			if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+				scrubbedArgosId.WriteRune(r)
+			}
+		}
+		argosId = scrubbedArgosId.String()
+		testsCommaList := chatIdSlice[1]
+		testsSlice := strings.Split(testsCommaList, ",")
+
+		for _, test := range testsSlice {
+			if len(test) > 0 {
+				testsSet[test] = true
+			}
+		}
+	}
+	if len(testsSet) == 0 {
+		testsSet = nil
+	}
+
+	return testsSet, argosId
+}
+
+func defaultTrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
 	if event.ChatId != nil && strings.Contains(*(*event).ChatId, ":") {
 		testsSet, _ := GetWantedTests(event)
 		approvedProdTests := make(map[string]bool)
+
 		for test, _ := range testsSet {
 			switch test {
 			case "FlowStatus":
@@ -294,7 +311,11 @@ func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
 	return "", nil
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
+	return trcdbChatMessageHandlerFunc(event)
+}
+
+func chat_receiver(chat_receive_chan chan *core.ChatMsg) {
 	for {
 		event := <-chat_receive_chan
 		switch {
@@ -313,7 +334,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
 			configContext.Log.Println("Received trcdb request.")
-			processTrcdb((*event).TrcdbExchange)
+			ProcessTrcdb((*event).TrcdbExchange)
 			handledResponse := "Handled Trcdb request successfully"
 			(*event).Response = &handledResponse
 			configContext.Log.Println("Sending all test results back to kernel.")
@@ -341,7 +362,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 	}
 }
 
-func processTrcdb(trcdbExchange *core.TrcdbExchange) {
+func ProcessTrcdb(trcdbExchange *core.TrcdbExchange) {
 	if tfmContext == nil {
 		configContext.Log.Printf("trcdb - Request receive before initialization.")
 		return
@@ -351,6 +372,7 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 		return
 	}
 	if len(trcdbExchange.Flows) > 0 {
+		tfmContext.WaitAllFlowsLoaded()
 		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
 		if tfCtx == nil {
 			configContext.Log.Println("No flow context available for TrcdbExchange processing")
@@ -363,6 +385,10 @@ func processTrcdb(trcdbExchange *core.TrcdbExchange) {
 		if len(trcdbExchange.Response.Rows) == 0 {
 			configContext.Log.Println("TrcdbExchange operation did not get any results.  returning empty response.")
 		}
+	} else {
+		configContext.Log.Println("No flow specified for TrcdbExchange processing")
+		trcdbExchange.Response = core.TrcdbResponse{}
+		return
 	}
 }
 
@@ -372,7 +398,7 @@ func start(pluginName string) {
 		return
 	}
 
-	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+	dfstat = core.InitDataFlow(nil, configContext.ArgosId, false)
 	dfstat.UpdateDataFlowStatistic("System",
 		pluginName,
 		"Start up",
@@ -383,8 +409,8 @@ func start(pluginName string) {
 		})
 	send_dfstat()
 	if configContext.CmdSenderChan != nil {
-		*configContext.CmdSenderChan <- tccore.KernelCmd{
-			Command: tccore.PLUGIN_EVENT_START,
+		*configContext.CmdSenderChan <- core.KernelCmd{
+			Command: core.PLUGIN_EVENT_START,
 		}
 		configContext.Log.Println("trcdb reported startup.")
 	} else {
@@ -404,18 +430,24 @@ func stop(pluginName string) {
 			"0",
 			1, func(msg string, err error) {
 				if err != nil {
-					configContext.Log.Println(tccore.SanitizeForLogging(err.Error()))
+					configContext.Log.Println(core.SanitizeForLogging(err.Error()))
 				} else {
-					configContext.Log.Println(tccore.SanitizeForLogging(msg))
+					configContext.Log.Println(core.SanitizeForLogging(msg))
 				}
 			})
 		send_dfstat()
-		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
+		*configContext.CmdSenderChan <- core.KernelCmd{PluginName: pluginName, Command: core.PLUGIN_EVENT_STOP}
 	}
 	dfstat = nil
 }
 
-func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
+func GetConfigContext(pluginName string) *core.ConfigContext { return configContext }
+
+func PostInit(configContext *core.ConfigContext) {
+	configContext.Start = start
+	sender = *configContext.ErrorChan
+	go receiver(*configContext.CmdReceiverChan)
+}
 
 func GetConfigPaths(pluginName string) []string {
 	return []string{
@@ -423,51 +455,94 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
+func Init(pluginName string, properties *map[string]any) {
+	var err error
+
+	configContext, err = core.Init(properties,
+		core.TRCSHHIVEK_CERT,
+		core.TRCSHHIVEK_KEY,
+		"",           // No additional config file used/managed by the trcdb plugin itself.
+		"hiveplugin", // Categorize as hiveplugin
+		start,
+		receiver,
+		chat_receiver,
+	)
+	if err != nil {
+		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
+		return
+	}
+	if _, ok := (*properties)[flowcore.HARBINGER_INTERFACE_CONFIG]; !ok {
+		configContext.Log.Println("Missing common config components")
+		return
+	}
+	if tfmCtx, ok := (*properties)[core.TRCDB_RESOURCE].(flowcore.FlowMachineContext); ok {
+		tfmContext = tfmCtx
+	} else {
+		configContext.Log.Println("No flow context available for trcdb plugin.")
+		return
+	}
+}
+
+func GetPluginMessages(pluginName string) []string {
+	return []string{}
+}
+
 // ProcessFlowController - override to provide a custom flow controller.  You will need a custom
 // flow controller if you define any additional flows other than the default flows:
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
-	// switch tfContext.GetFlowHeader().FlowName() {
-	// case flowcore.ArgosSociiFlow.TableName():
-	// 	tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
-	// default:
-	// 	return errors.New("Flow not implemented: " + tfContext.GetFlowHeader().FlowName())
-	// }
+	switch tfContext.GetFlowHeader().FlowName() {
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
+		return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
+	case flowcore.ArgosSociiFlow.TableName():
+		tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
+		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+	}
 
-	return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+	return errors.New("flow not implemented")
 }
 
 func GetDatabaseName() string {
 	return "TrcDb"
 }
+
 func GetFlowDatabaseName() string {
-	return "FlumeDb"
+	return "FlumeDatabase"
 }
 
 func GetFlowMachineTemplates() map[string]any {
-	flowMachineTemplates := map[string]any{}
-	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
-	}
-	flowMachineTemplates["flumeTemplatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	pluginEnvConfig := map[string]any{}
+	if prod.IsProd() {
+		pluginEnvConfig["templatePath"] = []string{
+			"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		}
+	} else {
+		pluginEnvConfig["templatePath"] = []string{
+			"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		}
 	}
 
-	return flowMachineTemplates
+	pluginEnvConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	}
+	return pluginEnvConfig
 }
 
 func GetFlowMachineTemplatesHive() map[string]any {
-	flowMachineTemplates := map[string]any{}
-	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+	pluginEnvConfig := map[string]any{}
+	pluginEnvConfig["templatePath"] = []string{
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
 	}
-	flowMachineTemplates["flumeTemplatePath"] = []string{
+	pluginEnvConfig["flumeTemplatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
 	}
+	// Add connections.
+	pluginEnvConfig["connectionPath"] = []string{
+		"trc_templates/TrcVault/Database/config.yml.tmpl", // Connections to databases
+		"trc_templates/TrcVault/Identity/config.yml.tmpl", // Connections to identity service
+	}
 
-	return flowMachineTemplates
+	return pluginEnvConfig
 }
 
 func IsSupportedFlow(flow string) bool {
@@ -479,21 +554,19 @@ func IsHiveSupportedFlow(flow string) bool {
 }
 
 func GetFlowMachineTemplatesEditor() map[string]any {
-	flowMachineTemplates := map[string]any{}
-	flowMachineTemplates["templatePath"] = []string{
-		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
-		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                 // implemented.
+	pluginEnvConfig := map[string]any{}
+	pluginEnvConfig["templatePath"] = []string{
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
 	}
-	flowMachineTemplates["flumeTemplatePath"] = []string{
+	pluginEnvConfig["flumeTemplatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
 	}
-
-	return flowMachineTemplates
+	return pluginEnvConfig
 }
 
 func GetBusinessFlows() []flowcore.FlowDefinition {
 	// Not implemented for hive infrastructure yet
-	// return tccutil.GetAdditionalFlows()
 	return []flowcore.FlowDefinition{}
 }
 
@@ -512,7 +585,6 @@ func TestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowco
 func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
 	var flowMachineTemplatesFunc func() map[string]any
 	var isSupportedFlow func(flowName string) bool
-
 	if coreConfig != nil && coreConfig.IsEditor {
 		flowMachineTemplatesFunc = GetFlowMachineTemplatesEditor
 		isSupportedFlow = IsSupportedFlow
@@ -556,42 +628,4 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 		FlowController:      ProcessFlowController,
 		TestFlowController:  TestFlowController,
 	}
-}
-
-func PostInit(configContext *tccore.ConfigContext) {
-	configContext.Start = start
-	sender = *configContext.ErrorChan
-	go receiver(*configContext.CmdReceiverChan)
-}
-
-func Init(pluginName string, properties *map[string]any) {
-	var err error
-
-	configContext, err = tccore.Init(properties,
-		tccore.TRCSHHIVEK_CERT,
-		tccore.TRCSHHIVEK_KEY,
-		"",           // No additional config file used/managed by the trcdb plugin itself.
-		"hiveplugin", // Categorize as hiveplugin
-		start,
-		receiver,
-		chat_receiver,
-	)
-	if err != nil {
-		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
-		return
-	}
-	if _, ok := (*properties)[flowcore.HARBINGER_INTERFACE_CONFIG]; !ok {
-		configContext.Log.Println("Missing common config components")
-		return
-	}
-	if tfmCtx, ok := (*properties)[tccore.TRCDB_RESOURCE].(flowcore.FlowMachineContext); ok {
-		tfmContext = tfmCtx
-	} else {
-		configContext.Log.Println("No flow context available for trcdb plugin.")
-		return
-	}
-}
-
-func GetPluginMessages(pluginName string) []string {
-	return []string{}
 }
