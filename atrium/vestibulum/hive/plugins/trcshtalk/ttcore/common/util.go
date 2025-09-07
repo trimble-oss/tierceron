@@ -3,9 +3,6 @@ package common
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -43,21 +40,6 @@ func InitServer(port int, certBytes, keyBytes []byte) (net.Listener, *grpc.Serve
 	}
 	g := grpc.NewServer(grpc.Creds(creds))
 	return lis, g, nil
-}
-
-// BuildClientConn dials a TLS gRPC server using a provided server cert (PEM).
-func BuildClientConn(serverName string, port int, certPEM []byte) (*grpc.ClientConn, error) {
-	block, _ := pem.Decode(certPEM)
-	if block == nil {
-		return nil, errors.New("invalid cert pem")
-	}
-	xc, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return nil, err
-	}
-	pool := x509.NewCertPool()
-	pool.AddCert(xc)
-	return grpc.Dial(fmt.Sprintf("%s:%d", serverName, port), grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{ServerName: serverName, RootCAs: pool, InsecureSkipVerify: true})))
 }
 
 // Adapter func types to let ttcore provide its context-specific logging / channels without circular deps.
