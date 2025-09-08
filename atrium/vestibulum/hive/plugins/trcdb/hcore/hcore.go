@@ -15,10 +15,8 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	coreprod "github.com/trimble-oss/tierceron-core/v2/prod"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/dataflowstatistics"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
@@ -28,14 +26,12 @@ var tfmContext flowcore.FlowMachineContext
 var sender chan error
 var dfstat *core.TTDINode
 
-var isProd bool = false
-
 func SetProd(prod bool) {
-	isProd = prod
+	coreprod.SetProd(prod)
 }
 
 func IsProd() bool {
-	return isProd
+	return coreprod.IsProd()
 }
 
 func receiver(receive_chan chan core.KernelCmd) {
@@ -492,11 +488,7 @@ func GetPluginMessages(pluginName string) []string {
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	switch tfContext.GetFlowHeader().FlowName() {
-	case flowcore.DataFlowStatConfigurationsFlow.TableName():
-		return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-	case flowcore.ArgosSociiFlow.TableName():
-		tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
-		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
+	// TODO: implement custom flows here.
 	}
 
 	return errors.New("flow not implemented")
@@ -512,7 +504,7 @@ func GetFlowDatabaseName() string {
 
 func GetFlowMachineTemplates() map[string]any {
 	pluginEnvConfig := map[string]any{}
-	if prod.IsProd() {
+	if IsProd() { // Use local IsProd function
 		pluginEnvConfig["templatePath"] = []string{
 			"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
 		}
