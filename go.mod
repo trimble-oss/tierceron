@@ -37,7 +37,7 @@ require (
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	github.com/trimble-oss/tierceron-hat v1.2.10
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250907211156-570c6d0793d6
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20250418225747-d9d4ce87f4c0
