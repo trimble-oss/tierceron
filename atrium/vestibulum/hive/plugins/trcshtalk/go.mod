@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3

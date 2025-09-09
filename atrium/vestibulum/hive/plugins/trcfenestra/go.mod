@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/trimble-oss/tierceron v1.44.3

@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
