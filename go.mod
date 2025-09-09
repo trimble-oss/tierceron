@@ -267,7 +267,7 @@ require (
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
-replace github.com/cespare/xxhash => github.com/joel-rieke/xxhash v1.1.0-patch
+replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.0
 
 replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 
