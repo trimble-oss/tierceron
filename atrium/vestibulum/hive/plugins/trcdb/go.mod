@@ -24,4 +24,4 @@ require (
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
