@@ -120,7 +120,7 @@ func (tl *TrcDBServerEventListener) QueryStarted(query string) {
 }
 
 func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
-	if success && (strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete")) {
+	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
 		// Workaround: Vitess to the rescue.
@@ -198,14 +198,16 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 
 						}
 					}*/
-				for _, tableExpr := range sqlDelete.TableExprs {
-					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
-						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
-							tableName = tableNameType.Name.String()
-							flows = append(flows, tableName)
-							changeLock.Lock()
-							trcflowcore.TriggerChangeChannel(tableName)
-							changeLock.Unlock()
+				if success {
+					for _, tableExpr := range sqlDelete.TableExprs {
+						if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
+							if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
+								tableName = tableNameType.Name.String()
+								flows = append(flows, tableName)
+								changeLock.Lock()
+								trcflowcore.TriggerChangeChannel(tableName)
+								changeLock.Unlock()
+							}
 						}
 					}
 				}
@@ -225,9 +227,11 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 		}
 		tl.TfmContext.BitLock.Unlock(queryMask)
 
-		changeLock.Lock()
-		// Main query entry point for changes to any tables... notification follows.
-		trcflowcore.TriggerAllChangeChannel(tableName, changeIds)
-		changeLock.Unlock()
+		if success {
+			changeLock.Lock()
+			// Main query entry point for changes to any tables... notification follows.
+			trcflowcore.TriggerAllChangeChannel(tableName, changeIds)
+			changeLock.Unlock()
+		}
 	}
 }
