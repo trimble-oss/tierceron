@@ -2,6 +2,7 @@ package flumen
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -28,6 +29,9 @@ func (t *TrcDBServerEventListener) ClientConnected() {}
 func (tl *TrcDBServerEventListener) ClientDisconnected() {}
 
 func (tl *TrcDBServerEventListener) QueryStarted(query string) {
+	if tl == nil || tl.TfmContext == nil {
+		return
+	}
 	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
@@ -58,39 +62,42 @@ func (tl *TrcDBServerEventListener) QueryStarted(query string) {
 				// 	}
 				// }
 			} else if sqlInsert, isInsertQuery := stmt.(*sqlparser.Insert); isInsertQuery {
-				flowName = sqlInsert.Table.Name.String()
-				var queryMask uint64 = 0
-				flowID := tl.TfmContext.GetFlowID(flowcore.FlowNameType(flowName))
-				if flowID != nil {
-					queryMask = queryMask ^ *flowID
-				} else {
-					tl.TfmContext.Log("Could not find flow ID for flow: "+string(flowName), errors.New("Could not find flow ID for flow"))
-					return
-				}
-				tl.TfmContext.BitLock.Lock(queryMask)
-
-			} else if sqlUpdate, isUpdateQuery := stmt.(*sqlparser.Update); isUpdateQuery {
-				var queryMask uint64 = 0
-				var flows []string // List of flows used in query
-				for _, tableExpr := range sqlUpdate.TableExprs {
-					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
-						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
-							flowName = tableNameType.Name.String()
-							flows = append(flows, flowName)
-						}
-					}
-				}
-
-				for _, flowName := range flows {
+				if sqlInsert != nil {
+					flowName = sqlInsert.Table.Name.String()
+					var queryMask uint64 = 0
 					flowID := tl.TfmContext.GetFlowID(flowcore.FlowNameType(flowName))
 					if flowID != nil {
 						queryMask = queryMask ^ *flowID
 					} else {
-						tl.TfmContext.Log("Could not find flow ID for flow: "+string(flowName), errors.New("Could not find flow ID for flow"))
+						flowNameStr := fmt.Sprintf("%v", flowName)
+						tl.TfmContext.Log("Could not find flow ID for flow: "+flowNameStr, errors.New("could not find flow ID for flow"))
 					}
+					tl.TfmContext.BitLock.Lock(queryMask)
 				}
-				tl.TfmContext.BitLock.Lock(queryMask)
+			} else if sqlUpdate, isUpdateQuery := stmt.(*sqlparser.Update); isUpdateQuery {
+				if sqlUpdate != nil && sqlUpdate.TableExprs != nil {
+					var queryMask uint64 = 0
+					var flows []string // List of flows used in query
+					for _, tableExpr := range sqlUpdate.TableExprs {
+						if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
+							if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
+								flowName = tableNameType.Name.String()
+								flows = append(flows, flowName)
+							}
+						}
+					}
 
+					for _, flowName := range flows {
+						flowID := tl.TfmContext.GetFlowID(flowcore.FlowNameType(flowName))
+						if flowID != nil {
+							queryMask = queryMask ^ *flowID
+						} else {
+							flowNameStr := fmt.Sprintf("%v", flowName)
+							tl.TfmContext.Log("Could not find flow ID for flow: "+flowNameStr, errors.New("could not find flow ID for flow"))
+						}
+					}
+					tl.TfmContext.BitLock.Lock(queryMask)
+				}
 				// TODO: grab changeId for updates as well.
 			} else if sqlDelete, isDeleteQuery := stmt.(*sqlparser.Delete); isDeleteQuery {
 				var queryMask uint64 = 0
@@ -109,17 +116,25 @@ func (tl *TrcDBServerEventListener) QueryStarted(query string) {
 					if flowID != nil {
 						queryMask = queryMask ^ *flowID
 					} else {
-						tl.TfmContext.Log("Could not find flow ID for flow: "+string(flowName), errors.New("Could not find flow ID for flow"))
-						return
+						flowNameStr := fmt.Sprintf("%v", flowName)
+						tl.TfmContext.Log("Could not find flow ID for flow: "+flowNameStr, errors.New("could not find flow ID for flow"))
 					}
 				}
 				tl.TfmContext.BitLock.Lock(queryMask)
+			}
+		} else {
+			// Log the error but don't panic
+			if tl.TfmContext != nil && tl.TfmContext.DriverConfig != nil {
+				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("QueryStarted Failed to parse query: %s, error: %v\n", query, err)
 			}
 		}
 	}
 }
 
 func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, duration time.Duration) {
+	if tl == nil || tl.TfmContext == nil {
+		return
+	}
 	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
@@ -152,8 +167,11 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				// 	}
 				// }
 			} else if sqlInsert, isInsertQuery := stmt.(*sqlparser.Insert); isInsertQuery {
-				tableName = sqlInsert.Table.Name.String()
-				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %s %v\n", tableName, success)
+				if sqlInsert != nil {
+					tableName = sqlInsert.Table.Name.String()
+					tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %s %v\n", tableName, success)
+					flows = append(flows, tableName)
+				}
 				// Query with bindings may not be deadlock safe.
 				// Disable this for now and hope the triggers work.
 				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
@@ -168,17 +186,19 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				// 		}
 				// 	}
 				// }
-				flows = append(flows, tableName)
 			} else if sqlUpdate, isUpdateQuery := stmt.(*sqlparser.Update); isUpdateQuery {
-				for _, tableExpr := range sqlUpdate.TableExprs {
-					if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
-						if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
-							tableName = tableNameType.Name.String()
-							flows = append(flows, tableName)
+				if sqlUpdate != nil && sqlUpdate.TableExprs != nil {
+					for _, tableExpr := range sqlUpdate.TableExprs {
+						if aliasTableExpr, aliasTableExprOk := tableExpr.(*sqlparser.AliasedTableExpr); aliasTableExprOk {
+							if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
+								tableName = tableNameType.Name.String()
+								flows = append(flows, tableName)
+							}
 						}
 					}
+					tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %v %v\n", flows, success)
 				}
-				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %v %v\n", flows, success)
+
 				// TODO: grab changeId for updates as well.
 			} else if sqlDelete, isDeleteQuery := stmt.(*sqlparser.Delete); isDeleteQuery {
 				//Grabbing change Ids for writeback
@@ -204,9 +224,6 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 							if tableNameType, tableNameTypeOk := aliasTableExpr.Expr.(sqlparser.TableName); tableNameTypeOk {
 								tableName = tableNameType.Name.String()
 								flows = append(flows, tableName)
-								changeLock.Lock()
-								trcflowcore.TriggerChangeChannel(tableName)
-								changeLock.Unlock()
 							}
 						}
 					}
@@ -214,20 +231,28 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %v %v\n", flows, success)
 
 			}
-		}
-		var queryMask uint64 = 0
-		for _, flowName := range flows {
-			flowID := tl.TfmContext.GetFlowID(flowcore.FlowNameType(flowName))
-			if flowID != nil {
-				queryMask = queryMask ^ *flowID
-			} else {
-				tl.TfmContext.Log("Could not find flow ID for flow: "+string(flowName), errors.New("Could not find flow ID for flow"))
-				return
+		} else {
+			// Log the error but don't panic
+			if tl.TfmContext != nil && tl.TfmContext.DriverConfig != nil {
+				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("QueryCompleted Failed to parse query: %s, error: %v\n", query, err)
 			}
 		}
-		tl.TfmContext.BitLock.Unlock(queryMask)
 
-		if success {
+		if len(flows) > 0 {
+			var queryMask uint64 = 0
+			for _, flowName := range flows {
+				flowID := tl.TfmContext.GetFlowID(flowcore.FlowNameType(flowName))
+				if flowID != nil {
+					queryMask = queryMask ^ *flowID
+				} else {
+					flowNameStr := fmt.Sprintf("%v", flowName)
+					tl.TfmContext.Log("Could not find flow ID for flow: "+flowNameStr, errors.New("could not find flow ID for flow"))
+				}
+			}
+			tl.TfmContext.BitLock.Unlock(queryMask)
+		}
+
+		if success && tableName != "" {
 			changeLock.Lock()
 			// Main query entry point for changes to any tables... notification follows.
 			trcflowcore.TriggerAllChangeChannel(tableName, changeIds)
