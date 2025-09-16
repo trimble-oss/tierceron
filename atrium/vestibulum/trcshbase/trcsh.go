@@ -1556,7 +1556,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" ||
-			prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) {
+			(!kernelopts.BuildOptions.IsKernel() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)) {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 			trcshDriverConfig.DriverConfig.ReadMemCache = false
 			trcshDriverConfig.DriverConfig.SubOutputMemCache = false
