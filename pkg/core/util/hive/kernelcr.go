@@ -673,6 +673,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				} else {
 					if pluginToolConfig["trctype"] == "trcshkubeservice" || pluginToolConfig["trctype"] == "trcflowpluginservice" {
+						driverConfig.CoreConfig.Log.Printf("Preparing to load HARBINGER_INTERFACE_CONFIG\n")
+
 						envArg := fmt.Sprintf("-env=%s", driverConfig.CoreConfig.EnvBasis)
 						restrictedMappingSub := append([]string{"", envArg}, paths[0])
 						ctl := "pluginrun"
@@ -709,7 +711,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							driverConfig)
 
 						if configErr != nil {
-							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s using token named: %s\n", pluginHandler.Name, wantedTokenName)
+							driverConfig.CoreConfig.Log.Printf("Could not prepare certificates for plugin: %s using token named: %s\n", pluginHandler.Name, wantedTokenName)
 							return
 						}
 
