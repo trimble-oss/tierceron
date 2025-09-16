@@ -68,6 +68,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 
 		if driverConfig.SubOutputMemCache {
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
+			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Billy File has been written to %s\n", templateFile))
 		} else {
 			err = os.MkdirAll(dirPath, os.ModePerm)
 			if err != nil {
@@ -93,8 +94,8 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Couldn't sync file: %s", templateFile), false)
 				continue
 			}
+			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s\n", templateFile))
 		}
-		eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s\n", templateFile))
 	}
 }
 
@@ -164,6 +165,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 
 			if driverConfig.SubOutputMemCache {
 				driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
+				eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Billy File has been written to %s.tmpl\n", dirPath+file+ext))
 			} else {
 				err = os.MkdirAll(dirPath, os.ModePerm)
 				if err != nil {
@@ -189,8 +191,8 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't sync file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
+				eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s.tmpl\n", dirPath+file+ext))
 			}
-			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s.tmpl\n", dirPath+file+ext))
 		}
 	}
 
