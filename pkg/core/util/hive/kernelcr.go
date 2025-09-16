@@ -666,7 +666,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					} else {
 						configuredCert, err := addToCache(path, driverConfig, mod)
 						if err != nil {
-							driverConfig.CoreConfig.Log.Printf("Unable to load cert: %v\n", err)
+							driverConfig.CoreConfig.Log.Printf("Unable to load cert: %v for plugin: %s\n", err, service)
 						} else {
 							serviceConfig[path] = *configuredCert
 						}
@@ -709,7 +709,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							driverConfig)
 
 						if configErr != nil {
-							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s error: %v\n", pluginHandler.Name, err)
+							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s using token named: %s\n", pluginHandler.Name, wantedTokenName)
 							return
 						}
 
@@ -728,13 +728,18 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 						flagset.String("env", "dev", "Environment to configure")
 						kernelEnvBasis = driverConfig.CoreConfig.EnvBasis
-						trcconfigbase.CommonMain(&kernelEnvBasis,
+						configErr = trcconfigbase.CommonMain(&kernelEnvBasis,
 							&kernelEnvBasis,
 							wantedTokenName, // tokenName
 							nil,             // regionPtr
 							flagset,
 							restrictedMappingConfig,
 							driverConfig)
+
+						if configErr != nil {
+							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s using token named: %s\n", pluginHandler.Name, wantedTokenName)
+							return
+						}
 
 						driverConfig.MemFs.ClearCache("./trc_templates")
 						driverConfig.MemFs.ClearCache("./deploy")
@@ -772,6 +777,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 										driverConfig.CoreConfig.Log.Printf("Unsupported secret values for plugin %s\n", service)
 										return
 									}
+								} else {
+									driverConfig.CoreConfig.Log.Printf("Critical error.  Missing config. Cannot load plugin %s\n", service)
+									return
 								}
 							}
 						}
@@ -878,11 +886,25 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				// auto auth will return token
 				// Create own driver config
 				if flowConfigs, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG]; ok {
+					driverConfig.CoreConfig.Log.Printf("Found HARBINGER_INTERFACE_CONFIG: %v", ok)
+
+					configMask := 0
+					const (
+						RATTAN_ROLE_MASK = 1 << 0 // 1
+						RATTAN_ENV_MASK  = 1 << 1 // 2
+						VAULT_ADDR_MASK  = 1 << 2 // 4
+					)
+
 					if flowMachineConfig, ok := flowConfigs.(map[string]any); ok {
 						if rattanRole, ok := flowMachineConfig["rattan_role"].(string); ok {
+							configMask |= RATTAN_ROLE_MASK
+
 							if rattanEnv, ok := flowMachineConfig["rattan_env"].(string); ok {
+								configMask |= RATTAN_ENV_MASK
 								if rattanAddress, ok := flowMachineConfig["vault_addr"].(string); ok {
+									configMask |= VAULT_ADDR_MASK
 									insecure := false
+									driverConfig.CoreConfig.Log.Printf("HARBINGER_INTERFACE_CONFIG requirements met.")
 
 									bootDriverConfig = &config.DriverConfig{
 										CoreConfig: &coreconfig.CoreConfig{
@@ -916,7 +938,23 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							}
 						}
 					}
+					var missingFields string
+					if configMask&RATTAN_ROLE_MASK == 0 {
+						missingFields += "rattan_role "
+					}
+					if configMask&RATTAN_ENV_MASK == 0 {
+						missingFields += "rattan_env "
+					}
+					if configMask&VAULT_ADDR_MASK == 0 {
+						missingFields += "vault_addr "
+					}
+					if configMask != (RATTAN_ROLE_MASK | RATTAN_ENV_MASK | VAULT_ADDR_MASK) {
+						driverConfig.CoreConfig.Log.Printf("Missing required fields in HARBINGER_INTERFACE_CONFIG: %s", missingFields)
+					}
+
 				} else {
+					// We think it went here...
+					driverConfig.CoreConfig.Log.Printf("WARNING: Missing HARBINGER_INTERFACE_CONFIG, using default driver config")
 					bootDriverConfig = driverConfig
 				}
 
