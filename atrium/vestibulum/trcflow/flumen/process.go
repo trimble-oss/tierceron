@@ -140,6 +140,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}
 
 		if services[i] == "VaultDatabase" || services[i] == "Identity" {
+			if services[i] == "VaultDatabase" && kernelopts.BuildOptions.IsKernel() {
+				// Kernel does not need this
+				continue
+			}
 			goMod.SectionName = "config"
 			goMod.SectionKey = "/Restricted/"
 		} else if services[i] == "SpiralDatabase" {
