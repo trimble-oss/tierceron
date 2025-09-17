@@ -930,6 +930,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 										// Satisfy requirements for flow machine.
 										// It expects a token named unrestricted.
 										// Although we'll hand it a restricted token for now.
+										// This is actually a config_token_plugin<rattanEnv> token, but naming it unrestricted...
 										rattanTokenAlias := fmt.Sprintf("config_token_%s_unrestricted", rattanEnv)
 										bootDriverConfig.CoreConfig.TokenCache.AddToken(rattanTokenAlias, rattanToken)
 										currentTokenNamePtr = &rattanTokenAlias
