@@ -58,6 +58,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/ftbe/dawg v0.0.0-20131228112149-aadae8139481 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
@@ -266,7 +267,7 @@ require (
 	golang.org/x/tools v0.32.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
@@ -275,6 +276,14 @@ require (
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
 //replace github.com/square/go-jose.v2 => ../../go-jose
+exclude (
+	gopkg.in/square/go-jose.v2 v2.3.1
+	gopkg.in/square/go-jose.v2 v2.4.0
+	gopkg.in/square/go-jose.v2 v2.4.1
+	gopkg.in/square/go-jose.v2 v2.5.1
+)
+
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.1
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
