@@ -283,7 +283,7 @@ exclude (
 	gopkg.in/square/go-jose.v2 v2.5.1
 )
 
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.1
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.3
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
