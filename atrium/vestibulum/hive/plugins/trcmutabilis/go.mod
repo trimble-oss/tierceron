@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/hanwen/go-fuse/v2 v2.7.2
-	github.com/trimble-oss/tierceron v1.38.9
+	github.com/trimble-oss/tierceron v1.45.3
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
@@ -14,9 +14,18 @@ require (
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
+
+exclude (
+	gopkg.in/square/go-jose.v2 v2.3.1
+	gopkg.in/square/go-jose.v2 v2.4.0
+	gopkg.in/square/go-jose.v2 v2.4.1
+	gopkg.in/square/go-jose.v2 v2.5.1
+	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.3

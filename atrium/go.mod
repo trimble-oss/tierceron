@@ -37,7 +37,7 @@ require (
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron v1.44.3
+	github.com/trimble-oss/tierceron v1.45.3
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
@@ -267,7 +267,7 @@ require (
 	golang.org/x/tools v0.32.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
+	gopkg.in/square/go-jose.v2 v2.0.0-00010101000000-000000000000 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
@@ -281,6 +281,7 @@ exclude (
 	gopkg.in/square/go-jose.v2 v2.4.0
 	gopkg.in/square/go-jose.v2 v2.4.1
 	gopkg.in/square/go-jose.v2 v2.5.1
+	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
 replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.3

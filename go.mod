@@ -263,7 +263,7 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.0.0-00010101000000-000000000000 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.0 // indirect
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
