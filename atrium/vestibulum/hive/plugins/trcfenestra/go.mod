@@ -88,4 +88,4 @@ exclude (
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.3
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
