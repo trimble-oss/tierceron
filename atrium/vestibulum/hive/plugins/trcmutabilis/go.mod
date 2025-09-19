@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/hanwen/go-fuse/v2 v2.7.2
-	github.com/trimble-oss/tierceron v1.45.2
+	github.com/trimble-oss/tierceron v1.45.3
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
