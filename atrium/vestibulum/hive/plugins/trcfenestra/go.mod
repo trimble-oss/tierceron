@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenest
 go 1.25.1
 
 require (
-	github.com/trimble-oss/tierceron v1.44.3
+	github.com/trimble-oss/tierceron v1.45.2
 	github.com/trimble-oss/tierceron-core/v2 v2.8.3
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
@@ -80,10 +80,12 @@ require (
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
 
 exclude (
+	gopkg.in/square/go-jose.v2 v2.0.0-00010101000000-000000000000
 	gopkg.in/square/go-jose.v2 v2.3.1
 	gopkg.in/square/go-jose.v2 v2.4.0
 	gopkg.in/square/go-jose.v2 v2.4.1
 	gopkg.in/square/go-jose.v2 v2.5.1
+	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
 replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.3
