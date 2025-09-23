@@ -103,6 +103,7 @@ var _ flowcore.FlowMachineContext = (*TrcFlowMachineContext)(nil)
 func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
+
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
 	tfmContext.FlowMapLock.RLock()
 	defer tfmContext.FlowMapLock.RUnlock()
@@ -286,7 +287,8 @@ func (tfmContext *TrcFlowMachineContext) AddTableSchema(tableSchemaI any, tcflow
 				Name:       col.Name,
 				Type:       ColumnTypeConverter(col.Type),
 				Source:     col.Source,
-				PrimaryKey: col.PrimaryKey})
+				PrimaryKey: col.PrimaryKey,
+			})
 		}
 		tableSchema = sqle.NewPrimaryKeySchema(schema)
 	} else if metaSchema, ok := tableSchemaI.(sqle.PrimaryKeySchema); ok {
@@ -344,21 +346,22 @@ func (tfmContext *TrcFlowMachineContext) CreateTable(name string, schemaI any, c
 // Set up call back to enable a trigger to track
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowcore.FlowContext,
-	identityColumnNames []string) {
+	identityColumnNames []string,
+) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	tfmContext.GetTableModifierLock().Lock()
 
 	// Workaround triggers not firing: 9/30/2022
 	tfContext.ChangeIdKeys = identityColumnNames
 
-	//Create triggers
+	// Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
 	var delTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger_" + tfContext.FlowHeader.TableName()
 	updTrigger.Name = "tcUpdateTrigger_" + tfContext.FlowHeader.TableName()
 	delTrigger.Name = "tcDeleteTrigger_" + tfContext.FlowHeader.TableName()
-	//Prevent duplicate triggers from existing
+	// Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
 		tfmContext.GetTableModifierLock().Unlock()
@@ -386,14 +389,14 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowc
 // whenever a row in a table changes...
 func (tfmContext *TrcFlowMachineContext) CreateCompositeTableTriggers(tcflowContext flowcore.FlowContext, iden1 string, iden2 string, insertT func(string, string, string, string) string, updateT func(string, string, string, string) string, deleteT func(string, string, string, string) string) {
 	tfContext := tcflowContext.(*TrcFlowContext)
-	//Create triggers
+	// Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
 	var delTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger_" + tfContext.FlowHeader.TableName()
 	updTrigger.Name = "tcUpdateTrigger_" + tfContext.FlowHeader.TableName()
 	delTrigger.Name = "tcDeleteTrigger_" + tfContext.FlowHeader.TableName()
-	//Prevent duplicate triggers from existing
+	// Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
 		tfmContext.GetTableModifierLock().Unlock()
@@ -425,17 +428,18 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(tcflowConte
 	iden3 string,
 	insertT func(string, string, string, string, string) string,
 	updateT func(string, string, string, string, string) string,
-	deleteT func(string, string, string, string, string) string) {
+	deleteT func(string, string, string, string, string) string,
+) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
-	//Create triggers
+	// Create triggers
 	var updTrigger sqle.TriggerDefinition
 	var insTrigger sqle.TriggerDefinition
 	var delTrigger sqle.TriggerDefinition
 	insTrigger.Name = "tcInsertTrigger_" + tfContext.FlowHeader.TableName()
 	updTrigger.Name = "tcUpdateTrigger_" + tfContext.FlowHeader.TableName()
 	delTrigger.Name = "tcDeleteTrigger_" + tfContext.FlowHeader.TableName()
-	//Prevent duplicate triggers from existing
+	// Prevent duplicate triggers from existing
 	existingTriggers, err := tfmContext.TierceronEngine.Database.GetTriggers(tfmContext.TierceronEngine.Context)
 	if err != nil {
 		tfmContext.GetTableModifierLock().Unlock()
@@ -459,7 +463,8 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(tcflowConte
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flowcore.FlowContext,
-	flowTemplatePath string) (map[string]any, bool) {
+	flowTemplatePath string,
+) (map[string]any, bool) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	// Get the flow configuration from vault.
 	flowProject, flowService, _, flowConfigTemplatePath := coreutil.GetProjectService("", "trc_templates", flowTemplatePath)
@@ -497,8 +502,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 	indexColumnNames any,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
-	syncPushRemoteEnabled bool) {
-
+	syncPushRemoteEnabled bool,
+) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	syncPushRemoteEnabled = syncPushRemoteEnabled || tfContext.GetFlowSyncMode() == "push"
 	shouldSyncFunc := func(flowcore.SyncRemoteMode) bool { return false }
@@ -603,8 +608,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
 	bootStrap bool,
-	seedInitCompleteChan chan bool) {
-
+	seedInitCompleteChan chan bool,
+) {
 	if bootStrap {
 		removedTriggers := []sqle.TriggerDefinition{}
 		tfmContext.GetTableModifierLock().Lock()
@@ -632,7 +637,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 				tfmContext.GetTableModifierLock(),
 			)
 		*/
-		tfmContext.seedTrcDbFromVault(tfContext) //New implementation - direct approach
+		tfmContext.seedTrcDbFromVault(tfContext) // New implementation - direct approach
 
 		tfmContext.GetTableModifierLock().Lock()
 		for _, trigger := range removedTriggers {
@@ -686,8 +691,8 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	indexColumnNames any,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
-	sqlState bool) {
-
+	sqlState bool,
+) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	// 2 rows (on startup always):
@@ -704,7 +709,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	go func() {
 		tfContext.ContextNotifyChan <- true
 	}()
-	//First row here:
+	// First row here:
 
 	// tfContext.DataFlowStatistic["FlowState"] = ""
 	// tfContext.DataFlowStatistic["flowName"] = ""
@@ -713,7 +718,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 	// tfContext.DataFlowStatistic["mode"] = ""
 	var dfstat *core.TTDINode = nil
 	if tfContext.WantsInitNotify && tfContext.FlowHeader.TableName() != flowcore.TierceronControllerFlow.FlowName() {
-		dfstat = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) //Initializing dataflow
+		dfstat = core.InitDataFlow(nil, tfContext.FlowHeader.TableName(), true) // Initializing dataflow
 		if tfContext.GetFlowStateAlias() != "" {
 			dfstat.UpdateDataFlowStatistic("Flows", tfContext.GetFlowStateAlias(), "Loading", "1", 1, tfmContext.Log)
 		} else {
@@ -769,13 +774,13 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		}
 	}
 
-	//df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
+	// df.FinishStatistic(tfmContext, tfContext, tfContext.GoMod, ...)
 	tfmContext.FlowControllerLock.Lock()
 	if tfmContext.InitConfigWG != nil {
 		tfmContext.InitConfigWG.Done()
 	}
 	tfmContext.FlowControllerLock.Unlock()
-	if tfContext.WantsInitNotify { //Alert interface that the table is ready for permissions
+	if tfContext.WantsInitNotify { // Alert interface that the table is ready for permissions
 		tfContext.WantsInitNotify = false
 		tfContext.Preloaded = true
 		tfContext.TablesChangesInitted = false
@@ -840,7 +845,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 	changed bool,
 	operation string,
 	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
-	flowtestState string) (*core.TrcdbExchange, bool) {
+	flowtestState string,
+) (*core.TrcdbExchange, bool) {
 	// Chewbacca:
 	if len(trcdbExchange.Flows) == 0 {
 		tfmContext.Log("No flow names provided for CallDBQueryN.", errors.New("No flow names provided for CallDBQueryN"))
@@ -1098,8 +1104,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 	changed bool,
 	operation string,
 	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
-	flowtestState string) ([][]any, bool) {
-
+	flowtestState string,
+) ([][]any, bool) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	if queryMap["TrcQuery"].(string) == "" {
@@ -1310,7 +1316,8 @@ func convertUntypedExpressionMap(bindingsI map[string]any) map[string]sqle.Expre
 func (tfmContext *TrcFlowMachineContext) GetDbConn(tcflowContext flowcore.FlowContext,
 	dbUrl string,
 	username string,
-	sourceDBConfig map[string]any) (any, error) {
+	sourceDBConfig map[string]any,
+) (any, error) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	return trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, dbUrl,
 		username,
@@ -1321,20 +1328,23 @@ func (tfmContext *TrcFlowMachineContext) GetDbConn(tcflowContext flowcore.FlowCo
 
 func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext flowcore.FlowContext, region string) (any, error) {
 	tfContext := tcflowContext.(*TrcFlowContext)
-	sqlConn := tfContext.RemoteDataSource["connection"].(*sql.DB)
-	if sqlConn == nil {
-		// dbsourceConn, err := trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, regionSource["dbsourceurl"].(string), regionSource["dbsourceuser"].(string),
-		// 	func() (string, error) {
-		// 		if _, ok := regionSource["dbsourcepassword"].(string); ok {
-		// 			return regionSource["dbsourcepassword"].(string), nil
-		// 		} else {
-		// 			return "", errors.New("missing password")
-		// 		}
-		// 	})
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// regionSource["connection"] = dbsourceConn
+	var sqlConn any
+	if regionSource, ok := tfContext.RemoteDataSource["region-"+region].(map[string]any); ok {
+		sqlConn = regionSource["connection"]
+		if sqlConn == nil || sqlConn.(*sql.DB) == nil {
+			dbsourceConn, err := trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, regionSource["dbsourceurl"].(string), regionSource["dbsourceuser"].(string),
+				func() (string, error) {
+					if _, ok := regionSource["dbsourcepassword"].(string); ok {
+						return regionSource["dbsourcepassword"].(string), nil
+					} else {
+						return "", errors.New("missing password")
+					}
+				})
+			if err != nil {
+				return nil, err
+			}
+			regionSource["connection"] = dbsourceConn
+		}
 	}
 	return sqlConn, nil
 }
@@ -1367,8 +1377,8 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 	vaultDatabaseConfig map[string]any, // TODO: actually use this to set up a mysql facade.
 	sourceDatabaseConnectionsMap map[string]map[string]any,
 	flow flowcore.FlowNameType,
-	flowType flowcore.FlowType) error {
-
+	flowType flowcore.FlowType,
+) error {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	// 	i. Init engine
@@ -1391,7 +1401,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 			var d time.Duration = 60
 			tfContext.RemoteDataSource["dbingestinterval"] = d
 		}
-		//if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
+		// if mysql.IsMysqlPullEnabled() || mysql.IsMysqlPushEnabled() { //Flag is now replaced by syncMode in controller
 		// Create remote data source with only what is needed.
 		if flow.FlowName() != flowcore.TierceronControllerFlow.TableName() {
 			if region, ok := sDC["dbsourceregion"].(string); ok {
@@ -1418,7 +1428,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					tfContext.RemoteDataSource["region-"+region].(map[string]any)["connection"] = dbsourceConn
 					tfContext.DataSourceRegions = append(tfContext.DataSourceRegions, region)
 
-					if region == "west" { //Sets west as default connection for non-region controlled flows.
+					if region == "west" { // Sets west as default connection for non-region controlled flows.
 						tfContext.RemoteDataSource["connection"] = dbsourceConn
 						tfContext.RemoteDataSource["dbsourceregion"] = region
 					}
@@ -1460,7 +1470,7 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 		return nil, readErr
 	}
 	if tfContext.Inserter == nil {
-		//Writes accumlated rows to the table.
+		// Writes accumlated rows to the table.
 		tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.FlowHeader.TableName())
 		if tableOk {
 			tfContext.Inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
@@ -1477,7 +1487,7 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 		if dataString, ok := columnData.(string); ok {
 			rowDataMap[columnName] = dataString
 		} else {
-			if columnData != nil { //Cover non strings if possible.
+			if columnData != nil { // Cover non strings if possible.
 				rowDataMap[columnName] = fmt.Sprintf("%v", columnData)
 				continue
 			}
@@ -1512,7 +1522,8 @@ func (tfmContext *TrcFlowMachineContext) DeliverTheStatistic(
 	id string,
 	indexPath string,
 	idName string,
-	vaultWriteBack bool) {
+	vaultWriteBack bool,
+) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfs, id, indexPath, idName, tfContext.Logger, vaultWriteBack)
 }
@@ -1527,7 +1538,6 @@ func (tfmContext *TrcFlowMachineContext) LoadBaseTemplate(
 }
 
 func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowContext, valueColumns map[string]string, secretColumns map[string]string) []any {
-
 	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.FlowHeader.TableName())
 	var table *sqlememory.Table
 
@@ -1599,9 +1609,9 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 					continue
 				}
 				if lmQuery != "" {
-					rows, _ := tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": lmQuery}, nil, true, "SELECT", nil, "") //Query to alert change channel
+					rows, _ := tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": lmQuery}, nil, true, "SELECT", nil, "") // Query to alert change channel
 					if len(rows) > 0 {
-						if WhichLastModified(rows[0][0], lm) { //True if table is more recent
+						if WhichLastModified(rows[0][0], lm) { // True if table is more recent
 							continue
 						}
 					}
@@ -1624,7 +1634,7 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 			row = append(row, iVar)
 		} else if _, svOk := secretColumns[column.Name]; !svOk {
 			var iVar any
-			if tcopts.BuildOptions.CheckIncomingAliasColumnName(column.Name) { //Specific case for controller
+			if tcopts.BuildOptions.CheckIncomingAliasColumnName(column.Name) { // Specific case for controller
 				iVar, _ = column.Type.Convert(row[0].(string))
 			} else {
 				iVar, _ = column.Type.Convert(column.Default.String())

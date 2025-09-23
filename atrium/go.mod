@@ -38,7 +38,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.45.3
-	github.com/trimble-oss/tierceron-core/v2 v2.8.3
+	github.com/trimble-oss/tierceron-core/v2 v2.8.4
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	gopkg.in/fsnotify.v1 v1.4.7
@@ -320,7 +320,7 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hc
 
 replace github.com/trimble-oss/tierceron => ../
 
-replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
+replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20230107141038-8bd28c2897c4
 
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
 

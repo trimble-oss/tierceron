@@ -185,8 +185,8 @@ const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"
 // Override to provide alternate fields to match on in your flows for comparing lastModified or
 // even other fields...
 func CompareLastModified(dfStatMapA map[string]any, dfStatMapB map[string]any) bool {
-	//Check if a & b are time.time
-	//Check if they match.
+	// Check if a & b are time.time
+	// Check if they match.
 	var lastModifiedA time.Time
 	var lastModifiedB time.Time
 	var timeErr error
@@ -279,7 +279,7 @@ func GetPluginRestrictedMappings() map[string][][]string {
 			[]string{"-templateFilter=Common/servicecert.crt,Common/servicekey.key,Hive/PluginHealthcheck,Hive/PluginHealthcheckBuild"},
 		},
 		"trcdb": {
-			[]string{"-templateFilter=Common/db_cert.pem,Common/db_key.pem,Hive/PluginTrcdb,Hive/PluginTrcdbBuild"},
+			[]string{"-templateFilter=Common/db_cert.pem,Common/servicecert.crt,Common/servicekey.key,Hive/PluginTrcdb,Hive/PluginTrcdbBuild"},
 		},
 		"rosea": {
 			[]string{"-templateFilter=Hive/PluginRosea,Hive/PluginRoseaBuild"},
