@@ -320,7 +320,7 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hc
 
 replace github.com/trimble-oss/tierceron => ../
 
-replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
+replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20230107141038-8bd28c2897c4
 
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
 
