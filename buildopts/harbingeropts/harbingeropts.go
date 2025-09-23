@@ -81,7 +81,7 @@ func engineQuery(engine *sqle.Engine, ctx *sqles.Context, query string) (string,
 				break
 			}
 			rowData := []any{}
-			if len(columns) == 1 && columns[0] == "__ok_result__" { //This is for insert statements
+			if len(columns) == 1 && columns[0] == "__ok_result__" { // This is for insert statements
 				okResult = true
 				if len(row) > 0 {
 					if sqlOkResult, ok := row[0].(sqles.OkResult); ok {
@@ -157,9 +157,9 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 	eUtils.LogInfo(driverConfig.CoreConfig, "Loading cert from vault.")
 	pwd, _ := os.Getwd()
 
-	//Grab certs
+	// Grab certs
 	driverConfig.CoreConfig.WantCerts = true
-	_, certData, certLoaded, ctErr := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_cert.pem.mf.tmpl", true, "Common", "db_cert", true, true)
+	_, certData, certLoaded, ctErr := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/servicecert.crt.mf.tmpl", true, "Common", "servicecert", true, true)
 	if ctErr != nil || !certLoaded || len(certData) == 0 {
 		if ctErr != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, ctErr.Error(), false)
@@ -167,7 +167,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		return errors.New("Failed to retrieve cert.")
 	}
 
-	_, keyData, keyLoaded, key_Err := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/db_key.pem.mf.tmpl", true, "Common", "db_key", true, true)
+	_, keyData, keyLoaded, key_Err := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/servicekey.key.mf.tmpl", true, "Common", "servicekey", true, true)
 	if ctErr != nil || !keyLoaded || len(keyData) == 0 {
 		if key_Err != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, key_Err.Error(), false)
@@ -190,7 +190,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		Address:  ":" + strings.TrimSpace(vaultDatabaseConfig["dbport"].(string)),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{key_pair},
-			//ClientAuth:         tls.RequireAndVerifyClientCert,
+			// ClientAuth:         tls.RequireAndVerifyClientCert,
 			ServerName:         strings.TrimSpace(strings.Split(vaultDatabaseConfig["vaddress"].(string), ":")[0]),
 			InsecureSkipVerify: insecure.IsInsecure(),
 			MinVersion:         tls.VersionTLS12,
@@ -225,14 +225,14 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		return serverErr
 	}
 
-	//Adding auth
+	// Adding auth
 	if okSourcePath, okDestPath := vaultDatabaseConfig["dbuser"], vaultDatabaseConfig["dbpassword"]; okSourcePath != nil && okDestPath != nil {
-		//engine.Analyzer.Catalog.GrantTables.AddSuperUser(vaultDatabaseConfig["dbuser"].(string), vaultDatabaseConfig["dbpassword"].(string))
+		// engine.Analyzer.Catalog.GrantTables.AddSuperUser(vaultDatabaseConfig["dbuser"].(string), vaultDatabaseConfig["dbpassword"].(string))
 		h := md5.New()
 		io.WriteString(h, strconv.FormatInt(time.Now().Unix(), 10))
 		superRandom := string(h.Sum(nil))
 
-		engine.Analyzer.Catalog.MySQLDb.AddSuperUser("", "", superRandom) //Use for permission set up -> deleted before setup finishes
+		engine.Analyzer.Catalog.MySQLDb.AddSuperUser("", "", superRandom) // Use for permission set up -> deleted before setup finishes
 		ctx := tfmContext.TierceronEngine.Context
 
 		if _, ok := vaultDatabaseConfig["controller"].(bool); !ok {
@@ -325,7 +325,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 
 		eUtils.LogInfo(driverConfig.CoreConfig, "Permissions have been set up.")
 
-		//Set off listeners for when tables are ready.
+		// Set off listeners for when tables are ready.
 		go func(tfC *trcflowcore.TrcFlowMachineContext, vdc map[string]any) {
 			for permUpdate := range tfmContext.PermissionChan {
 				tableName := permUpdate.TableName
@@ -342,7 +342,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 				io.WriteString(h, randomNow.String())
 				superRandom := string(h.Sum(nil))
 
-				engine.Analyzer.Catalog.MySQLDb.AddSuperUser("", "", superRandom) //Use for permission set up -> deleted before setup finishes
+				engine.Analyzer.Catalog.MySQLDb.AddSuperUser("", "", superRandom) // Use for permission set up -> deleted before setup finishes
 				cidrBlockSlice := strings.Split(vdc["cidrblock"].(string), ",")
 				tables := []string{tableName, tableName + "_Changes"}
 
@@ -353,7 +353,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 								if strings.HasPrefix(tableN, "DataFlowStatistics") {
 									_, _, _, queryErr = engineQuery(engine, ctx, "GRANT SELECT ON "+tfC.TierceronEngine.Database.Name()+"."+tableN+" TO '"+vdc["dbuser"].(string)+"'@'"+cidrBlock+"'")
 
-									//If DFS user configs are loaded, create that user.
+									// If DFS user configs are loaded, create that user.
 									if dfsUser, ok := vaultDatabaseConfig["dfsUser"].(string); ok {
 										if dfsPass, ok := vaultDatabaseConfig["dfsPass"].(string); ok {
 											dfsUserCreated := dfsUser
@@ -458,7 +458,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 					}
 					eUtils.LogInfo(driverConfig.CoreConfig, "Permissions have been enabled for "+tableName+".")
 				} else {
-					//disable permissions
+					// disable permissions
 					for _, tableN := range tables {
 						for _, cidrBlock := range cidrBlockSlice {
 							if !strings.HasSuffix(tableN, "Changes") {

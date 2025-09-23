@@ -24,10 +24,9 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	goMod *helperkv.Modifier,
 	url string,
 	username string,
-	passwordFunc func() (string, error)) (*sql.DB, error) {
-
+	passwordFunc func() (string, error),
+) (*sql.DB, error) {
 	driver, server, port, dbname, certName, err := validator.ParseURL(driverConfig.CoreConfig, url)
-
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +36,14 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 
 	if goMod != nil {
 		var clientCertBytes []byte
+		clientCertPath := "Common/servicecert.crt.mf.tmpl"
+		if prod.IsProd() && (driver == "mysql" || driver == "mariadb") {
+			// TODO: If prod combines to a common domain, we can get rid of this.
+			clientCertPath = "Common/db_cert.pem.mf.tmpl"
+		}
 		clientCertBytes, err = certutil.LoadCertComponent(driverConfig,
 			goMod,
-			"Common/db_cert.pem.mf.tmpl")
+			clientCertPath)
 		if err != nil {
 			return nil, err
 		}
