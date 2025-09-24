@@ -55,7 +55,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		return nil, err
 	}
 	goMod.Env = goMod.EnvBasis
-	kernelId := pluginConfig["kernelId"].(string)
+	kernelID := pluginConfig["kernelId"].(string)
 
 	// Need new function writing to that path using pluginName ->
 	// if not copied -> this plugin should fail to start up
@@ -99,7 +99,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmContext = &trcflowcore.TrcFlowMachineContext{
 		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
-		KernelId:                  kernelId,
+		KernelId:                  kernelID,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
@@ -254,7 +254,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
-	for _, enhancement := range flowMachineInitContext.GetFilteredBusinessFlows(kernelId) {
+	for _, enhancement := range flowMachineInitContext.GetFilteredBusinessFlows(kernelID) {
 		flowStateControllerMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.CurrentFlowState, 1)
 		flowStateReceiverMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
 	}
@@ -331,17 +331,17 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	var filteredFlowNames []string
-	for _, flow := range flowMachineInitContext.GetFilteredTableFlowDefinitions(kernelId) {
+	for _, flow := range flowMachineInitContext.GetFilteredTableFlowDefinitions(kernelID) {
 		filteredFlowNames = append(filteredFlowNames, flow.FlowHeader.FlowName())
 	}
 
-	tfmContext.Init(sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
+	tfmContext.Init(sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelID), flowMachineInitContext.GetFilteredTestFlowNames(kernelID))
 
 	// Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
-		KernelId:                  kernelId,
+		KernelId:                  kernelID,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   tfmContext.FlowMap, // In order to support flow notifications, we need this here.
@@ -520,7 +520,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}(&tfContext, &driverConfigBasis)
 	}
 
-	for _, businessFlow := range flowMachineInitContext.GetFilteredBusinessFlows(kernelId) {
+	for _, businessFlow := range flowMachineInitContext.GetFilteredBusinessFlows(kernelID) {
 		if !flowMachineInitContext.IsSupportedFlow(businessFlow.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowHeader.FlowName())
