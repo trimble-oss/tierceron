@@ -57,9 +57,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	goMod.Env = goMod.EnvBasis
 	kernelId := pluginConfig["kernelId"].(string)
 
-	//Need new function writing to that path using pluginName ->
-	//if not copied -> this plugin should fail to start up
-	//Update deployed status & return if
+	// Need new function writing to that path using pluginName ->
+	// if not copied -> this plugin should fail to start up
+	// Update deployed status & return if
 	if pluginNameList, ok := pluginConfig["pluginNameList"].([]string); ok {
 		tempAddr := pluginConfig["vaddress"]
 		tempTokenPtr := pluginConfig["tokenptr"]
@@ -291,7 +291,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 		sourceDatabaseConnectionsMap[sourceDatabaseConfig["dbsourceregion"].(string)] = dbSourceConnBundle
 	}
-	//time.Sleep(8 * time.Second)
+	// time.Sleep(8 * time.Second)
 
 	eUtils.LogInfo(driverConfig.CoreConfig, "Finished building source configs")
 	// Http query resources include:
@@ -318,7 +318,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		tfmContext.ExtensionAuthData, _, err = trcvutils.GetJSONFromClientByPost(driverConfig.CoreConfig, httpClient, extensionAuthComponents["authHeaders"].(map[string]string), extensionAuthComponents["authUrl"].(string), extensionAuthComponents["bodyData"].(io.Reader))
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-			//return err
+			// return err
 		}
 		// Set up reloader in case things go sideways later on.
 		tfmContext.ExtensionAuthDataReloader = make(map[string]any, 1)
@@ -337,7 +337,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	tfmContext.Init(sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelId), flowMachineInitContext.GetFilteredTestFlowNames(kernelId))
 
-	//Initialize tfcContext for flow controller
+	// Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
@@ -419,15 +419,15 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				FlumenProcessFlowController,
 				vaultDatabaseConfig,
 				sourceDatabaseConnectionsMap,
-				tfContext.FlowHeader.Name,
+				tcfContext.FlowHeader.Name,
 				trcflowcore.TableSyncFlow,
 			)
 		}(&tfContext, &driverConfigBasis)
 
-		controllerInitWG.Wait() //Waiting for remoteDataSource to load up to prevent data race.
+		controllerInitWG.Wait() // Waiting for remoteDataSource to load up to prevent data race.
 		if initReceiver, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			eUtils.LogInfo(driverConfig.CoreConfig, "Controller has been initialized...sending alert to interface...")
-		initAlert: //This waits for flow states to be loaded before starting all non-controller flows
+		initAlert: // This waits for flow states to be loaded before starting all non-controller flows
 			for {
 				select {
 				case _, ok := <-initReceiver:
@@ -468,33 +468,33 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			eUtils.LogInfo(dc.CoreConfig, "Beginning data source flow: "+tcfContext.FlowHeader.ServiceName())
 			defer flowWG.Done()
 			var initErr error
-			_, tcfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
+			_, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
-			tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
+			tcfContext.GoMod.Env = tcfContext.GoMod.EnvBasis
 			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/%s", tcfContext.FlowHeader.TableName(), flowcore.TierceronControllerFlow.FlowName())
-			dataMap, readErr := tfContext.GoMod.ReadData(flowPath)
+			dataMap, readErr := tcfContext.GoMod.ReadData(flowPath)
 			if readErr == nil && len(dataMap) > 0 {
 				if dataMap["flowAlias"] != nil {
-					tfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
+					tcfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
 				}
 			}
 			tcfContext.FlowHeader.SourceAlias = coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb)
 			if tcfContext.FlowHeader.FlowName() == flowcore.ArgosSociiFlow.FlowName() {
-				go func(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) {
+				go func(tfmContext *trcflowcore.TrcFlowMachineContext, argosTcfContext *trcflowcore.TrcFlowContext) {
 					for tableLoadedPerm := range tfmContext.PreloadChan {
 						if tableLoadedPerm.TableName == flowcore.ArgosSociiFlow.FlowName() {
-							populateArgosSocii(tfContext.GoMod, driverConfig, tfmContext)
-							tfContext.NotifyFlowComponentLoaded()
+							populateArgosSocii(argosTcfContext.GoMod, driverConfig, tfmContext)
+							argosTcfContext.NotifyFlowComponentLoaded()
 							break
 						}
 					}
-				}(tfmContext, &tfContext)
+				}(tfmContext, tcfContext)
 			}
 			tfmContext.ProcessFlow(
-				&tfContext,
+				tcfContext,
 				func(tfmContext flowcore.FlowMachineContext, tcfContext flowcore.FlowContext) error {
 					switch tcfContext.GetFlowHeader().FlowName() {
 					case flowcore.DataFlowStatConfigurationsFlow.FlowName():
@@ -506,7 +506,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 						//						tfmContext.WaitAllFlowsLoaded()
 						return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tcfContext)
 					case flowcore.ArgosSociiFlow.FlowName():
-						tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
+						tcfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
 						return flowcore.ProcessTableConfigurations(tfmContext, tcfContext)
 					default:
 						return flowMachineInitContext.FlowController(tfmContext, tcfContext)
@@ -538,27 +538,27 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 		flowWG.Add(1)
 
-		go func(bizFlow flowcore.FlowDefinition, dc *config.DriverConfig) {
+		go func(tcfContext *trcflowcore.TrcFlowContext, bizFlow flowcore.FlowDefinition, dc *config.DriverConfig) {
 			eUtils.LogInfo(dc.CoreConfig, "Beginning additional flow: "+bizFlow.FlowHeader.ServiceName())
 			defer flowWG.Done()
 
 			var initErr error
-			_, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
+			_, tcfContext.GoMod, tcfContext.Vault, initErr = eUtils.InitVaultMod(dc)
 			if initErr != nil {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Could not access vault.  Failure to start flow.", false)
 				return
 			}
-			tfContext.GoMod.Env = tfContext.GoMod.EnvBasis
+			tcfContext.GoMod.Env = tcfContext.GoMod.EnvBasis
 
 			tfmContext.ProcessFlow(
-				&tfContext,
+				tcfContext,
 				flowMachineInitContext.FlowController,
 				vaultDatabaseConfig, // unused.
 				sourceDatabaseConnectionsMap,
 				bizFlow.FlowHeader.FlowNameType(),
 				trcflowcore.TableEnrichFlow,
 			)
-		}(businessFlow, &driverConfigBasis)
+		}(&tfContext, businessFlow, &driverConfigBasis)
 	}
 
 	if testopts.BuildOptions != nil {
@@ -622,7 +622,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 							if projectService, ok := pluginMap["trcprojectservice"].(string); ok && len(projectService) > 0 {
 								projectServiceSlice := strings.Split(projectService, "/")
 								argosId = argosId + 1
-								var data = make(map[string]any)
+								data := make(map[string]any)
 								data["argosId"] = fmt.Sprintf("%d", argosId)
 								data["argosIdentitasNomen"] = pluginName
 								data["argosProiectum"] = projectServiceSlice[0]
@@ -647,7 +647,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 	tfmFlumeContext.InitConfigWG = nil
 	tfmFlumeContext.FlowControllerLock.Unlock()
 
-	//Set up controller config
+	// Set up controller config
 	controllerVaultDatabaseConfig := make(map[string]any)
 	for index, config := range vaultDatabaseConfig {
 		controllerVaultDatabaseConfig[index] = config
@@ -695,7 +695,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 	// be sure to enable encryption on the connection...
 
 	if vaultDatabaseConfig["dbuser"] != nil && vaultDatabaseConfig["dbpassword"] != nil && vaultDatabaseConfig["dbport"] != nil {
-		//Setting up DFS USER
+		// Setting up DFS USER
 		if dfsUser, ok := spiralDatabaseConfig["dbuser"]; ok {
 			vaultDatabaseConfig["dfsUser"] = dfsUser
 		}
