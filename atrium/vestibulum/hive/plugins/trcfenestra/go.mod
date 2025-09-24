@@ -4,7 +4,7 @@ go 1.25.1
 
 require (
 	github.com/trimble-oss/tierceron v1.45.3
-	github.com/trimble-oss/tierceron-core/v2 v2.8.5
+	github.com/trimble-oss/tierceron-core/v2 v2.8.6
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
 	gopkg.in/yaml.v2 v2.4.0
