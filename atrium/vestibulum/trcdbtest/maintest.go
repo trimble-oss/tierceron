@@ -45,6 +45,7 @@ func main() {
 	pluginConfig["address"] = os.Getenv("VAULT_ADDR")
 	pluginConfig["vaddress"] = os.Getenv("VAULT_ADDR")
 	pluginConfig["caddress"] = os.Getenv("VAULT_ADDR")
+	pluginConfig["kernelId"] = "-1" // Non-hive runs in -1
 	if eUtils.RefLength(tokenPtr) > 0 {
 		pluginConfig["tokenptr"] = tokenPtr
 		pluginConfig["ctokenptr"] = tokenPtr
