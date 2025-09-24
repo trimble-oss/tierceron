@@ -104,6 +104,10 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
 
+func (tfmContext *TrcFlowMachineContext) GetKernelId() string {
+	return tfmContext.KernelId
+}
+
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
 	tfmContext.FlowMapLock.RLock()
 	defer tfmContext.FlowMapLock.RUnlock()
