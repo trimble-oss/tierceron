@@ -21,10 +21,12 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var configContext *core.ConfigContext
-var tfmContext flowcore.FlowMachineContext
-var sender chan error
-var dfstat *core.TTDINode
+var (
+	configContext *core.ConfigContext
+	tfmContext    flowcore.FlowMachineContext
+	sender        chan error
+	dfstat        *core.TTDINode
+)
 
 func SetProd(prod bool) {
 	coreprod.SetProd(prod)
@@ -45,9 +47,9 @@ func receiver(receive_chan chan core.KernelCmd) {
 			sender <- errors.New("trcdb shutting down")
 			return
 		case event.Command == core.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -285,7 +287,7 @@ func defaultTrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
 		testsSet, _ := GetWantedTests(event)
 		approvedProdTests := make(map[string]bool)
 
-		for test, _ := range testsSet {
+		for test := range testsSet {
 			switch test {
 			case "FlowStatus":
 			case "PluginStatus":
@@ -538,11 +540,11 @@ func GetFlowMachineTemplatesHive() map[string]any {
 }
 
 func IsSupportedFlow(flow string) bool {
-	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+	return flow != "" && (flow == flowcore.TierceronControllerFlow.FlowName() || flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 func IsHiveSupportedFlow(flow string) bool {
-	return flow != "" && (flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+	return flow != "" && (flow == flowcore.TierceronControllerFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 func GetFlowMachineTemplatesEditor() map[string]any {
@@ -608,7 +610,8 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 					FlowHeader: flowcore.FlowHeaderType{
 						Name:      flowcore.FlowNameType(tableName),
 						Source:    flowSource,
-						Instances: "*"},
+						Instances: "*",
+					},
 					FlowTemplatePath: template,
 				})
 			}

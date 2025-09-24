@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
@@ -12,8 +13,6 @@ import (
 	"github.com/dolthub/go-mysql-server/server"
 	"github.com/dolthub/vitess/go/vt/sqlparser"
 	ast "github.com/dolthub/vitess/go/vt/sqlparser"
-
-	"time"
 )
 
 var changeLock sync.Mutex
@@ -255,7 +254,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 		if success && tableName != "" {
 			changeLock.Lock()
 			// Main query entry point for changes to any tables... notification follows.
-			trcflowcore.TriggerAllChangeChannel(tableName, changeIds)
+			trcflowcore.TriggerAllChangeChannel(tl.TfmContext, tableName, changeIds)
 			changeLock.Unlock()
 		}
 	}
