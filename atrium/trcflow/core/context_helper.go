@@ -11,6 +11,7 @@ import (
 	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 
@@ -571,6 +572,20 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
+
+	kernelID := tfmContext.GetKernelId()
+	kernelIDInt, err := strconv.Atoi(fmt.Sprintf("%v", kernelID))
+
+	if (err != nil || kernelIDInt > 0) &&
+		kernelopts.BuildOptions.IsKernel() &&
+		tfContext.FlowHeader.FlowName() != flowcore.TierceronControllerFlow.FlowName() {
+		// What still needs to be done here
+		if tfContext.Inserter != nil {
+			tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+			tfContext.Inserter = nil
+		}
+		return nil
+	}
 
 	if tfContext.CustomSeedTrcDb != nil {
 		customSeedErr := tfContext.CustomSeedTrcDb(tfmContext, tfContext)
