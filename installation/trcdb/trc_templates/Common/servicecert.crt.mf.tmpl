@@ -1,0 +1,5 @@
+{{.certData}}
+{{or .certSourcePath "certs/servicecert.crt"}}
+{{or .certDestPath "local_config/servicecert.crt"}}
+{{or .certHost "*"}}
+{{or .certBundleJks "spectrumkeys.jks"}}
