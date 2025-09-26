@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"sort"
@@ -1339,7 +1340,7 @@ func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext fl
 			dbsourceConn, err := trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, regionSource["dbsourceurl"].(string), regionSource["dbsourceuser"].(string),
 				func() (string, error) {
 					if _, ok := regionSource["dbsourcepassword"].(string); ok {
-						return regionSource["dbsourcepassword"].(string), nil
+						return url.QueryEscape(regionSource["dbsourcepassword"].(string)), nil
 					} else {
 						return "", errors.New("missing password")
 					}
@@ -1414,7 +1415,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 					retryCount := 0
 					tfmContext.LogInfo("Obtaining resource connections for : " + flow.TableName() + "-" + region)
 				retryConnectionAccess:
-					dbsourceConn, err := trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), func() (string, error) { return sDC["dbsourcepassword"].(string), nil })
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), func() (string, error) { return url.QueryEscape(sDC["dbsourcepassword"].(string)), nil })
 					if err != nil && err.Error() != "incorrect URL format" {
 						if retryCount < 3 && err != nil && dbsourceConn == nil {
 							retryCount = retryCount + 1
