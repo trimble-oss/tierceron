@@ -3,6 +3,7 @@ package coreopts
 import (
 	"database/sql"
 	"errors"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -158,15 +159,13 @@ func GetSyncedTables() []string {
 	return []string{}
 }
 
-// DecryptSecretConfig
-//   - provides the secret to be used in obtaining a database connection when provided
-//     with source database configuration attributes.  The config map contains
-//     additional global attributes that can be utilized in decrypting an
-//     encrypted password found within the source database configuration.
+// DecryptSecretConfig provides the secret to be used in obtaining a database connection when provided
+// with source database configuration attributes. The config map contains additional global attributes
+// that can be utilized in decrypting an encrypted password found within the source database configuration.
 //
-// returns: the decrypted password to be used in establishing a database connection.
+// Returns the decrypted password to be used in establishing a database connection.
 func DecryptSecretConfig(sourceDatabaseConfigs map[string]any, config map[string]any) (string, error) {
-	return "", nil
+	return url.QueryEscape(""), nil
 }
 
 // Utlized to provide Data Flow Statistics components: database name in which the DFS resides and the index

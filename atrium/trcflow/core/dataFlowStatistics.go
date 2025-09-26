@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
+	"time"
 
 	//"os"
-
-	"strings"
 
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
@@ -18,8 +19,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	"time"
-
 	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
 
 	dfssql "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/flowsql"
@@ -27,10 +26,12 @@ import (
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
-var PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"
-var HIVE_STAT_DFG_PATH string = fmt.Sprintf("%s%s", PUBLIC_INDEX_BASIS_PATH, "/%s/%s/DataFlowStatistics/DataFlowGroup")
-var HIVE_STAT_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_DFG_PATH, "/%s-%s-%s/dataFlowName/%s")
-var HIVE_STAT_CODE_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
+var (
+	PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"
+	HIVE_STAT_DFG_PATH      string = fmt.Sprintf("%s%s", PUBLIC_INDEX_BASIS_PATH, "/%s/%s/DataFlowStatistics/DataFlowGroup")
+	HIVE_STAT_PATH          string = fmt.Sprintf("%s%s", HIVE_STAT_DFG_PATH, "/%s-%s-%s/dataFlowName/%s")
+	HIVE_STAT_CODE_PATH     string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
+)
 
 // New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tccore.TTDINode, error) {
@@ -77,8 +78,9 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
 					}
-					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig, nil, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), func() (string, error) { return sourceDatabaseConnectionMap["dbsourcepassword"].(string), nil })
-
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig, nil, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), func() (string, error) {
+						return url.QueryEscape(sourceDatabaseConnectionMap["dbsourcepassword"].(string)), nil
+					})
 					if err != nil {
 						log.Println(err)
 						return &aFleet, err
@@ -87,14 +89,12 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					// this is just an example statement
 
 					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics order by argosid,flowGroup,flowName,stateName asc")
-
 					if err != nil {
 						log.Println(err)
 						return &aFleet, err
 					}
 
 					rows, err := statement.Query() // execute our select statement
-
 					if err != nil {
 						log.Println(err)
 						return &aFleet, err
@@ -154,8 +154,8 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 
 						if strings.Contains(flowName, "-") {
 							dashNameSplit := strings.Split(flowName, "-")
-							statisticType := dashNameSplit[0] //login
-							//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
+							statisticType := dashNameSplit[0] // login
+							// statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
 							var dfStatTypeNode *tccore.TTDINode
 							for i := 0; i < len(argosDfGroup.ChildNodes); i++ {
 								if argosDfGroup.ChildNodes[i].Name == statisticType {
@@ -237,7 +237,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					new.MashupDetailedElement.Name = strings.TrimSuffix(id.(string), "/")
 					new.ChildNodes = make([]*tccore.TTDINode, 0)
 
-					if serviceListData == nil { //No existing dfs for this entry -> continue
+					if serviceListData == nil { // No existing dfs for this entry -> continue
 						aFleet.ChildNodes = append(aFleet.ChildNodes, &new)
 						continue
 					}
@@ -263,14 +263,14 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 							var innerDF tccore.TTDINode
 							innerDF.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							innerDF.MashupDetailedElement.Name = "empty"
-							//Entity -> System -> Login/Download -> USERS
+							// Entity -> System -> Login/Download -> USERS
 							for _, statisticName := range statisticNameList.Data {
 								for _, statisticName := range statisticName.([]any) {
 									if strings.Contains(statisticName.(string), "-") {
 										dashNameSplit := strings.Split(statisticName.(string), "-")
-										statisticType := dashNameSplit[0] //login
+										statisticType := dashNameSplit[0] // login
 										innerDF.MashupDetailedElement.Name = strings.TrimSuffix(statisticType, "/")
-										//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
+										// statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
 										newDf := tccore.InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
 										RetrieveStatistic(mod, "", newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
 										innerDF.ChildNodes = append(innerDF.ChildNodes, newDf)
@@ -312,8 +312,9 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 	indexPath string,
 	idName string,
 	logger *log.Logger,
-	vaultWriteBack bool) {
-	//TODO : Write Statistic to vault
+	vaultWriteBack bool,
+) {
+	// TODO : Write Statistic to vault
 	dfs.FinishStatisticLog()
 	dsc, _, err := dfs.GetDeliverStatCtx()
 	if err != nil {
@@ -369,7 +370,6 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 }
 
 func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
-
 	flowG = strings.TrimSuffix(flowG, "/")
 	region := getDfsRegion(tfmContext)
 	regionless := false
