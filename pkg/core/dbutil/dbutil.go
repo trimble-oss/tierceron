@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"errors"
 	"net"
 	"time"
 
@@ -36,10 +37,13 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 
 	if goMod != nil {
 		var clientCertBytes []byte
-		clientCertPath := "Common/servicecert.crt.mf.tmpl"
-		if prod.IsProd() && (driver == "mysql" || driver == "mariadb") {
-			// TODO: If prod combines to a common domain, we can get rid of this.
-			clientCertPath = "Common/db_cert.pem.mf.tmpl"
+		var clientCertPath string
+		if driver == "mysql" || driver == "mariadb" {
+			clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+		} else if driver == "sqlserver" {
+			clientCertPath = "Common/servicecert.crt.mf.tmpl"
+		} else {
+			return nil, errors.New("unsupported driver for TLS")
 		}
 		clientCertBytes, err = certutil.LoadCertComponent(driverConfig,
 			goMod,
