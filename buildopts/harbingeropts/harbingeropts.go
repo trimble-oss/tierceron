@@ -189,8 +189,8 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		Protocol: "tcp",
 		Address:  ":" + strings.TrimSpace(vaultDatabaseConfig["dbport"].(string)),
 		TLSConfig: &tls.Config{
-			Certificates: []tls.Certificate{key_pair},
-			// ClientAuth:         tls.RequireAndVerifyClientCert,
+			Certificates:       []tls.Certificate{key_pair},
+			ClientAuth:         tls.NoClientCert,
 			ServerName:         strings.TrimSpace(strings.Split(vaultDatabaseConfig["vaddress"].(string), ":")[0]),
 			InsecureSkipVerify: insecure.IsInsecure(),
 			MinVersion:         tls.VersionTLS12,
