@@ -180,16 +180,18 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, key_pair_err.Error(), false)
 	}
 
-	certPool, _ := x509.SystemCertPool()
-	if certPool == nil {
-		certPool = x509.NewCertPool()
-	}
+	// Uncomment if you want to set up mtls
+	// certPool, _ := x509.SystemCertPool()
+	// if certPool == nil {
+	// 	certPool = x509.NewCertPool()
+	// }
 
 	serverConfig := server.Config{
 		Protocol: "tcp",
 		Address:  ":" + strings.TrimSpace(vaultDatabaseConfig["dbport"].(string)),
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{key_pair},
+			// RootCAs:      certPool,
 			// ClientAuth:         tls.RequireAndVerifyClientCert,
 			ClientAuth:         tls.NoClientCert, // Default but make it explicit
 			ServerName:         strings.TrimSpace(strings.Split(vaultDatabaseConfig["vaddress"].(string), ":")[0]),
