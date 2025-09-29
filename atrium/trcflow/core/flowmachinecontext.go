@@ -75,7 +75,7 @@ type TrcFlowMachineContext struct {
 	ShellRunner               func(*config.DriverConfig, string, string)
 	Region                    string
 	Env                       string
-	KernelId                  string
+	KernelId                  int
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
 	FlowControllerUpdateAlert chan string
@@ -106,7 +106,7 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
 
-func (tfmContext *TrcFlowMachineContext) GetKernelId() string {
+func (tfmContext *TrcFlowMachineContext) GetKernelId() int {
 	return tfmContext.KernelId
 }
 
@@ -643,7 +643,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 				tfmContext.GetTableModifierLock(),
 			)
 		*/
-		tfmContext.seedTrcDbFromVault(tfContext) // New implementation - direct approach
+		tfmContext.seedTrcDbFromVault(tfContext, nil) // New implementation - direct approach
 
 		tfmContext.GetTableModifierLock().Lock()
 		for _, trigger := range removedTriggers {
@@ -658,37 +658,37 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbCycle(tfContext *TrcFlowContex
 
 	// Check vault hourly for changes to sync with mysql
 	/* TODO: Seed mysql from Vault currently only work on insert level, not update...
-		         Before this can be uncommented, the Insert/Update must be implemented.
+	            Before this can be uncommented, the Insert/Update must be implemented.
 
-		afterTime := time.Duration(time.Hour * 1) // More expensive to test vault for changes.
-	                                              // Only check once an hour for changes in vault.
-		flowChangedChannel := tfmContext.ChannelMap[tfContext.Flow]
+	   afterTime := time.Duration(time.Hour * 1) // More expensive to test vault for changes.
+	                                         // Only check once an hour for changes in vault.
+	   flowChangedChannel := tfmContext.ChannelMap[tfContext.Flow]
 
-		for {
-			select {
-			case <-signalChannel:
-				eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
-				os.Exit(0)
-			case <-flowChangedChannel:
-				tfmContext.seedTrcDbFromChanges(
-					tfContext,
-					identityColumnName,
-					vaultIndexColumnName,
-					false,
-					getIndexedPathExt,
-					flowPushRemote)
-			case <-time.After(afterTime):
-				afterTime = time.Minute * 3
-				eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes for sync with remote and vault.")
-				tfmContext.seedTrcDbFromChanges(
-					tfContext,
-					identityColumnName,
-					vaultIndexColumnName,
-					false,
-					getIndexedPathExt,
-					flowPushRemote)
-			}
-		}
+	   for {
+	           select {
+	           case <-signalChannel:
+	                   eUtils.LogErrorMessage(tfmContext.Config, "Receiving shutdown presumably from vault.", true)
+	                   os.Exit(0)
+	           case <-flowChangedChannel:
+	                   tfmContext.seedTrcDbFromChanges(
+	                           tfContext,
+	                           identityColumnName,
+	                           vaultIndexColumnName,
+	                           false,
+	                           getIndexedPathExt,
+	                           flowPushRemote)
+	           case <-time.After(afterTime):
+	                   afterTime = time.Minute * 3
+	                   eUtils.LogInfo(tfmContext.Config, "3 minutes... checking local mysql for changes for sync with remote and vault.")
+	                   tfmContext.seedTrcDbFromChanges(
+	                           tfContext,
+	                           identityColumnName,
+	                           vaultIndexColumnName,
+	                           false,
+	                           getIndexedPathExt,
+	                           flowPushRemote)
+	           }
+	   }
 	*/
 }
 
@@ -1067,8 +1067,22 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *core.TrcdbE
 		}
 	case "SELECT":
 		_, _, matrixChangedEntries, err := trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
+
 		if err != nil {
 			tfmContext.Log("query select error", err)
+		} else {
+			if tfmContext.GetKernelId() > 0 && len(matrixChangedEntries) == 0 {
+				for _, flowName := range trcdbExchange.Flows {
+					if flowCacheHint, hasFlowCacheHint := tfmContext.FlowMap[flowcore.FlowNameType(flowName)]; hasFlowCacheHint {
+						if filteredIndexProvidedValues, hasKeyHint := trcdbExchange.FlowCacheKeyHints[flowName]; hasKeyHint {
+							err := tfmContext.seedTrcDbFromVault(flowCacheHint, filteredIndexProvidedValues)
+							if err == nil {
+								_, _, matrixChangedEntries, _ = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
+							}
+						}
+					}
+				}
+			}
 		}
 		if tfmContext.ShellRunner != nil && len(trcdbExchange.ExecTrcsh) > 0 && len(trcdbExchange.Request.Rows) > 0 {
 			// If this is a trcsh query, then we need to execute it.

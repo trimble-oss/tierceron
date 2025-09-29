@@ -55,7 +55,21 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		return nil, err
 	}
 	goMod.Env = goMod.EnvBasis
-	kernelID := pluginConfig["kernelId"].(string)
+	var kernelID int
+	switch v := pluginConfig["kernelId"].(type) {
+	case int:
+		kernelID = v
+	case string:
+		id, err := strconv.Atoi(v)
+		if err == nil {
+			kernelID = id
+		} else {
+			// handle error or fallback
+			kernelID = 0 // or another default
+		}
+	default:
+		kernelID = 0 // or another default
+	}
 
 	// Need new function writing to that path using pluginName ->
 	// if not copied -> this plugin should fail to start up
@@ -384,7 +398,15 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			continue
 		}
 
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: make(map[string]any), QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
+		tfContext := trcflowcore.TrcFlowContext{
+			RemoteDataSource:      make(map[string]any),
+			QueryLock:             &sync.Mutex{},
+			FlowStateLock:         &sync.RWMutex{},
+			PreviousFlowStateLock: &sync.RWMutex{},
+			ReadOnly:              false,
+			Init:                  true,
+			Logger:                tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1),
+		}
 		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
 		tfContext.RemoteDataSource["flowStateInitAlert"] = make(chan bool, 1)
