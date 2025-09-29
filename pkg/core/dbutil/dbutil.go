@@ -58,6 +58,8 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	if err != nil {
 		return nil, err
 	}
+	tlsConfig.ServerName = server
+
 	tlsErr := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
 	if tlsErr != nil {
 		return nil, tlsErr
