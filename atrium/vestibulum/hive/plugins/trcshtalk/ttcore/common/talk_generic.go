@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -220,7 +221,12 @@ func ProcessTrcshTalkRequestGeneric(
 			return nil, err
 		}
 		if err = protojson.Unmarshal(respData, diagRes); err != nil {
-			ctx.Log.Printf("Error unmarshalling post grpc response: %s\n", err.Error())
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "unknown field \"text\"") {
+				ctx.Log.Printf("Kzzz\n")
+			} else {
+				ctx.Log.Printf("Error unmarshalling post grpc response: %s\n", err.Error())
+			}
 			if retryCount < 5 {
 				time.Sleep(3 * time.Second)
 				retryCount++
