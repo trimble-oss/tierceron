@@ -84,6 +84,7 @@ type TrcFlowMachineContext struct {
 	FlumeDbType               flowcore.FlumeDbType
 	TierceronEngine           *trcengine.TierceronEngine
 	DfsChan                   *chan *tccore.TTDINode // Channel for sending data flow statistics
+	FlowChatMsgSenderChan     *chan *tccore.ChatMsg  // Channel for sending flow chat messages
 	ExtensionAuthData         map[string]any
 	ExtensionAuthDataReloader map[string]any
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
@@ -1690,4 +1691,18 @@ func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
 
 func (tfmContext *TrcFlowMachineContext) GetDfsChan() *chan *tccore.TTDINode {
 	return tfmContext.DfsChan
+}
+
+func (tfmContext *TrcFlowMachineContext) GetFlows() []flowcore.FlowContext {
+	tfmContext.FlowMapLock.RLock()
+	flows := make([]flowcore.FlowContext, 0, len(tfmContext.FlowMap))
+	for _, flow := range tfmContext.FlowMap {
+		flows = append(flows, flow)
+	}
+	tfmContext.FlowMapLock.RUnlock()
+	return flows
+}
+
+func (tfmContext *TrcFlowMachineContext) GetFlowChatMsgSenderChan() *chan *tccore.ChatMsg {
+	return tfmContext.FlowChatMsgSenderChan
 }
