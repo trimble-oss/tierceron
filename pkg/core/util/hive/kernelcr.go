@@ -87,6 +87,7 @@ func InitKernel(id string) *PluginHandler {
 	return &PluginHandler{
 		Name:     "Kernel",
 		Id:       id,
+		KernelId: -1,
 		State:    0,
 		Services: &pluginMap,
 		ConfigContext: &core.ConfigContext{
