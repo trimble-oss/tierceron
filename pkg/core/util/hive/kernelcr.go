@@ -59,11 +59,11 @@ type certValue struct {
 }
 
 type PluginHandler struct {
-	Name            string //service
-	State           int    //0 - initialized, 1 - running, 2 - failed
+	Name            string // service
+	State           int    // 0 - initialized, 1 - running, 2 - failed
 	Id              string
-	KernelId        string
-	Signature       string //sha256 of plugin
+	KernelId        int
+	Signature       string // sha256 of plugin
 	ConfigContext   *core.ConfigContext
 	Services        *map[string]*PluginHandler
 	PluginMod       *plugin.Plugin
@@ -87,6 +87,7 @@ func InitKernel(id string) *PluginHandler {
 	return &PluginHandler{
 		Name:     "Kernel",
 		Id:       id,
+		KernelId: -1,
 		State:    0,
 		Services: &pluginMap,
 		ConfigContext: &core.ConfigContext{
@@ -99,20 +100,24 @@ func InitKernel(id string) *PluginHandler {
 	}
 }
 
-func (ph *PluginHandler) GetKernelId() string {
+func (ph *PluginHandler) GetKernelId() int {
 	if ph == nil {
-		return "0"
+		return 0
 	}
-	if len(ph.KernelId) == 0 && len(ph.Id) > 0 {
+	if ph.KernelId == -1 && len(ph.Id) > 0 {
 		idParts := strings.Split(ph.Id, "-")
-		ph.KernelId = idParts[1]
+		if len(idParts) > 1 {
+			var kernParseErr error
+			ph.KernelId, kernParseErr = strconv.Atoi(idParts[1])
+			if kernParseErr != nil {
+				ph.KernelId = 0
+			}
+		}
 	}
 	return ph.KernelId
 }
 
-var (
-	pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid blocking
-)
+var pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid blocking
 
 func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 	if pH == nil || pH.Name != "Kernel" {
@@ -162,11 +167,10 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 				}
 				if t, ok := metadata["created_time"]; ok {
 					if t != v.CreatedTime {
-						//validate cert and restart kernel
+						// validate cert and restart kernel
 						configuredCert, err := certutil.LoadCertComponent(driverConfig,
 							mod,
 							k)
-
 						if err != nil {
 							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 							continue
@@ -195,7 +199,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 									goto waitToReload
 								}
 							}
-							//TODO: Get rid of os.Exit
+							// TODO: Get rid of os.Exit
 							// 0. Reload certificates
 							// 1. Recall Init function for each plugin
 							// 2. Start each plugin
@@ -410,7 +414,7 @@ func (pH *PluginHandler) InitPluginStatus(driverConfig *config.DriverConfig) {
 	}
 	if pH.Services != nil {
 		globalPluginStatusChan = make(chan string, len(*pH.Services))
-		for k, _ := range *pH.Services {
+		for k := range *pH.Services {
 			globalPluginStatusChan <- k
 		}
 	}
@@ -884,7 +888,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 				pluginConfig["kernelId"] = pluginHandler.GetKernelId()
 
-				//Grab app role and secret and addr and env from service config and call auto auth
+				// Grab app role and secret and addr and env from service config and call auto auth
 				// auto auth will return token
 				// Create own driver config
 				if flowConfigs, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG]; ok {
@@ -1012,7 +1016,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 		}
 	}
-
 }
 
 func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
@@ -1038,9 +1041,9 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) 
 			}
 			return
 		case event.Command == core.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -1125,7 +1128,7 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 func LoadPluginPath(driverConfig *config.DriverConfig, pluginToolConfig map[string]any) string {
 	var deployroot string
 	var service string
-	var ext = ".so"
+	ext := ".so"
 	if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshkubeservice" {
 		if s, ok := pluginToolConfig["trccodebundle"].(string); ok {
 			driverConfig.CoreConfig.Log.Printf("Loading plugin path for service: %s\n", s)
@@ -1224,7 +1227,6 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 	go func(recChan chan *core.ChatMsg, m *core.ChatMsg) {
 		recChan <- m
 	}(*pluginHandler.ConfigContext.ChatReceiverChan, msg)
-
 }
 
 func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfig) {

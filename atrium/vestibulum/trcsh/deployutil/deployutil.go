@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -144,8 +145,8 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 func MountPluginFileSystem(
 	trcshDriverConfig *config.DriverConfig,
 	trcPath string,
-	projectService string) error {
-
+	projectService string,
+) error {
 	if !strings.Contains(trcPath, "/deploy/") {
 		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
 		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
@@ -168,7 +169,8 @@ func MountPluginFileSystem(
 func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	deploymentShardsSet map[string]struct{},
-	exeTypeFlags ...*bool) ([]string, error) {
+	exeTypeFlags ...*bool,
+) ([]string, error) {
 	isDrone := false
 	isShellRunner := false
 	if len(exeTypeFlags) > 0 {
@@ -281,9 +283,19 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 						if len(instances) > 0 {
 							instancesList := strings.Split(instances, ",")
 							for _, instance := range instancesList {
-								if instance == kernelId || instance == "*" {
+								if instance == "*" {
 									isValidInstance = true
 									break
+								} else {
+									instanceKernelId := -1
+									if len(instance) > 0 {
+										instanceKernelId, _ = strconv.Atoi(instance)
+									}
+
+									if kernelId >= 0 && instanceKernelId >= 0 && instanceKernelId == kernelId {
+										isValidInstance = true
+										break
+									}
 								}
 							}
 						}
