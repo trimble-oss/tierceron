@@ -568,23 +568,30 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 // seedTrcDbFromVault - This loads all data from vault into TrcDb
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 	tfContext *TrcFlowContext,
+	filteredIndexProvidedValues []string,
 ) error {
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
 
 	kernelID := tfmContext.GetKernelId()
-	kernelIDInt, err := strconv.Atoi(fmt.Sprintf("%v", kernelID))
 
-	if (err != nil || kernelIDInt > 0) &&
+	if (kernelID > 0) &&
 		kernelopts.BuildOptions.IsKernel() &&
 		tfContext.FlowHeader.FlowName() != flowcore.TierceronControllerFlow.FlowName() {
-		// What still needs to be done here
-		if tfContext.Inserter != nil {
-			tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
-			tfContext.Inserter = nil
+		// If a filtered list is provide, it'll be ok to continue even in the hive...
+		// This is because we're planning to have support for "sparse" TrcDb in the hive kernel
+		// for id's > 0.
+		if filteredIndexProvidedValues == nil {
+			// What still needs to be done here
+			if tfContext.Inserter != nil {
+				tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+				tfContext.Inserter = nil
+			}
+			return nil
+		} else {
+			indexValues = filteredIndexProvidedValues
 		}
-		return nil
 	}
 
 	if tfContext.CustomSeedTrcDb != nil {
@@ -616,7 +623,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			secondaryIndexes = secondaryI
 			tfContext.GoMod.SubSectionName = indexExt
 		}
-		if tfContext.GoMod.SectionName != "" {
+		if tfContext.GoMod.SectionName != "" && filteredIndexProvidedValues == nil {
 			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowHeader.Source, tfContext.GoMod.SectionName, tfmContext.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)

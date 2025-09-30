@@ -10,6 +10,7 @@ import (
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/glycerine/bchan"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -49,14 +50,15 @@ type TrcFlowContext struct {
 	QueryLock             *sync.Mutex
 	Inserter              sql.RowInserter
 
-	Restart              bool
-	Init                 bool
-	WantsInitNotify      bool
-	Preloaded            bool //
-	TablesChangesInitted bool //
-	ReadOnly             bool
-	DataFlowStatistic    FakeDFStat
-	Logger               *log.Logger
+	Restart                 bool
+	Init                    bool
+	WantsInitNotify         bool
+	Preloaded               bool //
+	TablesChangesInitted    bool //
+	ReadOnly                bool
+	DataFlowStatistic       FakeDFStat
+	FlowChatMsgReceiverChan *chan *tccore.ChatMsg // Channel for receiving flow messages
+	Logger                  *log.Logger
 }
 
 var _ flowcore.FlowContext = (*TrcFlowContext)(nil)
@@ -377,6 +379,10 @@ func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribut
 
 	}
 	return nil
+}
+
+func (tfContext *TrcFlowContext) GetFlowChatMsgReceiverChan() *chan *tccore.ChatMsg {
+	return tfContext.FlowChatMsgReceiverChan
 }
 
 func (tfContext *TrcFlowContext) CancelTheContext() bool {
