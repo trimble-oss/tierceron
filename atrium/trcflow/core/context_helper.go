@@ -623,7 +623,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			secondaryIndexes = secondaryI
 			tfContext.GoMod.SubSectionName = indexExt
 		}
-		if tfContext.GoMod.SectionName != "" && indexValues == nil {
+		if tfContext.GoMod.SectionName != "" && filteredIndexProvidedValues == nil {
 			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowHeader.Source, tfContext.GoMod.SectionName, tfmContext.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
