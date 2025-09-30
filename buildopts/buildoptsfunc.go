@@ -61,7 +61,7 @@ func GetSupportedSourceRegions() []string {
 func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
 	pluginConfig := map[string]any{}
 
-	//env = "dev"
+	// env = "dev"
 	pluginConfig["vaddress"] = "TODO"
 	pluginConfig["env"] = "dev"
 	pluginConfig["tokenptr"] = tokenPtr
@@ -160,6 +160,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]any) map[string]any {
 		"trcsh",
 	}
 	pluginEnvConfig["logNamespace"] = "db"
+	pluginEnvConfig["kernelId"] = "-1" // Non-hive runs in -1
 
 	return pluginEnvConfig
 }

@@ -1,12 +1,12 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra
 
-go 1.24.4
+go 1.25.1
 
 require (
-	github.com/trimble-oss/tierceron v1.38.9
-	github.com/trimble-oss/tierceron-core/v2 v2.7.6
+	github.com/trimble-oss/tierceron v1.45.3
+	github.com/trimble-oss/tierceron-core/v2 v2.8.8
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250527165913-d4b4a62b8377
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -27,6 +27,7 @@ require (
 	github.com/g3n/engine v0.2.0 // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/go-text/typesetting v0.2.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -45,7 +46,7 @@ require (
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.2 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
@@ -68,12 +69,23 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
-	golang.org/x/time v0.6.0 // indirect
+	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.0.0-00010101000000-000000000000 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
+
+exclude (
+	gopkg.in/square/go-jose.v2 v2.0.0-00010101000000-000000000000
+	gopkg.in/square/go-jose.v2 v2.3.1
+	gopkg.in/square/go-jose.v2 v2.4.0
+	gopkg.in/square/go-jose.v2 v2.4.1
+	gopkg.in/square/go-jose.v2 v2.5.1
+	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4

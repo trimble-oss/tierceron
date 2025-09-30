@@ -98,7 +98,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	}
 
 	regions := []string{}
-	if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
+	if (kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernel()) || strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
 		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") {
 			prod.SetProd(true)
 		}
@@ -1079,7 +1079,9 @@ func roleBasedRunner(
 
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) ||
 			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env) {
-			trcshDriverConfig.DriverConfig.OutputMemCache = false
+			if !kernelopts.BuildOptions.IsKernel() {
+				trcshDriverConfig.DriverConfig.OutputMemCache = false
+			}
 			// itdev, staging, and prod always key off TRC_ENV stored in trcshDriverConfig.DriverConfig.CoreConfig.Env.
 			envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
 			tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
@@ -1556,7 +1558,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" ||
-			prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) {
+			(!kernelopts.BuildOptions.IsKernel() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)) {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 			trcshDriverConfig.DriverConfig.ReadMemCache = false
 			trcshDriverConfig.DriverConfig.SubOutputMemCache = false

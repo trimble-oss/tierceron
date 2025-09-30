@@ -180,7 +180,7 @@ func CommonMain(envPtr *string,
 			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 
 			eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
-		} else if eUtils.RefLength(tokenPtr) == 0 {
+		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {
 			if driverConfigBase != nil && driverConfigBase.CoreConfig != nil && driverConfigBase.CoreConfig.TokenCache != nil {
 				if driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr) == nil {
 					fmt.Println("-token cannot be empty.")

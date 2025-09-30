@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -28,6 +29,44 @@ var prodRegions = []string{"west", "east", "ca"}
 
 func GetSupportedProdRegions() []string {
 	return prodRegions
+}
+
+func FilterSupportedRegions(driverConfig *config.DriverConfig, regions []string) []string {
+	if driverConfig == nil || driverConfig.CoreConfig == nil {
+		return regions
+	}
+	filteredRegions := []string{}
+
+	for _, region := range regions {
+		if IsRegionSupported(driverConfig, region) {
+			filteredRegions = append(filteredRegions, region)
+		}
+	}
+	return filteredRegions
+}
+
+func IsRegionSupported(driverConfig *config.DriverConfig, region string) bool {
+	if driverConfig == nil || driverConfig.CoreConfig == nil {
+		return true
+	}
+
+	switch region {
+	case "US", "dev":
+		if plugincoreopts.BuildOptions.IsPluginHardwired() {
+			region = "west"
+		} else {
+			region = "east"
+		}
+	case "qa":
+		region = "west"
+	}
+
+	for _, supportedRegion := range driverConfig.CoreConfig.Regions {
+		if strings.HasSuffix(region, supportedRegion) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *cert) getConfig(logger *log.Logger, file string) (*cert, error) {
@@ -184,7 +223,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		roleEntityPtr = new(string)
 	}
 
-	IsCmdLineTool := !driverConfig.IsDrone && !driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel())
+	IsCmdLineTool := driverConfig.CoreConfig.IsEditor || (!driverConfig.IsDrone && !driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel()))
 	IsApproleEmpty := len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
 	// If no token provided but context is provided, prefer the context over env.
@@ -341,6 +380,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		case "hivekernel":
 			mod.EnvBasis = "hivekernel"
 			mod.Env = "hivekernel"
+		case "rattan":
+			mod.EnvBasis = "rattan"
+			mod.Env = "rattan"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
 		token, err := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr)

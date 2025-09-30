@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package praevioussdk;
+option go_package = "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcpraevius/praeviussdk";
+
+service GenericProxy {
+  rpc ForwardRequest (HttpRequest) returns (HttpResponse);
+}
+
+message HttpRequest {
+  string method = 1;
+  string path = 2;
+  map<string, string> headers = 3;
+  bytes body = 4;
+}
+
+message HttpResponse {
+  int32 status_code = 1;
+  map<string, string> headers = 2;
+  bytes body = 3;
+}

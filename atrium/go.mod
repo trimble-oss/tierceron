@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium
 
-go 1.24.4
+go 1.25.1
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
@@ -37,8 +37,8 @@ require (
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron v1.38.9
-	github.com/trimble-oss/tierceron-core/v2 v2.7.6
+	github.com/trimble-oss/tierceron v1.45.3
+	github.com/trimble-oss/tierceron-core/v2 v2.8.8
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	gopkg.in/fsnotify.v1 v1.4.7
@@ -58,6 +58,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/ftbe/dawg v0.0.0-20131228112149-aadae8139481 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
@@ -65,7 +66,7 @@ require (
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
 	github.com/oasdiff/yaml3 v0.0.0-20250309153720-d2182401db90 // indirect
 	github.com/rymdport/portal v0.2.6 // indirect
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250907211156-570c6d0793d6 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20250418225747-d9d4ce87f4c0 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20250418225747-d9d4ce87f4c0 // indirect
@@ -89,7 +90,7 @@ require (
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/daviddengcn/go-colortext v1.0.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/distribution v2.8.2+incompatible // indirect
+	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker v26.1.5+incompatible // indirect
 	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -257,16 +258,16 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.25.0
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.30.0 // indirect
+	golang.org/x/tools v0.32.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.0.0-00010101000000-000000000000 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
@@ -275,14 +276,25 @@ require (
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
 //replace github.com/square/go-jose.v2 => ../../go-jose
+exclude (
+	gopkg.in/square/go-jose.v2 v2.3.1
+	gopkg.in/square/go-jose.v2 v2.4.0
+	gopkg.in/square/go-jose.v2 v2.4.1
+	gopkg.in/square/go-jose.v2 v2.5.1
+	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
-replace github.com/cespare/xxhash => github.com/joel-rieke/xxhash v1.1.0-patch
+replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.2
 
 replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.29
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.30
+
+replace github.com/docker/distribution => github.com/distribution/distribution v2.8.2+incompatible
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck => ./vestibulum/hive/plugins/trchealthcheck
 
@@ -304,11 +316,11 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hc
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
 
 replace github.com/trimble-oss/tierceron => ../
 
-replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20220803142437-5cc7bcf0b99d
+replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20230107141038-8bd28c2897c4
 
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
 

@@ -22,8 +22,8 @@ type OptionsBuilder struct {
 	GetUserNameField            func() string
 	GetUserCodeField            func() string
 	ActiveSessions              func(db *sql.DB) ([]map[string]any, error)
-	IsSupportedFlow             func(flowName string) bool
 	GetSyncedTables             func() []string
+	IsSupportedFlow             func(flowName string) bool
 	GetDatabaseName             func(flumeDbType flowcore.FlumeDbType) string
 	FindIndexForService         func(tfmContext flowcore.FlowMachineContext, project string, service string) (string, []string, string, error)
 	DecryptSecretConfig         func(map[string]any, map[string]any) (string, error)

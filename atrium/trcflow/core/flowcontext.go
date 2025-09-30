@@ -2,11 +2,15 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/glycerine/bchan"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -26,7 +30,7 @@ type TrcFlowContext struct {
 	// This just means some analytic tools won't be able to
 	// perform analysis which are based on the Context.
 	ContextNotifyChan    chan bool
-	FlowLoadedNotifyChan chan bool
+	FlowLoadedNotifyChan *bchan.Bchan
 	Context              context.Context
 	CancelContext        context.CancelFunc
 	// I flow is complex enough, it can define
@@ -40,16 +44,21 @@ type TrcFlowContext struct {
 	FlowData              any
 	ChangeFlowName        string // Change flow table name.
 	FlowState             flowcorehelper.CurrentFlowState
-	FlowStateLock         *sync.RWMutex                   //This is for sync concurrent changes to FlowState
+	FlowStateLock         *sync.RWMutex                   // This is for sync concurrent changes to FlowState
 	PreviousFlowState     flowcorehelper.CurrentFlowState // Temporary storage for previous state
 	PreviousFlowStateLock *sync.RWMutex
 	QueryLock             *sync.Mutex
-	Restart               bool
-	Init                  bool
-	WantsInitNotify       bool
-	ReadOnly              bool
-	DataFlowStatistic     FakeDFStat
-	Logger                *log.Logger
+	Inserter              sql.RowInserter
+
+	Restart                 bool
+	Init                    bool
+	WantsInitNotify         bool
+	Preloaded               bool //
+	TablesChangesInitted    bool //
+	ReadOnly                bool
+	DataFlowStatistic       FakeDFStat
+	FlowChatMsgReceiverChan *chan *tccore.ChatMsg // Channel for receiving flow messages
+	Logger                  *log.Logger
 }
 
 var _ flowcore.FlowContext = (*TrcFlowContext)(nil)
@@ -60,6 +69,10 @@ func (tfContext *TrcFlowContext) IsInit() bool {
 
 func (tfContext *TrcFlowContext) SetInit(init bool) {
 	tfContext.Init = init
+}
+
+func (tfContext *TrcFlowContext) IsPreloaded() bool {
+	return tfContext.Preloaded
 }
 
 func (tfContext *TrcFlowContext) InitNotify() {
@@ -87,10 +100,8 @@ func (tfContext *TrcFlowContext) SetRestart(restart bool) {
 }
 
 func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
-	go func() {
-		// Notify machine flow is loaded.
-		tfContext.FlowLoadedNotifyChan <- true
-	}()
+	// Broadcast to all listeners that flow is loaded
+	tfContext.FlowLoadedNotifyChan.Bcast(true)
 	go func() {
 		// Notify flow context it's loaded.
 		tfContext.ContextNotifyChan <- true
@@ -98,7 +109,10 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
 }
 
 func (tfContext *TrcFlowContext) WaitFlowLoaded() {
-	<-tfContext.FlowLoadedNotifyChan
+	// Wait for broadcast signal
+	<-tfContext.FlowLoadedNotifyChan.Ch
+	// Must call BcastAck after receiving
+	tfContext.FlowLoadedNotifyChan.BcastAck()
 }
 
 func (tfContext *TrcFlowContext) FlowSyncModeMatchAny(syncModes []string) bool {
@@ -144,6 +158,7 @@ func (tfContext *TrcFlowContext) FlowSyncModeMatch(syncMode string, startsWith b
 	}
 	return false
 }
+
 func (tfContext *TrcFlowContext) GetFlowSyncMode() string {
 	tfContext.FlowStateLock.RLock()
 	defer tfContext.FlowStateLock.RUnlock()
@@ -192,7 +207,8 @@ func (tfContext *TrcFlowContext) GetFlowState() flowcore.CurrentFlowState {
 
 func (tfContext *TrcFlowContext) SetFlowState(flowState flowcore.CurrentFlowState) {
 	tfContext.FlowStateLock.Lock()
-	tfContext.FlowState = flowState.(flowcorehelper.CurrentFlowState)
+	new := flowState.(flowcorehelper.CurrentFlowState)
+	tfContext.FlowState = new
 	tfContext.FlowStateLock.Unlock()
 }
 
@@ -232,6 +248,7 @@ func (tfContext *TrcFlowContext) GetFlowStateSyncFilterRaw() string {
 	defer tfContext.FlowStateLock.RUnlock()
 	return tfContext.FlowState.SyncFilter
 }
+
 func (tfContext *TrcFlowContext) GetFlowSyncFilters() []string {
 	tfContext.FlowStateLock.RLock()
 	defer tfContext.FlowStateLock.RUnlock()
@@ -243,7 +260,7 @@ func (tfContext *TrcFlowContext) GetFlowSyncFilters() []string {
 	// for i := 0; i < len(syncFilters); i++ {
 	// 	syncFilters[i] = strings.TrimSpace(syncFilters[i])
 	// }
-	//return syncFilters
+	// return syncFilters
 }
 
 func (tfContext *TrcFlowContext) GetFlowHeader() *flowcore.FlowHeaderType {
@@ -354,8 +371,18 @@ func (tfContext *TrcFlowContext) GetRemoteDataSourceAttribute(dataSourceAttribut
 
 	if remoteDataSourceAttribute, ok := tfContext.RemoteDataSource[dataSourceAttribute]; ok {
 		return remoteDataSourceAttribute
+	} else {
+		lookup := fmt.Sprintf("region-%s", dataSourceAttribute)
+		if remoteDataSourceAttribute, ok := tfContext.RemoteDataSource[lookup]; ok {
+			return remoteDataSourceAttribute
+		}
+
 	}
 	return nil
+}
+
+func (tfContext *TrcFlowContext) GetFlowChatMsgReceiverChan() *chan *tccore.ChatMsg {
+	return tfContext.FlowChatMsgReceiverChan
 }
 
 func (tfContext *TrcFlowContext) CancelTheContext() bool {
@@ -387,7 +414,7 @@ func (tfContext *TrcFlowContext) TransitionState(syncMode string) {
 	stateUpdateChannel := tfContext.GetCurrentFlowStateUpdateByDataSource("flowStateReceiver")
 
 	go func(tfCtx *TrcFlowContext, sPC any) {
-		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) //does get need locking...
+		tfCtx.SetPreviousFlowState(tfCtx.GetFlowState()) // does get need locking...
 		for {
 			previousState := tfCtx.GetPreviousFlowState().(flowcorehelper.CurrentFlowState)
 			stateUpdateI := <-tfCtx.GetCurrentFlowStateUpdateByDataSource("flowStateController").(chan flowcore.CurrentFlowState)

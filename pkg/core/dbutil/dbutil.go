@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"database/sql"
+	"errors"
 	"net"
 	"time"
 
@@ -24,10 +25,9 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	goMod *helperkv.Modifier,
 	url string,
 	username string,
-	passwordFunc func() (string, error)) (*sql.DB, error) {
-
+	passwordFunc func() (string, error),
+) (*sql.DB, error) {
 	driver, server, port, dbname, certName, err := validator.ParseURL(driverConfig.CoreConfig, url)
-
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +37,17 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 
 	if goMod != nil {
 		var clientCertBytes []byte
+		var clientCertPath string
+		if driver == "mysql" || driver == "mariadb" {
+			clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+		} else if driver == "sqlserver" {
+			clientCertPath = "Common/servicecert.crt.mf.tmpl"
+		} else {
+			return nil, errors.New("unsupported driver for TLS")
+		}
 		clientCertBytes, err = certutil.LoadCertComponent(driverConfig,
 			goMod,
-			"Common/db_cert.pem.mf.tmpl")
+			clientCertPath)
 		if err != nil {
 			return nil, err
 		}
@@ -50,6 +58,8 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	if err != nil {
 		return nil, err
 	}
+	tlsConfig.ServerName = server
+
 	tlsErr := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
 	if tlsErr != nil {
 		return nil, tlsErr

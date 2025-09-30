@@ -251,7 +251,7 @@ func CommonMain(envDefaultPtr *string,
 		<-pluginCompleteChan
 
 	case "edit":
-		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow // This is not overridable in edit mode.
+		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow
 		var tokenName string
 		if eUtils.RefLength(tokenPtr) > 0 {
 			tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
@@ -279,7 +279,7 @@ func CommonMain(envDefaultPtr *string,
 				}
 			},
 			CoreConfig: &coreconfig.CoreConfig{
-				IsShell:             true, // Pretent to be shell to keep things in memory
+				IsShell:             true, // Pretend to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,
