@@ -1207,6 +1207,12 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for kernel id: %s\n", pluginHandler.Id)
 		return
 	}
+	for {
+		if len(globalPluginStatusChan) == 0 {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
 	response := ""
 	for k, v := range globalCertCache.Items() {
 		if v != nil && v.NotAfter != nil && !(*v.NotAfter).IsZero() && (*v.lastUpdate).IsZero() {
@@ -1242,7 +1248,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
-		pluginHandler.sendInitBroadcast(driverConfig)
+		go pluginHandler.sendInitBroadcast(driverConfig)
 	}
 
 	for {
