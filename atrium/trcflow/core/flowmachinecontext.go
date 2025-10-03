@@ -1561,9 +1561,9 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.FlowHeader.TableName())
 	var table *sqlememory.Table
 
-	// TODO: Do we want back lookup by enterpriseId on all rows?
-	// if enterpriseId, ok := secretColumns["EnterpriseId"]; ok {
-	// 	valueColumns["_EnterpriseId_"] = enterpriseId
+	// TODO: Do we want back lookup by sociiId on all rows?
+	// if sociiId, ok := secretColumns["sociiId"]; ok {
+	// 	valueColumns["sociiId"] = sociiId
 	// }
 	// valueColumns["_Version_"] = version
 
