@@ -51,13 +51,13 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-var gAgentConfig *capauth.AgentConfigs = nil
-var gTrcshConfig *capauth.TrcShConfig
-var kernelPluginHandler *hive.PluginHandler = nil
-
 var (
-	MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
+	gAgentConfig        *capauth.AgentConfigs = nil
+	gTrcshConfig        *capauth.TrcShConfig
+	kernelPluginHandler *hive.PluginHandler = nil
 )
+
+var MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
 
 const (
 	YOU_SHALL_NOT_PASS = "you shall not pass"
@@ -75,7 +75,7 @@ func CreateLogFile() (*log.Logger, error) {
 			logFile = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
 		}
 		var errOpenFile error
-		f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+		f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
 		if errOpenFile != nil {
 			return nil, errOpenFile
 		}
@@ -90,7 +90,8 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	useMemCache bool,
 	outputMemCache bool,
 	isShell bool,
-	logger ...*log.Logger) (*capauth.TrcshDriverConfig, error) {
+	logger ...*log.Logger,
+) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
 		env = os.Getenv("TRC_ENV")
 	}
@@ -119,7 +120,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 	}
 
-	//Check if logger passed in - if not call create log method that does following below...
+	// Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
 	var err error
 	if len(logger) == 0 && (driverConfigPtr == nil || driverConfigPtr.CoreConfig.Log == nil) {
@@ -256,8 +257,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	outputMemCache bool,
 	deployment string,
 	dronePtr *bool,
-	projectService ...*string) {
-
+	projectService ...*string,
+) {
 	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
 		env,
 		region,
@@ -305,7 +306,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 
 		go captiplib.FeatherCtlEmitter(trcshDriverConfig.FeatherCtx, trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan, deployerEmote, nil)
 	}
-	var projServ = ""
+	projServ := ""
 	if len(projectService) > 0 && projectService[0] != nil && kernelopts.BuildOptions.IsKernel() {
 		projServ = *projectService[0]
 	}
@@ -320,8 +321,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	configMap *map[string]any,
-	driverConfigPtr *config.DriverConfig) error {
-
+	driverConfigPtr *config.DriverConfig,
+) error {
 	if flagset == nil {
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -349,8 +350,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
 
-	regionPtr = flagset.String("region", "", "Region to be processed")  //If this is blank -> use context otherwise override context.
-	trcPathPtr = flagset.String("c", "", "Optional script to execute.") //If this is blank -> use context otherwise override context.
+	regionPtr = flagset.String("region", "", "Region to be processed")  // If this is blank -> use context otherwise override context.
+	trcPathPtr = flagset.String("c", "", "Optional script to execute.") // If this is blank -> use context otherwise override context.
 	projectServiceFlagPtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
 	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
@@ -412,7 +413,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 
-		var pathParam = os.Getenv("PATH_PARAM")
+		pathParam := os.Getenv("PATH_PARAM")
 		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
 			*envPtr,
 			*regionPtr,
@@ -426,7 +427,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			os.Exit(124)
 		}
 
-		//Open deploy script and parse it.
+		// Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, "", *trcPathPtr, *projectServicePtr, dronePtr)
 	} else {
 		if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Log == nil {
@@ -453,7 +454,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				data, err := os.ReadFile("config.yml")
 				if err != nil {
 					driverConfigPtr.CoreConfig.Log.Println("Error reading YAML file:", err)
-					os.Exit(-1) //do we want to exit???
+					os.Exit(-1) // do we want to exit???
 				}
 				err = yaml.Unmarshal(data, configMap)
 				if err != nil {
@@ -560,7 +561,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(&vaultAddr)
 			}
 
-			//Replace dev-1 with DEPLOYMENTS-1
+			// Replace dev-1 with DEPLOYMENTS-1
 			deploymentsKey := "DEPLOYMENTS"
 			subDeploymentIndex := strings.Index(*envPtr, "-")
 			if subDeploymentIndex != -1 {
@@ -638,7 +639,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			if matches, _ := regexp.MatchString("\\-\\d+$", hostname); matches {
 				driverConfigPtr.CoreConfig.Log.Println("Stateful set enabled")
 
-				// spectrum-aggregator-snapshot-<pool>
+				// <pod>-<pool>
 				hostParts := strings.Split(hostname, "-")
 				var err error
 				id, err = strconv.Atoi(hostParts[1])
@@ -764,7 +765,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 						fmt.Printf("Error migrating updated role: %s\n", err)
 						driverConfigPtr.CoreConfig.Log.Printf("Error migrating updated role: %s\n", err)
 					} else {
-						//delete os.env token
+						// delete os.env token
 						if os.Getenv("AGENT_TOKEN") != "" {
 							command := exec.Command("cmd", "/C", "setx", "/M", "AGENT_TOKEN", "UNSET")
 							_, err := command.CombinedOutput()
@@ -901,7 +902,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					trcPath string,
 					outputMemCache bool,
 					dronePtr *bool,
-					projectService *string) {
+					projectService *string,
+				) {
 					for {
 						deploy := <-*kernelPluginHandler.KernelCtx.DeployRestartChan
 						dcPtr.CoreConfig.Log.Printf("Restarting deploy for %s.\n", deploy)
@@ -939,13 +941,15 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	return nil
 }
 
-var interruptChan chan os.Signal = make(chan os.Signal, 5)
-var twoHundredMilliInterruptTicker *time.Ticker = time.NewTicker(200 * time.Millisecond)
-var secondInterruptTicker *time.Ticker = time.NewTicker(time.Second)
-var multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 3)
-var fiveSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
-var fifteenSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
-var thirtySecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+var (
+	interruptChan                  chan os.Signal = make(chan os.Signal, 5)
+	twoHundredMilliInterruptTicker *time.Ticker   = time.NewTicker(200 * time.Millisecond)
+	secondInterruptTicker          *time.Ticker   = time.NewTicker(time.Second)
+	multiSecondInterruptTicker     *time.Ticker   = time.NewTicker(time.Second * 3)
+	fiveSecondInterruptTicker      *time.Ticker   = time.NewTicker(time.Second * 5)
+	fifteenSecondInterruptTicker   *time.Ticker   = time.NewTicker(time.Second * 5)
+	thirtySecondInterruptTicker    *time.Ticker   = time.NewTicker(time.Second * 5)
+)
 
 func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
 	result := false
@@ -1035,7 +1039,8 @@ func roleBasedRunner(
 	control string,
 	argsOrig []string,
 	deployArgLines []string,
-	configCount *int) error {
+	configCount *int,
+) error {
 	*configCount -= 1
 	if trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr == nil {
 		currentRoleEntityPtr := new(string)
@@ -1106,8 +1111,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	control string,
 	argsOrig []string,
 	deployArgLines []string,
-	configCount *int) {
-
+	configCount *int,
+) {
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Processing control: %s\n", control)
 
 	switch control {
@@ -1284,8 +1289,8 @@ func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	control string,
 	argsOrig []string,
 	deployArgLines []string,
-	configCount *int) error {
-
+	configCount *int,
+) error {
 	err := roleBasedRunner(region, trcshDriverConfig, control, argsOrig, deployArgLines, configCount)
 	return err
 }
@@ -1310,8 +1315,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	deployment string,
 	trcPath string,
 	projectService string,
-	dronePtr *bool) {
-
+	dronePtr *bool,
+) {
 	pwd, _ := os.Getwd()
 	var content []byte
 
@@ -1490,7 +1495,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		if projectService != "" {
 			deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
 			err := deployutil.MountPluginFileSystem(&deployerDriverConfig, trcPath, projectService)
-
 			if err != nil {
 				deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Failed to fetch template using projectServicePtr: %s", err.Error())
 				fmt.Println("Trcsh - Failed to fetch template using projectServicePtr. " + err.Error())
@@ -1608,7 +1612,7 @@ collaboratorReRun:
 	}
 
 	deployArgLines := strings.Split(string(content), "\n")
-	configCount := strings.Count(string(content), "trcconfig") //Uses this to close result channel on last run.
+	configCount := strings.Count(string(content), "trcconfig") // Uses this to close result channel on last run.
 	argsOrig := os.Args
 
 	var trcKubeDeploymentConfig *kube.TrcKubeConfig
@@ -1636,7 +1640,7 @@ collaboratorReRun:
 		for _, deployLine := range deployPipeSplit {
 			trcshDriverConfig.DriverConfig.IsShellSubProcess = false
 			os.Args = argsOrig
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) //Reset flag parse to allow more toolset calls.
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError) // Reset flag parse to allow more toolset calls.
 
 			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
@@ -1744,7 +1748,7 @@ collaboratorReRun:
 		content = nil
 		goto collaboratorReRun
 	}
-	//Make the arguments in the script -> os.args.
+	// Make the arguments in the script -> os.args.
 
 }
 
