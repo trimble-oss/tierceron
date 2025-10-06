@@ -32,6 +32,7 @@ import (
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trccertmgmtbase"
+	trcgitmgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcgitmgmtbase"
 )
 
 func CommonMain(envPtr *string,
@@ -41,8 +42,8 @@ func CommonMain(envPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
-	mainPluginHandler ...*hive.PluginHandler) error {
-
+	mainPluginHandler ...*hive.PluginHandler,
+) error {
 	var flagEnvPtr *string
 	var tokenPtr *string
 	var addrPtr *string
@@ -60,7 +61,7 @@ func CommonMain(envPtr *string,
 		flagEnvPtr = flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
-		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+		flagset.String("region", "", "Region to be processed") // If this is blank -> use context otherwise override context.
 		flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"plgtool.log", "Output path for log files")
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
@@ -106,7 +107,7 @@ func CommonMain(envPtr *string,
 	pluginTypePtr := flagset.String("pluginType", "vault", "Used to indicate type of plugin.  Default is vault.")
 
 	// Certify flags...
-	sha256Ptr := flagset.String("sha256", "", "Used to certify vault plugin") //This has to match the image that is pulled -> then we write the vault.
+	sha256Ptr := flagset.String("sha256", "", "Used to certify vault plugin") // This has to match the image that is pulled -> then we write the vault.
 	checkDeployedPtr := flagset.Bool("checkDeployed", false, "Used to check if plugin has been copied, deployed, & certified")
 	checkCopiedPtr := flagset.Bool("checkCopied", false, "Used to check if plugin has been copied & certified")
 
@@ -116,8 +117,13 @@ func CommonMain(envPtr *string,
 
 	certifyInit := false
 
-	//APIM flags
+	// APIM flags
 	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
+
+	// Repository cloning flags
+	gitClonePtr := flagset.Bool("clone", false, "Clone a Git repository")
+	repoURLPtr := flagset.String("repo", "", "Repository URL to clone")
+	targetDirPtr := flagset.String("targetDir", "", "Target directory for the cloned repository")
 
 	// Cert flags
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
@@ -161,7 +167,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil && logFilePtr != nil {
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		if err != nil {
 			fmt.Println("Error creating log file: " + *logFilePtr)
 			return errors.New("Error creating log file: " + *logFilePtr)
@@ -335,7 +341,7 @@ func CommonMain(envPtr *string,
 	regions := []string{}
 
 	pluginConfig := map[string]any{}
-	pluginConfig = buildopts.BuildOptions.ProcessPluginEnvConfig(pluginConfig) //contains logNamespace for InitVaultMod
+	pluginConfig = buildopts.BuildOptions.ProcessPluginEnvConfig(pluginConfig) // contains logNamespace for InitVaultMod
 	if pluginConfig == nil {
 		fmt.Println("Error: Could not find plugin config")
 		return errors.New("could not find plugin config")
@@ -420,6 +426,24 @@ func CommonMain(envPtr *string,
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Regions = regions
 	}
 
+	if *gitClonePtr {
+		// Validate required parameters
+		if *repoURLPtr == "" {
+			fmt.Println("Repository URL is required for git clone operation")
+			return errors.New("repository URL is required for git clone operation")
+		}
+
+		// Execute the clone repository function
+		err := trcgitmgmtbase.CloneRepository(*repoURLPtr, *targetDirPtr, envPtr, tokenNamePtr, driverConfig, mod)
+		if err != nil {
+			fmt.Printf("Git clone operation failed: %s\n", err)
+			return err
+		}
+
+		fmt.Printf("Successfully cloned repository: %s\n", *repoURLPtr)
+		return nil
+	}
+
 	if *updateAPIMPtr {
 		var apimError error
 		if len(*certPathPtr) > 0 {
@@ -487,7 +511,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
 	pluginToolConfig["codeBundlePtr"] = *codeBundlePtr
 	pluginToolConfig["pathParamPtr"] = *pathParamPtr
-	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr //is a bool that gets converted to a string for writeout/certify
+	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr // is a bool that gets converted to a string for writeout/certify
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
 	pluginToolConfig["buildImagePtr"] = *buildImagePtr
@@ -533,7 +557,7 @@ func CommonMain(envPtr *string,
 			if pathParam, ok := pluginToolConfig["pathParamPtr"].(string); ok && pathParam != "" {
 				pluginToolConfig["trcpathparam"] = pluginToolConfig["pathParamPtr"].(string)
 			}
-			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { //only writes out if expandTarget = true
+			if expandTarget, ok := pluginToolConfig["expandTargetPtr"].(bool); ok && expandTarget { // only writes out if expandTarget = true
 				pluginToolConfig["trcexpandtarget"] = "true"
 			}
 			if nrAppName, ok := pluginToolConfig["newrelicAppName"].(string); ok && nrAppName != "" {
@@ -591,7 +615,7 @@ func CommonMain(envPtr *string,
 		return nil
 	}
 
-	//Define Service Image
+	// Define Service Image
 	if *defineServicePtr {
 		eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
 		writeMap := make(map[string]any)
@@ -669,7 +693,7 @@ func CommonMain(envPtr *string,
 				deployRoot = pluginToolConfig["trcdeployroot"].(string)
 			}
 			if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
-				err = os.MkdirAll(deployRoot, 0700)
+				err = os.MkdirAll(deployRoot, 0o700)
 				if err != nil && !os.IsPermission(err) {
 					fmt.Println(err.Error())
 					fmt.Println("Could not prepare needed directory for deployment.")
@@ -710,7 +734,7 @@ func CommonMain(envPtr *string,
 				deployRoot = pluginToolConfig["trcdeployroot"].(string)
 			}
 
-			//check if there is a place holder, if there is replace it
+			// check if there is a place holder, if there is replace it
 			if strings.Contains(deployRoot, "{{.trcpathparam}}") {
 				if pathParam, ok := pluginToolConfig["trcpathparam"].(string); ok && pathParam != "" {
 					r, _ := regexp.Compile("^[a-zA-Z0-9_]*$")
@@ -728,7 +752,7 @@ func CommonMain(envPtr *string,
 			if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 				fmt.Printf("Deploying image to: %s\n", deployPath)
 				if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
-					err = os.MkdirAll(deployRoot, 0700)
+					err = os.MkdirAll(deployRoot, 0o700)
 					if err != nil && !os.IsPermission(err) {
 						fmt.Println(err.Error())
 						fmt.Println("Could not prepare needed directory for deployment.")
@@ -736,7 +760,7 @@ func CommonMain(envPtr *string,
 					}
 				}
 				if rif, ok := pluginToolConfig["rawImageFile"]; ok {
-					err = os.WriteFile(deployPath, rif.([]byte), 0700)
+					err = os.WriteFile(deployPath, rif.([]byte), 0o700)
 					if err != nil {
 						fmt.Println(err.Error())
 						fmt.Println("Image write failure.")
@@ -762,13 +786,13 @@ func CommonMain(envPtr *string,
 							}
 							archiveDirPath := filepath.Join(deployRoot, "archive")
 							fmt.Printf("Verifying archive directory: %s\n", archiveDirPath)
-							err := os.MkdirAll(archiveDirPath, 0700)
+							err := os.MkdirAll(archiveDirPath, 0o700)
 							if err == nil {
 								currentTime := time.Now()
 								formattedTime := fmt.Sprintf("%d-%02d-%02d_%02d-%02d-%02d", currentTime.Year(), currentTime.Month(), currentTime.Day(), currentTime.Hour(), currentTime.Minute(), currentTime.Second())
 								archiveRoot := filepath.Join(pluginToolConfig["trcdeployroot"].(string), "archive", formattedTime)
 								fmt.Printf("Verifying archive backup directory: %s\n", archiveRoot)
-								err := os.MkdirAll(archiveRoot, 0700)
+								err := os.MkdirAll(archiveRoot, 0o700)
 								if err == nil {
 									archivePath := filepath.Join(archiveRoot, pluginToolConfig["trccodebundle"].(string))
 									archivePath = strings.TrimSuffix(archivePath, ".war")
@@ -795,7 +819,7 @@ func CommonMain(envPtr *string,
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0600)
+			f, err := os.OpenFile(pathToSO, os.O_RDONLY, 0o600)
 			if err != nil {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Could not load plugin due to bad deploy path in certification: %s\n", pathToSO)
 				return err
@@ -819,7 +843,7 @@ func CommonMain(envPtr *string,
 					return err
 				}
 				if pluginHandler != nil {
-					if pluginHandler.State == 2 && sha == pluginHandler.Signature { //make sure this won't break...not set yet
+					if pluginHandler.State == 2 && sha == pluginHandler.Signature { // make sure this won't break...not set yet
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
@@ -835,7 +859,7 @@ func CommonMain(envPtr *string,
 			}
 		}
 	} else if *certifyImagePtr {
-		//Certify Image
+		// Certify Image
 		carrierCertify := false
 		// Certification always operates on env basis.
 		mod.EnvBasis = driverConfig.CoreConfig.EnvBasis
@@ -864,12 +888,12 @@ func CommonMain(envPtr *string,
 			if !strings.Contains(pluginToolConfig["trcplugin"].(string), "carrier") {
 				fmt.Println("Valid image found.")
 			}
-			//SHA MATCHES
+			// SHA MATCHES
 			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
-			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { //If region is set
+			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { // If region is set
 				mod.SectionName = "trcplugin"
 				mod.SectionKey = "/Index/"
 
@@ -902,7 +926,7 @@ func CommonMain(envPtr *string,
 					return err
 				}
 				fmt.Println("Image certified.")
-			} else { //Non region certify
+			} else { // Non region certify
 				writeMap, readErr := mod.ReadData(pluginToolConfig["pluginpath"].(string))
 				if readErr != nil {
 					if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
@@ -956,11 +980,11 @@ func CommonMain(envPtr *string,
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to shutdown: %s\n", *pluginNamePtr)
 		}
 	}
-	//Checks if image has been copied & deployed
+	// Checks if image has been copied & deployed
 	if *checkDeployedPtr {
 		if (pluginToolConfig["copied"] != nil && pluginToolConfig["copied"].(bool)) &&
 			(pluginToolConfig["deployed"] != nil && pluginToolConfig["deployed"].(bool)) &&
-			(pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == *sha256Ptr) { //Compare vault sha with provided sha
+			(pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == *sha256Ptr) { // Compare vault sha with provided sha
 			fmt.Println("Plugin has been copied, deployed & certified.")
 			return nil
 		}
@@ -971,7 +995,7 @@ func CommonMain(envPtr *string,
 			return err
 		}
 
-		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
+		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { // Compare repo image sha with provided sha
 			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
 		} else {
 			fmt.Println("Provided plugin sha is not deployable.")
@@ -983,7 +1007,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if *checkCopiedPtr {
-		if pluginToolConfig["copied"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { //Compare vault sha with provided sha
+		if pluginToolConfig["copied"].(bool) && pluginToolConfig["trcsha256"].(string) == *sha256Ptr { // Compare vault sha with provided sha
 			fmt.Println("Plugin has been copied & certified.")
 			return nil
 		}
@@ -994,7 +1018,7 @@ func CommonMain(envPtr *string,
 			return err
 		}
 
-		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { //Compare repo image sha with provided sha
+		if *sha256Ptr == pluginToolConfig["imagesha256"].(string) { // Compare repo image sha with provided sha
 			fmt.Println("Latest plugin image sha matches provided plugin sha.  It has been certified.")
 		} else {
 			fmt.Println("Provided plugin sha is not certified.")
