@@ -39,7 +39,12 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 		var clientCertBytes []byte
 		var clientCertPath string
 		if driver == "mysql" || driver == "mariadb" {
-			clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+			if prod.IsProd() {
+				// TODO: If prod combines to a common domain, we can get rid of this.
+				clientCertPath = "Common/db_cert.pem.mf.tmpl"
+			} else {
+				clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+			}
 		} else if driver == "sqlserver" {
 			clientCertPath = "Common/servicecert.crt.mf.tmpl"
 		} else {
