@@ -47,50 +47,70 @@ func CloneRepository(
 
 	// Get authentication token from the vault's Restricted section if available
 	authToken := ""
-	tempMap, readErr := mod.ReadData("super-secrets/Restricted/GitHubConfig/config")
+	tempMap, readErr := mod.ReadData("super-secrets/Restricted/PluginTool/config")
 	if readErr == nil && len(tempMap) > 0 {
 		// If credentials exist, try to use them
 		if token, ok := tempMap["github_token"]; ok {
 			authToken = fmt.Sprintf("%v", token)
-		}
-	}
-
-	// If no target directory is specified, extract a default one from the repo URL
-	if targetDir == "" {
-		// Parse the repository URL to get a sensible default directory name
-		parts := strings.Split(repoURL, "/")
-		if len(parts) > 0 {
-			// Get the last part of the URL (usually the repo name)
-			repoName := parts[len(parts)-1]
-			// Remove .git suffix if present
-			repoName = strings.TrimSuffix(repoName, ".git")
-			targetDir = filepath.Join(".", repoName)
 		} else {
-			// Fallback to a generic name if we can't parse the URL
-			targetDir = filepath.Join(".", "repo-clone")
+			return fmt.Errorf("missing required github auth token")
 		}
 	}
 
-	// Check if the target directory already exists
-	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
-		return fmt.Errorf("target directory already exists: %s", targetDir)
+	// If no target directory is specified, create a directory structure that mirrors the repo URL
+	if targetDir == "" {
+		// Parse the repository URL to create a directory structure
+		u, err := url.Parse(repoURL)
+		if err == nil {
+			// Create a path that includes the host and path components
+			// Remove http:// or https:// prefix and create directories for each part
+			host := u.Host
+			path := u.Path
+
+			// Remove leading slash from path
+			path = strings.TrimPrefix(path, "/")
+
+			// Remove .git suffix if present in the path
+			path = strings.TrimSuffix(path, ".git")
+
+			// Create a directory structure that mirrors the URL
+			targetDir = filepath.Join(".", host, path)
+		} else {
+			// If URL parsing fails, just use the raw string parts
+			parts := strings.Split(repoURL, "/")
+			if len(parts) > 0 {
+				// Remove http:// or https:// prefix if present
+				if strings.HasPrefix(repoURL, "http://") || strings.HasPrefix(repoURL, "https://") {
+					repoURL = strings.Split(repoURL, "://")[1]
+				}
+
+				// Remove .git suffix if present
+				repoURL = strings.TrimSuffix(repoURL, ".git")
+
+				// Use the entire URL path as the directory structure
+				targetDir = filepath.Join(".", repoURL)
+			} else {
+				// Fallback to a generic name if we can't parse the URL
+				targetDir = filepath.Join(".", "repo-clone")
+			}
+		}
 	}
 
-	// Create the target directory
+	// Create parent directories as needed
+	// This ensures all parent directories are created for nested URL paths
+	// But doesn't fail if directories already exist
+	if err := os.MkdirAll(filepath.Dir(targetDir), 0o755); err != nil {
+		return fmt.Errorf("failed to create parent directories: %w", err)
+	}
+
+	// Check if the target directory already exists, but don't fail - just log it
+	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
+		driverConfig.CoreConfig.Log.Printf("Note: Target directory already exists, continuing: %s", targetDir)
+	}
+
+	// Create the target directory if it doesn't exist
 	if err := os.MkdirAll(targetDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create target directory: %w", err)
-	}
-
-	// Initialize .git directory structure
-	gitDir := filepath.Join(targetDir, ".git")
-	if err := os.MkdirAll(filepath.Join(gitDir, "objects", "pack"), 0o755); err != nil {
-		return fmt.Errorf("failed to create .git directory structure: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Join(gitDir, "refs", "heads"), 0o755); err != nil {
-		return fmt.Errorf("failed to create .git directory structure: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Join(gitDir, "refs", "tags"), 0o755); err != nil {
-		return fmt.Errorf("failed to create .git directory structure: %w", err)
 	}
 
 	// Parse repository URL to extract repo info
@@ -112,7 +132,7 @@ func CloneRepository(
 		// Clone Azure DevOps repository using the Azure DevOps API
 		err = cloneAzureDevOpsRepo(authToken, repoInfo.Owner, repoInfo.Project, repoInfo.RepoName, targetDir, driverConfig)
 		if err != nil {
-			return fmt.Errorf("Azure DevOps API clone failed: %w", err)
+			return fmt.Errorf("azure DevOps API clone failed: %w", err)
 		}
 	} else {
 		return fmt.Errorf("unsupported repository type: %s", repoURL)
@@ -137,83 +157,14 @@ func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir stri
 		return fmt.Errorf("failed to create Azure DevOps git client: %w", err)
 	}
 
-	// Get repository information to find the default branch
-	repoArgs := git.GetRepositoryArgs{
-		RepositoryId: &repo,
-		Project:      &project,
+	// No need to get repository information since we're just downloading files
+
+	// Create target directory
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create target directory: %w", err)
 	}
 
-	repository, err := gitClient.GetRepository(ctx, repoArgs)
-	if err != nil {
-		return fmt.Errorf("failed to get Azure DevOps repository info: %w", err)
-	}
-
-	defaultBranch := ""
-	if repository.DefaultBranch != nil {
-		// Convert from refs/heads/main to just main
-		defaultBranch = strings.TrimPrefix(*repository.DefaultBranch, "refs/heads/")
-	} else {
-		// Fallback to main if default branch is not set
-		defaultBranch = "main"
-	}
-
-	// Create a basic git config file
-	configFile := filepath.Join(targetDir, ".git", "config")
-	repoURL := fmt.Sprintf("https://dev.azure.com/%s/%s/_git/%s", organization, project, repo)
-	configContent := fmt.Sprintf(`[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = false
-	logallrefupdates = true
-[remote "origin"]
-	url = %s
-	fetch = +refs/heads/*:refs/remotes/origin/*
-[branch "%s"]
-	remote = origin
-	merge = refs/heads/%s
-`, repoURL, defaultBranch, defaultBranch)
-
-	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
-		return fmt.Errorf("failed to create git config file: %w", err)
-	}
-
-	// Create HEAD file pointing to the default branch
-	headFile := filepath.Join(targetDir, ".git", "HEAD")
-	headContent := fmt.Sprintf("ref: refs/heads/%s\n", defaultBranch)
-	if err := os.WriteFile(headFile, []byte(headContent), 0o644); err != nil {
-		return fmt.Errorf("failed to create HEAD file: %w", err)
-	}
-
-	top := 1
-	// Get the latest commit for the default branch
-	commitArgs := git.GetCommitsArgs{
-		RepositoryId: &repo,
-		Project:      &project,
-		SearchCriteria: &git.GitQueryCommitsCriteria{
-			ItemVersion: &git.GitVersionDescriptor{
-				Version:     &defaultBranch,
-				VersionType: &git.GitVersionTypeValues.Branch,
-			},
-			Top: &top,
-		},
-	}
-
-	commits, err := gitClient.GetCommits(ctx, commitArgs)
-	if err != nil {
-		return fmt.Errorf("failed to get commits: %w", err)
-	}
-
-	// Write the SHA to the refs file if we found any commits
-	var latestCommitSHA string
-	if len(*commits) > 0 {
-		latestCommitSHA = *((*commits)[0].CommitId)
-		refsFile := filepath.Join(targetDir, ".git", "refs", "heads", defaultBranch)
-		if err := os.WriteFile(refsFile, []byte(latestCommitSHA), 0o644); err != nil {
-			return fmt.Errorf("failed to create refs file: %w", err)
-		}
-	} else {
-		return fmt.Errorf("no commits found in repository")
-	}
+	driverConfig.CoreConfig.Log.Printf("Downloading files from %s/%s/%s using Azure DevOps API...", organization, project, repo)
 
 	// Get the repository items (files and folders)
 	itemsArgs := git.GetItemsArgs{
@@ -229,16 +180,17 @@ func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir stri
 
 	// Process all items (files and directories)
 	for _, item := range *items {
-		// Skip folders, we'll create them when processing files
-		if *item.IsFolder {
+		// Skip folders and ensure IsFolder is not nil
+		if item.IsFolder != nil && *item.IsFolder {
 			continue
 		}
 
-		// Get the content path
-		relativePath := *item.Path
-		if strings.HasPrefix(relativePath, "/") {
-			relativePath = relativePath[1:]
+		// Get the content path, ensuring Path is not nil
+		if item.Path == nil {
+			continue // Skip items without a path
 		}
+		relativePath := *item.Path
+		relativePath = strings.TrimPrefix(relativePath, "/")
 
 		// Create the file path
 		filePath := filepath.Join(targetDir, relativePath)
@@ -276,6 +228,8 @@ func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir stri
 		driverConfig.CoreConfig.Log.Printf("Downloaded file: %s", relativePath)
 	}
 
+	driverConfig.CoreConfig.Log.Printf("Downloaded all files from %s/%s/%s", organization, project, repo)
+
 	return nil
 }
 
@@ -291,6 +245,10 @@ type RepoInfo struct {
 // parseRepoURL extracts repository information from a Git repository URL
 func parseRepoURL(repoURL string) (RepoInfo, error) {
 	info := RepoInfo{}
+
+	if !strings.HasPrefix(repoURL, "https://") {
+		repoURL = "https://" + repoURL
+	}
 
 	// Parse the URL
 	u, err := url.Parse(repoURL)
@@ -359,76 +317,25 @@ func cloneGitHubRepo(authToken, owner, repo, targetDir string, driverConfig *con
 		client = github.NewClient(nil)
 	}
 
-	// Get the repository details to obtain the default branch
-	repository, _, err := client.Repositories.Get(ctx, owner, repo)
-	if err != nil {
-		return fmt.Errorf("failed to get repository info: %w", err)
+	// Create target directory
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create target directory: %w", err)
 	}
 
-	defaultBranch := repository.GetDefaultBranch()
+	driverConfig.CoreConfig.Log.Printf("Downloading files from %s/%s using GitHub API...", owner, repo)
 
-	// Create a basic git config file
-	configFile := filepath.Join(targetDir, ".git", "config")
-	configContent := fmt.Sprintf(`[core]
-	repositoryformatversion = 0
-	filemode = true
-	bare = false
-	logallrefupdates = true
-[remote "origin"]
-	url = %s
-	fetch = +refs/heads/*:refs/remotes/origin/*
-[branch "%s"]
-	remote = origin
-	merge = refs/heads/%s
-`, repository.GetCloneURL(), defaultBranch, defaultBranch)
+	// Use default branch (main/master) for downloading files
+	defaultBranch := "main"
 
-	if err := os.WriteFile(configFile, []byte(configContent), 0o644); err != nil {
-		return fmt.Errorf("failed to create git config file: %w", err)
-	}
+	var err error
 
-	// Create HEAD file pointing to the default branch
-	headFile := filepath.Join(targetDir, ".git", "HEAD")
-	headContent := fmt.Sprintf("ref: refs/heads/%s\n", defaultBranch)
-	if err := os.WriteFile(headFile, []byte(headContent), 0o644); err != nil {
-		return fmt.Errorf("failed to create HEAD file: %w", err)
-	}
-
-	// Create the refs for the default branch
-	refsFile := filepath.Join(targetDir, ".git", "refs", "heads", defaultBranch)
-	// We'll add the SHA later once we have it
-
-	// We'll proceed directly to getting the commit SHA and downloading contents
-	// No need to get the repository content tree at this point
-
-	// Keep track of the latest commit SHA
-	var latestCommitSHA string
-
-	// Get the latest commit SHA
-	commits, _, err := client.Repositories.ListCommits(ctx, owner, repo, &github.CommitsListOptions{
-		SHA: defaultBranch,
-		ListOptions: github.ListOptions{
-			PerPage: 1,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get latest commit: %w", err)
-	}
-
-	if len(commits) > 0 {
-		latestCommitSHA = *commits[0].SHA
-		// Write the SHA to the refs file
-		if err := os.WriteFile(refsFile, []byte(latestCommitSHA), 0o644); err != nil {
-			return fmt.Errorf("failed to create refs file: %w", err)
-		}
-	} else {
-		return fmt.Errorf("no commits found in repository")
-	}
-
-	// Process each file and directory in the repository
+	// Download repository contents
 	err = downloadRepositoryContents(ctx, client, owner, repo, "", targetDir, defaultBranch, driverConfig)
 	if err != nil {
 		return fmt.Errorf("failed to download repository contents: %w", err)
 	}
+
+	driverConfig.CoreConfig.Log.Printf("Downloaded all files from %s/%s", owner, repo)
 
 	return nil
 }
@@ -443,6 +350,10 @@ func downloadRepositoryContents(ctx context.Context, client *github.Client, owne
 	}
 
 	for _, content := range directoryContent {
+		// Skip if content or Type is nil
+		if content == nil || content.Type == nil {
+			continue
+		}
 		switch *content.Type {
 		case "file":
 			// Download file
@@ -451,6 +362,11 @@ func downloadRepositoryContents(ctx context.Context, client *github.Client, owne
 			})
 			if err != nil {
 				return fmt.Errorf("failed to fetch file '%s': %w", *content.Path, err)
+			}
+
+			// Skip if Path is nil
+			if content.Path == nil {
+				continue
 			}
 
 			// Create the file path
