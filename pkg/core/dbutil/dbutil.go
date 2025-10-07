@@ -36,7 +36,7 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	var conn *sql.DB
 	var tlsConfig *tls.Config
 
-	if goMod != nil && kernelopts.BuildOptions.IsKernel() {
+	if goMod != nil && (kernelopts.BuildOptions.IsKernel() || !prod.IsProd()) {
 		var clientCertBytes []byte
 		var clientCertPath string
 		if driver == "mysql" || driver == "mariadb" {
