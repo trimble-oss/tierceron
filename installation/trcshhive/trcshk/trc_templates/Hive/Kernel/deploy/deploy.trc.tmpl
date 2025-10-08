@@ -1,0 +1,15 @@
+#!/bin/bash
+
+{{.deploy_comment}}trcpub
+{{.deploy_comment}}trcconfig -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -servicesWanted=Hive/Kernel
+
+{{.deploy_comment}}ARN=$(kubectl config current-context)
+{{.deploy_comment}}kubectl config set-context trcshk-{{or .deploy_ENVIRONMENT "$KUBEENV"}} --cluster={{or .deploy_CLUSTER "$ARN"}} --user={{or .deploy_USER "$ARN"}}
+kubectl config use-context {{.deploy_CONTEXT}}
+
+kubectl create configmap trcshk-application-config --namespace={{or .deploy_NAMESPACE "$KUBENAMESPACE"}} --from-file=config.yml --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl apply -f deploy/deployment.yaml --namespace={{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+kubectl apply -f deploy/hpa.yaml --namespace={{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+
+kubectl rollout restart deployment/pendentive-trcshk -n {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}

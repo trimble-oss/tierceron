@@ -1,0 +1,38 @@
+[req]
+default_bits=2048
+default_md=sha256
+req_extensions=v3_req
+distinguished_name=req_distinguished_name
+prompt=no
+
+[req_distinguished_name]
+C=PW # Country
+ST=Melekeok  # State
+L=Ngerulmud  # Locality
+O=TierceronTest  # Organization
+CN=tierceron.test
+
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+IP.1=127.0.0.1
+# IP.2=<Uncomment and set your local ip address>
+DNS.1=tierceron.test  # You can add more hostnames here like DNS.2 = another-server.com
+
+# Add the following section to specify certificate validity
+[ v3 ]
+subjectAltName=@alt_names
+basicConstraints=critical,CA:FALSE
+keyUsage=nonRepudiation, digitalSignature, keyEncipherment
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always
+# Set certificate validity period to 365 days
+extendedKeyUsage=critical, serverAuth
+# Recommended for SHA-2 certificates
+subjectKeyIdentifier=hash
+crlDistributionPoints=@crl_section
+
+# Optional CRL section (replace with your CA's CRL information if needed)
+[ crl_section ]
+URI=https://tierceron.test/tierceroncrl.crl

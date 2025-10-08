@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello
+  annotations:
+    seccomp.security.alpha.kubernetes.io/hello: runtime/default
+
+spec:
+  replicas: {{.deploy_REPLICAS}}
+  selector:
+    matchLabels:
+      app: hello
+      namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+  template:
+    metadata:
+      labels:
+        app: hello
+        namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: nodepool
+                  operator: In
+                  values:
+                  - datapipeline
+      containers:
+        - name: hello
+          image: {{.deploy_REGISTRY_URL}}/hello:${TAG}
+          imagePullPolicy: Always
+          readinessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:{{.deploy_HELLO_PORT}}", "-tls", "-tls-no-verify"]
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/bin/grpc_health_probe", "-addr=:{{.deploy_HELLO_PORT}}", "-tls", "-tls-no-verify"]
+            initialDelaySeconds: 15
+            periodSeconds: 15
+            timeoutSeconds: 5
+          ports:
+            - containerPort: {{.deploy_HELLO_PORT}}
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          volumeMounts:
+            - name: hello-app-volume
+              mountPath: /usr/local/hello/config.yml
+              subPath: config.yml
+            - name: hello-crt-volume
+              mountPath: /usr/local/hello/hello.crt
+              subPath: hello.crt
+            - name: hello-key-volume
+              mountPath: //usr/local/hello/hellokey.key
+              subPath: hellokey.key
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsGroup: 65534
+            runAsNonRoot: true
+            runAsUser: 65534
+      volumes:
+        - name: hello-app-volume
+          configMap:
+            name: hello-application-config
+        - name: hello-crt-volume
+          secret:
+            secretName: hello-cert
+        - name: hello-key-volume
+          secret:
+            secretName: hello-key
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-service
+  namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-ipv4: {{.deploy_LB_IP}}
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    service.beta.kubernetes.io/azure-pls-create: "true"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+  - port: {{.deploy_HELLO_PORT}}
+  selector:
+    app: hello-selector
+    namespace: {{or .deploy_NAMESPACE "$KUBENAMESPACE"}}
+

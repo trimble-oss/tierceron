@@ -1,0 +1,6 @@
+# Plugin resources needed for verification.
+azure-repository: <no value>
+azure-client-id: <no value>
+azure-client-secret: <no value>
+azure-tenant-id: <no value>
+

@@ -1,5 +1,5 @@
 ﻿
-## Code Review 📝
+## Code Review
 
 ### Guidelines ✍ 
 Code review is required to get a second opinion on the chosen solution and
@@ -26,7 +26,6 @@ This is a list of requirements that you should expect for **code reviews**:
 
 
 ### Coding Standards ⌨
-
 - keep the document formatted (in VSCode, this should happen automatically.)
 - you can add comments in the code if there is something that is not obvious and is worth mentioning
 - every ```if statements``` should contain parentheses (even if the block instruction has only one line of code)
