@@ -13,8 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
@@ -31,7 +32,7 @@ const (
 	rsaPrivateKeyType = "RSA PRIVATE KEY"
 )
 
-func StoreKeystore(driverConfig *eUtils.DriverConfig, trustStorePassword string) ([]byte, error) {
+func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	keystoreWriter := bufio.NewWriter(buffer)
 
@@ -47,7 +48,7 @@ func StoreKeystore(driverConfig *eUtils.DriverConfig, trustStorePassword string)
 	return buffer.Bytes(), nil
 }
 
-func AddToKeystore(driverConfig *eUtils.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
+func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
 	// TODO: Add support for this format?  golang.org/x/crypto/pkcs12
 
 	if !strings.HasSuffix(driverConfig.WantKeystore, ".jks") && strings.HasSuffix(certBundleJks, ".jks") {
@@ -115,7 +116,7 @@ func AddToKeystore(driverConfig *eUtils.DriverConfig, alias string, password []b
 }
 
 // ValidateKeyStore validates the sendgrid API key.
-func ValidateKeyStore(config *core.CoreConfig, filename string, pass string) (bool, error) {
+func ValidateKeyStore(config *coreconfig.CoreConfig, filename string, pass string) (bool, error) {
 	file, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
@@ -139,7 +140,7 @@ func ValidateKeyStore(config *core.CoreConfig, filename string, pass string) (bo
 				return false, errors.New("failed to parse: " + err.Error())
 			}
 
-			isCertValid, err := VerifyCertificate(&cert, "")
+			isCertValid, err := VerifyCertificate(&cert, "", true)
 			if err != nil {
 				eUtils.LogInfo(config, "Certificate validation failure.")
 			}

@@ -35,15 +35,21 @@ api:
 fiddler:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcfiddler
 config:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcconfig
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcconfig
 configwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -tags "windows azure memonly" -o $(GOBIN)/trcconfig.exe github.com/trimble-oss/tierceron/cmd/trcconfig
+configmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go build  -tags "darwin azure memonly" -o $(GOBIN)/trcconfig github.com/trimble-oss/tierceron/cmd/trcconfig
 seed:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcinit
 seedp:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH)go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmdp/trcinitp
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmdp/trcinitp
+seedmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go install  -tags "darwin azure memonly" github.com/trimble-oss/tierceron/cmd/trcinit
 x:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcx
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcx
+xmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go install -buildmode=pie -tags "darwin azure memonly" github.com/trimble-oss/tierceron/cmd/trcx
 xlib:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build   -buildmode=c-shared -a -ldflags '-w' -tags "azure memonly" -o $(GOBIN)/nc.so github.com/trimble-oss/tierceron/zeroconfiglib
 maclib:
@@ -52,11 +58,65 @@ xp:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmdp/trcxp
 pub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcpub
+pubmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go install -tags "darwin azure memonly" github.com/trimble-oss/tierceron/cmd/trcpub
 sub:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "azure memonly" github.com/trimble-oss/tierceron/cmd/trcsub
 ctl:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install  -tags "memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
+ctlmac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go install -buildmode=pie -tags "darwin memonly tc" github.com/trimble-oss/tierceron/cmd/trcctl
+ctldebug:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "salty memonly argosystub hardwired trcshkernel" -ldflags='-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=ignore' github.com/trimble-oss/tierceron/cmd/trcctl
+descartes:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go install -buildmode=pie -tags "azure memonly"  github.com/trimble-oss/tierceron/cmd/trcdescartes
+
+# Usage:
+#   make hivepluginbuild PLUGIN=pluginname
+#   make hivepluginrelease PLUGIN=pluginname VERSION=v0.1.0
+hivepluginbuild:
+	@if [ -z "$(PLUGIN)" ]; then \
+		echo "ERROR: PLUGIN must be set, e.g., make hivepluginbuild PLUGIN=pluginname"; \
+		exit 1; \
+	fi
+
+	# Build the plugin
+	@echo "==> Building plugin for $(PLUGIN)..."
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=plugin -tags "azure memonly" -o $(GOBIN)/$(PLUGIN).so github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/$(PLUGIN) || { \
+		echo "ERROR: Build failed."; \
+		exit 1; \
+	}
+
+# Usage:
+#   make hivepluginrelease PLUGIN=pluginname VERSION=v0.1.0
+hivepluginrelease: hivepluginbuild
+	@if [ -z "$(PLUGIN)" ] || [ -z "$(VERSION)" ]; then \
+		echo "ERROR: PLUGIN and VERSION must be set, e.g., make hivepluginrelease PLUGIN=pluginname VERSION=v0.1.0"; \
+		exit 1; \
+	fi
+
+	# Check if we're on the main branch
+	@CURRENT_BRANCH=$$(git symbolic-ref --short HEAD); \
+	if [ "$$CURRENT_BRANCH" != "main" ]; then \
+		echo "ERROR: Tagging is only allowed on the main branch. Current branch: $$CURRENT_BRANCH"; \
+		exit 1; \
+	fi
+
+	# If build succeeds, proceed with tagging
+	@TAG_PREFIX=$$(echo $(PLUGIN) | tr '/' '-'); \
+	echo "==> Tagging $(PLUGIN) with tag $$TAG_PREFIX/$(VERSION)"; \
+	cd atrium/vestibulum/hive/plugins/$(PLUGIN) && \
+	git tag -a "$$TAG_PREFIX/$(VERSION)" -m "Release $(VERSION) for github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/$(PLUGIN)" && \
+	cd - >/dev/null
+
+	@TAG_PREFIX=$$(echo $(PLUGIN) | tr '/' '-'); \
+	git push origin "$$TAG_PREFIX/$(VERSION)"
+
 gen:
 	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
+
+cleancache:
+	go clean -cache
+	go clean -modcache
 
 all: api config seed x xlib pub sub

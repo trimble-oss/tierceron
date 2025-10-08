@@ -16,12 +16,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 
 	"github.com/hashicorp/vault/api"
 )
+
+var EMPTY_STRING string = ""
 
 // Set all paths that don't use environments to true
 var noEnvironments = map[string]bool{
@@ -61,8 +64,10 @@ type modCache struct {
 	modifierChan chan *Modifier
 }
 
-var modifierCache map[string]*modCache = map[string]*modCache{}
-var modifierCachLock sync.Mutex
+var (
+	modifierCache    map[string]*modCache = map[string]*modCache{}
+	modifierCachLock sync.Mutex
+)
 
 // PreCheckEnvironment
 // Returns: env, parts, true if parts is path, false if part of file name, error
@@ -85,8 +90,24 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 	return environment, "", false, nil
 }
 
+// NewModifierFromCoreConfig Constructs a new modifier struct and connects to the vault
+// @param coreConfig 	core config containing components necessary to connect to vault.
+// @param useCache Whether to use the modcache or not.
+// @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
+//
+//	Any errors generated in creating the client
+func NewModifierFromCoreConfig(coreConfig *coreconfig.CoreConfig, tokenName string, env string, useCache bool) (*Modifier, error) {
+	return NewModifier(coreConfig.Insecure,
+		coreConfig.TokenCache.GetToken(tokenName),
+		coreConfig.TokenCache.VaultAddressPtr,
+		env,
+		coreConfig.Regions,
+		useCache,
+		coreConfig.Log)
+}
+
 // NewModifier Constructs a new modifier struct and connects to the vault
-// @param token 	The access token needed to connect to the vault
+// @param tokenPtr 	The access token needed to connect to the vault
 // @param address	The address of the API endpoint for the server
 // @param env   	The environment currently connecting to.
 // @param regions   Regions we want
@@ -94,10 +115,15 @@ func PreCheckEnvironment(environment string) (string, string, bool, error) {
 // @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
 //
 //	Any errors generated in creating the client
-func NewModifier(insecure bool, token string, address string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if addressPtr == nil || len(*addressPtr) == 0 {
+		addressPtr = new(string)
+		*addressPtr = "http://127.0.0.1:8020" // Default address
+	}
+
 	if useCache {
-		PruneCache(env, address, 10)
-		checkoutModifier, err := cachedModifierHelper(env, address)
+		PruneCache(env, *addressPtr, 10)
+		checkoutModifier, err := cachedModifierHelper(env, *addressPtr)
 		if err == nil && checkoutModifier != nil {
 			checkoutModifier.Insecure = insecure
 			checkoutModifier.EnvBasis = env
@@ -111,21 +137,20 @@ func NewModifier(insecure bool, token string, address string, env string, region
 			checkoutModifier.SubSectionName = ""        // The name of the actual subsection.
 			checkoutModifier.SubSectionValue = ""       // The actual value for the sub section.
 			checkoutModifier.SectionPath = ""           // The path to the Index (both seed and vault)
-
+			if tokenPtr != nil {
+				checkoutModifier.client.SetToken(*tokenPtr)
+			}
 			return checkoutModifier, nil
 		}
 	}
 
-	if len(address) == 0 {
-		address = "http://127.0.0.1:8020" // Default address
-	}
-	httpClient, err := CreateHTTPClient(insecure, address, env, false)
+	httpClient, err := CreateHTTPClient(insecure, *addressPtr, env, false)
 	if err != nil {
 		return nil, err
 	}
 	// Create client
 	modClient, err := api.NewClient(&api.Config{
-		Address:    address,
+		Address:    *addressPtr,
 		HttpClient: httpClient,
 	})
 	if err != nil {
@@ -135,8 +160,14 @@ func NewModifier(insecure bool, token string, address string, env string, region
 		return nil, err
 	}
 
+	if (tokenPtr == nil || len(*tokenPtr) == 0) && !useCache {
+		return nil, errors.New("invalid token for modifier")
+	}
+
 	// Set access token and path for this modifier
-	modClient.SetToken(token)
+	if tokenPtr != nil {
+		modClient.SetToken(*tokenPtr)
+	}
 
 	// Return the modifier
 	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}
@@ -172,6 +203,7 @@ func (m *Modifier) Release() {
 		m.httpClient.CloseIdleConnections()
 		return
 	}
+	m.client.SetToken("")
 	if _, ok := modifierCache[m.Env]; ok {
 		m.releaseHelper(m.Env)
 	} else {
@@ -184,12 +216,16 @@ func (m *Modifier) releaseHelper(env string) {
 
 	// Since modifiers are re-used now, this may not be necessary or even desired for that
 	// matter.
-	if modifierCache[fmt.Sprintf("%s+%s", env, m.client.Address())].modCount > 10 {
+	key := fmt.Sprintf("%s+%s", env, m.client.Address())
+	modifierCachLock.Lock()
+	modifierCache[key].modCount++
+	if modifierCache[key].modCount > 10 {
+		modifierCachLock.Unlock()
 		m.CleanCache(10)
+	} else {
+		modifierCachLock.Unlock()
 	}
-
-	atomic.AddUint64(&modifierCache[fmt.Sprintf("%s+%s", env, m.client.Address())].modCount, 1)
-	modifierCache[fmt.Sprintf("%s+%s", env, m.client.Address())].modifierChan <- m
+	modifierCache[key].modifierChan <- m
 }
 
 func (m *Modifier) RemoveFromCache() {
@@ -213,6 +249,27 @@ func cleanCacheHelper(env string, addr string, limit uint64) {
 	modifierCachLock.Unlock()
 }
 
+func (m *Modifier) EmptyCache() {
+	modifierCachLock.Lock()
+	for _, modCacheEntry := range modifierCache {
+	cacheempty:
+		for {
+			if modCacheEntry.modCount > 0 {
+				select {
+				case mod := <-modCacheEntry.modifierChan:
+					mod.Close()
+					atomic.AddUint64(&modCacheEntry.modCount, ^uint64(0))
+				default:
+					break cacheempty
+				}
+			} else {
+				break cacheempty
+			}
+		}
+	}
+	modifierCachLock.Unlock()
+}
+
 func PruneCache(env string, addr string, limit uint64) {
 	if modifierCache != nil && modifierCache[fmt.Sprintf("%s+%s", env, addr)] != nil {
 		if modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount > limit {
@@ -221,6 +278,16 @@ func PruneCache(env string, addr string, limit uint64) {
 			}
 		}
 	}
+}
+
+func (m *Modifier) Reset() {
+	m.ProjectIndex = []string{}
+	m.SectionKey = ""
+	m.SectionName = ""
+	m.SectionPath = ""
+	m.SubSectionName = ""
+	m.SubSectionValue = ""
+	m.VersionFilter = []string{}
 }
 
 func (m *Modifier) CleanCache(limit uint64) {
@@ -255,7 +322,6 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 	}
 
 	secret, err := m.client.Auth().Token().LookupSelf()
-
 	if err != nil {
 		logger.Printf("LookupSelf Auth failure: %v\n", err)
 		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
@@ -296,9 +362,9 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 // @return	Warnings (if any) generated from the vault,
 //
 //	errors generated by writing
-func (m *Modifier) Write(path string, data map[string]interface{}, logger *log.Logger) ([]string, error) {
+func (m *Modifier) Write(path string, data map[string]any, logger *log.Logger) ([]string, error) {
 	// Wrap data and send
-	sendData := map[string]interface{}{"data": data}
+	sendData := map[string]any{"data": data}
 
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
@@ -306,10 +372,9 @@ func (m *Modifier) Write(path string, data map[string]interface{}, logger *log.L
 		pathBlocks[0] += "/"
 	}
 	fullPath := pathBlocks[0] + "data/"
-	if !noEnvironments[pathBlocks[0]] { //if neither templates nor cubbyhole
+	if !noEnvironments[pathBlocks[0]] { // if neither templates nor cubbyhole
 		fullPath += m.Env + "/"
-
-	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
+	} else if strings.HasPrefix(m.Env, "local") { // if local environment, add env to fullpath
 		fullPath += m.Env + "/"
 	}
 
@@ -350,14 +415,33 @@ retryQuery:
 	return Secret.Warnings, err
 }
 
+// Helper function to handle version-specific read logic
+func (m *Modifier) getVersionSpecificRead(path string, fullPath string, versionMap map[string][]string) (*api.Secret, error) {
+	if strings.HasSuffix(m.Version, "***X-Mode") { // x path
+		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
+			m.Version = strings.Split(m.Version, "***")[0]
+			versionSlice := []string{m.Version}
+			versionMap["version"] = versionSlice
+			return m.logical.ReadWithData(fullPath, versionMap)
+		}
+	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { // config path
+		versionSlice := []string{m.Version}
+		versionMap["version"] = versionSlice
+		return m.logical.ReadWithData(fullPath, versionMap)
+	} else {
+		return m.logical.Read(fullPath)
+	}
+	return m.logical.Read(fullPath)
+}
+
 // ReadData Reads the most recent data from the path referenced by this Modifier
 // @return	A Secret pointer that contains key,value pairs and metadata
 //
 //	errors generated from reading
-func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
+func (m *Modifier) ReadData(path string) (map[string]any, error) {
 	bucket := path
 	// Create full path
-	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") && !strings.HasPrefix(path, "value-metrics") { //Template paths are not indexed -> values & super-secrets are
+	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") && !strings.HasPrefix(path, "value-metrics") { // Template paths are not indexed -> values & super-secrets are
 		if strings.Contains(path, "values") {
 			path = strings.Replace(m.SectionPath, "super-secrets", "values", -1)
 		} else {
@@ -369,7 +453,7 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	fullPath := pathBlocks[0] + "data/"
 	if !noEnvironments[pathBlocks[0]] {
 		fullPath += m.Env + "/"
-	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to retrieve correct path mod.Write wrote to
+	} else if strings.HasPrefix(m.Env, "local") { // if local environment, add env to retrieve correct path mod.Write wrote to
 		fullPath += m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
@@ -378,24 +462,88 @@ func (m *Modifier) ReadData(path string) (map[string]interface{}, error) {
 	retryCount := 0
 retryVaultAccess:
 
-	var secret *api.Secret
-	var err error
-	var versionMap = make(map[string][]string)
-	if strings.HasSuffix(m.Version, "***X-Mode") { //x path
-		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
-			m.Version = strings.Split(m.Version, "***")[0]
-			versionSlice := []string{m.Version}
-			versionMap["version"] = versionSlice
-			secret, err = m.logical.ReadWithData(fullPath, versionMap)
+	// Add these variable declarations at the top of the function
+	var (
+		secret     *api.Secret
+		err        error
+		versionMap = make(map[string][]string)
+	)
+
+	// Create a timeout context and channel for results
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resultChan := make(chan struct {
+		s *api.Secret
+		e error
+	})
+
+	// Launch the vault operation in a goroutine
+	go func() {
+		var s *api.Secret
+		var e error
+
+		s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
+
+		// Try to send the result, but don't block if the context is already done
+		select {
+		case resultChan <- struct {
+			s *api.Secret
+			e error
+		}{s, e}:
+		case <-ctx.Done():
+			// Context expired, we don't need to send results anymore
 		}
-	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { //config path
-		versionSlice := []string{m.Version}
-		versionMap["version"] = versionSlice
-		secret, err = m.logical.ReadWithData(fullPath, versionMap)
-	} else {
-		secret, err = m.logical.Read(fullPath)
+	}()
+
+	// Wait for the result or timeout
+	timeoutRetry := 0
+	maxTimeoutRetries := 3
+
+	for {
+		select {
+		case result := <-resultChan:
+			// Got a result, process it
+			secret = result.s
+			err = result.e
+			goto processResult
+
+		case <-ctx.Done():
+			// Timeout occurred
+			timeoutRetry++
+			if timeoutRetry >= maxTimeoutRetries {
+				// Max retries exceeded, mark as stale and return error
+				m.Stale = true
+				m.httpClient.CloseIdleConnections()
+				err = fmt.Errorf("vault operation timed out after %d retries: %s", maxTimeoutRetries, fullPath)
+				goto processResult
+			}
+
+			// Create new context for retry
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			// Launch a new attempt
+			go func() {
+				var s *api.Secret
+				var e error
+
+				s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
+
+				select {
+				case resultChan <- struct {
+					s *api.Secret
+					e error
+				}{s, e}:
+				case <-ctx.Done():
+					// Context expired
+				}
+			}()
+		}
 	}
 
+processResult:
+	// Continue with existing processing
 	if err != nil {
 		if retryCount < 7 {
 			retryCount = retryCount + 1
@@ -406,14 +554,14 @@ retryVaultAccess:
 	if secret == nil {
 		return nil, err
 	}
-	if data, ok := secret.Data["data"].(map[string]interface{}); ok {
+	if data, ok := secret.Data["data"].(map[string]any); ok {
 		//
 		// TODO: Bad data cleanup.
 		// TODO: Hacking around missing lastTestedDate data.
 		//
 		if testedDate, testedDateOk := data["lastTestedDate"]; testedDateOk {
 			if testedDate == "" {
-				if metadata, ok := secret.Data["metadata"].(map[string]interface{}); ok {
+				if metadata, ok := secret.Data["metadata"].(map[string]any); ok {
 					data["lastTestedDate"] = metadata["created_time"]
 				}
 			}
@@ -436,21 +584,21 @@ retryVaultAccess:
 				if !buildopts.BuildOptions.CheckMemLock(bucket, dataKey) {
 					continue
 				}
-				if dataValuesSlice, isSlice := dataValues.([]interface{}); isSlice {
+				if dataValuesSlice, isSlice := dataValues.([]any); isSlice {
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
 							memprotectopts.MemProtect(nil, &dataValueString)
 						} else if _, isBool := dataValues.(bool); isBool {
-							//memprotectopts.MemProtect(nil, &dataValueString)
+							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept bools.
 						} else if _, isInt64 := dataValues.(int64); isInt64 {
-							//memprotectopts.MemProtect(nil, &dataValueString)
+							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept int64.
 						} else if _, isInt := dataValues.(int); isInt {
-							//memprotectopts.MemProtect(nil, &dataValueString)
+							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept int.
 						} else if _, isNumber := dataValues.(json.Number); isNumber {
-							//memprotectopts.MemProtect(nil, &dataValueString)
+							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept json.Number.
 						} else {
 							return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues)
@@ -459,16 +607,16 @@ retryVaultAccess:
 				} else if dataValueString, isString := dataValues.(string); isString {
 					memprotectopts.MemProtect(nil, &dataValueString)
 				} else if _, isBool := dataValues.(bool); isBool {
-					//memprotectopts.MemProtect(nil, &dataValueString)
+					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept bools.
 				} else if _, isInt64 := dataValues.(int64); isInt64 {
-					//memprotectopts.MemProtect(nil, &dataValueString)
+					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept int64.
 				} else if _, isInt := dataValues.(int); isInt {
-					//memprotectopts.MemProtect(nil, &dataValueString)
+					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept int.
 				} else if _, isNumber := dataValues.(json.Number); isNumber {
-					//memprotectopts.MemProtect(nil, &dataValueString)
+					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept json.Number.
 				} else {
 					return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. %T", dataValues)
@@ -482,33 +630,35 @@ retryVaultAccess:
 	}
 
 	if err == nil && secret != nil {
-		return nil, nil //Handle deleted, but not destroyed data from vault.
+		return nil, nil // Handle deleted, but not destroyed data from vault.
 	}
 	return nil, errors.New("could not get data from vault response")
 }
 
 // ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault
-func (m *Modifier) ReadMapValue(valueMap map[string]interface{}, path string, key string) (string, error) {
-	//return value corresponding to the key
+func (m *Modifier) ReadMapValue(valueMap map[string]any, path string, key string) (string, error) {
+	// return value corresponding to the key
 	if valueMap[key] != nil {
 		if value, ok := valueMap[key].(string); ok {
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
-			return stringer.GoString(), nil
+			mapval := stringer.GoString()
+			memprotectopts.MemProtect(nil, &mapval)
+			return mapval, nil
 		} else if stringer, ok := valueMap[key].((json.Number)); ok {
 			return stringer.String(), nil
 		} else {
-			return "", fmt.Errorf("cannot convert value at %s to string", key)
+			return EMPTY_STRING, fmt.Errorf("cannot convert value at %s to string", key)
 		}
 	}
-	return "", fmt.Errorf("key '%s' not found in '%s' with env '%s'", key, path, m.Env)
+	return EMPTY_STRING, fmt.Errorf("key '%s' not found in '%s' with env '%s'", key, path, m.Env)
 }
 
 // ReadValue takes a path and a key and returns the corresponding value from the vault
 func (m *Modifier) ReadValue(path string, key string) (string, error) {
 	valueMap, err := m.ReadData(path)
 	if err != nil {
-		return "", err
+		return EMPTY_STRING, err
 	}
 	return m.ReadMapValue(valueMap, path, key)
 }
@@ -517,7 +667,7 @@ func (m *Modifier) ReadValue(path string, key string) (string, error) {
 // @return	A Secret pointer that contains key,value pairs and metadata
 //
 //	errors generated from reading
-func (m *Modifier) ReadMetadata(path string, logger *log.Logger) (map[string]interface{}, error) {
+func (m *Modifier) ReadMetadata(path string, logger *log.Logger) (map[string]any, error) {
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "data/"
 	if !noEnvironments[pathBlocks[0]] {
@@ -540,16 +690,19 @@ retryQuery:
 	}
 	if err != nil {
 		logger.Printf("modifier failing after %d retries.\n", retries)
+		return nil, err
 	}
 
-	if data, ok := secret.Data["metadata"].(map[string]interface{}); ok {
-		return data, err
+	if secret != nil {
+		if data, ok := secret.Data["metadata"].(map[string]any); ok {
+			return data, err
+		}
 	}
 	return nil, errors.New("could not get metadata from vault response")
 }
 
 // ReadVersionMetadata Reads the Metadata of all versions from the path referenced by this Modifier
-func (m *Modifier) ReadVersionMetadata(path string, logger *log.Logger) (map[string]interface{}, error) {
+func (m *Modifier) ReadVersionMetadata(path string, logger *log.Logger) (map[string]any, error) {
 	// Create full path
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	fullPath := pathBlocks[0] + "metadata/"
@@ -581,7 +734,7 @@ retryQuery:
 		logger.Printf("Modifier failing after %d retries.\n", retries)
 	}
 
-	if versionsData, ok := secret.Data["versions"].(map[string]interface{}); ok {
+	if versionsData, ok := secret.Data["versions"].(map[string]any); ok {
 		return versionsData, err
 	}
 	return nil, errors.New("could not get metadata of versions from vault response")
@@ -597,7 +750,7 @@ func (m *Modifier) List(path string, logger *log.Logger) (*api.Secret, error) {
 	fullPath := pathBlocks[0] + "metadata"
 	if !noEnvironments[pathBlocks[0]] {
 		fullPath += "/" + m.Env + "/"
-	} else if strings.HasPrefix(m.Env, "local") { //if local environment, add env to fullpath
+	} else if strings.HasPrefix(m.Env, "local") { // if local environment, add env to fullpath
 		fullPath += "/" + m.Env + "/"
 	}
 	if len(pathBlocks) > 1 {
@@ -622,7 +775,7 @@ retryQuery:
 	}
 	if err != nil {
 		logger.Printf("Modifier failing after %d retries.\n", retries)
-		logger.Printf(err.Error())
+		logger.Printf("Error: %s\n", err.Error())
 	}
 	return result, err
 }
@@ -660,17 +813,17 @@ retryQuery:
 }
 
 // AdjustValue adjusts the value at the given path/key by n
-func (m *Modifier) AdjustValue(path string, data map[string]interface{}, n int, logger *log.Logger) ([]string, error) {
+func (m *Modifier) AdjustValue(path string, data map[string]any, n int, logger *log.Logger) ([]string, error) {
 	// Get the existing data at the path
 	oldData, err := m.ReadData(path)
 	if err != nil {
 		return nil, err
 	}
 	if oldData == nil { // Path has not been used yet, create an empty map
-		oldData = make(map[string]interface{})
+		oldData = make(map[string]any)
 	}
 	for _, v := range data {
-		if templateKey, ok := v.([]interface{}); ok {
+		if templateKey, ok := v.([]any); ok {
 			metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
 			// Try to fetch the value with the given key, start empty values with 0
 			if oldData[metricsKey] == nil {
@@ -679,7 +832,7 @@ func (m *Modifier) AdjustValue(path string, data map[string]interface{}, n int, 
 			// Convert from stored string value to int
 			oldValue, err := strconv.Atoi(oldData[metricsKey].(string))
 			if err != nil {
-				logger.Printf("Could not convert value to int at: " + metricsKey)
+				logger.Printf("Could not convert value to int at: %s\n", strings.ReplaceAll(metricsKey, "\n", ""))
 				continue
 			}
 			newValue := strconv.Itoa(oldValue + n)
@@ -696,7 +849,6 @@ func (m *Modifier) Close() {
 
 func (m *Modifier) Exists(path string) bool {
 	secret, err := m.logical.List(path)
-
 	if err != nil {
 		return false
 	}
@@ -716,14 +868,14 @@ func (m *Modifier) GetProjectServicesMap(logger *log.Logger) (map[string][]strin
 		return nil, err
 	}
 
-	availProjects := projectData.Data["keys"].([]interface{})
+	availProjects := projectData.Data["keys"].([]any)
 	for _, availProject := range availProjects {
 		serviceData, serviceErr := m.List("templates/"+availProject.(string), logger)
-		if err != nil {
+		if serviceErr != nil {
 			return nil, serviceErr
 		}
 
-		availServices := serviceData.Data["keys"].([]interface{})
+		availServices := serviceData.Data["keys"].([]any)
 		services := []string{}
 		for _, availService := range availServices {
 			services = append(services, strings.ReplaceAll(availService.(string), "/", ""))
@@ -735,7 +887,7 @@ func (m *Modifier) GetProjectServicesMap(logger *log.Logger) (map[string][]strin
 }
 
 // GetVersionValues gets filepath for values and grabs metadata for those paths.
-func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]interface{}, error) {
+func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]any, error) {
 	envCheck := make([]string, 2)
 	var realEnv string
 	lastIndex := strings.LastIndex(mod.Env, "_")
@@ -752,8 +904,8 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 		mod.Env = mod.EnvBasis
 	}
 	userPaths, err := mod.List(enginePath+"/", logger)
-	versionDataMap := make(map[string]map[string]interface{}, 0)
-	//data := make([]string, 0)
+	versionDataMap := make(map[string]map[string]any, 0)
+	// data := make([]string, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -762,24 +914,25 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	}
 
 	if wantCerts {
-		//get a list of projects under values
+		// get a list of projects under values
 		certPaths, err := m.getPaths("values/Common/", logger)
 		if err != nil {
 			return nil, err
 		}
 
-		for i, service := range mod.VersionFilter { //Cleans filter for cert metadata search
+		for i, service := range mod.VersionFilter { // Cleans filter for cert metadata search
 			if strings.Contains(service, "Common") {
 				mod.VersionFilter[i] = strings.Replace(service, "Common", "Common/", 1)
 			}
 		}
 
 		var filteredCertPaths []string
-		for _, certPath := range certPaths { //Filter paths for optimization
+		for _, certPath := range certPaths { // Filter paths for optimization
 			if certPath != "" {
 				foundService := false
 				for _, service := range mod.VersionFilter {
-					if strings.HasSuffix(certPath, service) && !foundService {
+					certPathNoExt := strings.Split(certPath, ".")
+					if strings.HasSuffix(certPathNoExt[0], service) && !foundService {
 						foundService = true
 					}
 				}
@@ -794,6 +947,9 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 
 		certPaths = filteredCertPaths
 		for _, certPath := range certPaths {
+			certPath = strings.Replace(certPath, "/Common/", "/", 1)
+			certPathParts := strings.Split(certPath, ".")
+			certPath = certPathParts[0]
 			if _, ok := versionDataMap[certPath]; !ok {
 				metadataValue, err := mod.ReadVersionMetadata(certPath, logger)
 				if err != nil {
@@ -806,9 +962,9 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 			}
 		}
 	} else {
-		//Finds additional paths outside of nested dirs
+		// Finds additional paths outside of nested dirs
 		for _, userPath := range userPaths.Data {
-			for _, interfacePath := range userPath.([]interface{}) {
+			for _, interfacePath := range userPath.([]any) {
 				path := interfacePath.(string)
 				if path != "" {
 					foundService := false
@@ -851,7 +1007,7 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	return versionDataMap, nil
 }
 
-func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[string]map[string]interface{}, logger *log.Logger) {
+func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[string]map[string]any, logger *log.Logger) {
 	for _, filePath := range filePaths {
 		foundService := false
 		for _, service := range m.VersionFilter {
@@ -887,49 +1043,54 @@ func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[st
 
 func (m *Modifier) getPaths(pathName string, logger *log.Logger) ([]string, error) {
 	secrets, err := m.List(pathName, logger)
-	//logger.Println("secrets " + pathName)
-	//logger.Println(secrets)
+	// logger.Println("secrets " + pathName)
+	// logger.Println(secrets)
 	pathList := []string{}
 	if err != nil {
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, m.Env)
 	} else if secrets != nil {
-		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
-		//logger.Println("secrets are")
-		//logger.Println(slicey)
+		// add paths
+		slicey := secrets.Data["keys"].([]any)
+		// logger.Println("secrets are")
+		// logger.Println(slicey)
 		for _, pathEnd := range slicey {
 			// skip local path if environment is not local
 			if pathEnd != "local/" {
-				//List is returning both pathEnd and pathEnd/
+				// List is returning both pathEnd and pathEnd/
 				path := pathName + pathEnd.(string)
 				pathList = append(pathList, path)
 			}
 		}
-		//logger.Println("pathList")
-		//logger.Println(pathList)
+		// logger.Println("pathList")
+		// logger.Println(pathList)
 		return pathList, nil
 	}
 	return pathList, nil
 }
+
 func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]string, error) {
 	secrets, err := m.List(pathName, logger)
 	pathList := []string{}
 	if err != nil {
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, m.Env)
 	} else if secrets != nil {
-		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		// add paths
+		slicey := secrets.Data["keys"].([]any)
 
 		for _, pathEnd := range slicey {
-			//List is returning both pathEnd and pathEnd/
+			// List is returning both pathEnd and pathEnd/
 			path := pathName + pathEnd.(string)
 			pathList = append(pathList, path)
 		}
 
 		subPathList := []string{}
 		for _, path := range pathList {
-			subsubList, _ := m.templateFileRecurse(path, logger)
-			subPathList = append(subPathList, subsubList...)
+			if path != "template-file" {
+				subsubList, _ := m.templateFileRecurse(path, logger)
+				subPathList = append(subPathList, subsubList...)
+			} else {
+				subPathList = append(subPathList, path)
+			}
 		}
 		if len(subPathList) != 0 {
 			return subPathList, nil
@@ -937,20 +1098,21 @@ func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]
 	}
 	return pathList, nil
 }
+
 func (m *Modifier) templateFileRecurse(pathName string, logger *log.Logger) ([]string, error) {
 	subPathList := []string{}
 	subsecrets, err := m.List(pathName, logger)
 	if err != nil {
 		return subPathList, err
 	} else if subsecrets != nil {
-		subslice := subsecrets.Data["keys"].([]interface{})
+		subslice := subsecrets.Data["keys"].([]any)
 		if subslice[0] != "template-file" {
 			for _, pathEnd := range subslice {
-				//List is returning both pathEnd and pathEnd/
+				// List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
 				subsubList, _ := m.templateFileRecurse(subpath, logger)
 				if len(subsubList) != 0 {
-					//List is returning both pathEnd and pathEnd/
+					// List is returning both pathEnd and pathEnd/
 					subPathList = append(subPathList, subsubList...)
 				}
 				subPathList = append(subPathList, subpath)
@@ -974,8 +1136,8 @@ func (m *Modifier) ListSubsection(sectionKey string, project string, indexName s
 	var indexes []string
 	secret, err := m.List("super-secrets"+sectionKey+project+"/"+indexName, logger)
 	if secret != nil {
-		if _, ok := secret.Data["keys"].([]interface{}); ok {
-			for _, index := range secret.Data["keys"].([]interface{}) {
+		if _, ok := secret.Data["keys"].([]any); ok {
+			for _, index := range secret.Data["keys"].([]any) {
 				indexes = append(indexes, strings.TrimSuffix(index.(string), "/"))
 			}
 			return indexes, err
@@ -993,27 +1155,26 @@ func (m *Modifier) FindIndexForService(project string, service string, logger *l
 		return "", err
 	}
 	if indexSecrets != nil {
-		indexValues := indexSecrets.Data["keys"].([]interface{})
+		indexValues := indexSecrets.Data["keys"].([]any)
 
 		for _, indexValue := range indexValues {
 			indexValueSecrets, valueErr := m.List("super-secrets/Index/"+project+"/"+indexValue.(string), logger)
 			if valueErr != nil {
 				continue
 			}
-			indexValues := indexValueSecrets.Data["keys"].([]interface{})
+			indexValues := indexValueSecrets.Data["keys"].([]any)
 
 			subsectionValueSecrets, subsectionErr := m.List("super-secrets/Index/"+project+"/"+indexValue.(string)+"/"+indexValues[0].(string), logger)
 			if subsectionErr != nil {
 				continue
 			}
-			subsectionValues := subsectionValueSecrets.Data["keys"].([]interface{})
+			subsectionValues := subsectionValueSecrets.Data["keys"].([]any)
 
 			for _, subSectionValue := range subsectionValues {
 				if strings.TrimSuffix(subSectionValue.(string), "/") == service {
 					index = strings.TrimSuffix(indexValue.(string), "/")
 					goto indexFound
 				}
-
 			}
 		}
 	}
@@ -1022,8 +1183,7 @@ indexFound:
 	return index, nil
 }
 
-func (m *Modifier) SoftDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
-
+func (m *Modifier) SoftDelete(path string, logger *log.Logger) (map[string]any, error) {
 	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
 		path = "super-secrets/" + path
 	}
@@ -1058,7 +1218,7 @@ retryQuery:
 	return nil, errors.New("could not get metadata from vault response")
 }
 
-func (m *Modifier) HardDelete(path string, logger *log.Logger) (map[string]interface{}, error) {
+func (m *Modifier) HardDelete(path string, logger *log.Logger) (map[string]any, error) {
 	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
 		path = "super-secrets/" + path
 	}

@@ -37,20 +37,30 @@ The commands below are helpful commands for managing tokens later on...
 
 ## Get expiration for existing tokens in provided namespace
 ```
-trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+trcinit -tokenExpiration -namespace=vault -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
 ```
 
 ## Rotate tokens in provided namespace
 ```
-trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+trcinit -rotateTokens -namespace=vault -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
+```
+
+The following creates roles for deploy and azuredeploy.
+```
+trcinit -rotateTokens -approle=deploy -namespace=agent -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
+```
+
+The following creates roles for deploy and hivekernel.
+```
+trcinit -rotateTokens -approle=hivekernel -namespace=agent -addr=https://<vaulthost:vaultport> -token=$VAULTOKEN
 ```
 
 ## Update roles
 ```
-trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+trcinit -updateRole -namespace=vault -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
 ```
 
 ## Update policies
 ```
-trcinit -updatePolicy -namespace=vault -addr=https://<vaulthost:vaultport> -token=$TRC_ROOT_TOKEN
+trcinit -updatePolicy -namespace=vault -addr=https://<vaulthost:vaultport> -token=$VAULT_TOKEN
 ```

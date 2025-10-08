@@ -44,7 +44,7 @@ func main() {
 	}
 
 	// Create an empty map for the YAML data
-	var config map[string]interface{}
+	var config map[string]any
 
 	// Unmarshal the YAML data into the map
 	err = yaml.Unmarshal(data, &config)

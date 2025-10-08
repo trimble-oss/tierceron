@@ -34,8 +34,14 @@ trcpub -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR
 ```
 
-# Install to a local service using the trcsh agent
-TODO
+# Install to a local service using the trcsh drone
+You can define a serivce for the trcsh drone to deploy by executing the script: ./bin/servicedefine.sh
+Alternatively you can directly define the service below.
+
+```
+trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trchelloworld -projectservice="HelloProject/HelloService" -pluginType=trcshservice -serviceName="trchelloworld" -codeBundle=trchelloworld -deployroot=/usr/local/hello -deploysubpath=bin
+```
+
 
 # Clean up after yourself
 ```

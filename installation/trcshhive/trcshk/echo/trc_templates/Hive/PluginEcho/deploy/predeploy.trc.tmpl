@@ -1,0 +1,4 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=echo -pluginType=trcshpluginservice -sha256=bin/echo.so
+

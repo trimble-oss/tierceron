@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -100,12 +102,8 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	diffTimeout := false
 	timeOut := time.Now().Add(time.Minute * 1)
 	if stringA == nil || stringB == nil {
-		if stringA == nil {
-			stringA = new(string)
-		}
-		if stringB == nil {
-			stringB = new(string)
-		}
+		fmt.Println("A null string was found while diffing")
+		return ""
 	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
@@ -115,7 +113,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		diffs = diffs[:0]
 	}
 
-	//Seperates diff into red and green lines
+	//Separates diff into red and green lines
 	var redBuffer bytes.Buffer
 	var greenBuffer bytes.Buffer
 	for _, diff := range diffs {
@@ -238,7 +236,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	return result
 }
 
-func VersionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string, first bool) {
+func VersionHelper(versionData map[string]any, templateOrValues bool, valuePath string, first bool) {
 	Reset := "\033[0m"
 	Cyan := "\033[36m"
 	Red := "\033[31m"
@@ -256,8 +254,8 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 	//template == true
 	if templateOrValues {
 		for _, versionMap := range versionData {
-			for _, versionMetadata := range versionMap.(map[string]interface{}) {
-				for field, data := range versionMetadata.(map[string]interface{}) {
+			for _, versionMetadata := range versionMap.(map[string]any) {
+				for field, data := range versionMetadata.(map[string]any) {
 					if field == "destroyed" && !data.(bool) {
 						goto printOutput1
 					}
@@ -271,8 +269,8 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 			fmt.Println(Cyan + "======================================================================================")
 			fmt.Println(filename)
 			fmt.Println("======================================================================================" + Reset)
-			keys := make([]int, 0, len(versionMap.(map[string]interface{})))
-			for versionNumber := range versionMap.(map[string]interface{}) {
+			keys := make([]int, 0, len(versionMap.(map[string]any)))
+			for versionNumber := range versionMap.(map[string]any) {
 				versionNo, err := strconv.Atoi(versionNumber)
 				if err != nil {
 					fmt.Println()
@@ -282,17 +280,17 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 			sort.Ints(keys)
 			for i, key := range keys {
 				versionNumber := fmt.Sprint(key)
-				versionMetadata := versionMap.(map[string]interface{})[fmt.Sprint(key)]
+				versionMetadata := versionMap.(map[string]any)[fmt.Sprint(key)]
 				fmt.Println("Version " + string(versionNumber) + " Metadata:")
 
-				fields := make([]string, 0, len(versionMetadata.(map[string]interface{})))
-				for field := range versionMetadata.(map[string]interface{}) {
+				fields := make([]string, 0, len(versionMetadata.(map[string]any)))
+				for field := range versionMetadata.(map[string]any) {
 					fields = append(fields, field)
 				}
 				sort.Strings(fields)
 				for _, field := range fields {
 					fmt.Printf(field + ": ")
-					fmt.Println(versionMetadata.(map[string]interface{})[field])
+					fmt.Println(versionMetadata.(map[string]any)[field])
 				}
 				if i != len(keys)-1 {
 					fmt.Println(Red + "-------------------------------------------------------------------------------" + Reset)
@@ -302,7 +300,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 		fmt.Println(Cyan + "======================================================================================" + Reset)
 	} else {
 		for _, versionMetadata := range versionData {
-			for field, data := range versionMetadata.(map[string]interface{}) {
+			for field, data := range versionMetadata.(map[string]any) {
 				if field == "destroyed" && !data.(bool) {
 					goto printOutput
 				}
@@ -335,8 +333,8 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 			versionNumber := key
 			versionMetadata := versionData[fmt.Sprint(key)]
 			fields := make([]string, 0)
-			fieldData := make(map[string]interface{}, 0)
-			for field, data := range versionMetadata.(map[string]interface{}) {
+			fieldData := make(map[string]any, 0)
+			for field, data := range versionMetadata.(map[string]any) {
 				fields = append(fields, field)
 				fieldData[field] = data
 			}
@@ -367,10 +365,11 @@ func RemoveDuplicateValues(intSlice []string) []string {
 	return list
 }
 
-func DiffHelper(configCtx *ConfigContext, config bool) {
+func DiffHelper(configCtx *config.ConfigContext, config bool) {
 	fileIndex := 0
 	keys := []string{}
-	if configCtx.ResultMap.Count() == 0 {
+	configCtx.Mutex.Lock()
+	if len(configCtx.ResultMap) == 0 {
 		fmt.Println("Couldn't find any data to diff")
 		return
 	}
@@ -407,16 +406,17 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 	}
 
 	fileList := make([]string, configCtx.DiffFileCount)
+	configCtx.Mutex.Unlock()
 
 	sleepCount := 0
-	if configCtx.ResultMap.Count() != int(configCtx.DiffFileCount) {
+	if len(configCtx.ResultMap) != int(configCtx.DiffFileCount) {
 		for {
 			time.Sleep(time.Second)
 			sleepCount++
 			if sleepCount >= 5 {
 				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
 				break
-			} else if configCtx.ResultMap.Count() == int(configCtx.DiffFileCount)*configCtx.EnvLength {
+			} else if len(configCtx.ResultMap) == int(configCtx.DiffFileCount)*configCtx.EnvLength {
 				break
 			}
 		}
@@ -424,8 +424,7 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 
 	if config {
 		//Make fileList
-
-		for _, key := range configCtx.ResultMap.Keys() {
+		for key := range configCtx.ResultMap {
 			found := false
 			keySplit := strings.Split(key, "||")
 
@@ -479,26 +478,20 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 		keyB := keys[1]
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
+		configCtx.Mutex.Lock()
 
 		sortedKeyA := keyA
 		sortedKeyB := keyB
-		if _, ok := configCtx.ResultMap.Get(sortedKeyA); !ok {
+		if _, ok := configCtx.ResultMap[sortedKeyA]; !ok {
 			sortedKeyA = "||" + keySplitA[1]
 		}
-		if _, ok := configCtx.ResultMap.Get(sortedKeyB); !ok {
+		if _, ok := configCtx.ResultMap[sortedKeyB]; !ok {
 			sortedKeyB = "||" + keySplitB[1]
 		}
 
-		var envFileKeyA *string
-		var ok bool
-		if envFileKeyA, ok = configCtx.ResultMap.Get(sortedKeyA); !ok {
-			envFileKeyA = new(string)
-		}
-
-		var envFileKeyB *string
-		if envFileKeyB, ok = configCtx.ResultMap.Get(sortedKeyB); !ok {
-			envFileKeyB = new(string)
-		}
+		envFileKeyA := configCtx.ResultMap[sortedKeyA]
+		envFileKeyB := configCtx.ResultMap[sortedKeyB]
+		configCtx.Mutex.Unlock()
 
 		latestVersionACheck := strings.Split(keySplitA[0], "_")
 		if len(latestVersionACheck) > 1 && latestVersionACheck[1] == "0" {
@@ -524,17 +517,10 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 			keyD := keys[3]
 			keySplitC := strings.Split(keyC, "||")
 			keySplitD := strings.Split(keyD, "||")
-
-			var ok bool
-			var envFileKeyC *string
-			if envFileKeyC, ok = configCtx.ResultMap.Get(keyC); !ok {
-				envFileKeyC = new(string)
-			}
-
-			var envFileKeyD *string
-			if envFileKeyD, ok = configCtx.ResultMap.Get(keyD); !ok {
-				envFileKeyD = new(string)
-			}
+			configCtx.Mutex.Lock()
+			envFileKeyC := configCtx.ResultMap[keyC]
+			envFileKeyD := configCtx.ResultMap[keyD]
+			configCtx.Mutex.Unlock()
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
@@ -570,7 +556,9 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
-			envFileKeyC, _ := configCtx.ResultMap.Get(keyC)
+			configCtx.Mutex.Lock()
+			envFileKeyC := configCtx.ResultMap[keyC]
+			configCtx.Mutex.Unlock()
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {

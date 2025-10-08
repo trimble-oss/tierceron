@@ -5,40 +5,42 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 )
 
 // SetLogger is called by TrcDb and other utilities to provide the extensions
 // a handle to the error logger for custom libraries that need a hook into the
 // logging infrastructure.  In extension implementation,
-// set global variables iwth type func(string, ...interface{})
+// set global variables with type func(string, ...any)
 // assign the globals to the return value of convLogger...
 // You'll have to copy convLogger into your custom library implementation.
-func SetLogger(logger interface{}) {
+func SetLogger(logger any) {
 	convLogger(logger)
 }
 
 // SetErrorLogger is called by TrcDb and other utilities to provide the extensions
 // a handle to the error logger for custom libraries that need a hook into the
 // logging infrastructure.  In extension implementation,
-// set global variables iwth type func(string, ...interface{})
+// set global variables with type func(string, ...any)
 // assign the globals to the return value of convLogger...
 // You'll have to copy convLogger into your custom library implementation.
-func SetErrorLogger(logger interface{}) {
+func SetErrorLogger(logger any) {
 	convLogger(logger)
 }
 
 // convLogger converts logger to the standard logger interface.
-func convLogger(logger interface{}) func(string, ...interface{}) {
+func convLogger(logger any) func(string, ...any) {
 	switch z := logger.(type) {
 	case io.Writer:
-		return func(s string, v ...interface{}) {
+		return func(s string, v ...any) {
 			fmt.Fprintf(z, s, v...)
 		}
-	case func(string, ...interface{}) (int, error): // fmt.Printf
-		return func(s string, v ...interface{}) {
+	case func(string, ...any) (int, error): // fmt.Printf
+		return func(s string, v ...any) {
 			_, _ = z(s, v...)
 		}
-	case func(string, ...interface{}): // log.Printf
+	case func(string, ...any): // log.Printf
 		return z
 	}
 	panic(fmt.Sprintf("unsupported logger type %T", logger))
@@ -56,17 +58,21 @@ func GetSupportedSourceRegions() []string {
 }
 
 // Test configurations.
-func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
-	pluginConfig := map[string]interface{}{}
+func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
+	pluginConfig := map[string]any{}
 
-	//env = "dev"
+	// env = "dev"
 	pluginConfig["vaddress"] = "TODO"
 	pluginConfig["env"] = "dev"
-	pluginConfig["token"] = token
+	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["logNamespace"] = "db"
 
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
+	}
+	pluginConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
 	}
 
 	// plugin configs here...
@@ -94,11 +100,11 @@ func GetTestConfig(token string, wantPluginPaths bool) map[string]interface{} {
 
 // GetTestDeployConfig - returns a list of templates used in defining tables for Trcdb.
 // Supported attributes include templatePath, connectionPath, certifyPath, env, exitOnFailure, pluginNameList, and logNamespace:
-func GetTestDeployConfig(token string) map[string]interface{} {
-	pluginConfig := map[string]interface{}{}
+func GetTestDeployConfig(tokenPtr *string) map[string]any {
+	pluginConfig := map[string]any{}
 
 	pluginConfig["env"] = "dev"
-	pluginConfig["token"] = token
+	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["regions"] = []string{}
 	pluginConfig["insecure"] = true
 	pluginConfig["exitOnFailure"] = true
@@ -125,9 +131,11 @@ func GetTestDeployConfig(token string) map[string]interface{} {
 //		"trc_templates/DatabaseName/TableNameB/TableNameB.tmpl",
 //		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
 //	}
-func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
+func ProcessPluginEnvConfig(pluginEnvConfig map[string]any) map[string]any {
 	pluginEnvConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
 	}
 	pluginEnvConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",
@@ -140,7 +148,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 		"trc_templates/TrcVault/Certify/config.yml.tmpl",
 	}
 
-	if pluginEnvConfig["env"] == "prod" || pluginEnvConfig["env"] == "staging" {
+	if env, ok := pluginEnvConfig["env"].(string); ok && prod.IsStagingProd(env) {
 		pluginEnvConfig["regions"] = GetSupportedSourceRegions()
 	} else {
 		pluginEnvConfig["regions"] = []string{}
@@ -149,8 +157,10 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]interface{}) map[string]i
 	pluginEnvConfig["exitOnFailure"] = false
 	pluginEnvConfig["pluginNameList"] = []string{
 		"trc-vault-plugin",
+		"trcsh",
 	}
 	pluginEnvConfig["logNamespace"] = "db"
+	pluginEnvConfig["kernelId"] = "-1" // Non-hive runs in -1
 
 	return pluginEnvConfig
 }
@@ -168,8 +178,8 @@ func GetSyncedTables() []string {
 // The response from the query will be provided to the Flow Context in the ExtensionAuthData field
 // That can then be used by business logic flows residing in TrcDb to query additional
 // services requiring authentication.
-func GetExtensionAuthComponents(config map[string]interface{}) map[string]interface{} {
-	return map[string]interface{}{}
+func GetExtensionAuthComponents(config map[string]any) map[string]any {
+	return map[string]any{}
 }
 
 // Authorize - override to provide a custom authorization function for use by the web interface.
@@ -177,7 +187,7 @@ func GetExtensionAuthComponents(config map[string]interface{}) map[string]interf
 // false if not, and an error if an error occurs.
 // The web interface is not presently maintained.
 func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, string, error) {
-	return false, "", errors.New("Not implemented")
+	return false, "", errors.New("not implemented")
 }
 
 // CheckMemLock - override to provide a custom mem lock check function.
@@ -191,6 +201,6 @@ func CheckMemLock(bucket string, key string) bool {
 // This can be used to perform direct queries against the TrcDb database using the go sql package.
 // The data map is provided by the caller as convenience to provide things like dbport, etc...
 // The override should return a jdbc compliant connection url to the TrcDb database.
-func GetTrcDbUrl(data map[string]interface{}) string {
+func GetTrcDbUrl(data map[string]any) string {
 	return ""
 }

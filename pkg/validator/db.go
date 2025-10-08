@@ -7,19 +7,19 @@ import (
 	"regexp"
 	"time"
 
-	//mysql and mssql go libraries
+	// mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-//need mssql for spectrum
+// need db connection check added to heartbeat?
 
 // Heartbeat validates the database connection
-func Heartbeat(config *core.CoreConfig, url string, username string, password string) (bool, error) {
-	//extract driver, server, port and dbname with regex
+func Heartbeat(config *coreconfig.CoreConfig, url string, username string, password string) (bool, error) {
+	// extract driver, server, port and dbname with regex
 	driver, server, port, dbname, _, err := ParseURL(config, url)
 	if err != nil {
 		return false, err
@@ -56,8 +56,9 @@ func Heartbeat(config *core.CoreConfig, url string, username string, password st
 	}
 	return true, nil
 }
-func ParseURL(config *core.CoreConfig, url string) (string, string, string, string, string, error) {
-	//only works with jdbc:mysql or jdbc:sqlserver.
+
+func ParseURL(config *coreconfig.CoreConfig, url string) (string, string, string, string, string, error) {
+	// only works with jdbc:mysql or jdbc:sqlserver.
 	regex := regexp.MustCompile(`(?i)(?:jdbc:(mysql|sqlserver|mariadb))://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+)(.*certName=([\w\.]+)|.*).*`)
 	m := regex.FindStringSubmatch(url)
 	if m == nil {

@@ -4,8 +4,8 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 )
 
 var m sync.Mutex
@@ -43,7 +43,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEn
 		return nil
 	}
 	templatePaths := []string{}
-	for _, fileName := range secret.Data["keys"].([]interface{}) {
+	for _, fileName := range secret.Data["keys"].([]any) {
 		if strFile, ok := fileName.(string); ok {
 			if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
 				templatePaths = append(templatePaths, listPath+"/"+strFile)
@@ -88,7 +88,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEn
 					return err
 				}
 				if subsectionValues != nil {
-					for _, subsectionValue := range subsectionValues.Data["keys"].([]interface{}) {
+					for _, subsectionValue := range subsectionValues.Data["keys"].([]any) {
 						goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service + "/" + subsectionValue.(string)
 						rowErr := templateToTableRowHelper(goMod, te, config.Env, "0", project, projectAlias, service, templatePath, config)
 						if rowErr != nil {
@@ -161,7 +161,7 @@ func writeToTable(te *engine.TierceronEngine, driverConfig *eUtils.DriverConfig,
 	}
 
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
-	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
+	configTableMap := templateResult.InterfaceTemplateSection.(map[string]any)["templates"].(map[string]any)[project].(map[string]any)[service].(map[string]any)
 	for configTableName, _ := range configTableMap {
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]

@@ -3,8 +3,8 @@
 echo "Enter plugin name: "
 read TRC_PLUGIN_NAME
 
-if [ "$TRC_PLUGIN_NAME" = 'trc-vault-carrier-plugin' ] ; then
-    echo "Use deploycarrier to deploy carrier."
+if [ "$TRC_PLUGIN_NAME" = 'trcsh-curator' ] ; then
+    echo "Use deploycurator to deploy curator."
     exit 1
 fi
 
@@ -90,6 +90,9 @@ if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = 
         certifystatus=$?
         if [ $certifystatus -eq 0 ]; then
            echo "No certification problems encountered."
+            if [[ $TRC_PLUGIN_NAME == *exe ]]; then
+                exit $certifystatus
+            fi
         else
            echo "Unexpected certification error."
            exit $certifystatus
@@ -122,13 +125,13 @@ else
             SECRET_VAULT_PLUGIN_TOKEN=$VAULT_ENV_TOKEN
         fi
 
-        vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
-        vaultUpdateStatus=$?
-        if [ $vaultUpdateStatus -eq 0 ]; then
-            exit $status
-        else
-            echo "But it's not deployed to vault for $VAULT_ENV.  Continuing..."
-        fi
+        #vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
+        #vaultUpdateStatus=$?
+        #if [ $vaultUpdateStatus -eq 0 ]; then
+        #    exit $status
+        #else
+        #    echo "But it's not deployed to vault for $VAULT_ENV.  Continuing..."
+        #fi
     elif [ $status -eq 1 ]; then
     echo "Existing plugin does not match repository plugin - cannot continue."
     exit $status
@@ -155,7 +158,7 @@ export VAULT_API_ADDR
 
 echo "Disable and unregister old plugin."
 export VAULT_CLIENT_TIMEOUT=300s
-# Migrate to carrier maybe?
+# Migrate to curator maybe?
 vault secrets disable $TRC_PLUGIN_NAME/
 
 vault secrets list | grep $TRC_PLUGIN_NAME
@@ -181,7 +184,7 @@ else
     # First we set Copied to false...
     # This should also trigger the copy process...
     # It should return sha256 of copied plugin on success.
-    SHA256BUNDLE=$(vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR )
+    SHA256BUNDLE=$(vault write vaultcurator/$VAULT_ENV plugin=$TRC_PLUGIN_NAME token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR )
     SHAVAL=$(echo $SHA256BUNDLE | awk '{print $6}')
 
     if [ "$SHAVAL" = "Failure" ]; then
@@ -191,7 +194,7 @@ else
 fi
 
 if [ "$SHAVAL" != "$FILESHAVAL" ]; then
-    echo "Carrier failed to deploy plugin.  Please try again."
+    echo "Curator failed to deploy plugin.  Please try again."
     exit -1
 fi
 
@@ -216,6 +219,6 @@ vault secrets enable \
 echo "Activating plugin."
 vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
 
-echo "Notifying carrier."
-vault write vaultcarrier/$VAULT_ENV plugin=$TRC_PLUGIN_NAME
+echo "Notifying Curator."
+vault write vaultcurator/$VAULT_ENV plugin=$TRC_PLUGIN_NAME
 echo "Deployment complete."
