@@ -123,7 +123,7 @@ func CommonMain(envPtr *string,
 	// Repository cloning flags
 	gitClonePtr := flagset.Bool("clone", false, "Clone a Git repository")
 	repoURLPtr := flagset.String("repo", "", "Repository URL to clone")
-	targetDirPtr := flagset.String("targetDir", "", "Target directory for the cloned repository")
+	//	targetDirPtr := flagset.String("targetDir", "", "Target directory for the cloned repository")
 
 	// Cert flags
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
@@ -434,7 +434,7 @@ func CommonMain(envPtr *string,
 		}
 
 		// Execute the clone repository function
-		err := trcgitmgmtbase.CloneRepository(*repoURLPtr, *targetDirPtr, envPtr, tokenNamePtr, driverConfig, mod)
+		err := trcgitmgmtbase.CloneRepository(*repoURLPtr, "" /* *targetDirPtr */, envPtr, tokenNamePtr, driverConfig, mod)
 		if err != nil {
 			fmt.Printf("Git clone operation failed: %s\n", err)
 			return err
