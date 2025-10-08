@@ -14,10 +14,10 @@ import (
 	"time"
 )
 
-//CertPath is the path to the cert file directory
+// CertPath is the path to the cert file directory
 const CertPath = "./certs/cert_files/"
 
-//GenerateCerts generates a root cert, a root key, a child cert, and a child key. It then validates the root cert and returns the http client
+// GenerateCerts generates a root cert, a root key, a child cert, and a child key. It then validates the root cert and returns the http client
 func main() {
 	//generate private key and write to .pem file
 	privateKey, err := CreatePrivateKey("root_key.pem")
@@ -65,7 +65,7 @@ func main() {
 	}
 }
 
-//CertTemplate generates a random serial number
+// CertTemplate generates a random serial number
 func CertTemplate() (*x509.Certificate, error) {
 	// generate a random serial number (a real cert authority would have some logic behind this)
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -87,7 +87,7 @@ func CertTemplate() (*x509.Certificate, error) {
 	return &tmpl, nil
 }
 
-//CreatePrivateKey generates a private key and saves it to a .pem file
+// CreatePrivateKey generates a private key and saves it to a .pem file
 func CreatePrivateKey(fileName string) (privKey *rsa.PrivateKey, err error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -105,18 +105,18 @@ func CreatePrivateKey(fileName string) (privKey *rsa.PrivateKey, err error) {
 	if err != nil {
 		return privateKey, err
 	}
+	defer pemPrivateFile.Close()
 	//write to file and close it
 	err = pem.Encode(pemPrivateFile, pemPrivateBlock)
 	if err != nil {
 		return privateKey, err
 	}
-	pemPrivateFile.Close()
 	fmt.Println("private key generated and written to", path)
 	return privateKey, nil
 }
 
-//CreateCert creates a cert and saves it to a .pem file
-func CreateCert(template, parent *x509.Certificate, pub interface{}, parentPriv interface{}, fileName string) (cert *x509.Certificate, err error) {
+// CreateCert creates a cert and saves it to a .pem file
+func CreateCert(template, parent *x509.Certificate, pub any, parentPriv any, fileName string) (cert *x509.Certificate, err error) {
 	//cert *x509.Certificate,
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {
@@ -136,12 +136,12 @@ func CreateCert(template, parent *x509.Certificate, pub interface{}, parentPriv 
 	if err != nil {
 		return cert, err
 	}
+	defer pemCertFile.Close()
 	//write to file and close it
 	err = pem.Encode(pemCertFile, pemCertBlock)
 	if err != nil {
 		return cert, err
 	}
-	pemCertFile.Close()
 	fmt.Println("certificate generated and written to", path)
 	return cert, nil
 }

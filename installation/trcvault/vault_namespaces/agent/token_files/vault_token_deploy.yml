@@ -1,0 +1,6 @@
+policies: ["vault_token_deploy"]
+metadata:
+  user : "Deploy"
+
+ttl:  "43800h"
+display_name: "Deploy Token"

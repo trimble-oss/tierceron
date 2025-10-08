@@ -1,0 +1,4 @@
+Approle_Name: "deploy"
+Token_Permissions: 
+    vault_token_deploy: true
+    

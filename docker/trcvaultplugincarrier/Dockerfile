@@ -1,2 +1,2 @@
 FROM scratch
-ADD trc-vault-carrier-plugin /etc/opt/vault/plugins/trc-vault-carrier-plugin
+ADD trcsh-curator /usr/local/vault/plugins/trcsh-curator
