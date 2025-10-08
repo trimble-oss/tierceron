@@ -24,20 +24,19 @@ import (
 )
 
 func IsSupportedFlow(flow string) bool {
-	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+	return flow != "" && (flow == flowcore.TierceronControllerFlow.FlowName() || flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 // This executable automates the creation of seed files from template file(s).
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
-
 	// Supported build flags:
 	//    insecure harbinger tc testrunner ( mysql, testflow -- auto registration -- warning do not use!)
 	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
 	tokenPtr := flag.String("token", "", "Vault access Token")
 	flag.Parse()
 
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&coreconfig.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
@@ -46,6 +45,7 @@ func main() {
 	pluginConfig["address"] = os.Getenv("VAULT_ADDR")
 	pluginConfig["vaddress"] = os.Getenv("VAULT_ADDR")
 	pluginConfig["caddress"] = os.Getenv("VAULT_ADDR")
+	pluginConfig["kernelId"] = "-1" // Non-hive runs in -1
 	if eUtils.RefLength(tokenPtr) > 0 {
 		pluginConfig["tokenptr"] = tokenPtr
 		pluginConfig["ctokenptr"] = tokenPtr

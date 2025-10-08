@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -34,10 +34,10 @@ require (
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.8.3
+	github.com/trimble-oss/tierceron-core/v2 v2.8.8
 	github.com/trimble-oss/tierceron-hat v1.2.10
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250609162306-04fdcac49140
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250520001105-4ddb7c61ec12
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20250907211156-570c6d0793d6
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20250418225747-d9d4ce87f4c0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20241220234051-2d8c369c5b69
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20250418225747-d9d4ce87f4c0
@@ -115,6 +115,7 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -210,10 +211,10 @@ require (
 	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/image v0.21.0 // indirect
 	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
-	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect
-	golang.org/x/tools v0.30.0 // indirect
+	golang.org/x/tools v0.32.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
@@ -262,12 +263,12 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.0 // indirect
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
-replace github.com/cespare/xxhash => github.com/joel-rieke/xxhash v1.1.0-patch
+replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.2
 
 replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 
@@ -276,6 +277,16 @@ replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-se
 replace github.com/docker/distribution => github.com/distribution/distribution v2.8.2+incompatible
 
 //replace github.com/square/go-jose.v2 => ../go-jose
+
+exclude (
+	gopkg.in/square/go-jose.v2 v2.3.1
+	gopkg.in/square/go-jose.v2 v2.4.0
+	gopkg.in/square/go-jose.v2 v2.4.1
+	gopkg.in/square/go-jose.v2 v2.5.1
+	gopkg.in/square/go-jose.v2 v2.6.0
+)
+
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
 

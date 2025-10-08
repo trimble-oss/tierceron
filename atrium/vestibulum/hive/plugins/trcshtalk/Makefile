@@ -8,12 +8,20 @@ ROOT := .
 LD_FLAGS := -X $(ROOT).Version=$(VERSION) -X $(ROOT).Commit=$(COMMIT) -X $(ROOT).BuildTime=$(BUILD_TIME)
 GOBIN ?= ./bin
 
+# gRPC / Protobuf
+PROTO_FILES := $(wildcard */*.proto)
+PROTO_DIR := diagnosticssdk
+OUT_DIR := .
+
+
 .PHONY: help clean 
 help:
 	@echo "Please use \`make <ROOT>' where <ROOT> is one of"
-	@echo "  dependencies to go install the dependencies"
-	@echo "  hellocustosworld   to build best example of nute usage"
-	@echo "  test         to run unittests"
+	@echo "  depend...........install all dependencies"
+	@echo "  clean..................remove all binaries"
+	@echo "  clean.protobuf.........remove all diagnostic protobuf files"
+	@echo "  protobuf...............create all diagnostics protobufs for TrcshTalk"
+	@echo "  trcshtalk..............create the TrcshTalk plugin"
 
 depend:
 	go mod tidy
@@ -21,11 +29,11 @@ depend:
 clean:
 	rm -f bin
 
-cleantrcshtalksdk:
-	rm trcshtalksdk/trcshtalksdk_grpc.pb.go; rm trcshtalksdk/trcshtalksdk.pb.go
+clean.protobuf:
+	rm $(PROTO_DIR)/*.pb.go
 
-trcshtalksdk: */*.proto
-	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative trcshtalksdk/trcshtalksdk.proto
+protobuf: $(PROTO_FILES)
+	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative $(PROTO_FILES)
 
 trcshtalk:
 	go build -buildmode=plugin -trimpath -o="./trcshtalk.so" -tags "tc azrcr memonly kernel" trcshtalk.go

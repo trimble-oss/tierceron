@@ -1,13 +1,13 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.8.3
+	github.com/trimble-oss/tierceron-core/v2 v2.8.8
 	golang.org/x/term v0.32.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -45,4 +45,4 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 )
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
