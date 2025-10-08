@@ -1,0 +1,4 @@
+#!/bin/bash
+
+trcpub
+trcconfig -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -servicesWanted=Hive/Kernel

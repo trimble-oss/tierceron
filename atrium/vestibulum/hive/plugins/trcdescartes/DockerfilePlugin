@@ -1,0 +1,2 @@
+FROM scratch
+ADD bin/descartes.so /usr/local/trcshk/plugins

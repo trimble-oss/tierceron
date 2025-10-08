@@ -6,13 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
-func UploadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
+func UploadTemplateDirectory(tfmContext flowcore.FlowMachineContext, config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 
 	dirs, err := os.ReadDir(dirName)
 	if err != nil {
@@ -26,7 +28,7 @@ func UploadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, di
 			pathName := dirName + "/" + subDir.Name()
 
 			if templateFilter == nil || len(*templateFilter) == 0 || strings.HasPrefix(*templateFilter, subDir.Name()) {
-				warn, err := UploadTemplates(config, mod, pathName, templateFilter)
+				warn, err := UploadTemplates(tfmContext, config, mod, pathName, templateFilter)
 				if err != nil || len(warn) > 0 {
 					fmt.Printf("Upload templates couldn't be completed. %v", err)
 					return warn, err
@@ -37,7 +39,7 @@ func UploadTemplateDirectory(config *core.CoreConfig, mod *helperkv.Modifier, di
 	return nil, nil
 }
 
-func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
+func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 	// Open directory
 	files, err := os.ReadDir(dirName)
 	if err != nil {
@@ -54,7 +56,7 @@ func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName st
 		if file.IsDir() { // Recurse folders
 			templateSubDir := dirName + "/" + file.Name()
 			if templateFilter == nil || strings.Contains(templateSubDir, *templateFilter) {
-				warn, err := UploadTemplates(config, mod, dirName+"/"+file.Name(), templateFilter)
+				warn, err := UploadTemplates(tfmContext, config, mod, dirName+"/"+file.Name(), templateFilter)
 				if err != nil || len(warn) > 0 {
 					return warn, err
 				}
@@ -75,7 +77,7 @@ func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName st
 				}
 			}
 
-			// Seperate name and extension one more time for saving to vault
+			// Separate name and extension one more time for saving to vault
 			ext = filepath.Ext(name)
 			name = name[0 : len(name)-len(ext)]
 			config.Log.Printf("dirName: %s\n", dirName)
@@ -107,7 +109,7 @@ func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName st
 
 			dirSplit := strings.Split(subDir, "/")
 			if len(dirSplit) >= 2 {
-				project, _, _, _ := coreopts.BuildOptions.FindIndexForService(dirSplit[0], dirSplit[1])
+				project, _, _, _ := coreopts.BuildOptions.FindIndexForService(tfmContext, dirSplit[0], dirSplit[1])
 				if project != "" && strings.Contains(string(fileBytes), "{or") {
 					fmt.Printf("Cannot have an indexed template with default values for or %s for %s \n", file.Name(), mod.Env)
 					return nil, nil
@@ -123,7 +125,7 @@ func UploadTemplates(config *core.CoreConfig, mod *helperkv.Modifier, dirName st
 			config.Log.Printf("\tUploading values to path:\t%s\n", valuePath)
 
 			// Write templates to vault and output errors/warnings
-			warn, err := mod.Write(templatePath, map[string]interface{}{"data": fileBytes, "ext": ext}, config.Log)
+			warn, err := mod.Write(templatePath, map[string]any{"data": fileBytes, "ext": ext}, config.Log)
 			if err != nil || len(warn) > 0 {
 				return warn, err
 			}

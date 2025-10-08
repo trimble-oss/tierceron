@@ -35,10 +35,10 @@ func InitRoot() {
 	initCertificates()
 }
 
-func ReadServerCert(certName string) ([]byte, error) {
+func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 	var err error
 	if len(certName) == 0 {
-		if utils.IsWindows() {
+		if _, err = os.Stat(ServCertLocal); err == nil && (utils.IsWindows() || (len(drone) > 0 && *drone[0])) {
 			return os.ReadFile(ServCertLocal)
 		}
 		if _, err = os.Stat(ServCert); err == nil {
@@ -47,22 +47,16 @@ func ReadServerCert(certName string) ([]byte, error) {
 	} else if _, err = os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
 		return os.ReadFile(ServCertPrefixPath + certName)
 	} else {
-		if utils.IsWindows() {
+		if utils.IsWindows() || (len(drone) > 0 && *drone[0]) {
 			return os.ReadFile(ServCertLocal)
 		}
 	}
 	return nil, err
 }
 
-func GetTlsConfig(certName string) (*tls.Config, error) {
-	// I don't think we're doing this right...?.?
-	// Comment out for now...
+func GetTlsConfigFromCertBytes(certBytes []byte) (*tls.Config, error) {
 	rootCertPool := x509.NewCertPool()
-	pem, err := ReadServerCert(certName)
-	if err != nil {
-		return nil, err
-	}
-	if ok := rootCertPool.AppendCertsFromPEM(pem); !ok {
+	if ok := rootCertPool.AppendCertsFromPEM(certBytes); !ok {
 		return nil, errors.New("couldn't append certs to root")
 	}
 	// clientCert := make([]tls.Certificate, 0, 1)
@@ -75,6 +69,16 @@ func GetTlsConfig(certName string) (*tls.Config, error) {
 		RootCAs: rootCertPool,
 		//		Certificates: clientCert,
 	}, nil
+}
+
+func GetTlsConfig(certName string) (*tls.Config, error) {
+	// I don't think we're doing this right...?.?
+	// Comment out for now...
+	pem, err := ReadServerCert(certName)
+	if err != nil {
+		return nil, err
+	}
+	return GetTlsConfigFromCertBytes(pem)
 }
 
 func initCertificates() {
@@ -96,24 +100,34 @@ func initCertificates() {
 	MashupCertPool.AddCert(mashupClientCert)
 }
 
-func GetTransportCredentials() (credentials.TransportCredentials, error) {
-
-	mashupKeyBytes, err := ReadServerCert("")
+func GetTransportCredentials(insecureSkipVerify bool, drone ...*bool) (credentials.TransportCredentials, error) {
+	mashupKeyBytes, err := ReadServerCert("", drone...)
 	if err != nil {
 		return nil, err
 	}
 
-	return credentials.NewTLS(&tls.Config{
-		ServerName: "",
-		Certificates: []tls.Certificate{
-			{
-				Certificate: [][]byte{mashupKeyBytes},
-			},
-		},
-		InsecureSkipVerify: false}), nil
+	serverName := ""
+	return GetTransportCredentialsByCert(insecureSkipVerify, &serverName, &tls.Certificate{Certificate: [][]byte{mashupKeyBytes}})
 }
 
-func GetServerCredentials(logger *log.Logger) (credentials.TransportCredentials, error) {
+func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, cert *tls.Certificate) (credentials.TransportCredentials, error) {
+	if utils.RefLength(serverName) > 0 {
+		return credentials.NewTLS(&tls.Config{
+			ServerName: *serverName,
+			Certificates: []tls.Certificate{
+				*cert,
+			},
+			InsecureSkipVerify: insecureSkipVerify}), nil
+	} else {
+		return credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{
+				*cert,
+			},
+			InsecureSkipVerify: insecureSkipVerify}), nil
+	}
+}
+
+func GetServerCredentials(insecureSkipVerify bool, logger *log.Logger) (credentials.TransportCredentials, error) {
 	mashupCertBytes, err := os.ReadFile(ServCert)
 	if err != nil {
 		logger.Printf("Couldn't load cert: %v\n", err)
@@ -131,5 +145,5 @@ func GetServerCredentials(logger *log.Logger) (credentials.TransportCredentials,
 		logger.Printf("Couldn't load cert: %v\n", err)
 		return nil, err
 	}
-	return credentials.NewServerTLSFromCert(&cert), nil
+	return GetTransportCredentialsByCert(insecureSkipVerify, nil, &cert)
 }

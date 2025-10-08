@@ -1,0 +1,30 @@
+runtime: go
+env: flex
+runtime_config:
+    operating_system: "ubuntu22"
+    runtime_version: "1.22"
+service_account: {{ .client_email }}
+instance_class: B1
+manual_scaling:
+  instances: 1
+resources:
+  cpu: 1
+  memory_gb: 0.6
+  disk_size_gb: 10
+liveness_check:
+  path: "/health"
+  check_interval_sec: 30
+  timeout_sec: 10
+  failure_threshold: 5
+  success_threshold: 2
+readiness_check:
+  path: "/health"
+  check_interval_sec: 30
+  timeout_sec: 10
+  failure_threshold: 5
+  success_threshold: 2
+  app_start_timeout_sec: 300
+handlers:
+  - url: /.*
+    secure: always
+    script: auto

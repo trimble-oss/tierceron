@@ -14,7 +14,7 @@ import (
 
 type GuiRenderer struct {
 	g3nrender.GenericRenderer
-	GuiNodeMap map[string]interface{}
+	GuiNodeMap map[string]any
 }
 
 func (br *GuiRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpos *math32.Vector3) core.INode {

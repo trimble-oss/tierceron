@@ -13,8 +13,8 @@ import (
 
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/custos/custosworld"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 type SearchRenderer struct {
@@ -70,7 +70,7 @@ func (cr *SearchRenderer) Refresh() {
 	//log.Printf("Refresh called - SearchRenderer")
 }
 
-type TenantDataRenderer struct {
+type EntityDataRenderer struct {
 	CustosWorldApp      *custosworld.CustosWorldApp
 	ConcreteElements    []*mashupsdk.MashupDetailedElement
 	ClickedElements     []*mashupsdk.MashupDetailedElement
@@ -82,16 +82,16 @@ type TenantDataRenderer struct {
 	TabCheck            int
 }
 
-func (tr *TenantDataRenderer) GetPriority() int64 { //1
-	//log.Printf("GetPriority called - TenantDataRenderer")
+func (tr *EntityDataRenderer) GetPriority() int64 { //1
+	//log.Printf("GetPriority called - EntityDataRenderer")
 	return 2
 }
 
-func (tr *TenantDataRenderer) BuildTabItem(childId int64, concreteElement *mashupsdk.MashupDetailedElement) { //2
-	//log.Printf("BuildTabItem called - TenantDataRenderer")
+func (tr *EntityDataRenderer) BuildTabItem(childId int64, concreteElement *mashupsdk.MashupDetailedElement) { //2
+	//log.Printf("BuildTabItem called - EntityDataRenderer")
 	child := tr.CustosWorldApp.MashupDetailedElementLibrary[childId]
 	if child != nil && child.Alias != "" {
-		//log.Printf("TenantDataRenderer.BuildTabItem lookup on: %s name: %s\n", child.Alias, child.Name)
+		//log.Printf("EntityDataRenderer.BuildTabItem lookup on: %s name: %s\n", child.Alias, child.Name)
 		if fwb, fwbOk := tr.CustosWorldApp.FyneWidgetElements[child.Name]; fwbOk {
 			if fwb.MashupDetailedElement != nil && fwb.GuiComponent != nil {
 				fwb.MashupDetailedElement.Copy(child)
@@ -111,13 +111,13 @@ func (tr *TenantDataRenderer) BuildTabItem(childId int64, concreteElement *mashu
 	}
 }
 
-func (tr *TenantDataRenderer) PreRender() { //3
-	//log.Printf("PreRender called - TenantDataRenderer")
+func (tr *EntityDataRenderer) PreRender() { //3
+	//log.Printf("PreRender called - EntityDataRenderer")
 	tr.ConcreteElements = []*mashupsdk.MashupDetailedElement{}
 }
 
-func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.MashupDetailedElement) {
-	//log.Printf("renderTabItemHelper called - TenantDataRenderer")
+func (tr *EntityDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.MashupDetailedElement) {
+	//log.Printf("renderTabItemHelper called - EntityDataRenderer")
 	//log.Printf("TorusRender Widget lookup: %s\n", concreteElement.Alias)
 	if concreteElement.IsStateSet(mashupsdk.Clicked) {
 		//log.Printf("TorusRender Widget looking up: %s\n", concreteElement.Alias)
@@ -142,13 +142,13 @@ func (tr *TenantDataRenderer) renderTabItemHelper(concreteElement *mashupsdk.Mas
 	//log.Printf("End TorusRender Widget lookup: %s\n", concreteElement.Alias)
 }
 
-func (tr *TenantDataRenderer) RenderTabItem(concreteElement *mashupsdk.MashupDetailedElement) { //4
-	//log.Printf("RenderTabItem called - TenantDataRenderer")
+func (tr *EntityDataRenderer) RenderTabItem(concreteElement *mashupsdk.MashupDetailedElement) { //4
+	//log.Printf("RenderTabItem called - EntityDataRenderer")
 	tr.ConcreteElements = append(tr.ConcreteElements, concreteElement)
 }
 
-func (tr *TenantDataRenderer) Refresh() { //5
-	//log.Printf("Refresh called - TenantDataRenderer")
+func (tr *EntityDataRenderer) Refresh() { //5
+	//log.Printf("Refresh called - EntityDataRenderer")
 	sort.Slice(tr.ConcreteElements, func(i, j int) bool {
 		return strings.Compare(tr.ConcreteElements[i].Name, tr.ConcreteElements[j].Name) == -1
 	})
@@ -157,8 +157,8 @@ func (tr *TenantDataRenderer) Refresh() { //5
 	}
 }
 
-func (tr *TenantDataRenderer) OnSelected(tabItem *container.TabItem) {
-	//log.Printf("OnSelected called - TenantDataRenderer")
+func (tr *EntityDataRenderer) OnSelected(tabItem *container.TabItem) {
+	//log.Printf("OnSelected called - EntityDataRenderer")
 	//log.Printf("Selected: %s\n", tabItem.Text)
 	if mashupItemIndex, miOk := tr.CustosWorldApp.ElementLoaderIndex[tabItem.Text]; miOk {
 		if mashupDetailedElement, mOk := tr.CustosWorldApp.MashupDetailedElementLibrary[mashupItemIndex]; mOk {
@@ -188,7 +188,7 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 			widget.NewLabel("Results: "),
 		))))
 	}
-	tr := CustosWorldApp.CustomTabItemRenderer["TenantDataRenderer"].(*TenantDataRenderer)
+	tr := CustosWorldApp.CustomTabItemRenderer["EntityDataRenderer"].(*EntityDataRenderer)
 	tr.CurrentListElements = []*mashupsdk.MashupDetailedElement{}
 	for i := 0; i < len(de.Childids); i++ {
 		if CustosWorldApp.MashupDetailedElementLibrary[de.Childids[i]] != nil {
@@ -268,7 +268,7 @@ func BuildDetailMappedTabItemFyneComponent(CustosWorldApp *custosworld.CustosWor
 	return tabItem
 }
 
-func (tr *TenantDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorldApp, clickedTab *mashupsdk.MashupDetailedElement) *widget.List {
+func (tr *EntityDataRenderer) RefreshList(CustosWorldApp *custosworld.CustosWorldApp, clickedTab *mashupsdk.MashupDetailedElement) *widget.List {
 	updatedList := widget.NewList(
 		func() int { return len(tr.CurrentListElements) },
 		func() fyne.CanvasObject {

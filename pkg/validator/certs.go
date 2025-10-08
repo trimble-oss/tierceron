@@ -5,11 +5,13 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -63,11 +65,11 @@ func ValidateCertificate(certPath string, host string) (bool, error) {
 	if err != nil {
 		return false, errors.New("failed to read file: " + err.Error())
 	}
-	return ValidateCertificateBytes(byteCert, host)
+	return ValidateCertificateBytes(byteCert, host, false)
 }
 
 // ValidateCertificateBytes validates certificate bytes
-func ValidateCertificateBytes(byteCert []byte, host string) (bool, error) {
+func ValidateCertificateBytes(byteCert []byte, host string, selfSignedOk bool) (bool, error) {
 	block, _ := pem.Decode(byteCert)
 	if block == nil {
 		return false, errors.New("failed to parse certificate PEM")
@@ -77,7 +79,7 @@ func ValidateCertificateBytes(byteCert []byte, host string) (bool, error) {
 		return false, errors.New("failed to parse certificate: " + err.Error())
 	}
 
-	isValid, err := VerifyCertificate(cert, host)
+	isValid, err := VerifyCertificate(cert, host, selfSignedOk)
 	return isValid, err
 }
 
@@ -100,38 +102,68 @@ func getCert(url string) (*x509.Certificate, error) {
 	return x509.ParseCertificate(data)
 }
 
+func verifyCertHelper(cert *x509.Certificate, host string) (bool, error) {
+	if err := cert.VerifyHostname(host); err != nil {
+		return false, fmt.Errorf("hostname verification failed: %v", err)
+	}
+
+	if cert.NotBefore.After(cert.NotAfter) {
+		return false, fmt.Errorf("certificate validity period is invalid")
+	}
+
+	return true, nil
+}
+
 // VerifyCertificate
-func VerifyCertificate(cert *x509.Certificate, host string) (bool, error) {
+func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPool bool) (bool, error) {
 	opts := x509.VerifyOptions{
 		DNSName:     host,
 		CurrentTime: time.Now(),
 	}
 
 	if !utils.IsWindows() {
-		rootCAs, err := x509.SystemCertPool()
-		if err != nil {
-			return false, err
+		if verifyBySystemCertPool {
+			rootCAs, err := x509.SystemCertPool()
+			if err != nil {
+				return false, err
+			}
+			opts.Roots = rootCAs
+			opts.Intermediates = x509.NewCertPool()
+		} else {
+			opts.Roots = x509.NewCertPool()
+			opts.Intermediates = x509.NewCertPool()
 		}
-		opts.Roots = rootCAs
-		opts.Intermediates = x509.NewCertPool()
 	}
 
-	if _, err := cert.Verify(opts); err != nil {
-		if !utils.IsWindows() {
-			if _, ok := err.(x509.UnknownAuthorityError); ok {
-				issuer, issuerErr := getCert("http://r3.i.lencr.org/")
-				if issuerErr != nil {
-					return false, issuerErr
-				}
-				opts.Intermediates.AddCert(issuer)
-				if _, err := cert.Verify(opts); err != nil {
-					return false, err
-				} else {
-					return true, nil
+	if verifyBySystemCertPool {
+		if _, err := cert.Verify(opts); err != nil {
+			if !utils.IsWindows() {
+				if _, ok := err.(x509.UnknownAuthorityError); ok {
+					var lastError error
+
+					for _, supportedIssueer := range coreopts.BuildOptions.GetSupportedCertIssuers() {
+						issuer, issuerErr := getCert(supportedIssueer)
+						if issuerErr != nil {
+							return false, issuerErr
+						}
+						opts.Intermediates.AddCert(issuer)
+						if _, err := cert.Verify(opts); err != nil {
+							lastError = err
+							continue
+						} else {
+							return true, nil
+						}
+					}
+
+					if lastError != nil {
+						return false, lastError
+					}
 				}
 			}
+			return false, errors.New("failed to verify certificate: " + err.Error())
 		}
-		return false, errors.New("failed to verify certificate: " + err.Error())
+	} else {
+		return verifyCertHelper(cert, opts.DNSName)
 	}
 	return true, nil
 }

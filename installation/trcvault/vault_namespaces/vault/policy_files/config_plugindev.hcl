@@ -46,7 +46,32 @@ path "super-secrets/data/dev/Index/TrcVault/trcplugin/*" {
   capabilities = ["create", "update", "read", "list"]
 }
 
-path "super-secrets/data/dev/Restricted/TrcshAgent/*" {
+path "super-secrets/data/dev/TierceronFlow" {
+  capabilities = ["read", "list"]
+}
+
+path "super-secrets/data/dev/DataFlowStatistics" {
+  capabilities = ["read", "list"]
+}
+path "super-secrets/data/dev/Index/FlumeDatabase/*" {
+  capabilities = ["read", "list"]
+}
+
+path "super-secrets/data/dev/Index/TenantDatabase/*" {
+  capabilities = ["read", "list"]
+}
+
+path "super-secrets/data/dev/PublicIndex/TenantDatabase/*" {
+  capabilities = ["create", "update", "read", "list"]
+}
+
+#This is for access to updating the APIM in trcsh
+path "super-secrets/data/dev/Restricted/APIMConfig/*" {
+  capabilities = ["read", "list"]
+}
+
+#This is for cursor deployments in trcsh
+path "super-secrets/data/dev/Restricted/TrcshCursor*" {
   capabilities = ["read", "list"]
 }
 

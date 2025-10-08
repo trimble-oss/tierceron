@@ -755,9 +755,9 @@ func (m *GetValuesReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_GetValuesReq proto.InternalMessageInfo
 
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 // Initialization Messages                             //
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 type InitReq struct {
 	Files                []*InitReq_SeedFile `protobuf:"bytes,1,rep,name=files,proto3" json:"files,omitempty"`
 	Username             string              `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
@@ -1009,9 +1009,9 @@ func (m *EnvResp) GetEnv() []string {
 	return nil
 }
 
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 // Web App LogIn Messages                              //
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 type VaultStatus struct {
 	Initialized          bool     `protobuf:"varint,1,opt,name=initialized,proto3" json:"initialized,omitempty"`
 	Sealed               bool     `protobuf:"varint,2,opt,name=sealed,proto3" json:"sealed,omitempty"`
@@ -1271,9 +1271,9 @@ func (m *UnsealResp) GetNeeded() int32 {
 	return 0
 }
 
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 // GraphQL Messages                                    //
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 type GraphQLQuery struct {
 	Query                string   `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -1634,9 +1634,9 @@ func (m *GQLTemplateResp) GetErrors() []*GQLError {
 	return nil
 }
 
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 // Update API Messages                                 //
-/////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////
 type UpdateAPIReq struct {
 	Build                string   `protobuf:"bytes,1,opt,name=build,proto3" json:"build,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -1676,9 +1676,9 @@ func (m *UpdateAPIReq) GetBuild() string {
 	return ""
 }
 
-////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////
 // Token Messages                                     //
-////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////
 type TokensReq struct {
 	AppRoleID            string   `protobuf:"bytes,1,opt,name=appRoleID,proto3" json:"appRoleID,omitempty"`
 	AppRoleSecretID      string   `protobuf:"bytes,2,opt,name=appRoleSecretID,proto3" json:"appRoleSecretID,omitempty"`
@@ -1820,9 +1820,9 @@ func (m *TokensResp_Token) GetValue() string {
 	return ""
 }
 
-////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////
 // Reset Server Messages                              //
-////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////
 type CheckConnResp struct {
 	Connected            bool     `protobuf:"varint,1,opt,name=connected,proto3" json:"connected,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`

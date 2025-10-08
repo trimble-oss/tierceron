@@ -17,8 +17,8 @@ See [installation/trcvault/README.md](installation/trcvault/README.md)
 ### Setting up your very first hello world example application
 See hello world section of [installation/trclocal/trchelloworld/README.md](installation/trclocal/trchelloworld/README.md)
 
-### Installing collaborative deployment system (trc-vault-carrier and trcsh)
-See [installation/trccarrier/README.md](installation/trccarrier/README.md)
+### Installing collaborative deployment system (trcsh-curator and trcsh)
+See [installation/trcshhive/trcsh-curator/README.md](installation/trcshhive/trcsh-curator/README.md)
 
 See [installation/trcsh/README.md](installation/trcsh/README.md)
 
@@ -31,6 +31,7 @@ This section is if you would like to develop Tierceron trusted business flows ut
 See [installation/trcdb/README.md](installation/trcdb/README.md)
 
 ### Automated tests ⚙
-TODO...
+Not many at this point..
+
 
 

@@ -6,18 +6,18 @@ import (
 	"log"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 // ConfigDataStore stores the data needed to configure the specified template files
 type ConfigDataStore struct {
-	dataMap map[string]interface{}
+	dataMap map[string]any
 	Regions []string
 }
 
-func (cds *ConfigDataStore) Init(config *core.CoreConfig,
+func (cds *ConfigDataStore) Init(config *coreconfig.CoreConfig,
 	mod *helperkv.Modifier,
 	secretMode bool,
 	useDirs bool,
@@ -25,7 +25,7 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 	commonPaths []string,
 	servicesWanted ...string) error {
 	cds.Regions = mod.Regions
-	cds.dataMap = make(map[string]interface{})
+	cds.dataMap = make(map[string]any)
 
 	var dataPathsFull []string
 
@@ -77,6 +77,10 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
 		for i := 0; i < len(servicesWanted); i++ {
+			if strings.HasSuffix(path, servicesWanted[i]) {
+				foundWantedService = true
+				break
+			}
 			splitService := strings.Split(servicesWanted[i], ".")
 			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true
@@ -89,6 +93,10 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 
 		secrets, err := mod.ReadData(path)
 		if err != nil {
+			if config.TokenCache != nil {
+				mod.EmptyCache()
+				config.TokenCache.Clear()
+			}
 			return err
 		}
 
@@ -98,7 +106,7 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 			if !ok {
 				//if it's a string, it's not the data we're looking for (we want maps)
 				ogKeys = append(ogKeys, strings.Replace(key, ".", "_", -1))
-				newVal := value.([]interface{})
+				newVal := value.([]any)
 				newValues := []string{}
 				for _, val := range newVal {
 					newValues = append(newValues, val.(string))
@@ -127,26 +135,27 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 				continue
 			}
 			values, _ := mod.ReadData(path)
-			valuesScrubbed := map[string]interface{}{}
+			valuesScrubbed := map[string]any{}
 			// Scrub keys.  Ugly, but does the trick.  Would like to do this differently in the future.
 			for k, v := range values {
 				valuesScrubbed[strings.Replace(k, ".", "_", -1)] = v
 			}
 			values = valuesScrubbed
-			commonValues := map[string]interface{}{}
+			commonValues := map[string]any{}
 			noValueKeys := []string{}
 
-			secretBuckets := map[string]interface{}{}
+			secretBuckets := map[string]any{}
 
 			// Substitute in values
 			for k, v := range values {
-				if link, ok := v.([]interface{}); ok {
+				if link, ok := v.([]any); ok {
 					bucket := link[0].(string)
-					var secretBucket map[string]interface{}
+					var secretBucket map[string]any
 					var ok bool
-					if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
+					if secretBucket, ok = secretBuckets[bucket].(map[string]any); !ok {
 						secretBucket, err = mod.ReadData(bucket)
 						if err != nil {
+							eUtils.LogInfo(config, fmt.Sprintf("Failure to read from bucket. %v\n", err))
 							noValueKeys = append(noValueKeys, k)
 						} else {
 							secretBuckets[bucket] = secretBucket
@@ -183,10 +192,10 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 
 			if len(commonValues) > 0 {
 				//not sure about this part with projects structure
-				if subDir, ok := cds.dataMap["Common"].(map[string]interface{}); ok {
+				if subDir, ok := cds.dataMap["Common"].(map[string]any); ok {
 					subDir[fileDir] = commonValues
 				} else if cds.dataMap["Common"] == nil {
-					cds.dataMap["Common"] = map[string]interface{}{
+					cds.dataMap["Common"] = map[string]any{
 						fileDir: commonValues,
 					}
 				}
@@ -196,15 +205,15 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 			}
 
 			//not sure about this part with projects structure
-			if subDir, ok := cds.dataMap[serviceDir].(map[string]interface{}); ok {
+			if subDir, ok := cds.dataMap[serviceDir].(map[string]any); ok {
 				subDir[fileDir] = values
 			} else if cds.dataMap[serviceDir] == nil {
-				cds.dataMap[serviceDir] = map[string]interface{}{
+				cds.dataMap[serviceDir] = map[string]any{
 					fileDir: values,
 				}
 			}
 		} else {
-			secretBuckets := map[string]interface{}{}
+			secretBuckets := map[string]any{}
 
 			for i, valueMap := range valueMaps {
 				//these should be [path, key] maps
@@ -218,9 +227,9 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 						dirs := strings.Split(bucket, "/")
 						if dirs[0] == "super-secrets" {
 							key := valueMap[1]
-							var secretBucket map[string]interface{}
+							var secretBucket map[string]any
 							var ok bool
-							if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
+							if secretBucket, ok = secretBuckets[bucket].(map[string]any); !ok {
 								secretBucket, err = mod.ReadData(bucket)
 								if err == nil {
 									secretBuckets[bucket] = secretBucket
@@ -235,9 +244,9 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 					} else {
 						//second element is the key
 						key := valueMap[1]
-						var secretBucket map[string]interface{}
+						var secretBucket map[string]any
 						var ok bool
-						if secretBucket, ok = secretBuckets[bucket].(map[string]interface{}); !ok {
+						if secretBucket, ok = secretBuckets[bucket].(map[string]any); !ok {
 							secretBucket, err = mod.ReadData(bucket)
 							if err == nil {
 								secretBuckets[bucket] = secretBucket
@@ -259,9 +268,9 @@ func (cds *ConfigDataStore) Init(config *core.CoreConfig,
 	return nil
 }
 
-func (cds *ConfigDataStore) InitTemplateVersionData(config *core.CoreConfig, mod *helperkv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]interface{}, error) {
+func (cds *ConfigDataStore) InitTemplateVersionData(config *coreconfig.CoreConfig, mod *helperkv.Modifier, useDirs bool, project string, file string, servicesWanted ...string) (map[string]any, error) {
 	cds.Regions = mod.Regions
-	cds.dataMap = make(map[string]interface{})
+	cds.dataMap = make(map[string]any)
 	//get paths where the data is stored
 	dataPathsFull, err := GetPathsFromProject(config, mod, []string{project}, servicesWanted)
 	if len(dataPathsFull) > 0 && strings.Contains(dataPathsFull[len(dataPathsFull)-1], "!=!") {
@@ -274,8 +283,8 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *core.CoreConfig, mod
 
 	dataPaths := dataPathsFull
 
-	var deeperData map[string]interface{}
-	data := make(map[string]interface{})
+	var deeperData map[string]any
+	data := make(map[string]any)
 	for _, path := range dataPaths {
 		//for each path, read the secrets there
 		pathParts := strings.Split(path, "/")
@@ -313,12 +322,12 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 	serviceData, ok := cds.dataMap[service]
 	if ok {
 
-		configPart, configPartOk := serviceData.(map[string]interface{})
+		configPart, configPartOk := serviceData.(map[string]any)
 		if configPartOk {
 			for _, keyPathPart := range keyPath {
 				for configPathKey, configPathValues := range configPart {
 					if configPathKey == keyPathPart {
-						configPart, configPartOk = configPathValues.(map[string]interface{})
+						configPart, configPartOk = configPathValues.(map[string]any)
 						break
 					} else {
 						configPartOk = false
@@ -343,7 +352,7 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 				keyPathKey := "/" + strings.Join(keyPath, "/")
 				for configPathKey, configPathValues := range configPart {
 					if configPathKey == keyPathKey {
-						configPart, configPartOk = configPathValues.(map[string]interface{})
+						configPart, configPartOk = configPathValues.(map[string]any)
 
 						if configPartOk {
 							configValue, okValue := configPart[key]
@@ -352,7 +361,12 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 								if okResultValue {
 									return resultValue, nil
 								} else {
-									return "", errors.New("value not found in store")
+									resultValuePtr, okResultValuePtr := configValue.(*string)
+									if okResultValuePtr {
+										return *resultValuePtr, nil
+									} else {
+										return "", errors.New("value not found in store")
+									}
 								}
 							}
 						}
@@ -366,20 +380,20 @@ func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key strin
 }
 
 // GetConfigValues gets a set of configuration values for a service from the data store.
-func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[string]interface{}, bool) {
-	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {
-		if values, okServiceConfig := serviceValues[config].(map[string]interface{}); okServiceConfig {
+func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[string]any, bool) {
+	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]any); okServiceValues {
+		if values, okServiceConfig := serviceValues[config].(map[string]any); okServiceConfig {
 			return values, true
 		}
 	}
 	return nil, false
 }
 
-// GetConfigValue gets an invididual configuration value for a service from the data store.
+// GetConfigValue gets an individual configuration value for a service from the data store.
 func (cds *ConfigDataStore) GetConfigValue(service string, config string, key string) (string, bool) {
 	key = strings.Replace(key, ".", "_", -1)
-	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]interface{}); okServiceValues {
-		if values, okServiceConfig := serviceValues[config].(map[string]interface{}); okServiceConfig {
+	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]any); okServiceValues {
+		if values, okServiceConfig := serviceValues[config].(map[string]any); okServiceConfig {
 			if value, okValue := values[key]; okValue {
 				if v, okType := value.(string); okType {
 					return v, true
@@ -390,7 +404,7 @@ func (cds *ConfigDataStore) GetConfigValue(service string, config string, key st
 	return "", false
 }
 
-func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projects []string, services []string) ([]string, error) {
+func GetPathsFromProject(config *coreconfig.CoreConfig, mod *helperkv.Modifier, projects []string, services []string) ([]string, error) {
 	//setup for getPaths
 	if len(config.DynamicPathFilter) > 0 && !config.WantCerts && mod.TemplatePath != "" {
 		pathErr := verifyTemplatePath(mod, config.Log)
@@ -404,17 +418,23 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 	var err error
 
 	if mod.SecretDictionary == nil {
-		mod.SecretDictionary, err = mod.List("templates", config.Log)
+		envCurrent := mod.Env
+		mod.Env = mod.EnvBasis
+		mod.SecretDictionary, err = mod.List(fmt.Sprintf("templates/%s", projects[0]), config.Log)
+		mod.Env = envCurrent
 	}
 	secrets := mod.SecretDictionary
 	var innerService string
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
-		availProjects := secrets.Data["keys"].([]interface{})
+		availProjects := []any{}
+		if len(secrets.Data["keys"].([]any)) > 0 {
+			availProjects = append(availProjects, projects[0]+"/")
+		}
 		//if projects empty, use all available projects
 		if len(projects) > 0 {
-			projectsUsed := []interface{}{}
+			projectsUsed := []any{}
 			for _, project := range projects {
 				project = project + "/"
 				projectAvailable := false
@@ -437,7 +457,7 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 						if innerPathList == nil || availProject.(string) == "Common/" {
 							continue
 						}
-						innerPaths := innerPathList.Data["keys"].([]interface{})
+						innerPaths := innerPathList.Data["keys"].([]any)
 						for _, innerPath := range innerPaths {
 							if projectAvailable {
 								break
@@ -483,12 +503,19 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 					}
 
 				} else {
-					mod.ProjectIndex = []string{project.(string)}
-					path := "templates/" + project.(string)
-					paths, pathErr = getPaths(config, mod, path, paths, false)
-					//don't add on to paths until you're sure it's an END path
-					if pathErr != nil {
-						return nil, pathErr
+					if config.WantCerts && len(services) == 1 {
+						for _, service := range services {
+							mod.ProjectIndex = []string{project.(string)}
+							paths = []string{"templates/" + project.(string) + service}
+						}
+					} else {
+						mod.ProjectIndex = []string{project.(string)}
+						path := "templates/" + project.(string)
+						paths, pathErr = getPaths(config, mod, path, paths, false)
+						//don't add on to paths until you're sure it's an END path
+						if pathErr != nil {
+							return nil, pathErr
+						}
 					}
 				}
 			}
@@ -508,12 +535,15 @@ func GetPathsFromProject(config *core.CoreConfig, mod *helperkv.Modifier, projec
 }
 
 func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
+	envCurrent := mod.Env
+	mod.Env = mod.EnvBasis
 	secrets, err := mod.List(mod.TemplatePath, logger)
+	mod.Env = envCurrent
 	if err != nil {
 		return err
 	} else if secrets != nil {
 		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		slicey := secrets.Data["keys"].([]any)
 		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
 			return nil
 		}
@@ -521,17 +551,20 @@ func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
 	return fmt.Errorf("template not found in vault: %s", mod.TemplatePath)
 }
 
-func getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
+func getPaths(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string, pathList []string, isDir bool) ([]string, error) {
 	secrets, err := mod.List(pathName, config.Log)
 	if err != nil {
 		return nil, err
 	} else if secrets != nil {
 		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		slicey := secrets.Data["keys"].([]any)
 		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
-			pathList = append(pathList, pathName)
 			if isDir {
+				pathList = append(pathList, pathName)
 				pathList = append(pathList, strings.TrimRight(pathName, "/"))
+			} else {
+				pathList = append(pathList, strings.TrimRight(pathName, "/"))
+
 			}
 		} else {
 			dirMap := map[string]bool{}

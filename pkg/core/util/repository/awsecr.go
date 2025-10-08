@@ -19,7 +19,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
+func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]any) error {
 	imageInput := &ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{
 			{
@@ -53,15 +53,15 @@ func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConf
 	}
 
 	var layerDigest string
-	var data map[string]interface{}
+	var data map[string]any
 	err = json.Unmarshal([]byte(*batchImages.Images[0].ImageManifest), &data)
 	if err != nil {
 		return errors.New(err.Error())
 	}
 
-	layers := data["layers"].([]interface{})
+	layers := data["layers"].([]any)
 	for _, layerMetadata := range layers {
-		mapLayerMetdata := layerMetadata.(map[string]interface{})
+		mapLayerMetdata := layerMetadata.(map[string]any)
 		layerDigest = mapLayerMetdata["digest"].(string)
 	}
 
@@ -70,7 +70,7 @@ func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConf
 }
 
 // Return url to the image to be used for download.
-func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
+func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) (string, error) {
 	svc := ecr.New(session.New(&aws.Config{
 		Region:      aws.String("us-west-2"),
 		Credentials: credentials.NewStaticCredentials(pluginToolConfig["aws-password"].(string), pluginToolConfig["aws-accesskey"].(string), ""),
@@ -111,7 +111,7 @@ func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map
 	return *downloadOutput.DownloadUrl, nil
 }
 
-func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) error {
 	downloadUrl, downloadURlError := GetImageDownloadUrl(driverConfig, pluginToolConfig)
 	if downloadURlError != nil {
 		return errors.New("Failed to get download url.")
@@ -135,6 +135,6 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 }
 
 // Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
-func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
+func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) error {
 	return errors.New("Not defined")
 }

@@ -1,4 +1,4 @@
 trc_seeds
 resources
-scripts
+scripts/*.sh
 vault

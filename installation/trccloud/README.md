@@ -40,10 +40,10 @@ terraform apply
 
 # Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
 ```
-trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
+trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
 ```
 
 ```
-trcinit -env=dev -certs -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport>
+trcinit -env=dev -certs -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport>
 ```
 

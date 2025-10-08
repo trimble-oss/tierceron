@@ -14,7 +14,7 @@ update TierceronFlow set syncMode="pushonce" where flowName='{flowName}';
 update TierceronFlow set syncMode="pullonce" where flowName='{flowName}';
 
 //Trcx command to retrieve row
-trcx -env=QA -token=$TRC_ROOT_TOKEN -insecure -indexed=FlumeDatabase -serviceFilter=TierceronFlow -indexFilter=flowName
+trcx -env=QA -token=$VAULT_TOKEN -insecure -indexed=FlumeDatabase -serviceFilter=TierceronFlow -indexFilter=flowName
 
 select * from TierceronFlow
 -----

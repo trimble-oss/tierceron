@@ -1,0 +1,4 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=trcshtalk -pluginType=trcshpluginservice -sha256=bin/trcshtalk.so
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -agentdeploy -pluginName=trcshtalk

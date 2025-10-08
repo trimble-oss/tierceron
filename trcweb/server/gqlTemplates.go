@@ -7,18 +7,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
+
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 )
 
 // getTemplateData Fetches all keys listed under 'templates' substituting private values with verification
 // Secret values will only be populated for environments with values for that secret group
 // All template keys that reference public values will be populated with those values
 func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
-	config := &core.CoreConfig{
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
+	config := &coreconfig.CoreConfig{
 		ExitOnFailure: false,
 		Log:           s.Log,
 	}
@@ -46,7 +47,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 			continue
 		}
 		if localEnvs, ok := userPaths.Data["keys"]; ok {
-			for _, env := range localEnvs.([]interface{}) {
+			for _, env := range localEnvs.([]any) {
 				envStrings = append(envStrings, strings.Trim("local/"+e+"/"+env.(string), "/"))
 			}
 		}
@@ -93,7 +94,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 						}
 						var dates []time.Time
 						for _, v := range versions {
-							if val, ok := v.(map[string]interface{}); ok {
+							if val, ok := v.(map[string]any); ok {
 								location, _ := time.LoadLocation("America/Los_Angeles")
 								creationTime := fmt.Sprintf("%s", val["created_time"])
 								t, _ := time.Parse(time.RFC3339, creationTime)
@@ -124,10 +125,10 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 							continue
 
 						} else {
-							// Construct a string -> bool map to track accessable environments
+							// Construct a string -> bool map to track accessible environments
 
 							if vDataKeys, ok := vSecret.Data["keys"]; ok {
-								if vKeys, okKeys := vDataKeys.([]interface{}); okKeys {
+								if vKeys, okKeys := vDataKeys.([]any); okKeys {
 									for _, k := range vKeys {
 										if group, ok := k.(string); ok {
 											availableSecrets[group] = true
@@ -143,7 +144,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 
 						for k, v := range kvs {
 							// Get path to secret
-							if val, ok := v.([]interface{}); ok {
+							if val, ok := v.([]any); ok {
 								if fullPath, ok := val[0].(string); ok {
 									pathBlocks := strings.SplitN(fullPath, "/", 2) // Check that environment contains secret and check verification
 									if pathBlocks[0] == "super-secrets" && availableSecrets[pathBlocks[1]] {
@@ -163,7 +164,7 @@ func (s *Server) getTemplateData() (*pb.ValuesRes, error) {
 									} else if pathBlocks[0] == "values" { // Real value, fetch and populate
 										if key, ok := val[1].(string); ok {
 											value, err := mod.ReadValue(fullPath, key)
-											if err == nil && value != "" {
+											if err == nil && !eUtils.RefEquals(&value, "") {
 												secrets = append(secrets, &pb.ValuesRes_Env_Project_Service_File_Value{Key: k, Value: value, Source: "value"})
 											}
 										} else {

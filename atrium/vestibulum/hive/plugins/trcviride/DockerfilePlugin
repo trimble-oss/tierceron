@@ -1,0 +1,2 @@
+FROM scratch
+ADD bin/vico.so /usr/local/trcshk/plugins

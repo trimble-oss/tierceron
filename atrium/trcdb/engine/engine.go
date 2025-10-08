@@ -1,7 +1,7 @@
 package engine
 
 import (
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
@@ -14,7 +14,7 @@ type TierceronTable struct {
 }
 
 type TierceronEngine struct {
-	Config     eUtils.DriverConfig
+	Config     config.DriverConfig
 	Database   *memory.Database
 	Engine     *sqle.Engine
 	Context    *sql.Context

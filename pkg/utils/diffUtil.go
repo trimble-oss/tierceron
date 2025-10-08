@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
+
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
@@ -111,7 +113,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		diffs = diffs[:0]
 	}
 
-	//Seperates diff into red and green lines
+	//Separates diff into red and green lines
 	var redBuffer bytes.Buffer
 	var greenBuffer bytes.Buffer
 	for _, diff := range diffs {
@@ -234,7 +236,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	return result
 }
 
-func VersionHelper(versionData map[string]interface{}, templateOrValues bool, valuePath string, first bool) {
+func VersionHelper(versionData map[string]any, templateOrValues bool, valuePath string, first bool) {
 	Reset := "\033[0m"
 	Cyan := "\033[36m"
 	Red := "\033[31m"
@@ -252,8 +254,8 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 	//template == true
 	if templateOrValues {
 		for _, versionMap := range versionData {
-			for _, versionMetadata := range versionMap.(map[string]interface{}) {
-				for field, data := range versionMetadata.(map[string]interface{}) {
+			for _, versionMetadata := range versionMap.(map[string]any) {
+				for field, data := range versionMetadata.(map[string]any) {
 					if field == "destroyed" && !data.(bool) {
 						goto printOutput1
 					}
@@ -267,8 +269,8 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 			fmt.Println(Cyan + "======================================================================================")
 			fmt.Println(filename)
 			fmt.Println("======================================================================================" + Reset)
-			keys := make([]int, 0, len(versionMap.(map[string]interface{})))
-			for versionNumber := range versionMap.(map[string]interface{}) {
+			keys := make([]int, 0, len(versionMap.(map[string]any)))
+			for versionNumber := range versionMap.(map[string]any) {
 				versionNo, err := strconv.Atoi(versionNumber)
 				if err != nil {
 					fmt.Println()
@@ -278,17 +280,17 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 			sort.Ints(keys)
 			for i, key := range keys {
 				versionNumber := fmt.Sprint(key)
-				versionMetadata := versionMap.(map[string]interface{})[fmt.Sprint(key)]
+				versionMetadata := versionMap.(map[string]any)[fmt.Sprint(key)]
 				fmt.Println("Version " + string(versionNumber) + " Metadata:")
 
-				fields := make([]string, 0, len(versionMetadata.(map[string]interface{})))
-				for field := range versionMetadata.(map[string]interface{}) {
+				fields := make([]string, 0, len(versionMetadata.(map[string]any)))
+				for field := range versionMetadata.(map[string]any) {
 					fields = append(fields, field)
 				}
 				sort.Strings(fields)
 				for _, field := range fields {
 					fmt.Printf(field + ": ")
-					fmt.Println(versionMetadata.(map[string]interface{})[field])
+					fmt.Println(versionMetadata.(map[string]any)[field])
 				}
 				if i != len(keys)-1 {
 					fmt.Println(Red + "-------------------------------------------------------------------------------" + Reset)
@@ -298,7 +300,7 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 		fmt.Println(Cyan + "======================================================================================" + Reset)
 	} else {
 		for _, versionMetadata := range versionData {
-			for field, data := range versionMetadata.(map[string]interface{}) {
+			for field, data := range versionMetadata.(map[string]any) {
 				if field == "destroyed" && !data.(bool) {
 					goto printOutput
 				}
@@ -331,8 +333,8 @@ func VersionHelper(versionData map[string]interface{}, templateOrValues bool, va
 			versionNumber := key
 			versionMetadata := versionData[fmt.Sprint(key)]
 			fields := make([]string, 0)
-			fieldData := make(map[string]interface{}, 0)
-			for field, data := range versionMetadata.(map[string]interface{}) {
+			fieldData := make(map[string]any, 0)
+			for field, data := range versionMetadata.(map[string]any) {
 				fields = append(fields, field)
 				fieldData[field] = data
 			}
@@ -363,7 +365,7 @@ func RemoveDuplicateValues(intSlice []string) []string {
 	return list
 }
 
-func DiffHelper(configCtx *ConfigContext, config bool) {
+func DiffHelper(configCtx *config.ConfigContext, config bool) {
 	fileIndex := 0
 	keys := []string{}
 	configCtx.Mutex.Lock()
@@ -422,7 +424,7 @@ func DiffHelper(configCtx *ConfigContext, config bool) {
 
 	if config {
 		//Make fileList
-		for key, _ := range configCtx.ResultMap {
+		for key := range configCtx.ResultMap {
 			found := false
 			keySplit := strings.Split(key, "||")
 

@@ -1,0 +1,1 @@
+Folder containing scripts for setting up trcshk kernel service

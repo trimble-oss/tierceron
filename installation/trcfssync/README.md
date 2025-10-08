@@ -21,7 +21,7 @@ Fill in seed variables in super-secrets section of trc_seeds/dev/dev_seed.yml
 
 # Optional: later, after initializing trcvault, you can perform this step: Publish terraform seed data to vault.
 ```
-trcinit -env=dev -token=$TRC_ROOT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
+trcinit -env=dev -token=$VAULT_TOKEN -addr=https://<vaulthost:vaultport> -indexed=TrcVault
 ```
 
 # Create cert placeholder files

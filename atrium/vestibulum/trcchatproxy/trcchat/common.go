@@ -11,7 +11,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/server"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
 )

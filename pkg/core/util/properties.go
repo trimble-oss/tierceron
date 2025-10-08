@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/core"
 
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
@@ -22,7 +22,7 @@ type Properties struct {
 	cds          *vcutils.ConfigDataStore
 }
 
-func NewProperties(config *core.CoreConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
+func NewProperties(config *coreconfig.CoreConfig, v *sys.Vault, mod *helperkv.Modifier, env string, project string, service string) (*Properties, error) {
 	properties := Properties{}
 	properties.mod = mod
 	properties.mod.Env = env
@@ -50,19 +50,46 @@ func NewProperties(config *core.CoreConfig, v *sys.Vault, mod *helperkv.Modifier
 	return &properties, nil
 }
 
-// GetValue gets an invididual configuration value for a service from the data store.
+// GetValue gets an individal configuration value for a service from the data store.
 func (p *Properties) GetValue(service string, keyPath []string, key string) (string, error) {
 	return p.cds.GetValue(service, keyPath, key)
 }
 
-// GetConfigValue gets an invididual configuration value for a service from the data store.
+// GetConfigValue gets an individal configuration value for a service from the data store.
 func (p *Properties) GetConfigValue(service string, config string, key string) (string, bool) {
 	return p.cds.GetConfigValue(service, config, key)
 }
 
-// GetConfigValues gets an invididual configuration value for a service from the data store.
-func (p *Properties) GetConfigValues(service string, config string) (map[string]interface{}, bool) {
+// GetConfigValues gets an individal configuration value for a service from the data store.
+func (p *Properties) GetConfigValues(service string, config string) (map[string]any, bool) {
 	return p.cds.GetConfigValues(service, config)
+}
+
+func (p *Properties) GetRegionConfigValues(service string, config string) (map[string]any, bool) {
+	valueMap, _ := p.GetConfigValues(service, config)
+	if valueMap == nil {
+		valueMap = make(map[string]any)
+	}
+	//Grabs region fields and replaces into base fields if region is available.
+	if len(p.mod.Regions) > 0 {
+		regionFields := make(map[string]any)
+		region := "~" + p.mod.Regions[0]
+		for field, value := range valueMap {
+			if !strings.Contains(field, region) {
+				regionFields[field] = value
+				continue
+			}
+		}
+		for field, _ := range valueMap {
+			if strings.Contains(field, region) {
+				if _, valueOK := valueMap[strings.TrimSuffix(field, region)]; valueOK {
+					regionFields[strings.TrimSuffix(field, region)] = valueMap[field]
+				}
+			}
+		}
+		return regionFields, true
+	}
+	return valueMap, true
 }
 
 func ResolveTokenName(env string) string {
@@ -86,15 +113,15 @@ func ResolveTokenName(env string) string {
 	return tokenNamePtr
 }
 
-func (p *Properties) GetPluginData(region string, service string, config string, log *log.Logger) (map[string]interface{}, map[string]interface{}) {
+func (p *Properties) GetPluginData(region string, service string, config string, log *log.Logger) (map[string]any, map[string]any) {
 	valueMap, _ := p.GetConfigValues(service, config)
 	if valueMap == nil {
-		valueMap = make(map[string]interface{})
+		valueMap = make(map[string]any)
 	}
-	replacedDefaultFields := make(map[string]interface{})
+	replacedDefaultFields := make(map[string]any)
 	//Grabs region fields and replaces into base fields if region is available.
 	if region != "" {
-		regionFields := make(map[string]interface{})
+		regionFields := make(map[string]any)
 		region = "~" + region
 		for field, value := range valueMap {
 			if !strings.Contains(field, region) {
@@ -155,8 +182,8 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 	return valueMap, replacedDefaultFields
 }
 
-func (p *Properties) WritePluginData(pluginData map[string]interface{}, replacedFields map[string]interface{}, mod *helperkv.Modifier, log *log.Logger, hostRegion string, pluginName string) error {
-	//writeMap := make(map[string]interface{})
+func (p *Properties) WritePluginData(pluginData map[string]any, replacedFields map[string]any, mod *helperkv.Modifier, log *log.Logger, hostRegion string, pluginName string) error {
+	//writeMap := make(map[string]any)
 	// If SectionPath is set like
 	mod.SectionPath = ""
 	regionSuffix := ""
@@ -176,7 +203,7 @@ func (p *Properties) WritePluginData(pluginData map[string]interface{}, replaced
 		return readErr
 	}
 	if writeMap == nil {
-		writeMap = map[string]interface{}{}
+		writeMap = map[string]any{}
 	}
 
 	for field, value := range pluginData {

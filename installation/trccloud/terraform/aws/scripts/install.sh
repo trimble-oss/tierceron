@@ -3,6 +3,7 @@
 # Install packages
 sudo apt-get update -y
 sudo apt-get install -y curl unzip
+sudo apt-get install uuid-runtime
 
 # Download Vault into some temporary directory
 curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_linux_amd64.zip" > /tmp/vault.zip

@@ -14,23 +14,19 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	startDirPtr *string,
-	driverConfig *eUtils.DriverConfig,
+	driverConfig *config.DriverConfig,
 	mod *kv.Modifier) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
@@ -129,7 +125,7 @@ func CommonMain(envPtr *string,
 		return err
 	}
 
-	//Adding a 3 minute timeout on APIM Update.
+	//Adding a 2 minute timeout on APIM Update.
 	go func(ctxC context.CancelFunc) {
 		time.Sleep(time.Second * 120)
 		ctxC()

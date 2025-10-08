@@ -2,33 +2,70 @@ package dbutil
 
 import (
 	"context"
+	"crypto/tls"
 	"database/sql"
+	"errors"
 	"net"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/tls"
+	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
+	trctls "github.com/trimble-oss/tierceron/pkg/tls"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/validator"
+	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"github.com/xo/dburl"
 )
 
 // OpenDirectConnection opens connection to a database using various sql urls used by Spectrum.
-func OpenDirectConnection(config *core.CoreConfig, url string, username string, password string) (*sql.DB, error) {
-	driver, server, port, dbname, certName, err := validator.ParseURL(config, url)
-
+func OpenDirectConnection(driverConfig *config.DriverConfig,
+	goMod *helperkv.Modifier,
+	url string,
+	username string,
+	passwordFunc func() (string, error),
+) (*sql.DB, error) {
+	driver, server, port, dbname, certName, err := validator.ParseURL(driverConfig.CoreConfig, url)
 	if err != nil {
 		return nil, err
 	}
 
 	var conn *sql.DB
-	tlsConfig, err := tls.GetTlsConfig(certName)
+	var tlsConfig *tls.Config
+
+	if goMod != nil && (kernelopts.BuildOptions.IsKernel() || !prod.IsProd()) {
+		var clientCertBytes []byte
+		var clientCertPath string
+		if driver == "mysql" || driver == "mariadb" {
+			if prod.IsProd() {
+				// TODO: If prod combines to a common domain, we can get rid of this.
+				clientCertPath = "Common/db_cert.pem.mf.tmpl"
+			} else {
+				clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+			}
+		} else if driver == "sqlserver" {
+			clientCertPath = "Common/servicecert.crt.mf.tmpl"
+		} else {
+			return nil, errors.New("unsupported driver for TLS")
+		}
+		clientCertBytes, err = certutil.LoadCertComponent(driverConfig,
+			goMod,
+			clientCertPath)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig, err = trctls.GetTlsConfigFromCertBytes(clientCertBytes)
+	} else {
+		tlsConfig, err = trctls.GetTlsConfig(certName)
+	}
 	if err != nil {
 		return nil, err
 	}
+	tlsConfig.ServerName = server
+
 	tlsErr := mysql.RegisterTLSConfig("tiercerontls", tlsConfig)
 	if tlsErr != nil {
 		return nil, tlsErr
@@ -48,13 +85,17 @@ func OpenDirectConnection(config *core.CoreConfig, url string, username string, 
 		}
 	} else {
 		if net.ParseIP(server) == nil {
-			err = capauth.ValidateVhostInverse(server, "", true)
+			err = capauth.ValidateVhostInverse(server, "", true, false)
 			if err != nil {
 				return nil, err
 			}
 		}
 	}
 
+	password, passErr := passwordFunc()
+	if passErr != nil {
+		return nil, passErr
+	}
 	switch driver {
 	case "mysql", "mariadb":
 		if len(port) == 0 {
