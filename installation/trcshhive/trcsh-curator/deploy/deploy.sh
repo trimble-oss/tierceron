@@ -56,7 +56,7 @@ if [ "$VAULT_AGENT" = 'Y' ] || [ "$VAULT_AGENT" = 'y' ]; then
     PRE_CERTIFY="Y"
 else
     if [[ -z "${VAULT_ENV_TOKEN}" ]]; then
-        echo "Enter trc plugin runtime environment token with write permissions unrestricted(config_token_"$VAULT_ENV"_unrestricted): "
+        echo "Enter agent vault token with write permissions unrestricted(config_token_"$VAULT_ENV"_unrestricted): "
         read VAULT_ENV_TOKEN
     fi
 

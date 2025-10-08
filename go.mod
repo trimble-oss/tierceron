@@ -115,7 +115,6 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
-	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-kit/kit v0.12.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -131,6 +130,8 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
+	github.com/google/go-github/v61 v61.0.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
@@ -153,6 +154,7 @@ require (
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2 // indirect
+	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
 	github.com/mitchellh/hashstructure v1.1.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
