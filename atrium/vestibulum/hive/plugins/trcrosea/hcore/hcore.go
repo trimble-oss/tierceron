@@ -8,6 +8,12 @@ import (
 	"io"
 	"log"
 	"os"
+	"time"
+
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"gopkg.in/yaml.v2"
@@ -16,6 +22,8 @@ import (
 var configContext *tccore.ConfigContext
 var sender chan error
 var dfstat *tccore.TTDINode
+
+var projectServices [][]any
 
 const (
 	COMMON_PATH = "./config.yml"
@@ -40,6 +48,9 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open("plugins/rosea.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
@@ -100,25 +111,15 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		event := <-chat_receive_chan
 		switch {
 		case event == nil:
-			fallthrough
+			continue
 		case *event.Name == "SHUTDOWN":
-			configContext.Log.Println("rainier shutting down message receiver")
+			configContext.Log.Println("rosea shutting down message receiver")
 			return
-		case event.Response != nil && *((*event).Response) == "Service unavailable":
-			configContext.Log.Println("Rainier unable to access chat service.")
-			return
-		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
-			configContext.Log.Println("Sending progress results back to kernel.")
-			progressResp := "Running Rainier Diagnostics..."
-			(*event).Response = &progressResp
-			*configContext.ChatSenderChan <- event
-		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS":
-			configContext.Log.Println("rosea request")
-			configContext.Log.Println("Sending all test results back to kernel.")
-			//			(*event).Response = &results
-			*configContext.ChatSenderChan <- event
+		case (*event).ChatId != nil && *event.ChatId != "PROGRESS":
+			chatMsgHookCtxRef := flowutil.GetChatMsgHookCtx()
+			tccore.CallSelectedChatMsgHook(*chatMsgHookCtxRef, event)
 		default:
-			configContext.Log.Println("rainier received chat message")
+			configContext.Log.Println("rosea received chat message")
 		}
 	}
 }
@@ -128,33 +129,34 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for rosea")
 		return
 	}
-	var config map[string]interface{}
+	var config *map[string]any
 	var ok bool
-	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
-		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
-		err := yaml.Unmarshal(configBytes, &config)
-		if err != nil {
-			configContext.Log.Println("Missing common configs")
-			send_err(err)
-			return
+	if len(*configContext.Config) > 0 {
+		if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
+			configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
+			err := yaml.Unmarshal(configBytes, &config)
+			if err != nil {
+				configContext.Log.Println("Missing common configs")
+				send_err(err)
+				return
+			}
 		}
 	}
 
-	if config != nil {
-		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
-		dfstat.UpdateDataFlowStatistic("System",
-			pluginName,
-			"Start up",
-			"1",
-			1,
-			func(msg string, err error) {
-				configContext.Log.Println(msg, err)
-			})
-		send_dfstat()
-	} else {
-		configContext.Log.Println("Missing common configs")
-		send_err(errors.New("missing common configs"))
-		return
+	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+	dfstat.UpdateDataFlowStatistic("System",
+		pluginName,
+		"Start up",
+		"1",
+		1,
+		func(msg string, err error) {
+			configContext.Log.Println(msg, err)
+		})
+	send_dfstat()
+	if configContext.CmdSenderChan != nil {
+		*configContext.CmdSenderChan <- tccore.KernelCmd{
+			Command: tccore.PLUGIN_EVENT_START,
+		}
 	}
 }
 
@@ -195,7 +197,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	go receiver(*configContext.CmdReceiverChan)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 
 	configContext, err = tccore.Init(properties,
@@ -214,5 +216,42 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
 		fmt.Println("Missing common config components")
 		return
+	}
+
+	flowutil.InitChatSenderChan(configContext.ChatSenderChan)
+
+	go FetchSocii(configContext) // Init must be non blocking
+}
+
+func GetPluginMessages(pluginName string) []string {
+	return []string{}
+}
+
+func FetchSocii(ctx *tccore.ConfigContext) {
+	ctx.Log.Println("Sending request for argos socii.")
+	chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
+		"rosea", // From rainier
+		&tccore.TrcdbExchange{
+			Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                 // Flows
+			Query:     fmt.Sprintf("SELECT * FROM %s.%s", "%s", flowcore.ArgosSociiFlow.TableName()), // Query letting engine provide database name
+			Operation: "SELECT",                                                                      // query operation
+		},
+		flowutil.GetChatSenderChan(),
+	)
+	if chatResponseMsg.TrcdbExchange != nil && len(chatResponseMsg.TrcdbExchange.Response.Rows) > 0 {
+		projectServices = chatResponseMsg.TrcdbExchange.Response.Rows
+		err := rosea.BootInit(projectServices)
+		if err != nil {
+			ctx.Log.Printf("Rosea Initialization error: %v", err)
+			return
+		}
+		ctx.Log.Println("rosea initialized with argos socii data.")
+	} else {
+		ctx.Log.Println("rosea failed to initialize with argos socii data.")
+		if chatResponseMsg.Response != nil && *chatResponseMsg.Response == "Service unavailable" || len(chatResponseMsg.TrcdbExchange.Response.Rows) == 0 {
+			ctx.Log.Println("Service unavailable, retrying in 5 seconds.")
+			time.Sleep(5 * time.Second)
+			FetchSocii(ctx)
+		}
 	}
 }

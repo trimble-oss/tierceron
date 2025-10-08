@@ -6,7 +6,7 @@ type OptionsBuilder struct {
 	CheckIncomingColumnName      func(col string) bool
 	CheckFlowDataIncoming        func(secretColumns map[string]string, secretValue string, dbName string, tableName string) ([]byte, string, string, string, error)
 	CheckIncomingAliasColumnName func(col string) bool
-	GetTrcDbUrl                  func(data map[string]interface{}) string
+	GetTrcDbUrl                  func(data map[string]any) string
 }
 
 func LoadOptions() Option {

@@ -14,15 +14,15 @@ import (
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"github.com/hashicorp/vault/sdk/plugin"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -32,11 +32,11 @@ func InitLogger(l *log.Logger) {
 	logger = l
 }
 
-func ParseCursorFields(e *logical.StorageEntry, cursorSecretData *map[string]interface{}, logger *log.Logger) error {
+func ParseCursorFields(e *logical.StorageEntry, cursorSecretData *map[string]any, logger *log.Logger) error {
 	logger.Println("ParseCursorFields")
 
 	if e != nil {
-		secretData := map[string]interface{}{}
+		secretData := map[string]any{}
 		decodeErr := e.DecodeJSON(&secretData)
 		if decodeErr != nil {
 			logger.Printf("ParseCursorFields parse failure: %s\n", decodeErr.Error())
@@ -99,7 +99,7 @@ var environments []string = []string{"dev"}
 var environmentsProd []string = []string{"staging"}
 var cursorFields map[string]cursoropts.CursorFieldAttributes
 var KvInitialize func(context.Context, *logical.InitializationRequest) error
-var curatorPluginConfig map[string]interface{}
+var curatorPluginConfig map[string]any
 
 var kvRead framework.OperationFunc
 
@@ -107,7 +107,7 @@ var readFunc func(ctx context.Context, req *logical.Request, data *framework.Fie
 	logger.Println("Read complete.")
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message": "Nice try.",
 		},
 	}, nil
@@ -131,7 +131,7 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 	logger.Printf("%s CreateUpdate complete\n", pluginName)
 
 	return &logical.Response{
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"message": "Cursor updated",
 		},
 	}, nil
@@ -217,8 +217,8 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 					queuedEnvironments = environmentsProd
 				}
 
-				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, queuedEnvironments[0], "", "", true, true, logger)
-				eUtils.CheckError(&core.CoreConfig{
+				trcshDriverConfig, err := trcshbase.TrcshInitConfig(nil, queuedEnvironments[0], "", "", true, true, false, logger)
+				eUtils.CheckError(&coreconfig.CoreConfig{
 					ExitOnFailure: true,
 					Log:           logger,
 				}, err, true)

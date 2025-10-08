@@ -28,8 +28,8 @@ func TrimLastDotAfterLastSlash(s string) (string, int) {
 // Before being uploaded, the service and filename will be appended so the uploaded value will be
 // <Service>.<Filename>.<Key>
 // Underscores in key names will be replaced with periods before being uploaded
-func Parse(filepath string, service string, filename string) (map[string]interface{}, error) {
-	workingSet := make(map[string]interface{})
+func Parse(filepath string, service string, filename string) (map[string]any, error) {
+	workingSet := make(map[string]any)
 	file, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err

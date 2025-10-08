@@ -15,17 +15,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
 	captiplib "github.com/trimble-oss/tierceron-hat/captip/captiplib"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/tls"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
@@ -281,16 +282,25 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	return penseProtect, nil
 }
 
-func NewAgentConfig(addressPtr *string,
-	tokenCache *cache.TokenCache,
+func NewAgentConfig(tokenCache *cache.TokenCache,
 	agentTokenName string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
 	interruptedFunc func(*cap.FeatherContext) error,
 	initNewTrcsh bool,
+	isShellRunner bool,
 	logger *log.Logger,
 	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
 
+	if isShellRunner {
+		tokenCache.SetVaultAddress(tokenCache.VaultAddressPtr)
+		return &AgentConfigs{Env: &env}, &TrcShConfig{
+			IsShellRunner: isShellRunner,
+			Env:           env,
+			EnvContext:    env,
+			TokenCache:    tokenCache,
+		}, nil
+	}
 	agentTokenPtr := tokenCache.GetToken(agentTokenName)
 	if agentTokenPtr == nil {
 		logger.Println("trcsh Failed to bootstrap")
@@ -302,7 +312,7 @@ func NewAgentConfig(addressPtr *string,
 		fmt.Printf(".")
 	}
 
-	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, addressPtr, env, nil, true, nil)
+	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, tokenCache.VaultAddressPtr, env, nil, true, nil)
 	if modErr != nil {
 		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
@@ -396,51 +406,65 @@ func NewAgentConfig(addressPtr *string,
 		}
 
 		trcshConfig := &TrcShConfig{Env: trcHatEnv,
-			EnvContext: trcHatEnv,
+			IsShellRunner: isShellRunner,
+			EnvContext:    trcHatEnv,
 		}
 
-		// TODO: Chewbacca -- Local debug
-		// configRole := os.Getenv("CONFIG_ROLE")
-		// vaddress := os.Getenv("VAULT_ADDR")
-		// trcshConfig.ConfigRolePtr = &configRole
-		// trcshConfig.VaultAddressPtr = &vaddress
-		// return agentconfig, trcshConfig, nil
-		// End Chewbacca
-
+		var bambooRolePtr *string
+		var pluginAnyPtr *string
+		var vaultAddressPtr *string
 		var penseError error
-		trcshConfig.ConfigRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
-		if penseError != nil {
-			return nil, nil, penseError
-		}
-		if logger != nil {
-			logger.Printf(".")
-		} else {
-			fmt.Printf(".")
-		}
-
-		trcshConfig.VaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
-		if penseError != nil {
-			return nil, nil, penseError
-		}
-		if logger != nil {
-			logger.Printf(".")
-		} else {
-			fmt.Printf(".")
-		}
-
-		if kernelopts.BuildOptions.IsKernel() && tokenCache.GetToken("config_token_pluginany") == nil {
-			tokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("token")
+		// Chewbacca -- Local debug
+		// if true {
+		// 	configRole := os.Getenv("CONFIG_ROLE")
+		// 	bambooRolePtr = &configRole
+		// 	vaddress := os.Getenv("VAULT_ADDR")
+		// 	vaultAddressPtr = &vaddress
+		// 	pluginAny := os.Getenv("PLUGIN_ANY")
+		// 	pluginAnyPtr = &pluginAny
+		// }
+		// End Chewbacca
+		if eUtils.RefLength(bambooRolePtr) == 0 {
+			bambooRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
 			if penseError != nil {
 				return nil, nil, penseError
 			}
-			tokenCache.AddToken("config_token_pluginany", tokenPtr)
-
 			if logger != nil {
 				logger.Printf(".")
 			} else {
 				fmt.Printf(".")
 			}
 		}
+		tokenCache.AddRoleStr("bamboo", bambooRolePtr)
+
+		if eUtils.RefLength(vaultAddressPtr) == 0 {
+			vaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
+			if penseError != nil {
+				return nil, nil, penseError
+			}
+			if logger != nil {
+				logger.Printf(".")
+			} else {
+				fmt.Printf(".")
+			}
+		}
+		tokenCache.SetVaultAddress(vaultAddressPtr)
+
+		if eUtils.RefLength(pluginAnyPtr) == 0 {
+			if kernelopts.BuildOptions.IsKernel() && tokenCache.GetToken("config_token_pluginany") == nil {
+				pluginAnyPtr, penseError = agentconfig.RetryingPenseFeatherQuery("token")
+				if penseError != nil {
+					return nil, nil, penseError
+				}
+
+				if logger != nil {
+					logger.Printf(".")
+				} else {
+					fmt.Printf(".")
+				}
+			}
+		}
+		tokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 
 		return agentconfig, trcshConfig, nil
 	}

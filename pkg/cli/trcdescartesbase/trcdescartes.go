@@ -8,13 +8,16 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/memonly"
 	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -141,7 +144,6 @@ func CommonMain(envDefaultPtr *string,
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
 
 		if driverConfigBase.CoreConfig.Log == nil {
 			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
@@ -158,14 +160,16 @@ func CommonMain(envDefaultPtr *string,
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: &coreconfig.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			StartDir:   append([]string{}, *startDirPtr),
+			EndDir:     *endDirPtr,
 			NoVault:    *noVaultPtr,
 		}
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr)
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		appRoleConfigPtr = new(string)
@@ -178,12 +182,9 @@ func CommonMain(envDefaultPtr *string,
 	if !*noVaultPtr {
 		wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
 		autoErr := eUtils.AutoAuth(driverConfigBase,
-			secretIDPtr,
-			appRoleIDPtr,
 			&wantedTokenName,
 			&tokenPtr,
 			envPtr,
-			addrPtr,
 			envCtxPtr,
 			appRoleConfigPtr,
 			*pingPtr)

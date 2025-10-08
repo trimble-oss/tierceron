@@ -12,26 +12,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 
 	"log"
 )
 
-type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
-type ProcessFlowInitConfig func(pluginConfig map[string]interface{}, logger *log.Logger) error
-type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
+type ProcessFlowConfig func(pluginEnvConfig map[string]any) map[string]any
+type ProcessFlowInitConfig func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]any, logger *log.Logger) error
+type BootFlowMachineFunc func(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error)
 
 // Unused/deprecated
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
@@ -48,8 +49,8 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrC
 	}
 }
 
-func GetJSONFromClientByGet(config *core.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
-	var jsonData map[string]interface{}
+func GetJSONFromClientByGet(config *coreconfig.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
+	var jsonData map[string]any
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -90,8 +91,8 @@ func GetJSONFromClientByGet(config *core.CoreConfig, httpClient *http.Client, he
 	return nil, response.StatusCode, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(config *core.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
-	var jsonData map[string]interface{}
+func GetJSONFromClientByPost(config *coreconfig.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
+	var jsonData map[string]any
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -166,7 +167,7 @@ func LoadBaseTemplate(driverConfig *config.DriverConfig, templateResult *extract
 	return errSeed
 }
 
-func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, service string, addressPtr *string, tokenPtr *string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
+func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, service string, addressPtr *string, tokenPtr *string, baseTemplate *extract.TemplateResultData, tableData map[string]any, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -176,8 +177,8 @@ func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, 
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	templateCombinedSection := map[string]interface{}{}
-	sliceTemplateSection := []interface{}{}
+	templateCombinedSection := map[string]any{}
+	sliceTemplateSection := []any{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	for key, value := range tableData {
@@ -262,7 +263,7 @@ func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, 
 	return nil
 }
 
-func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
+func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]any, defineService bool) (map[string]any, error) {
 	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
@@ -286,7 +287,7 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
 		}
 	}
-	pluginEnvConfigClone := make(map[string]interface{})
+	pluginEnvConfigClone := make(map[string]any)
 
 	for k, v := range pluginToolConfig {
 		if _, okStr := v.(string); okStr {
@@ -310,11 +311,10 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 		}
 	}
 
-	var ptc1 map[string]interface{}
+	var ptc1 map[string]any
 
 	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig loading plugin data.")
 	for _, templatePath := range templatePaths {
-		// TODO: Chewbacca -- could pass in driverConfig but we didn't before...
 		project, service, _, _ := eUtils.GetProjectService(nil, templatePath)
 		driverConfig.CoreConfig.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + driverConfig.SubSectionValue + " service: " + service)
 
@@ -446,7 +446,7 @@ func UncompressZipFile(filePath string) (bool, []error) {
 
 }
 
-func Sanitize(input interface{}) string {
+func Sanitize(input any) string {
 	if input == nil {
 		return ""
 	}

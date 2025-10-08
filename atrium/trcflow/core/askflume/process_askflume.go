@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"

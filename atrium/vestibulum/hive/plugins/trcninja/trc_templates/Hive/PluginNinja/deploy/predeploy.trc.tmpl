@@ -1,0 +1,3 @@
+#!/bin/bash
+
+trcplgtool -env={{or .deploy_ENVIRONMENT "$KUBEENV"}} -certify -pluginName=ninja -pluginType=trcshpluginservice -sha256=bin/ninja.so

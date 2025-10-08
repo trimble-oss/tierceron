@@ -12,11 +12,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/factory"
-	trcplgtool "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -25,14 +25,17 @@ import (
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
+
 	//"kernel.org/pub/linux/libs/security/libcap/cap"
+
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
 func init() {
 	factory.StartPluginSettingEater()
 }
 
-func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]any, logger *log.Logger) error {
 	logger.Println("PluginDeployInitFlow begun.")
 	var err error
 	var driverConfig *config.DriverConfig
@@ -45,7 +48,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
 	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 		"config_token_pluginany", logger)
 	if vault != nil {
 		defer vault.Close()
@@ -72,7 +75,7 @@ func PluginDeployEnvFlow(pluginConfig map[string]interface{}, logger *log.Logger
 	return err
 }
 
-func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) error {
+func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error) {
 	logger.Println("PluginDeployFlow begun.")
 	var err error
 	var pluginName string
@@ -81,22 +84,22 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		pluginName = pluginNameInterface.(string)
 	} else {
 		logger.Println("Missing plugin name.")
-		return errors.New("missing plugin name")
+		return nil, errors.New("missing plugin name")
 	}
 
 	hostName, hostNameErr := os.Hostname()
 	if hostNameErr != nil {
-		return hostNameErr
+		return nil, hostNameErr
 	} else if hostName == "" {
-		return errors.New("could not find hostname")
+		return nil, errors.New("could not find hostname")
 	}
 
 	//Grabbing certification from vault
 	if pluginConfig["caddress"].(string) == "" { //if no certification address found, it will try to certify against itself.
-		return errors.New("could not find certification address")
+		return nil, errors.New("could not find certification address")
 	}
 	if eUtils.RefEquals(eUtils.RefMap(pluginConfig, "ctokenptr"), "") { //if no certification address found, it will try to certify against itself.
-		return errors.New("could not find certification token")
+		return nil, errors.New("could not find certification token")
 	}
 
 	addr := pluginConfig["vaddress"].(string)
@@ -105,12 +108,12 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
 	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr")),
+		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
 		"config_token_pluginany", logger)
 	carrierDriverConfig.SubSectionValue = pluginName
 	if err != nil {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)
-		return err
+		return nil, err
 	}
 
 	vaultPluginSignature, ptcErr := trcvutils.GetPluginToolConfig(carrierDriverConfig, cGoMod, pluginConfig, false)
@@ -122,32 +125,32 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	if ptcErr != nil {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin load failure: %s", carrierDriverConfig.CoreConfig.Env, ptcErr.Error()), false)
-		return nil
+		return nil, ptcErr
 	}
 
 	//grabbing configs
 	if _, ok := vaultPluginSignature["trcplugin"]; !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin status load failure.", carrierDriverConfig.CoreConfig.Env), false)
-		return nil
+		return nil, errors.New("Missing plugin name")
 	}
 
 	if _, ok := vaultPluginSignature["acrrepository"].(string); !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin status load failure - no certification entry found.", carrierDriverConfig.CoreConfig.Env), false)
-		return nil
+		return nil, errors.New("Missing acrrepository")
 	}
 
 	if _, ok := vaultPluginSignature["trcsha256"].(string); !ok {
 		// TODO: maybe delete plugin if it exists since there was no entry in vault...
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s plugin status load failure - incomplete certification entry found.  Missing trcsha256.", carrierDriverConfig.CoreConfig.Env), false)
-		return nil
+		return nil, errors.New("Missing trcsha256")
 	}
 
 	//Checks if this instance of carrier is allowed to deploy that certain plugin.
 	if instanceList, ok := vaultPluginSignature["instances"].(string); !ok {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: env: %s Plugin has no valid instances: %s", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
-		return nil
+		return nil, errors.New("Missing instances")
 	} else {
 		hostName, hostNameErr := os.Hostname()
 		if hostName != "" && hostNameErr == nil { //Figures out what instance this is
@@ -178,17 +181,17 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Plugin %s not found for env: %s and this instance: %s\n", vaultPluginSignature["trcplugin"].(string), carrierDriverConfig.CoreConfig.Env, instanceIndex), false)
 				vaultPluginSignature["trcsha256"] = "notfound"
 				factory.PushPluginSha(carrierDriverConfig, pluginConfig, vaultPluginSignature)
-				return nil
+				return nil, errors.New(fmt.Sprintf("Plugin %s not found for env: %s and this instance: %s", vaultPluginSignature["trcplugin"].(string), carrierDriverConfig.CoreConfig.Env, instanceIndex))
 			}
 		} else {
 			eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Unable to determine for env: %s this instance: %s index for deployment.  Error: %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string), hostNameErr.Error()), false)
-			return nil
+			return nil, errors.New(fmt.Sprintf("Unable to determine for env: %s this instance: %s index for deployment.  Error: %s", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string), hostNameErr.Error()))
 		}
 	}
 
 	if deployedVal, ok := vaultPluginSignature["deployed"].(bool); ok && deployedVal {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Plugin has already been deployed env: %s and copied: %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
-		return nil
+		return nil, errors.New(fmt.Sprintf("Plugin has already been deployed env: %s and copied: %s", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)))
 	}
 
 	pluginDownloadNeeded := false
@@ -219,6 +222,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			defer imageFile.Close()
 			if _, err := io.Copy(sha256, imageFile); err != nil {
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not sha256 image from file system for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, vaultPluginSignature["trcplugin"].(string)), false)
+				return nil, err
 			}
 
 			filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
@@ -243,23 +247,26 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		if downloadErr != nil {
 			eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("Could not get download image for env: %s and plugin %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, downloadErr.Error()), false)
 			vaultPluginSignature["imagesha256"] = "invalidurl"
+			return nil, downloadErr
 		}
 		if vaultPluginSignature["imagesha256"] == vaultPluginSignature["trcsha256"] { //Sha256 from download matches in vault
+			logger.Printf("PluginDeployFlow updating new image for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName)
 			err = os.WriteFile(agentPath, vaultPluginSignature["rawImageFile"].([]byte), 0644)
 			vaultPluginSignature["rawImageFile"] = nil
 
 			if err != nil {
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not write out download image for env: %s and plugin %s error: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName, downloadErr.Error()), false)
+				return nil, err
 			}
 
 			if vaultPluginSignature["trctype"] == "agent" {
 				azureDeployGroup, azureDeployGroupErr := user.LookupGroup("azuredeploy")
 				if azureDeployGroupErr != nil {
-					return errors.Join(errors.New("group lookup failure"), azureDeployGroupErr)
+					return nil, errors.Join(errors.New("group lookup failure"), azureDeployGroupErr)
 				}
 				azureDeployGID, azureGIDConvErr := strconv.Atoi(azureDeployGroup.Gid)
 				if azureGIDConvErr != nil {
-					return errors.Join(errors.New("group ID lookup failure"), azureGIDConvErr)
+					return nil, errors.Join(errors.New("group ID lookup failure"), azureGIDConvErr)
 				}
 				os.Chown(agentPath, -1, azureDeployGID)
 			}
@@ -269,11 +276,11 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 				chdModErr := imageFile.Chmod(0750)
 				if chdModErr != nil {
 					eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not give permission to image in file system.  Bailing.. for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName), false)
-					return nil
+					return nil, errors.New("Could not give permission to image in file system: " + chdModErr.Error())
 				}
 			} else {
 				eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, fmt.Sprintf("PluginDeployFlow failure: Could not open image in file system to give permissions for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName), false)
-				return nil
+				return nil, errors.New("Could not open image in file system to give permissions: " + err.Error())
 			}
 
 			ipcLockCapSet, err := cap.FromText("cap_ipc_lock=+ep")
@@ -288,6 +295,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 			pluginCopied = true
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, fmt.Sprintf("Image has been copied for env: %s and plugin %s\n", carrierDriverConfig.CoreConfig.Env, pluginName))
 		} else {
+			logger.Printf("mismatched")
 			imgsha := "notlatest or notfound"
 			if _, okImg := vaultPluginSignature["imagesha256"]; okImg {
 				imgsha = vaultPluginSignature["imagesha256"].(string)
@@ -304,7 +312,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		eUtils.LogInfo(carrierDriverConfig.CoreConfig, pluginName+": Updating plugin image to vault.")
 		if pluginSHA, pluginSHAOk := vaultPluginSignature["trcsha256"]; !pluginSHAOk || pluginSHA.(string) == "" {
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, fmt.Sprintf("Plugin is not registered with carrier for env: %s and plugin: %s\n", carrierDriverConfig.CoreConfig.Env, pluginName))
-			return nil
+			return nil, errors.New(fmt.Sprintf("Plugin is not registered with carrier for env: %s and plugin: %s", carrierDriverConfig.CoreConfig.Env, pluginName))
 		}
 		eUtils.LogInfo(carrierDriverConfig.CoreConfig, pluginName+": Checkpush sha256")
 		factory.PushPluginSha(carrierDriverConfig, pluginConfig, vaultPluginSignature)
@@ -314,7 +322,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 		if err != nil {
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, pluginName+": Initializing certification")
-			writeMap = make(map[string]interface{})
+			writeMap = make(map[string]any)
 		} else {
 			eUtils.LogInfo(carrierDriverConfig.CoreConfig, pluginName+": Updating certification status")
 		}
@@ -324,7 +332,7 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 		} else {
 			writeMap["trctype"] = "vault"
 		}
-		writeMap = trcplgtool.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
+		writeMap = certify.WriteMapUpdate(writeMap, vaultPluginSignature, false, writeMap["trctype"].(string), "")
 		if writeMap["trctype"].(string) == "agent" {
 			writeMap["deployed"] = true
 		}
@@ -354,93 +362,5 @@ func PluginDeployFlow(pluginConfig map[string]interface{}, logger *log.Logger) e
 
 	logger.Println("PluginDeployFlow complete.")
 
-	return nil
-}
-
-// Updated deployed to true for any plugin
-func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, vault *sys.Vault, pluginNameList []string, cPath []string, logger *log.Logger) error {
-	logger.Println("PluginDeployedUpdate start.")
-
-	hostName, hostNameErr := os.Hostname()
-	if hostNameErr != nil {
-		return hostNameErr
-	} else if hostName == "" {
-		return errors.New("could not find hostname")
-	}
-
-	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
-	if hostRegion == "" {
-		logger.Println("PluginDeployedUpdate self certification not provided on base region deployers")
-		return nil
-	}
-
-	mod.Regions = append(mod.Regions, hostRegion)
-	projects, services, _ := eUtils.GetProjectServices(nil, cPath)
-	for _, pluginName := range pluginNameList {
-		for i := 0; i < len(projects); i++ {
-			if services[i] == "Certify" {
-				mod.SectionName = "trcplugin"
-				mod.SectionKey = "/Index/"
-				mod.SubSectionValue = pluginName
-
-				properties, err := trcvutils.NewProperties(driverConfig.CoreConfig, vault, mod, driverConfig.CoreConfig.Env, projects[i], services[i])
-				if err != nil {
-					return err
-				}
-
-				pluginData, replacedFields := properties.GetPluginData(hostRegion, services[i], "config", driverConfig.CoreConfig.Log)
-				if pluginData == nil {
-					pluginData = make(map[string]interface{})
-					pluginData["trcplugin"] = pluginName
-
-					var agentPath string
-
-					if pluginData["trctype"] == "agent" {
-						agentPath = "/home/azuredeploy/bin/" + pluginName
-					} else {
-						agentPath = coreopts.BuildOptions.GetVaultInstallRoot() + "/plugins/" + pluginName
-					}
-
-					logger.Println("Checking file.")
-					if imageFile, err := os.Open(agentPath); err == nil {
-						sha256 := sha256.New()
-
-						defer imageFile.Close()
-						if _, err := io.Copy(sha256, imageFile); err != nil {
-							continue
-						}
-
-						filesystemsha256 := fmt.Sprintf("%x", sha256.Sum(nil))
-						pluginData["trcsha256"] = filesystemsha256
-						pluginData["copied"] = false
-						pluginData["instances"] = "0"
-
-						if pluginData["trctype"].(string) == "agent" {
-							pluginData["deployed"] = false
-						}
-					}
-				}
-
-				if copied, okCopied := pluginData["copied"]; !okCopied || !copied.(bool) {
-					logger.Println("Cannot certify plugin.  Plugin not copied: " + pluginName)
-					continue
-				}
-
-				if deployed, okDeployed := pluginData["deployed"]; !okDeployed || deployed.(bool) {
-					continue
-				}
-
-				if hostRegion != "" {
-					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
-				}
-				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, driverConfig.CoreConfig.Log, hostRegion, pluginName)
-				if err != nil {
-					return statusUpdateErr
-				}
-
-			}
-		}
-	}
-	logger.Println("PluginDeployedUpdate complete.")
-	return nil
+	return nil, nil
 }

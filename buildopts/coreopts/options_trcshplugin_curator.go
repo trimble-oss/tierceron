@@ -17,7 +17,7 @@ package coreopts
 //		               originating from the source:
 //		                  installation/trcdb/trc_templates/TrcVault/Certify/config.yml.tmpl
 //		logNamespace - a log namespace to be used by the carrier in logging.
-func InitPluginConfig(pluginEnvConfig map[string]interface{}) map[string]interface{} {
+func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 	if pluginEnvConfig != nil {
 		pluginEnvConfig["exitOnFailure"] = false
 		pluginEnvConfig["regions"] = []string{"west"}
@@ -26,7 +26,7 @@ func InitPluginConfig(pluginEnvConfig map[string]interface{}) map[string]interfa
 		pluginEnvConfig["logNamespace"] = "trcshcurator"
 		return pluginEnvConfig
 	} else {
-		return map[string]interface{}{
+		return map[string]any{
 			"env":            "dev",
 			"exitOnFailure":  false,
 			"regions":        []string{"west"},

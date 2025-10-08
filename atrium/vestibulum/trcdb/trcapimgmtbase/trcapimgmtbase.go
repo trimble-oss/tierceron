@@ -16,16 +16,13 @@ import (
 	"github.com/getkin/kin-openapi/openapi2conv"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	startDirPtr *string,

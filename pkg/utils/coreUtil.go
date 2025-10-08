@@ -2,6 +2,7 @@ package utils
 
 import (
 	"runtime"
+	"strings"
 )
 
 func IsWindows() bool {
@@ -28,6 +29,22 @@ func RefRefEquals(src *string, dest *string) bool {
 	return *src == *dest
 }
 
+func RefRefHasPrefix(src *string, prefix *string) bool {
+	if src == nil && prefix == nil {
+		return true
+	} else if src == nil || prefix == nil {
+		return false
+	}
+	return strings.HasPrefix(*src, *prefix)
+}
+
+func RefContains(src *string, contains string) bool {
+	if src == nil {
+		return false
+	}
+	return strings.Contains(*src, contains)
+}
+
 func RefEqualsAny(src *string, dest []string) bool {
 	if src == nil {
 		return false
@@ -47,6 +64,13 @@ func RefLength(src *string) int {
 	return len(*src)
 }
 
+func RefSliceLength(src *[]string) int {
+	if src == nil {
+		return 0
+	}
+	return len(*src)
+}
+
 func RefString(src *string) *string {
 	if src == nil {
 		return nil
@@ -54,7 +78,7 @@ func RefString(src *string) *string {
 	return src
 }
 
-func IToString(src interface{}) string {
+func IToString(src any) string {
 	if src == nil {
 		return ""
 	}
@@ -66,7 +90,7 @@ func IToString(src interface{}) string {
 	return ""
 }
 
-func RefMap(m map[string]interface{}, key string) *string {
+func RefMap(m map[string]any, key string) *string {
 	v, ok := m[key]
 	if !ok {
 		return nil

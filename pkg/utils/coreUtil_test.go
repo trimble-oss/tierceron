@@ -6,7 +6,7 @@ import (
 )
 
 func TestRefMap(t *testing.T) {
-	pluginParams := map[string]interface{}{}
+	pluginParams := map[string]any{}
 	pluginParams["testkey"] = "test"
 	valRef := RefMap(pluginParams, "testkey")
 	if *valRef != "test" {

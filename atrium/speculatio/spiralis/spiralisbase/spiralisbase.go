@@ -10,8 +10,8 @@ import (
 
 	"os"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -19,9 +19,9 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/spiralis/ttdirender"
 
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/g3nd/g3nworld"
 	"github.com/trimble-oss/tierceron-nute/g3nd/worldg3n/g3nrender"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/mashupsdk/client"
 )
 
@@ -54,7 +54,7 @@ func CommonMain(
 	mashupRenderer.AddRenderer("Curve", curveRenderer)
 	mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 	mashupRenderer.AddRenderer("Element", curveRenderer.CollaboratingRenderer)
-	mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]interface{}{}})
+	mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]any{}})
 
 	worldApp := g3nworld.NewWorldApp(*headless, true, mashupRenderer, nil)
 	DetailedElements := []*mashupsdk.MashupDetailedElement{}
@@ -73,13 +73,13 @@ func CommonMain(
 		mashupRenderer.AddRenderer("Curve", curveRenderer)
 		mashupRenderer.AddRenderer("Background", &ttdirender.BackgroundRenderer{})
 		mashupRenderer.AddRenderer("Element", curveRenderer.CollaboratingRenderer)
-		mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]interface{}{}})
+		mashupRenderer.AddRenderer("GuiRenderer", &ttdirender.GuiRenderer{GuiNodeMap: map[string]any{}})
 
 		DetailedElements = libraryElementBundle.DetailedElements
 	} else if *headless && !*custos {
 		data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				Insecure:      *insecure,
 				Log:           logger,

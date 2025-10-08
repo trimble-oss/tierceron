@@ -8,10 +8,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -19,7 +21,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.27")
+	fmt.Println("Version: " + "1.28")
 }
 
 // Reads in template files in specified directory
@@ -28,21 +30,33 @@ func PrintVersion() {
 // The file is saved under the data key, and the extension under the ext key
 // Vault automatically encodes the file into base64
 
-func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
+func CommonMain(envDefaultPtr *string,
+	envCtxPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) error {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &coreconfig.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
+	var addrPtr *string = nil
 
 	if flagset == nil {
-		fmt.Println("Version: " + "1.6")
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			fmt.Println("Version: " + "1.6")
+		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
@@ -60,6 +74,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	endDirPtr := flagset.String("endDir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory to put configured templates into")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
@@ -73,6 +88,7 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
 	flagset.Parse(argLines[1:])
+
 	if envPtr == nil {
 		if envDefaultPtr != nil {
 			envPtr = envDefaultPtr
@@ -88,15 +104,19 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
 	var driverConfigBase *config.DriverConfig
-	var appRoleConfigPtr *string
+	var currentRoleEntityPtr *string
 
-	if driverConfig.CoreConfig.IsShell {
+	if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
-		appRoleConfigPtr = driverConfig.CoreConfig.AppRoleConfigPtr
+		currentRoleEntityPtr = driverConfig.CoreConfig.CurrentRoleEntityPtr
+		if eUtils.RefLength(currentRoleEntityPtr) == 0 {
+			roleEntity := "bamboo"
+			currentRoleEntityPtr = &roleEntity
+		}
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
@@ -118,10 +138,10 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
-		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
-
-		appRoleConfigPtr = new(string)
+		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		if eUtils.RefLength(addrPtr) > 0 {
+			driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		}
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
@@ -132,30 +152,29 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 		return err
 	}
 
-	fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
-
 	wantedTokenName := fmt.Sprintf("config_token_%s", envBasis)
 	autoErr := eUtils.AutoAuth(driverConfigBase,
-		secretIDPtr,
-		appRoleIDPtr,
 		&wantedTokenName,
 		&tokenPtr, // Token matching currentTokenNamePtr
 		&envBasis,
-		addrPtr,
 		envCtxPtr,
-		appRoleConfigPtr,
+		currentRoleEntityPtr,
 		*pingPtr)
 	if autoErr != nil {
 		fmt.Println("Missing auth components.")
 		return autoErr
 	}
+	if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+		fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr), addrPtr, envBasis, driverConfigBase.CoreConfig.Regions, true, driverConfigBase.CoreConfig.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
+		*tokenNamePtr,
+		envBasis, true)
 	if mod != nil {
 		defer mod.Release()
 	}
 	if err != nil {
-		fmt.Println("Failure to init to vault")
 		driverConfigBase.CoreConfig.Log.Println("Failure to init to vault")
 		return err
 	}
@@ -164,7 +183,6 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	if len(*pluginNamePtr) > 0 {
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", *pluginNamePtr))
 		if err != nil {
-			fmt.Printf("Failure read plugin: %s\n", *pluginNamePtr)
 			driverConfigBase.CoreConfig.Log.Printf("Failure read plugin: %s\n", *pluginNamePtr)
 			return err
 		}
@@ -172,7 +190,6 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 			if projectFilter, ok := certifyMap["trcprojectservice"].(string); ok {
 				filterTemplatePtr = &projectFilter
 			} else {
-				fmt.Printf("No additional secrets for plugin: %s\n", *pluginNamePtr)
 				driverConfigBase.CoreConfig.Log.Printf("No additional secrets for plugin: %s\n", *pluginNamePtr)
 				return err
 			}
@@ -180,18 +197,17 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	}
 
 	if *templatePathsPtr != "" {
-		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
+		driverConfigBase.CoreConfig.Log.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
 		il.DownloadTemplates(driverConfigBase, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, templatePathsPtr)
 	} else if *pluginInfoPtr {
 		pluginList, err := mod.List("super-secrets/Index/TrcVault/trcplugin", driverConfigBase.CoreConfig.Log)
 		if err != nil || pluginList == nil {
-			fmt.Println("Failure read plugins")
 			driverConfigBase.CoreConfig.Log.Println("Failure read plugins")
 			return err
 		}
 		for _, pluginPath := range pluginList.Data {
-			for _, pluginInterface := range pluginPath.([]interface{}) {
+			for _, pluginInterface := range pluginPath.([]any) {
 				plugin := pluginInterface.(string)
 				fmt.Println(strings.TrimRight(plugin, "/"))
 			}
@@ -200,24 +216,30 @@ func CommonMain(envDefaultPtr *string, addrPtr *string, envCtxPtr *string,
 	} else if *projectInfoPtr {
 		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
-			fmt.Println("Failure read templates")
 			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
-		fmt.Printf("\nProjects available:\n")
+		if driverConfigBase.CoreConfig.IsEditor {
+			driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
+		} else {
+			fmt.Printf("\nProjects available:\n")
+		}
 		for _, templatePath := range templateList.Data {
-			for _, projectInterface := range templatePath.([]interface{}) {
+			for _, projectInterface := range templatePath.([]any) {
 				project := projectInterface.(string)
-				fmt.Println(strings.TrimRight(project, "/"))
+				if driverConfigBase.CoreConfig.IsEditor {
+					driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
+				} else {
+					fmt.Println(strings.TrimRight(project, "/"))
+				}
 			}
 		}
 		return nil
 	} else {
-		fmt.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
+		driverConfigBase.CoreConfig.Log.Printf("Downloading templates from vault to %s\n", driverConfigBase.EndDir)
 		// The actual download templates goes here.
 		warn, err := il.DownloadTemplateDirectory(driverConfigBase, mod, driverConfigBase.EndDir, driverConfigBase.CoreConfig.Log, filterTemplatePtr)
 		if err != nil {
-			fmt.Println(err)
 			driverConfigBase.CoreConfig.Log.Printf("Failure to download: %s", err.Error())
 			if strings.Contains(err.Error(), "x509: certificate") {
 				return err

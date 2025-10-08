@@ -247,7 +247,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	go receiverMutabile(configContext, configContext.CmdReceiverChan)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 	if configContextMap == nil {
 		configContextMap = map[string]*tccore.ConfigContext{}

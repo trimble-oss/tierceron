@@ -5,6 +5,7 @@ import (
 )
 
 const DataflowTestNameColumn = "flowName"
+const DataflowGroupTestNameColumn = "flowGroup"
 const DataflowTestIdColumn = "argosId"
 const DataflowTestStateCodeColumn = "stateCode"
 

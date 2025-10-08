@@ -1,20 +1,44 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
+
+// isTimout detects if the err is a timeout.
+func isTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	errStr := err.Error()
+	return strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "timed out") ||
+		strings.Contains(errStr, "deadline exceeded")
+}
 
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
@@ -24,8 +48,30 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 	}
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod begins..")
 
-	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.VaultAddressPtr, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
-	if err != nil {
+	var vault *sys.Vault
+	var err error
+	maxRetries := 3
+	retryDelay := time.Second
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		vault, err = sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+			driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
+
+		if err == nil {
+			break
+		}
+
+		if isTimeout(err) {
+			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Timeout connecting to vault (attempt %d/%d), retrying in %v...",
+				attempt+1, maxRetries, retryDelay))
+
+			if attempt < maxRetries-1 {
+				time.Sleep(retryDelay)
+				retryDelay *= 2
+				continue
+			}
+		}
+
 		LogInfo(driverConfig.CoreConfig, "Failure to connect to vault..")
 		LogErrorObject(driverConfig.CoreConfig, err, false)
 		return driverConfig, nil, nil, err
@@ -47,6 +93,7 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 		return driverConfig, nil, nil, err
 	}
 	mod.Env = driverConfig.CoreConfig.Env
+	mod.EnvBasis = driverConfig.CoreConfig.EnvBasis
 	mod.Version = "0"
 	mod.VersionFilter = driverConfig.VersionFilter
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod complete..")
@@ -132,7 +179,7 @@ func GetAcceptedTemplatePaths(driverConfig *config.DriverConfig, modCheck *helpe
 
 var logMap sync.Map = sync.Map{}
 
-func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *log.Logger {
+func InitPluginLogs(pluginConfig map[string]any, logger *log.Logger) *log.Logger {
 	logger.Println("InitPluginLogs log setup: " + pluginConfig["env"].(string))
 	var trcdbEnvLogger *log.Logger
 
@@ -154,7 +201,7 @@ func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *lo
 				}
 
 				trcdbEnvLogger = log.New(f, fmt.Sprintf("[trcplugin%s-%s]", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string)), log.LstdFlags)
-				CheckError(&core.CoreConfig{ExitOnFailure: true, Log: trcdbEnvLogger}, logErr, true)
+				CheckError(&coreconfig.CoreConfig{ExitOnFailure: true, Log: trcdbEnvLogger}, logErr, true)
 				logMap.Store(logFile, trcdbEnvLogger)
 				logger.Println("InitVaultModForPlugin log setup complete")
 			} else {
@@ -173,7 +220,7 @@ func InitPluginLogs(pluginConfig map[string]interface{}, logger *log.Logger) *lo
 }
 
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
 
@@ -202,14 +249,14 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 		trcdbEnvLogger.Println("Missing required env")
 		return nil, nil, nil, errors.New("missing required env")
 	}
+	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts:           false,
 			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
 			CurrentTokenNamePtr: &currentTokenName,
 			TokenCache:          tokenCache,
-			VaultAddressPtr:     RefMap(pluginConfig, "vaddress"),
 			Env:                 pluginConfig["env"].(string),
 			EnvBasis:            GetEnvBasis(pluginConfig["env"].(string)),
 			Regions:             regions,
@@ -227,8 +274,59 @@ func InitVaultModForPlugin(pluginConfig map[string]interface{}, tokenCache *cach
 	return InitVaultMod(&driverConfig)
 }
 
+func InitDriverConfigForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, error) {
+	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
+	exitOnFailure := false
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin begin..")
+	if _, ok := pluginConfig["exitOnFailure"]; ok {
+		exitOnFailure = pluginConfig["exitOnFailure"].(bool)
+	}
+	trcdbEnvLogger.Println("InitVaultModForPlugin region init.")
+	var regions []string
+	if regionsSlice, regionsOk := pluginConfig["regions"].([]string); regionsOk {
+		regions = regionsSlice
+	}
+
+	trcdbEnvLogger.Println("InitVaultModForPlugin initialize DriverConfig.")
+	if tokenPtr, tokenOk := pluginConfig["tokenptr"].(*string); !tokenOk || RefLength(tokenPtr) < 5 {
+		if tokenCache.GetToken(currentTokenName) == nil {
+			trcdbEnvLogger.Println("Missing required token")
+			return nil, errors.New("missing required token")
+		}
+	}
+	if _, vaddressOk := pluginConfig["vaddress"].(string); !vaddressOk {
+		trcdbEnvLogger.Println("Missing required vaddress")
+		return nil, errors.New("missing required vaddress")
+	}
+	if _, envOk := pluginConfig["env"].(string); !envOk {
+		trcdbEnvLogger.Println("Missing required env")
+		return nil, errors.New("missing required env")
+	}
+	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
+
+	return &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			WantCerts:           false,
+			Insecure:            !exitOnFailure, // Plugin has exitOnFailure=false ...  always local, so this is ok...
+			CurrentTokenNamePtr: &currentTokenName,
+			TokenCache:          tokenCache,
+			Env:                 pluginConfig["env"].(string),
+			EnvBasis:            GetEnvBasis(pluginConfig["env"].(string)),
+			Regions:             regions,
+			ExitOnFailure:       exitOnFailure,
+			Log:                 trcdbEnvLogger,
+		},
+		SecretMode:     true, //  "Only override secret values in templates?"
+		ServicesWanted: []string{},
+		StartDir:       append([]string{}, ""),
+		EndDir:         "",
+		GenAuth:        false,
+	}, nil
+}
+
 // Helper to easiliy intialize a vault and a mod all at once.
-func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
+func InitVaultModForTool(pluginConfig map[string]any, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	exitOnFailure := false
 
 	driverConfig.CoreConfig.Log.Println("InitVaultModForTool begin..")
@@ -255,15 +353,15 @@ func InitVaultModForTool(pluginConfig map[string]interface{}, driverConfig *conf
 
 		driverConfig.CoreConfig.WantCerts = false
 		driverConfig.CoreConfig.Insecure = !exitOnFailure // Plugin has exitOnFailure=false ...  always local, so this is ok...
-		driverConfig.CoreConfig.VaultAddressPtr = RefMap(pluginConfig, "vaddress")
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
 		driverConfig.CoreConfig.Env = pluginConfig["env"].(string)
 		driverConfig.CoreConfig.EnvBasis = GetEnvBasis(pluginConfig["env"].(string))
 		driverConfig.CoreConfig.Regions = regions
 		driverConfig.CoreConfig.ExitOnFailure = exitOnFailure
 	}
 
-	driverConfig.SecretMode = true //  "Only override secret values in templates?"
-	driverConfig.ServicesWanted = []string{}
+	driverConfig.SecretMode = true           //  "Only override secret values in templates?"
+	driverConfig.ServicesWanted = []string{} // Chewbacca -- this is modifying the original driverConfig and would negatively affect other calls to trcconfig.
 	driverConfig.StartDir = append([]string{}, "")
 	driverConfig.EndDir = ""
 	driverConfig.GenAuth = false

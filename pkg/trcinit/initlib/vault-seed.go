@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -30,13 +31,13 @@ import (
 // Used in the decomposition of the seed
 type seedCollection struct {
 	path string
-	data map[interface{}]interface{}
+	data map[any]any
 }
 
 // Used for containing the actual paths and values to vault
 type writeCollection struct {
 	path string
-	data map[string]interface{}
+	data map[string]any
 }
 
 var templateWritten map[string]bool
@@ -86,6 +87,10 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Printf("Seeding vault from seeds in: %s\n", driverConfig.StartDir[0])
 
+	if driverConfig.CoreConfig.IsEditor {
+		SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+driverConfig.CoreConfig.EnvBasis+"/"+driverConfig.CoreConfig.DynamicPathFilter+"/"+driverConfig.CoreConfig.EnvBasis+"_seed.yml")
+		return nil
+	}
 	files, err := os.ReadDir(driverConfig.StartDir[0])
 	if len(files) == 0 {
 		fmt.Println("Empty seed file directory")
@@ -145,27 +150,25 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 		driverConfig.CoreConfig.Regions = regions
 
 		var tempPaths []string
+		tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+		if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
+			driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
+			tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+		}
+
+		mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+		if err != nil {
+			return eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, -1)
+		}
+		if len(driverConfig.ProjectSections) > 0 {
+			mod.ProjectIndex = driverConfig.ProjectSections
+			mod.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, "_")[0]
+			mod.SectionName = driverConfig.SectionName
+			mod.SubSectionValue = driverConfig.SubSectionValue
+		}
 		for _, templatePath := range templatePaths {
 			var err error
-			tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
-			if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
-				driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
-				tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
-			}
-
-			mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
-			if err != nil {
-				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-				continue
-			}
-
 			mod.Env = driverConfig.CoreConfig.Env
-			if len(driverConfig.ProjectSections) > 0 {
-				mod.ProjectIndex = driverConfig.ProjectSections
-				mod.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, "_")[0]
-				mod.SectionName = driverConfig.SectionName
-				mod.SubSectionValue = driverConfig.SubSectionValue
-			}
 			templateParam, tParamErr := GetTemplateParam(driverConfig, mod, templatePath, ".certSourcePath")
 			if tParamErr != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, tParamErr, false)
@@ -185,7 +188,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 			_, fileError := os.Stat(wd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + templateParam)
 			if fileError != nil {
 				if os.IsNotExist(fileError) {
-					eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("File does not exist\n"+templateParam), false)
+					eUtils.LogErrorObject(driverConfig.CoreConfig, fmt.Errorf("file does not exist: %s", templateParam), false)
 					continue
 				}
 			} else {
@@ -454,9 +457,23 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 
 // SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
 func SeedVaultFromFile(driverConfig *config.DriverConfig, filepath string) {
-	rawFile, err := os.ReadFile(filepath)
+	var rawFile []byte
+	var err error
+	if driverConfig.CoreConfig.IsEditor {
+		seedFile, seedOpenErr := driverConfig.MemFs.Open(filepath)
+		if seedOpenErr != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, seedOpenErr.Error(), false)
+		}
+		defer seedFile.Close()
+		rawFile, err = io.ReadAll(seedFile)
+		if err != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
+		}
+	} else {
+		rawFile, err = os.ReadFile(filepath)
+		eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
+	}
 	// Open file
-	eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 	if driverConfig.CoreConfig.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
 		driverConfig.CoreConfig.Log.Println("Skipping index: " + filepath + " Certs not allowed within index data.")
 		return
@@ -661,9 +678,9 @@ func seedVaultWithCertsFromEntry(driverConfig *config.DriverConfig, mod *helperk
 func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData []byte) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Println("=========New File==========")
-	var verificationData map[interface{}]interface{} // Create a reference for verification. Can't run until other secrets written
+	var verificationData map[any]any // Create a reference for verification. Can't run until other secrets written
 	// Unmarshal
-	var rawYaml interface{}
+	var rawYaml any
 	hasEmptyValues := bytes.Contains(fData, []byte("<Enter Secret Here>"))
 	isIndexData := strings.HasPrefix(filepath, "Index/") || strings.Contains(filepath, "/PublicIndex/")
 	if hasEmptyValues && !isIndexData {
@@ -686,7 +703,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 		return eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 	}
 
-	seed, ok := rawYaml.(map[interface{}]interface{})
+	seed, ok := rawYaml.(map[any]any)
 	if !ok {
 		return eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid yaml file.  Refusing to continue.", 1)
 	}
@@ -699,7 +716,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 		current := mapStack[0]
 		mapStack = mapStack[1:] // Pop the top value
 
-		writeVals := writeCollection{path: current.path, data: map[string]interface{}{}}
+		writeVals := writeCollection{path: current.path, data: map[string]any{}}
 		hasLeafNodes := false // Flag to signify this map had values to write
 
 		// Convert nested maps into vault writable data
@@ -709,8 +726,8 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 					driverConfig.CoreConfig.Log.Printf("Key with no value will not be written: %s\n", current.path+": "+k.(string))
 				}
 			} else if current.path == "" && k.(string) == "verification" { // Found verification on top level, store for later
-				verificationData = v.(map[interface{}]interface{})
-			} else if newData, ok := v.(map[interface{}]interface{}); ok { // Decompose into submaps, update path
+				verificationData = v.(map[any]any)
+			} else if newData, ok := v.(map[any]any); ok { // Decompose into submaps, update path
 				decomp := seedCollection{
 					data: newData}
 				if len(current.path) == 0 {
@@ -856,7 +873,7 @@ func SeedVaultFromData(driverConfig *config.DriverConfig, filepath string, fData
 }
 
 // WriteData takes entry path and date from each iteration of writeStack in SeedVaultFromData and writes to vault
-func WriteData(driverConfig *config.DriverConfig, path string, data map[string]interface{}, mod *helperkv.Modifier) *helperkv.Modifier {
+func WriteData(driverConfig *config.DriverConfig, path string, data map[string]any, mod *helperkv.Modifier) *helperkv.Modifier {
 	root := strings.Split(path, "/")[0]
 	if templateWritten == nil {
 		templateWritten = make(map[string]bool)

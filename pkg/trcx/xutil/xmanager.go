@@ -9,9 +9,9 @@ import (
 	"sync"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	xencrypt "github.com/trimble-oss/tierceron/pkg/trcx/xencrypt"
 	"github.com/trimble-oss/tierceron/pkg/utils"
@@ -23,7 +23,7 @@ import (
 
 var templateResultChan = make(chan *extract.TemplateResultData, 5)
 
-func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]interface{}, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
+func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]any, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
 	var wg sync.WaitGroup
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -33,8 +33,8 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	templateCombinedSection := map[string]interface{}{}
-	sliceTemplateSection := []interface{}{}
+	templateCombinedSection := map[string]any{}
+	sliceTemplateSection := []any{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	var sectionPath string
@@ -100,7 +100,9 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	}
 	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenName), "novault") {
 		var err error
-		mod, err = helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.GetToken(tokenName), driverConfig.CoreConfig.VaultAddressPtr, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+		mod, err = helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig,
+			tokenName,
+			env, true)
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, driverConfig.CoreConfig.ExitOnFailure)
 		}
@@ -200,64 +202,31 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 	//Receiver for configs
 	go func(dc *config.DriverConfig) {
-		for {
-			select {
-			case tResult := <-templateResultChan:
-				if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
-					sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
-					sliceValueSection = append(sliceValueSection, tResult.ValueSection)
-					sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
-					sectionPath = tResult.SectionPath
+		for tResult := range templateResultChan {
+			if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
+				sliceTemplateSection = append(sliceTemplateSection, tResult.InterfaceTemplateSection)
+				sliceValueSection = append(sliceValueSection, tResult.ValueSection)
+				sliceSecretSection = append(sliceSecretSection, tResult.SecretSection)
+				sectionPath = tResult.SectionPath
 
-					if tResult.TemplateDepth > maxDepth {
-						maxDepth = tResult.TemplateDepth
-						//templateCombinedSection = interfaceTemplateSection
-					}
-					wg.Done()
-				} else {
-					go func(tResult *extract.TemplateResultData) {
-						templateResultChan <- tResult
-					}(tResult)
+				if tResult.TemplateDepth > maxDepth {
+					maxDepth = tResult.TemplateDepth
+					//templateCombinedSection = interfaceTemplateSection
 				}
+				wg.Done()
+			} else {
+				go func(tResult *extract.TemplateResultData) {
+					templateResultChan <- tResult
+				}(tResult)
 			}
 		}
 	}(driverConfig)
 
-	commonPathFound := false
+	commonPaths := []string{}
 	for _, tPath := range templatePaths {
 		if strings.Contains(tPath, "Common") {
-			commonPathFound = true
+			commonPaths = append(commonPaths, tPath)
 		}
-	}
-
-	commonPaths := []string{}
-	tokenNameEnv := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(env))
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(tokenNameEnv), "") && commonPathFound {
-		var commonMod *helperkv.Modifier
-		var err error
-		commonMod, err = helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenNameEnv, env, true)
-		commonMod.Env = driverConfig.CoreConfig.Env
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-		}
-		envVersion := strings.Split(driverConfig.CoreConfig.Env, "_")
-		if len(envVersion) == 1 {
-			envVersion = append(envVersion, "0")
-		}
-		commonMod.Env = envVersion[0]
-		commonMod.EnvBasis = eUtils.GetEnvBasis(commonMod.Env)
-		commonMod.Version = envVersion[1]
-		driverConfig.CoreConfig.Env = envVersion[0] + "_" + envVersion[1]
-		commonMod.Version = commonMod.Version + "***X-Mode"
-
-		commonPaths, err = vcutils.GetPathsFromProject(driverConfig.CoreConfig, commonMod, []string{"Common"}, []string{})
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-		}
-		if len(commonPaths) > 0 && strings.Contains(commonPaths[len(commonPaths)-1], "!=!") {
-			commonPaths = commonPaths[:len(commonPaths)-1]
-		}
-		commonMod.Release()
 	}
 
 	// Configure each template in directory
@@ -295,7 +264,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 					} else {
 						serviceSlice := make([]string, 0)
 						for _, valuesPath := range listValues.Data {
-							for _, serviceInterface := range valuesPath.([]interface{}) {
+							for _, serviceInterface := range valuesPath.([]any) {
 								serviceFace := serviceInterface.(string)
 								if version != "0" {
 									versionMap := eUtils.GetProjectVersionInfo(driverConfig, mod) //("super-secrets/" + strings.Split(config.EnvBasis, ".")[0] + config.SectionKey + config.ProjectSections[0] + "/" + config.SectionName + "/" + config.SubSectionValue + "/" + serviceFace)
@@ -387,7 +356,11 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 			if !utils.RefEqualsAny(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis)), []string{"", "novault"}) {
 				var err error
-				goMod, err = helperkv.NewModifier(dc.CoreConfig.Insecure, dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis)), dc.CoreConfig.VaultAddressPtr, env, dc.CoreConfig.Regions, useCache, dc.CoreConfig.Log)
+				goMod, err = helperkv.NewModifierFromCoreConfig(
+					dc.CoreConfig,
+					fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis),
+					env,
+					useCache)
 				goMod.Env = dc.CoreConfig.Env
 				if err != nil {
 					if useCache && goMod != nil {
@@ -498,7 +471,11 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				return
 			}
 
-			templateResult.Env = env + "_" + version
+			if strings.Contains(dc.CoreConfig.Env, "_") {
+				templateResult.Env = env + "_" + version
+			} else {
+				templateResult.Env = env
+			}
 			templateResult.SubSectionValue = dc.SubSectionValue
 			templateResultChan <- &templateResult
 		}(templatePath, multiService, driverConfig, commonPaths)
@@ -516,15 +493,18 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	// Add special auth section.
 	if driverConfig.GenAuth {
 		if mod != nil {
-			authMod, authErr := helperkv.NewModifier(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), driverConfig.CoreConfig.VaultAddressPtr, env, driverConfig.CoreConfig.Regions, true, driverConfig.CoreConfig.Log)
+			authMod, authErr := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig,
+				fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis),
+				env,
+				true)
 			eUtils.LogAndSafeExit(driverConfig.CoreConfig, authErr.Error(), -1)
 
 			connInfo, err := authMod.ReadData("apiLogins/meta")
 			authMod.Release()
 			if err == nil {
-				authSection := map[string]interface{}{}
-				authSection["apiLogins"] = map[string]interface{}{}
-				authSection["apiLogins"].(map[string]interface{})["meta"] = connInfo
+				authSection := map[string]any{}
+				authSection["apiLogins"] = map[string]any{}
+				authSection["apiLogins"].(map[string]any)["meta"] = connInfo
 				authYaml, errA = yaml.Marshal(authSection)
 				if errA != nil {
 					eUtils.LogErrorObject(driverConfig.CoreConfig, errA, false)
@@ -533,16 +513,16 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Attempt to gen auth for reduced privilege token failed.  No permissions to gen auth.", 1)
 			}
 		} else {
-			authConfigurations := map[string]interface{}{}
+			authConfigurations := map[string]any{}
 			authConfigurations["authEndpoint"] = "<Enter Secret Here>"
 			authConfigurations["pass"] = "<Enter Secret Here>"
 			authConfigurations["sessionDB"] = "<Enter Secret Here>"
 			authConfigurations["user"] = "<Enter Secret Here>"
 			authConfigurations["trcAPITokenSecret"] = "<Enter Secret Here>"
 
-			authSection := map[string]interface{}{}
-			authSection["apiLogins"] = map[string]interface{}{}
-			authSection["apiLogins"].(map[string]interface{})["meta"] = authConfigurations
+			authSection := map[string]any{}
+			authSection["apiLogins"] = map[string]any{}
+			authSection["apiLogins"].(map[string]any)["meta"] = authConfigurations
 			authYaml, errA = yaml.Marshal(authSection)
 			if errA != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, errA, false)
@@ -628,7 +608,7 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 }
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
-func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (interface{}, error) {
+func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	if driverConfig.Clean { //Clean flag in trcx
 		if strings.HasSuffix(driverConfig.CoreConfig.Env, "_0") {
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
@@ -641,59 +621,72 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 			eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
 		}
-
 		if err1 == nil {
 			eUtils.LogInfo(driverConfig.CoreConfig, "Seed removed from"+driverConfig.EndDir+driverConfig.CoreConfig.Env)
 		}
 		return nil, nil
 	}
+	templatePaths := []string{}
+	templatePathsUniq := []string{}
+	templateFromVault := false
 
 	// Get files from directory
-	tempTemplatePaths := []string{}
-	for _, startDir := range driverConfig.StartDir {
-		//get files from directory
-		tp := GetDirFiles(startDir)
-		tempTemplatePaths = append(tempTemplatePaths, tp...)
-	}
-
-	if len(tempTemplatePaths) == 0 {
-		eUtils.LogErrorMessage(driverConfig.CoreConfig, "No files found in "+coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates", true)
-	}
-
-	//Duplicate path remover
-	keys := make(map[string]bool)
-	templatePaths := []string{}
-	for _, path := range tempTemplatePaths {
-		if _, value := keys[path]; !value {
-			keys[path] = true
-			templatePaths = append(templatePaths, path)
-		}
-	}
-
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") { //Filter unneeded templates
-		var err error
-		// TODO: Redo/deleted the indexedEnv work...
-		// Get filtered using mod and templates.
-		templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(driverConfig, nil, templatePaths)
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-			eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
-		}
-		templatePaths = templatePathsAccepted
+	if driverConfig.ReadMemCache &&
+		driverConfig.MemFs != nil &&
+		driverConfig.CoreConfig.IsEditor {
+		templateRoot := coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
+		driverConfig.MemFs.Walk(templateRoot, func(p string, isDir bool) error {
+			if !isDir && strings.HasSuffix(p, ".tmpl") {
+				templatePaths = append(templatePaths, p)
+			}
+			return nil
+		})
 	} else {
-		templatePathsAccepted := []string{}
-		for _, project := range driverConfig.ProjectSections {
-			for _, templatePath := range templatePaths {
-				if strings.Contains(templatePath, project) {
-					templatePathsAccepted = append(templatePathsAccepted, templatePath)
-				}
+		for _, startDir := range driverConfig.StartDir {
+			//get files from directory
+			tp := GetDirFiles(startDir)
+			templatePathsUniq = append(templatePathsUniq, tp...)
+		}
+
+		if len(templatePathsUniq) == 0 {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, "No files found in "+coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates", true)
+		}
+
+		//Duplicate path remover
+		keys := make(map[string]bool)
+		for _, path := range templatePathsUniq {
+			if _, value := keys[path]; !value {
+				keys[path] = true
+				templatePaths = append(templatePaths, path)
 			}
 		}
-		if len(templatePathsAccepted) > 0 {
+
+		if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") { //Filter unneeded templates
+			var err error
+			// TODO: Redo/deleted the indexedEnv work...
+			// Get filtered using mod and templates.
+			templatePathsAccepted, err := eUtils.GetAcceptedTemplatePaths(driverConfig, nil, templatePaths)
+			if err != nil {
+				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
+				eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
+			}
 			templatePaths = templatePathsAccepted
+		} else {
+			templatePathsAccepted := []string{}
+			for _, project := range driverConfig.ProjectSections {
+				for _, templatePath := range templatePaths {
+					if strings.Contains(templatePath, project) {
+						templatePathsAccepted = append(templatePathsAccepted, templatePath)
+					}
+				}
+			}
+			if len(templatePathsAccepted) > 0 {
+				templatePaths = templatePathsAccepted
+			}
 		}
 	}
-	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(driverConfig, false, templatePaths)
+
+	endPath, multiService, seedData, errGenerateSeeds := GenerateSeedsFromVaultRaw(driverConfig, templateFromVault, templatePaths)
 	if errGenerateSeeds != nil {
 		eUtils.LogInfo(driverConfig.CoreConfig, errGenerateSeeds.Error())
 		return errGenerateSeeds, nil
@@ -761,7 +754,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 		var certData map[int]string
 		certLoaded := false
 
-		for _, templatePath := range tempTemplatePaths {
+		for _, templatePath := range templatePathsUniq {
 
 			project, service, _, templatePath := eUtils.GetProjectService(driverConfig, templatePath)
 
@@ -836,7 +829,12 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 		}
 		driverConfig.Update(configCtx, &seedData, driverConfig.CoreConfig.Env+"||"+driverConfig.CoreConfig.Env+"_seed.yml")
 	} else {
-		writeToFile(driverConfig.CoreConfig, seedData, endPath)
+		if driverConfig.OutputMemCache {
+			byteData := []byte(seedData)
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, endPath)
+		} else {
+			writeToFile(driverConfig.CoreConfig, seedData, endPath)
+		}
 		// Print that we're done
 		if strings.Contains(driverConfig.CoreConfig.Env, "_0") {
 			driverConfig.CoreConfig.Env = strings.Split(driverConfig.CoreConfig.Env, "_")[0]
@@ -848,7 +846,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 	return nil, nil
 }
 
-func writeToFile(config *core.CoreConfig, data string, path string) {
+func writeToFile(config *coreconfig.CoreConfig, data string, path string) {
 	byteData := []byte(data)
 	//Ensure directory has been created
 	dirPath := filepath.Dir(path)
@@ -896,10 +894,10 @@ func GetDirFiles(dir string) []string {
 }
 
 // MergeMaps - merges 2 maps recursively.
-func MergeMaps(x1, x2 interface{}) interface{} {
+func MergeMaps(x1, x2 any) any {
 	switch x1 := x1.(type) {
-	case map[string]interface{}:
-		x2, ok := x2.(map[string]interface{})
+	case map[string]any:
+		x2, ok := x2.(map[string]any)
 		if !ok {
 			return x1
 		}
@@ -911,7 +909,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 			}
 		}
 	case nil:
-		x2, ok := x2.(map[string]interface{})
+		x2, ok := x2.(map[string]any)
 		if ok {
 			return x2
 		}
@@ -924,7 +922,7 @@ func MergeMaps(x1, x2 interface{}) interface{} {
 //   - slice to combine
 //   - template slice to combine
 //   - depth of map (-1 for value/secret sections)
-func CombineSection(config *core.CoreConfig, sliceSectionInterface interface{}, maxDepth int, combinedSectionInterface interface{}) {
+func CombineSection(config *coreconfig.CoreConfig, sliceSectionInterface any, maxDepth int, combinedSectionInterface any) {
 	_, okMap := sliceSectionInterface.([]map[string]map[string]map[string]string)
 
 	// Value/secret slice section
@@ -951,7 +949,7 @@ func CombineSection(config *core.CoreConfig, sliceSectionInterface interface{}, 
 		if maxDepth < 0 && !okMap {
 			eUtils.LogInfo(config, fmt.Sprintf("Env failed to gen.  MaxDepth: %d, okMap: %t\n", maxDepth, okMap))
 		}
-		sliceSection := sliceSectionInterface.([]interface{})
+		sliceSection := sliceSectionInterface.([]any)
 
 		for _, v := range sliceSection {
 			MergeMaps(combinedSectionInterface, v)

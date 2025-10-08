@@ -268,7 +268,7 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 	return lis, grpcServer, nil
 }
 
-func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig map[string]interface{}) error {
+func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig map[string]any) error {
 	var goMod *helperkv.Modifier
 	var vault *sys.Vault
 	var err error

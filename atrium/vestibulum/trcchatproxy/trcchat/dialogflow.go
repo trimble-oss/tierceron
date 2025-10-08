@@ -4,7 +4,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 // This is currently a stub version of processing a DialogFlow query
@@ -19,7 +19,7 @@ func ProcessDFQuery(msg *mashupsdk.MashupDetailedElement) {
 		msg.Alias = "120"
 	} else if strings.Contains(strings.ToLower(msg.Data), "tenant") {
 		msg.Data = "Tenant"
-		msg.Alias = "plum-co"
+		msg.Alias = "entityid"
 	} else if strings.Contains(strings.ToLower(msg.Data), "active") {
 		msg.Data = "Active"
 		msg.Alias = "2"

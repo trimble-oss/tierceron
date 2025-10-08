@@ -2840,7 +2840,7 @@ func ensurePanicResponses(ctx context.Context, resp http.ResponseWriter, hooks *
 }
 
 // errFromPanic returns the typed error if the recovered panic is an error, otherwise formats as error.
-func errFromPanic(p interface{}) error {
+func errFromPanic(p any) error {
 	if err, ok := p.(error); ok {
 		return err
 	}

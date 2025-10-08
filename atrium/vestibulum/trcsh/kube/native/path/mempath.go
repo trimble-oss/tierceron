@@ -4,7 +4,7 @@ import (
 	"errors"
 	"path/filepath"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/trcshio"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"golang.org/x/text/encoding/unicode"
 	"golang.org/x/text/transform"
 	"k8s.io/cli-runtime/pkg/genericclioptions"

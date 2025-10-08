@@ -23,13 +23,13 @@ var zigPluginMap map[string]*trcshzigfs.TrcshZigRoot
 
 func ZigInit(configContext *tccore.ConfigContext,
 	pluginName string,
-	pluginFiles *map[string]interface{}) (string, error) {
+	pluginFiles *map[string]any) (string, error) {
 	if zigPluginMap == nil {
 		zigPluginMap = make(map[string]*trcshzigfs.TrcshZigRoot)
 	}
 	zigPluginMap[pluginName] = trcshzigfs.NewTrcshZigRoot(pluginFiles)
 	var mountDir string
-	if certifyMap, ok := (*pluginFiles)["certify"].(map[string]interface{}); ok {
+	if certifyMap, ok := (*pluginFiles)["certify"].(map[string]any); ok {
 		if filePath, ok := certifyMap["trcdeployroot"].(string); ok {
 			mountDir = strings.Replace(filePath, pluginName, "", 1)
 		}
@@ -59,9 +59,9 @@ func ZigInit(configContext *tccore.ConfigContext,
 
 // Add this to the kernel when running....
 // sudo setcap cap_sys_admin+ep /usr/bin/code
-func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]interface{}, filename string, pluginName string, mntDir string) error {
+func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]any, filename string, pluginName string, mntDir string) error {
 	trcdeployroot := ""
-	if certifyMap, ok := configService["certify"].(map[string]interface{}); ok {
+	if certifyMap, ok := configService["certify"].(map[string]any); ok {
 		if path, ok := certifyMap["trcdeployroot"].(string); ok {
 			trcdeployroot = path
 		} else {
@@ -102,9 +102,9 @@ func LinkMemFile(configContext *tccore.ConfigContext, configService map[string]i
 	return nil
 }
 
-func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properties map[string]interface{}, pluginDir string) error {
+func ExecPlugin(configContext *tccore.ConfigContext, pluginName string, properties map[string]any, pluginDir string) error {
 	var filePath string
-	if certifyMap, ok := properties["certify"].(map[string]interface{}); ok {
+	if certifyMap, ok := properties["certify"].(map[string]any); ok {
 		if rootPath, ok := certifyMap["trcdeployroot"].(string); ok {
 			if objectFile, ok := certifyMap["trccodebundle"].(string); ok {
 				filePath = fmt.Sprintf("%s/%s", rootPath, objectFile)

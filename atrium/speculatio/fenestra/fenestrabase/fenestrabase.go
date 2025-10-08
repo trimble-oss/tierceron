@@ -12,8 +12,8 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/trcRenderers"
 
 	"fyne.io/fyne/v2"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/custos/custosworld"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 )
 
 func OutsideClone(custosWorldApp *custosworld.CustosWorldApp, childId int64, concreteElement *mashupsdk.MashupDetailedElement) {
@@ -50,10 +50,10 @@ func CommonMain(logoIconBytes []byte,
 		logger.Printf("Failure to load any enterprises.\n")
 	}
 
-	tenantDataRenderer := &trcRenderers.TenantDataRenderer{}
+	tenantDataRenderer := &trcRenderers.EntityDataRenderer{}
 	custosWorld := custosworld.NewCustosWorldApp(*serverheadless, false, DetailedElements, tenantDataRenderer)
 	tenantDataRenderer.CustosWorldApp = custosWorld
-	custosWorld.CustomTabItemRenderer["TenantDataRenderer"] = tenantDataRenderer
+	custosWorld.CustomTabItemRenderer["EntityDataRenderer"] = tenantDataRenderer
 	custosWorld.CustomTabItemRenderer["SearchRenderer"] = &trcRenderers.SearchRenderer{CustosWorldApp: custosWorld}
 
 	custosWorld.Title = "Tierceron Topology Discovery Interface"

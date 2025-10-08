@@ -11,9 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -33,22 +33,28 @@ func defaultEmpty() *string {
 }
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.36")
+	fmt.Println("trcshinit Version: " + "1.38")
 }
 
 // This assumes that the vault is completely new, and should only be run for the purpose
 // of automating setup and initial seeding
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	uploadCertPtr *bool,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &coreconfig.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
 
 	var newPtr *bool = defaultFalse()
 	var seedPtr *string = defaultEmpty()
@@ -72,12 +78,15 @@ func CommonMain(envPtr *string,
 	var roleFileFilterPtr *string = defaultEmpty()
 	var dynamicPathPtr *string = defaultEmpty()
 	var nestPtr *bool = defaultFalse()
-	var appRolePtr *string = defaultEmpty()
+	var roleEntityPtr *string = defaultEmpty()
 	var devPtr *bool = defaultFalse()
 	var tokenPtr *string = defaultEmpty()
+	var addrPtr *string = defaultEmpty()
 
 	if flagset == nil {
-		PrintVersion()
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			PrintVersion()
+		}
 		// Restricted trcinit and trcsh
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -111,10 +120,11 @@ func CommonMain(envPtr *string,
 		dynamicPathPtr = flagset.String("dynamicPath", "", "Seed a specific directory in vault.")
 		nestPtr = flagset.Bool("nest", false, "Seed a specific directory in vault.")
 		devPtr = flagset.Bool("dev", false, "Vault server running in dev mode (does not need to be unsealed)")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 		tokenPtr = flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	}
 
-	if driverConfig == nil || !driverConfig.IsShellSubProcess {
+	if driverConfig == nil || (!driverConfig.IsShellSubProcess && (driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor)) {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
@@ -133,12 +143,14 @@ func CommonMain(envPtr *string,
 	} else {
 		flagset.Parse(nil)
 	}
+	if eUtils.RefLength(addrPtr) > 0 {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	}
 
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRolePtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
@@ -160,19 +172,22 @@ func CommonMain(envPtr *string,
 			envBasis := eUtils.GetEnvBasis(*envPtr)
 			tokenName := fmt.Sprintf("config_token_%s_unrestricted", envBasis)
 			tokenNamePtr = &tokenName
-		} else if eUtils.RefLength(tokenPtr) == 0 {
-			fmt.Println("-token cannot be empty.")
-			os.Exit(1)
+			if strings.ContainsAny(*tokenPtr, " \t\n\r") {
+				fmt.Println("Invalid -token contains whitespace")
+				os.Exit(1)
+			}
+
+			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+
+			eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {
+			if driverConfigBase != nil && driverConfigBase.CoreConfig != nil && driverConfigBase.CoreConfig.TokenCache != nil {
+				if driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr) == nil {
+					fmt.Println("-token cannot be empty.")
+					os.Exit(1)
+				}
+			}
 		}
-
-		if strings.ContainsAny(*tokenPtr, " \t\n\r") {
-			fmt.Println("Invalid -token contains whitespace")
-			os.Exit(1)
-		}
-
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
-
-		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
 	// indexServiceExtFilterPtr := flag.String("serviceExtFilter", "", "Specifies which nested services (or tables) to filter") //offset or database
@@ -207,7 +222,7 @@ func CommonMain(envPtr *string,
 
 	// Enter ID tokens
 	if *insecurePtr {
-		if isLocal, lookupErr := helperkv.IsUrlIp(*addrPtr); isLocal && lookupErr == nil {
+		if isLocal, lookupErr := helperkv.IsUrlIp(*driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr); isLocal && lookupErr == nil {
 			// This is fine...
 			fmt.Println("Initialize local vault.")
 		} else {
@@ -272,9 +287,11 @@ func CommonMain(envPtr *string,
 	}
 
 	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
-		if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required seed folder: " + *seedPtr)
-			os.Exit(1)
+		if !driverConfigBase.CoreConfig.IsEditor {
+			if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
+				fmt.Println("Missing required seed folder: " + *seedPtr)
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -291,9 +308,14 @@ func CommonMain(envPtr *string,
 			os.Exit(1)
 		}
 	}
+	if driverConfig.CoreConfig.IsShell {
+		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
+			roleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
+		}
+	}
 
 	// If logging production directory does not exist and is selected log to local directory
-	autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRolePtr, *pingPtr)
+	autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, roleEntityPtr, *pingPtr)
 	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
 	if !*pingPtr && !*newPtr && eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr)) == 0 {
@@ -301,7 +323,7 @@ func CommonMain(envPtr *string,
 	}
 
 	// Create a new vault system connection
-	v, err := sys.NewVaultWithNonlocal(*insecurePtr, addrPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, driverConfigBase.CoreConfig.Log)
+	v, err := sys.NewVaultWithNonlocal(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, driverConfigBase.CoreConfig.Log)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
 			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
@@ -359,7 +381,7 @@ func CommonMain(envPtr *string,
 		_, _, _, err = v.Unseal()
 		eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, true)
 	}
-	driverConfigBase.CoreConfig.Log.Printf("Successfully connected to vault at %s\n", *addrPtr)
+	driverConfigBase.CoreConfig.Log.Printf("Successfully connected to vault at %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 
 	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
 		if *initNamespace {
@@ -485,7 +507,7 @@ func CommonMain(envPtr *string,
 			fmt.Println("Creating new tokens")
 			tokens = il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 
-			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 			if mod != nil {
 				defer mod.Release()
 			}
@@ -523,7 +545,7 @@ func CommonMain(envPtr *string,
 							continue
 						}
 					}
-					tokenMap := map[string]interface{}{}
+					tokenMap := map[string]any{}
 					fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
 					if parseErr != nil {
 						fmt.Println("Read parsing approle yaml file, continuing to next file.")
@@ -539,8 +561,8 @@ func CommonMain(envPtr *string,
 						continue
 					}
 
-					var tokenPerms map[interface{}]interface{}
-					if permMap, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{}); okPerms {
+					var tokenPerms map[any]any
+					if permMap, okPerms := fileYAML["Token_Permissions"].(map[any]any); okPerms {
 						tokenPerms = permMap
 					} else {
 						fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
@@ -665,7 +687,7 @@ func CommonMain(envPtr *string,
 
 	//TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
-		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), addrPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -691,7 +713,7 @@ func CommonMain(envPtr *string,
 		// Upload tokens from the given token directory
 		tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 		if !*prodPtr {
-			tokenMap := map[string]interface{}{}
+			tokenMap := map[string]any{}
 			for _, token := range tokens {
 				tokenMap[token.Name] = token.Value
 			}
@@ -732,7 +754,7 @@ func CommonMain(envPtr *string,
 						eUtils.CheckError(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
-					_, okPerms := fileYAML["Token_Permissions"].(map[interface{}]interface{})
+					_, okPerms := fileYAML["Token_Permissions"].(map[any]any)
 					if !okPerms {
 						isPolicy = false
 						fmt.Println("Read incorrect approle token permissions from file, continuing to next file.")
@@ -792,7 +814,9 @@ func CommonMain(envPtr *string,
 	// because you first need tokens to do so.  Only seed if !new.
 	if !*newPtr {
 		// Seed the vault with given seed directory
-		mod, _ := helperkv.NewModifier(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr), addrPtr, *envPtr, nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
+		mod, _ := helperkv.NewModifierFromCoreConfig(
+			driverConfigBase.CoreConfig,
+			*tokenNamePtr, *envPtr, true) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}
@@ -800,7 +824,11 @@ func CommonMain(envPtr *string,
 		mod.EnvBasis = eUtils.GetEnvBasis(*envPtr)
 		if valid, baseDesiredPolicy, errValidateEnvironment := mod.ValidateEnvironment(mod.EnvBasis, *uploadCertPtr, "", driverConfigBase.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := mod.ValidateEnvironment(mod.EnvBasis, false, "_unrestricted", driverConfigBase.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
+				if driverConfigBase.CoreConfig.IsEditor {
+					eUtils.LogErrorMessage(driverConfigBase.CoreConfig, "Cannot save.  Invalid token.", false)
+				} else {
+					eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", mod.Env, baseDesiredPolicy, desiredPolicy), 1)
+				}
 				return
 			}
 		}
@@ -870,12 +898,13 @@ func CommonMain(envPtr *string,
 
 		dConfig := &config.DriverConfig{
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
-			CoreConfig: &core.CoreConfig{
+			MemFs:             driverConfigBase.MemFs,
+			CoreConfig: &coreconfig.CoreConfig{
+				IsEditor:            driverConfigBase.CoreConfig.IsEditor,
 				DynamicPathFilter:   *dynamicPathPtr,
 				Insecure:            *insecurePtr,
 				CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
 				TokenCache:          driverConfigBase.CoreConfig.TokenCache,
-				VaultAddressPtr:     addrPtr,
 				Env:                 *envPtr,
 				EnvBasis:            eUtils.GetEnvBasis(*envPtr),
 				WantCerts:           *uploadCertPtr, // TODO: this was false...

@@ -175,10 +175,10 @@ func InitGServer() (func(error), func()) {
 		addr := lis.Addr().String()
 		serverAddr = &addr
 		log.Printf("Setting up server to listen at %v", lis.Addr())
-		go func(l net.Listener, cmd_send_chan *chan int) {
+		go func(l net.Listener, cmd_send_chan *chan tccore.KernelCmd) {
 			if echocore.IsKernelPluginMode() {
 				if cmd_send_chan != nil {
-					*cmd_send_chan <- tccore.PLUGIN_EVENT_START
+					*cmd_send_chan <- tccore.KernelCmd{PluginName: "trcshtalkback", Command: tccore.PLUGIN_EVENT_START}
 				}
 			}
 			log.Printf("server listening at %v", lis.Addr())
@@ -219,7 +219,7 @@ func StopGServer() {
 	configContext.Log.Println("Stopped server for echo.")
 	dfstat.UpdateDataFlowStatistic("System", "TrcshTalkBack", "Shutdown", "0", 1, nil)
 	send_dfstat()
-	*configContext.CmdSenderChan <- tccore.PLUGIN_EVENT_STOP
+	*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: "trcshtalkback", Command: tccore.PLUGIN_EVENT_STOP}
 	configContext = nil
 	grpcServer = nil
 	dfstat = nil

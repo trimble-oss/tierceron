@@ -12,9 +12,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/data"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/fenestrabase"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib" // Update package path as needed
@@ -69,6 +71,9 @@ func receiver(receive_chan *chan core.KernelCmd) {
 }
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerLib, err := os.Open("plugins/fenestra.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
@@ -130,13 +135,14 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for fenestra")
 		return
 	}
-	var config map[string]interface{}
+	var config *map[string]any
 	var configCert []byte
 	var configKey []byte
 	var ok bool
-	if config, ok = (*configContext.Config)[COMMON_PATH].(map[string]interface{}); !ok {
+
+	if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
-		err := yaml.Unmarshal(configBytes, &config)
+		err := yaml.Unmarshal(configBytes, config)
 		if err != nil {
 			configContext.Log.Println("Missing common configs")
 			send_err(err)
@@ -174,7 +180,7 @@ func start(pluginName string) {
 		envPtr)
 
 	if config != nil {
-		if portInterface, ok := config["grpc_server_port"]; ok {
+		if portInterface, ok := (*config)["grpc_server_port"]; ok {
 			var fenestraPort int
 			if port, ok := portInterface.(int); ok {
 				fenestraPort = port
@@ -273,7 +279,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	go receiver(configContext.CmdReceiverChan)
 }
 
-func Init(pluginName string, properties *map[string]interface{}) {
+func Init(pluginName string, properties *map[string]any) {
 	var err error
 
 	configContext, err = pluginlib.Init(pluginName, properties, PostInit)
@@ -283,16 +289,20 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	}
 	var certbytes []byte
 	var keybytes []byte
-	if cert, ok := (*properties)[HELLO_CERT]; ok {
-		certbytes = cert.([]byte)
+	if cert, ok := (*properties)[HELLO_CERT].([]byte); ok && len(cert) > 0 {
+		certbytes = cert
 		(*configContext.ConfigCerts)[HELLO_CERT] = certbytes
 	}
-	if key, ok := (*properties)[HELLO_KEY]; ok {
-		keybytes = key.([]byte)
+	if key, ok := (*properties)[HELLO_CERT].([]byte); ok && len(key) > 0 {
+		keybytes = key
 		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
 	}
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
 		fmt.Println("Missing common config components")
 		return
 	}
+}
+
+func GetPluginMessages(pluginName string) []string {
+	return []string{}
 }

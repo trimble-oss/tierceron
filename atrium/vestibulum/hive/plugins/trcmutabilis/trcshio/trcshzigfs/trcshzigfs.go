@@ -39,7 +39,7 @@ type trcshZigFile struct {
 type TrcshZigRoot struct {
 	fs.Inode
 
-	zigFiles *map[string]interface{}
+	zigFiles *map[string]any
 	ppid     uint32
 }
 
@@ -79,7 +79,7 @@ func (tzr *TrcshZigRoot) OnAdd(ctx context.Context) {
 	}
 }
 
-func NewTrcshZigRoot(zigFileMap *map[string]interface{}) *TrcshZigRoot {
+func NewTrcshZigRoot(zigFileMap *map[string]any) *TrcshZigRoot {
 	return &TrcshZigRoot{zigFiles: zigFileMap}
 }
 

@@ -12,7 +12,7 @@ func GetConfigPaths() []string {
 	return tbtcore.GetConfigPaths()
 }
 
-func Init(properties *map[string]interface{}) {
+func Init(properties *map[string]any) {
 	tbtcore.Init(properties)
 }
 

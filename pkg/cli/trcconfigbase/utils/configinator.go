@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -102,6 +102,12 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 		if ConfiginatorOsPathSeparator == "\\" || eUtils.IsWindows() {
 			// Note: Checking path separator for testing and keeping IsWindows to be safe
 			startDir = strings.ReplaceAll(startDir, "/", ConfiginatorOsPathSeparator)
+			if driverConfig.ReadMemCache {
+				// Trim everything before trc_templates...
+				if i := strings.Index(startDir, "trc_templates"); i >= 0 {
+					startDir = "./" + startDir[i:]
+				}
+			}
 			trcProjectService = strings.ReplaceAll(trcProjectService, "/", ConfiginatorOsPathSeparator)
 			trcService = strings.ReplaceAll(trcService, "/", ConfiginatorOsPathSeparator)
 		}
@@ -141,7 +147,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 }
 
 // GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (interface{}, error) {
+func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if utils.IsWindows() {
@@ -149,9 +155,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		Cyan = ""
 	}*/
 	//Should check if driverConfig is nil here...
-	tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+	tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
-	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
@@ -175,8 +181,9 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 			templateInfo = true
 		}
 	}
-	versionData := make(map[string]interface{})
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
+	versionData := make(map[string]any)
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetTokenStr(tokenNamePtr), "novault") {
+		// Chewbacca: break here...
 		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
@@ -234,7 +241,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	modCheck.VersionFilter = driverConfig.VersionFilter
 
 	if versionInfo {
-		//versionDataMap := make(map[string]map[string]interface{})
+		//versionDataMap := make(map[string]map[string]any)
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
 			envVersion := eUtils.SplitEnv(modCheck.Env)
@@ -326,12 +333,12 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	driverConfig.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
+		go func(i int, templatePath string, version string, versionData map[string]any) error {
 			defer wg.Done()
 
-			tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+			tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
-			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
 			mod.Env = driverConfig.CoreConfig.Env
 			mod.Version = version
 			//check for template_files directory here

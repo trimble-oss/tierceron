@@ -8,33 +8,35 @@ import (
 	"os"
 	"strings"
 
-	trcshMemFs "github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh"
+	"github.com/faiface/mainthread"
+	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
+	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.37")
+	fmt.Println("Version: " + "1.38")
 }
 
 // This is a controller program that can act as any command line utility.
 // The swiss army knife of tierceron if you will.
 func CommonMain(envDefaultPtr *string,
-	addrPtr *string,
 	pluginNamePtr *string,
 	tokenPtr *string,
 	uploadCertPtr *bool,
@@ -42,12 +44,23 @@ func CommonMain(envDefaultPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
 	driverConfig *config.DriverConfig) error {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &coreconfig.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
 	var envPtr *string = nil
 	var envCtxPtr *string = new(string)
 	var logFilePtr *string = nil
+	var addrPtr *string = nil
 
 	if flagset == nil {
 		fmt.Println("Version: " + "1.36")
@@ -67,14 +80,25 @@ func CommonMain(envDefaultPtr *string,
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	} else {
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
 	}
+
 	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if logErr != nil {
 		return logErr
 	}
-	logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+	driverConfig.CoreConfig.Log = log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
+	if utils.RefLength(addrPtr) == 0 {
+		eUtils.ReadAuthParts(driverConfig, false)
+		if utils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
+			fmt.Println("Missing required vault address")
+			return errors.New("Missing required vault address")
+		}
+	} else {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	}
 
 	var ctl string
 	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
@@ -128,44 +152,20 @@ func CommonMain(envDefaultPtr *string,
 	switch ctl {
 	case "pub":
 		tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				TokenCache:    cache.NewTokenCacheEmpty(),
-				ExitOnFailure: true,
-			},
-		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		trcpubbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
+		trcpubbase.CommonMain(envPtr, envCtxPtr, &tokenName, flagset, os.Args, driverConfig)
 	case "sub":
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				TokenCache:    cache.NewTokenCacheEmpty(),
-				ExitOnFailure: true,
-			},
-		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		trcsubbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, &tokenName, flagset, os.Args, &driverConfig)
+		trcsubbase.CommonMain(envPtr, envCtxPtr, &tokenName, flagset, os.Args, driverConfig)
 	case "init":
 		//tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				TokenCache:    cache.NewTokenCacheEmpty(),
-				ExitOnFailure: true,
-			},
-		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
-		trcinitbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, nil, uploadCertPtr, flagset, os.Args, &driverConfig)
+		trcinitbase.CommonMain(envPtr, envCtxPtr, nil, uploadCertPtr, flagset, os.Args, driverConfig)
 	case "plugininit":
 		//			tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				TokenCache:    cache.NewTokenCacheEmpty(),
-				ExitOnFailure: true,
-			},
-		}
 		os.Chdir(*pluginNamePtr)
 		tokenName := fmt.Sprintf("vault_pub_token_%s", eUtils.GetEnvBasis(*envPtr))
 		pubMappingInit := []string{""}
@@ -175,7 +175,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		trcpubbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, &tokenName, flagset, pubMappingInit, &driverConfig)
+		trcpubbase.CommonMain(envPtr, envCtxPtr, &tokenName, flagset, pubMappingInit, driverConfig)
 		retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
 
 		if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
@@ -192,29 +192,18 @@ func CommonMain(envDefaultPtr *string,
 					restrictedMappingInit = append(restrictedMappingInit, fmt.Sprintf("-prod=%v", *prodPtr))
 				}
 				flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-				trcinitbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, nil, uploadCertPtr, flagset, restrictedMappingInit, &driverConfig)
+				trcinitbase.CommonMain(envPtr, envCtxPtr, nil, uploadCertPtr, flagset, restrictedMappingInit, driverConfig)
 			}
 		}
 
 		os.Chdir("..")
 	case "config":
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				TokenCache:    cache.NewTokenCacheEmpty(),
-				ExitOnFailure: true,
-			},
-		}
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		trcconfigbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, &tokenName, nil, nil, os.Args, &driverConfig)
+		trcconfigbase.CommonMain(envPtr, envCtxPtr, &tokenName, nil, nil, os.Args, driverConfig)
 	case "pluginx":
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				TokenCache:    cache.NewTokenCache(tokenName, tokenPtr),
-				ExitOnFailure: true,
-			},
-		}
+		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 		if len(*pluginNamePtr) == 0 {
 			fmt.Printf("Must specify either -pluginName flag \n")
 			return errors.New("Must specify either -pluginName flag \n")
@@ -224,52 +213,20 @@ func CommonMain(envDefaultPtr *string,
 		os.Chdir(*pluginNamePtr)
 		fmt.Printf("%s\n", *pluginNamePtr)
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
-
-		if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
-
-			os.Mkdir("trc_seeds", 0700)
-			for _, restrictedMapping := range pluginRestrictedMappings {
-				restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
-				flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-				flagset.String("env", "dev", "Environment to configure")
-				if eUtils.RefLength(tokenPtr) > 0 {
-					restrictedMappingSub = append(restrictedMappingSub, fmt.Sprintf("-token=%s", *tokenPtr))
-				}
-				trcsubbase.CommonMain(envPtr, addrPtr, envCtxPtr, nil, nil, &tokenName, flagset, restrictedMappingSub, &driverConfig)
-				restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
-				if eUtils.RefLength(tokenPtr) > 0 {
-					restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-tokenName=%s", tokenName))
-					restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-token=%s", *tokenPtr))
-				}
-				flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-				flagset.String("env", "dev", "Environment to configure")
-				trcxbase.CommonMain(nil,
-					xutil.GenerateSeedsFromVault,
-					envPtr,
-					addrPtr,
-					envCtxPtr,
-					nil,
-					flagset,
-					restrictedMappingX)
-			}
-		} else {
-			fmt.Printf("Plugin not registered with trcctl.\n")
-		}
+		GeneratePluginSeedData(pluginNamePtr, flagset, ctl, tokenPtr, envPtr, envCtxPtr, tokenName, driverConfig)
 		os.Chdir("..")
 	case "pluginrun":
 		//		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 		tokenName := "config_token_pluginany"
 		driverConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
+			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
-				TokenCache:          cache.NewTokenCache(tokenName, tokenPtr),
+				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
-				VaultAddressPtr:     addrPtr,
 				EnvBasis:            *envPtr,
 				Env:                 *envPtr,
-				Log:                 logger,
+				Log:                 driverConfig.CoreConfig.Log,
 			},
 			SecretMode:        true,
 			ZeroConfig:        true,
@@ -278,6 +235,7 @@ func CommonMain(envDefaultPtr *string,
 			OutputMemCache:    true,
 			MemFs:             trcshMemFs.NewTrcshMemFs(),
 		}
+		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 		if len(*pluginNamePtr) == 0 {
 			fmt.Printf("Must specify either -pluginName flag \n")
 			return errors.New("Must specify either -pluginName flag \n")
@@ -292,13 +250,145 @@ func CommonMain(envDefaultPtr *string,
 		var pluginCompleteChan chan bool
 		<-pluginCompleteChan
 
-		// TODO: run the plugin...
+	case "edit":
+		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow
+		var tokenName string
+		if eUtils.RefLength(tokenPtr) > 0 {
+			tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
+		}
+		editDriverConfig := config.DriverConfig{
+			ShellRunner: func(dc *config.DriverConfig, pluginName string, scriptPath string) {
+				if dc.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
+					deploy_role := os.Getenv("DEPLOY_ROLE")
+					deploy_secret := os.Getenv("DEPLOY_SECRET")
+					if len(deploy_role) > 0 && len(deploy_secret) > 0 {
+						azureDeployRole := []string{deploy_role, deploy_secret}
+						dc.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
+					}
+				}
+
+				switch scriptPath {
+				case "/edit/load.trc.tmpl":
+					if len(tokenName) == 0 {
+						tokenName = fmt.Sprintf("config_token_%s", *envPtr)
+					}
+					GeneratePluginSeedData(&pluginName, nil, ctl, tokenPtr, envPtr, envCtxPtr, tokenName, dc)
+				case "/edit/save.trc.tmpl":
+					uploadCert := false
+					trcinitbase.CommonMain(&dc.CoreConfig.Env, envPtr, dc.CoreConfig.CurrentTokenNamePtr, &uploadCert, nil, []string{"", "deploy.trc.tmpl"}, dc)
+				}
+			},
+			CoreConfig: &coreconfig.CoreConfig{
+				IsShell:             true, // Pretend to be shell to keep things in memory
+				IsEditor:            true,
+				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				ExitOnFailure:       true,
+				CurrentTokenNamePtr: &tokenName,
+				EnvBasis:            *envPtr,
+				Env:                 *envPtr,
+				Log:                 driverConfig.CoreConfig.Log,
+			},
+			SecretMode:        true,
+			ZeroConfig:        true,
+			SubOutputMemCache: true,
+			ReadMemCache:      true,
+			OutputMemCache:    true,
+		}
+		if eUtils.RefLength(tokenPtr) == 0 {
+			role := "bamboo"
+			tokenWanted := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+			autoErr := eUtils.AutoAuth(&editDriverConfig, &tokenWanted, &tokenPtr, &editDriverConfig.CoreConfig.Env, &editDriverConfig.CoreConfig.EnvBasis, &role, false)
+			if autoErr != nil {
+				fmt.Println(autoErr.Error())
+				return autoErr
+			}
+			tokenName = tokenWanted
+		} else {
+			editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+			// Services downstream several more limited tokens but all covered
+			// by the scope of the unrestricted token.
+			limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
+			editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
+		}
+		statTokenName := "config_token_pluginany"
+		editDriverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
+
+		configMap := map[string]any{
+			"plugin_name": "trcctl",
+			"token_name":  tokenName,
+			"vault_token": *tokenPtr,
+			"vault_addr":  *editDriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+			"agent_env":   *envPtr,
+			//			"deployments": "fenestra",
+			//			"deployments": "trcdb",
+			"deployments": "rosea,trcdb",
+			//			"deployments": "fenestra,rosea,spiralis,trcdb",
+			"region": "west",
+		}
+		trcshArgs := []string{}
+		for i := 0; i < len(os.Args); i++ {
+			if !strings.HasPrefix(os.Args[i], "-token=") {
+				trcshArgs = append(trcshArgs, os.Args[i])
+			}
+		}
+		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+		mainthread.Run(func() {
+			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &editDriverConfig)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		})
+
 	case "x":
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
-		trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, addrPtr, envCtxPtr, nil, flagset, os.Args)
+		trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, driverConfig.CoreConfig.TokenCache.VaultAddressPtr, envCtxPtr, nil, flagset, os.Args, nil)
 	}
 
 	return nil
+}
+
+func GeneratePluginSeedData(pluginNamePtr *string, flagset *flag.FlagSet, ctl string, tokenPtr *string, envPtr *string, envCtxPtr *string, tokenName string, driverConfig *config.DriverConfig) {
+	retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
+
+	if pluginRestrictedMappings, ok := retrictedMappingsMap[*pluginNamePtr]; ok {
+
+		if driverConfig.OutputMemCache {
+			if _, err := driverConfig.MemFs.Create(fmt.Sprintf("trc_seeds/%s/TODO.txt", *envPtr)); err != nil {
+				fmt.Printf("Error setting up utility directory: %v\n", err)
+				return
+			}
+		} else {
+			os.Mkdir("trc_seeds", 0700)
+		}
+		for _, restrictedMapping := range pluginRestrictedMappings {
+			restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+			if eUtils.RefLength(tokenPtr) > 0 {
+				restrictedMappingSub = append(restrictedMappingSub, fmt.Sprintf("-token=%s", *tokenPtr))
+			}
+			trcsubbase.CommonMain(envPtr, envCtxPtr, &tokenName, flagset, restrictedMappingSub, driverConfig)
+			restrictedMappingX := append([]string{""}, restrictedMapping[1:]...)
+			if eUtils.RefLength(tokenPtr) > 0 {
+				restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-tokenName=%s", tokenName))
+				restrictedMappingX = append(restrictedMappingX, fmt.Sprintf("-token=%s", *tokenPtr))
+			}
+			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
+			flagset.String("env", "dev", "Environment to configure")
+			trcxbase.CommonMain(nil,
+				xutil.GenerateSeedsFromVault,
+				envPtr,
+				driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+				envCtxPtr,
+				nil,
+				flagset,
+				restrictedMappingX,
+				driverConfig)
+		}
+	} else {
+		fmt.Printf("Plugin not registered with trcctl.\n")
+	}
 }
 
 func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, pluginNamePtr *string, ctl string, envCtxPtr *string) {
@@ -313,10 +403,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 
 			trcsubbase.CommonMain(&driverConfig.CoreConfig.Env,
-				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				new(string),
-				new(string),
 				&wantedTokenName,
 				flagset,
 				restrictedMappingSub,
@@ -330,10 +417,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			// Get certs...
 			driverConfig.CoreConfig.WantCerts = true
 			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				new(string),      // secretId
-				new(string),      // approleId
 				&wantedTokenName, // wantedTokenName
 				nil,              // regionPtr
 				flagset,
@@ -355,10 +439,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 			flagset.String("env", "dev", "Environment to configure")
 			trcconfigbase.CommonMain(&driverConfig.CoreConfig.Env,
-				driverConfig.CoreConfig.VaultAddressPtr,
 				envCtxPtr,
-				new(string),      // secretId
-				new(string),      // approleId
 				&wantedTokenName, // tokenName
 				nil,              // regionPtr
 				flagset,
@@ -367,21 +448,22 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 
 			driverConfig.MemFs.ClearCache("./trc_templates")
 			driverConfig.MemFs.ClearCache("./deploy")
-			serviceConfig := map[string]interface{}{}
+			serviceConfig := map[string]any{}
 			driverConfig.MemFs.SerializeToMap(".", serviceConfig)
 			pluginRestart := make(chan tccore.KernelCmd)
 			chatReceiverChan := make(chan *tccore.ChatMsg)
 			pluginHandler := &hive.PluginHandler{
 				Name: *pluginNamePtr,
 				ConfigContext: &tccore.ConfigContext{
-					Log: driverConfig.CoreConfig.Log,
+					ChatReceiverChan: &chatReceiverChan,
+					Log:              driverConfig.CoreConfig.Log,
 				},
 				KernelCtx: &hive.KernelCtx{
 					PluginRestartChan: &pluginRestart,
 				},
 			}
 
-			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig, &chatReceiverChan)
+			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig)
 		}
 	} else {
 		fmt.Printf("Plugin not registered with trcctl.\n")

@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -43,10 +45,10 @@ func GetEnvBasis(env string) string {
 	}
 }
 
-func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
-	versionMetadataMap := make(map[string]map[string]interface{})
+func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modifier) map[string]map[string]any {
+	versionMetadataMap := make(map[string]map[string]any)
 	mod.VersionFilter = driverConfig.VersionFilter
-	var secretMetadataMap map[string]map[string]interface{}
+	var secretMetadataMap map[string]map[string]any
 	var err error
 	mod.SectionKey = driverConfig.SectionKey
 	mod.SubSectionName = driverConfig.SubSectionName
@@ -92,7 +94,7 @@ func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modi
 	return versionMetadataMap
 }
 
-func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap map[string]map[string]any) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
 		if len(driverConfig.ServiceFilter) > 0 {
@@ -168,50 +170,20 @@ func GetProjectServices(driverConfig *config.DriverConfig, templateFiles []strin
 // templateFile - full path to template file
 // returns project, service, templatePath
 func GetProjectService(driverConfig *config.DriverConfig, templateFile string) (string, string, int, string) {
-	templateFile = strings.ReplaceAll(strings.ReplaceAll(templateFile, "\\\\", "/"), "\\", "/")
-	splitDir := strings.Split(templateFile, "/")
-	var project, service string
-	offsetBase := 0
 	var startDir []string = nil
+	var driverConfigProjectService string = ""
+
 	if driverConfig != nil {
 		startDir = driverConfig.StartDir
+		if len(driverConfig.DeploymentConfig) > 0 {
+			if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok {
+				driverConfigProjectService = projectService.(string)
+			}
+		}
 	}
-
 	trcTemplateParam := coreopts.BuildOptions.GetFolderPrefix(startDir) + "_templates"
 
-	for i, component := range splitDir {
-		if component == trcTemplateParam {
-			offsetBase = i
-			break
-		}
-	}
-
-	project = splitDir[offsetBase+1]
-	var serviceIndex int
-	if len(project) == 0 && len(driverConfig.DeploymentConfig) > 0 {
-		if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok {
-			projectServiceParts := strings.Split(projectService.(string), "/")
-			project = projectServiceParts[0]
-			service = projectServiceParts[1]
-			serviceIndex = 0
-		}
-	} else {
-		serviceIndex = offsetBase + 2
-		service = splitDir[serviceIndex]
-
-		// Clean up service naming (Everything after '.' removed)
-		if strings.Contains(templateFile, "Common") &&
-			strings.Contains(service, ".mf.tmpl") {
-			service = strings.Split(service, ".mf.tmpl")[0]
-		}
-
-		dotIndex := strings.Index(service, ".")
-		if dotIndex > 0 && dotIndex <= len(service) {
-			service = service[0:dotIndex]
-		}
-	}
-
-	return project, service, serviceIndex, templateFile
+	return coreutil.GetProjectService(driverConfigProjectService, trcTemplateParam, templateFile)
 }
 
 func GetTemplateFileName(templateFile string, service string) string {

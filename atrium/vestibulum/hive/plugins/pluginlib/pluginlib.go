@@ -9,7 +9,7 @@ import (
 )
 
 func Init(pluginName string,
-	properties *map[string]interface{},
+	properties *map[string]any,
 	PostInit func(*tccore.ConfigContext)) (*tccore.ConfigContext, error) {
 	if properties == nil {
 		fmt.Println("Missing initialization components")
@@ -27,8 +27,8 @@ func Init(pluginName string,
 	}
 
 	if channels, ok := (*properties)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY]; ok {
-		if chans, ok := channels.(map[string]interface{}); ok {
-			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN].(map[string]interface{}); ok {
+		if chans, ok := channels.(map[string]any); ok {
+			if rchan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_IN].(map[string]any); ok {
 				if cmdreceiver, ok := rchan[tccore.CMD_CHANNEL].(*chan tccore.KernelCmd); ok {
 					configContext.CmdReceiverChan = cmdreceiver
 					configContext.Log.Println("Command Receiver initialized.")
@@ -50,7 +50,7 @@ func Init(pluginName string,
 				configContext.Log.Println("No event in receiving channel passed")
 				goto postinit
 			}
-			if schan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]interface{}); ok {
+			if schan, ok := chans[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any); ok {
 				if cmdsender, ok := schan[tccore.CMD_CHANNEL].(*chan tccore.KernelCmd); ok {
 					configContext.CmdSenderChan = cmdsender
 					configContext.Log.Println("Command Sender initialized.")

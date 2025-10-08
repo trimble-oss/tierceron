@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -75,14 +75,11 @@ var (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.31")
+	fmt.Println("Version: " + "1.32")
 }
 
 func CommonMain(envDefaultPtr *string,
-	addrPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
@@ -103,9 +100,12 @@ func CommonMain(envDefaultPtr *string,
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
+	var addrPtr *string = nil
 
 	if flagset == nil {
-		PrintVersion() // For trcsh
+		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
+			PrintVersion() // For trcsh
+		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
@@ -121,6 +121,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 	} else {
 		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
@@ -136,13 +137,16 @@ func CommonMain(envDefaultPtr *string,
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+
 	var versionInfoPtr *bool
 	var diffPtr *bool
 
 	isShell := false
+	isDrone := false
 
 	if driverConfig != nil {
 		isShell = driverConfig.CoreConfig.IsShell
+		isDrone = driverConfig.IsDrone
 	}
 
 	if driverConfig == nil || !isShell {
@@ -202,10 +206,14 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
+	if eUtils.RefLength(addrPtr) > 0 {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	}
+
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
-	if !isShell {
+	if !isShell && !kernelopts.BuildOptions.IsKernel() && !isDrone {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required template folder: " + *startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
@@ -221,9 +229,9 @@ func CommonMain(envDefaultPtr *string,
 		return errors.New("* is not available as an environment suffix")
 	}
 
-	var appRoleConfigPtr *string
+	var currentRoleEntityPtr *string
 	var driverConfigBase *config.DriverConfig
-	if driverConfig.CoreConfig.IsShell {
+	if driverConfig.CoreConfig.IsShell || driverConfig.IsDrone || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
@@ -234,7 +242,7 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
-		appRoleConfigPtr = driverConfigBase.CoreConfig.AppRoleConfigPtr
+		currentRoleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		if driverConfigBase.FileFilter != nil {
 			fileFilterPtr = &(driverConfigBase.FileFilter[0])
 		}
@@ -261,21 +269,27 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = eUtils.GetEnvBasis(*envPtr)
 		}
 		driverConfigBase = &config.DriverConfig{
-			CoreConfig: &core.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
+			CoreConfig: &coreconfig.CoreConfig{
+				Env:                 *envPtr,
+				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				CurrentTokenNamePtr: driverConfig.CoreConfig.CurrentTokenNamePtr,
+				ExitOnFailure:       true,
+				Insecure:            *insecurePtr,
+				Log:                 logger},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
 			NoVault:    *noVaultPtr,
 		}
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr)
+		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
-		appRoleConfigPtr = new(string)
-		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+		currentRoleEntityPtr = new(string)
 	}
 
 	//Dont allow these combinations of flags
@@ -337,14 +351,11 @@ func CommonMain(envDefaultPtr *string,
 		if !*noVaultPtr {
 			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
 			autoErr := eUtils.AutoAuth(driverConfigBase,
-				secretIDPtr,
-				appRoleIDPtr,
 				&wantedTokenName,
 				&tokenPtr,
 				envPtr,
-				addrPtr,
 				envCtxPtr,
-				appRoleConfigPtr,
+				currentRoleEntityPtr,
 				*pingPtr)
 			if autoErr != nil {
 				if isShell {
@@ -360,6 +371,10 @@ func CommonMain(envDefaultPtr *string,
 			}
 		} else {
 			token := "novault"
+			if utils.RefLength(addrPtr) == 0 {
+				eUtils.ReadAuthParts(driverConfigBase, false)
+			}
+			driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr = addrPtr
 			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 		}
 
@@ -457,7 +472,7 @@ func CommonMain(envDefaultPtr *string,
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, secretIDPtr, appRoleIDPtr, tokenNamePtr, &tokenPtr, envPtr, addrPtr, envCtxPtr, appRoleConfigPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Println("Missing auth components.")
 					return errors.New("missing auth components")
@@ -480,17 +495,17 @@ func CommonMain(envDefaultPtr *string,
 			}
 
 			driverConfig := config.DriverConfig{
-				CoreConfig: &core.CoreConfig{
-					IsShell:         isShell,
-					Insecure:        *insecurePtr,
-					TokenCache:      driverConfigBase.CoreConfig.TokenCache,
-					VaultAddressPtr: addrPtr,
-					Env:             *envPtr,
-					EnvBasis:        eUtils.GetEnvBasis(*envPtr),
-					Regions:         regions,
-					WantCerts:       *wantCertsPtr,
-					ExitOnFailure:   driverConfigBase.CoreConfig.ExitOnFailure,
-					Log:             driverConfigBase.CoreConfig.Log,
+				CoreConfig: &coreconfig.CoreConfig{
+					IsShell:             isShell,
+					Insecure:            *insecurePtr,
+					TokenCache:          driverConfigBase.CoreConfig.TokenCache,
+					CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
+					Env:                 *envPtr,
+					EnvBasis:            eUtils.GetEnvBasis(*envPtr),
+					Regions:             regions,
+					WantCerts:           *wantCertsPtr,
+					ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
+					Log:                 driverConfigBase.CoreConfig.Log,
 				},
 				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 				SecretMode:        *secretMode,
@@ -533,17 +548,17 @@ func CommonMain(envDefaultPtr *string,
 			*envPtr = envVersion[0] + "_0"
 		}
 		dConfig := config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				IsShell:         isShell,
-				WantCerts:       *wantCertsPtr,
-				Insecure:        *insecurePtr,
-				TokenCache:      driverConfigBase.CoreConfig.TokenCache,
-				VaultAddressPtr: addrPtr,
-				Env:             *envPtr,
-				EnvBasis:        eUtils.GetEnvBasis(*envPtr),
-				Regions:         regions,
-				ExitOnFailure:   driverConfigBase.CoreConfig.ExitOnFailure,
-				Log:             driverConfigBase.CoreConfig.Log,
+			CoreConfig: &coreconfig.CoreConfig{
+				IsShell:             isShell,
+				WantCerts:           *wantCertsPtr,
+				Insecure:            *insecurePtr,
+				TokenCache:          driverConfigBase.CoreConfig.TokenCache,
+				CurrentTokenNamePtr: driverConfigBase.CoreConfig.CurrentTokenNamePtr,
+				Env:                 *envPtr,
+				EnvBasis:            eUtils.GetEnvBasis(*envPtr),
+				Regions:             regions,
+				ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
+				Log:                 driverConfigBase.CoreConfig.Log,
 			},
 			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
 			SecretMode:        *secretMode,
@@ -583,7 +598,7 @@ func CommonMain(envDefaultPtr *string,
 	if driverConfig == nil {
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		close(configCtx.ResultChannel)
-	} else if driverConfig.CoreConfig.IsShell {
+	} else if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		// Just shut down result channel since not really used in shell..
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		select {

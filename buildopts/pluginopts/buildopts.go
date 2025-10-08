@@ -1,18 +1,23 @@
 package pluginopts
 
+import (
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
+)
+
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	IsPluginHardwired func() bool
-	GetPluginMessages func(string) []string
-	GetConfigPaths    func(string) []string
-	Init              func(string, *map[string]interface{})
+	GetPluginMessages         func(string) []string
+	GetConfigPaths            func(string) []string
+	GetFlowMachineInitContext func(*coreconfig.CoreConfig, string) *flow.FlowMachineInitContext
+	Init                      func(string, *map[string]any)
 }
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
-		optionsBuilder.IsPluginHardwired = IsPluginHardwired
 		optionsBuilder.GetConfigPaths = GetConfigPaths
+		optionsBuilder.GetFlowMachineInitContext = GetFlowMachineInitContext
 		optionsBuilder.Init = Init
 		optionsBuilder.GetPluginMessages = GetPluginMessages
 	}

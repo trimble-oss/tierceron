@@ -4,32 +4,34 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
+	"time"
 
 	//"os"
-
-	"strings"
 
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
-
-	"time"
 
 	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
 
 	dfssql "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/flowsql"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
-var PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"
-var HIVE_STAT_DFG_PATH string = fmt.Sprintf("%s%s", PUBLIC_INDEX_BASIS_PATH, "/%s/%s/DataFlowStatistics/DataFlowGroup")
-var HIVE_STAT_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_DFG_PATH, "/%s/dataFlowName/%s")
-var HIVE_STAT_CODE_PATH string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
+var (
+	PUBLIC_INDEX_BASIS_PATH string = "super-secrets/PublicIndex/%s"
+	HIVE_STAT_DFG_PATH      string = fmt.Sprintf("%s%s", PUBLIC_INDEX_BASIS_PATH, "/%s/%s/DataFlowStatistics/DataFlowGroup")
+	HIVE_STAT_PATH          string = fmt.Sprintf("%s%s", HIVE_STAT_DFG_PATH, "/%s-%s-%s/dataFlowName/%s")
+	HIVE_STAT_CODE_PATH     string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
+)
 
 // New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tccore.TTDINode, error) {
@@ -47,7 +49,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	}
 
 	for _, idNameList := range idNameListData.Data {
-		for _, idName := range idNameList.([]interface{}) {
+		for _, idName := range idNameList.([]any) {
 			idListData, idListErr := mod.List(fmt.Sprintf("super-secrets/Index/%s/tenantId", project), logger)
 			if idListErr != nil || idListData == nil {
 				return &aFleet, idListErr
@@ -64,20 +66,21 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					return &aFleet, readErr
 				} else {
 					driverConfig := &config.DriverConfig{
-						CoreConfig: &core.CoreConfig{
+						CoreConfig: &coreconfig.CoreConfig{
 							ExitOnFailure: true,
 							Insecure:      mod.Insecure,
 							Log:           logger,
 						},
 					}
 
-					sourceDatabaseConnectionMap := map[string]interface{}{
+					sourceDatabaseConnectionMap := map[string]any{
 						"dbsourceurl":      buildopts.BuildOptions.GetTrcDbUrl(data),
 						"dbsourceuser":     data["dbuser"],
 						"dbsourcepassword": data["dbpassword"],
 					}
-					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig, nil, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), func() (string, error) { return sourceDatabaseConnectionMap["dbsourcepassword"].(string), nil })
-
+					dbsourceConn, err := trcdbutil.OpenDirectConnection(driverConfig, nil, sourceDatabaseConnectionMap["dbsourceurl"].(string), sourceDatabaseConnectionMap["dbsourceuser"].(string), func() (string, error) {
+						return url.QueryEscape(sourceDatabaseConnectionMap["dbsourcepassword"].(string)), nil
+					})
 					if err != nil {
 						log.Println(err)
 						return &aFleet, err
@@ -86,14 +89,12 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					// this is just an example statement
 
 					statement, err := dbsourceConn.Prepare("select * from DataflowStatistics order by argosid,flowGroup,flowName,stateName asc")
-
 					if err != nil {
 						log.Println(err)
 						return &aFleet, err
 					}
 
 					rows, err := statement.Query() // execute our select statement
-
 					if err != nil {
 						log.Println(err)
 						return &aFleet, err
@@ -103,7 +104,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					argosyMap := map[string]*tccore.TTDINode{}
 
 					for _, idList := range idListData.Data {
-						for _, id := range idList.([]interface{}) {
+						for _, id := range idList.([]any) {
 							argosId := strings.Trim(id.(string), "/")
 							argosNode := &tccore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							argosNode.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
@@ -120,7 +121,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						var flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
 						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
 
-						data := make(map[string]interface{})
+						data := make(map[string]any)
 						data["flowGroup"] = flowGroup
 						data["flowName"] = flowName
 						data["stateName"] = stateName
@@ -153,8 +154,8 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 
 						if strings.Contains(flowName, "-") {
 							dashNameSplit := strings.Split(flowName, "-")
-							statisticType := dashNameSplit[0] //login
-							//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
+							statisticType := dashNameSplit[0] // login
+							// statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
 							var dfStatTypeNode *tccore.TTDINode
 							for i := 0; i < len(argosDfGroup.ChildNodes); i++ {
 								if argosDfGroup.ChildNodes[i].Name == statisticType {
@@ -218,7 +219,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 			}
 
 			for _, idList := range idListData.Data {
-				for _, id := range idList.([]interface{}) {
+				for _, id := range idList.([]any) {
 					id = strings.Trim(id.(string), "/")
 					statPath := fmt.Sprintf(
 						HIVE_STAT_DFG_PATH,
@@ -236,13 +237,13 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					new.MashupDetailedElement.Name = strings.TrimSuffix(id.(string), "/")
 					new.ChildNodes = make([]*tccore.TTDINode, 0)
 
-					if serviceListData == nil { //No existing dfs for this tenant -> continue
+					if serviceListData == nil { // No existing dfs for this entry -> continue
 						aFleet.ChildNodes = append(aFleet.ChildNodes, &new)
 						continue
 					}
 
 					for _, serviceList := range serviceListData.Data {
-						for _, service := range serviceList.([]interface{}) {
+						for _, service := range serviceList.([]any) {
 							var dfgroup tccore.TTDINode
 							dfgroup.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							dfgroup.MashupDetailedElement.Name = strings.TrimSuffix(service.(string), "/")
@@ -262,20 +263,20 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 							var innerDF tccore.TTDINode
 							innerDF.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
 							innerDF.MashupDetailedElement.Name = "empty"
-							//Tenant -> System -> Login/Download -> USERS
+							// Entity -> System -> Login/Download -> USERS
 							for _, statisticName := range statisticNameList.Data {
-								for _, statisticName := range statisticName.([]interface{}) {
+								for _, statisticName := range statisticName.([]any) {
 									if strings.Contains(statisticName.(string), "-") {
 										dashNameSplit := strings.Split(statisticName.(string), "-")
-										statisticType := dashNameSplit[0] //login
+										statisticType := dashNameSplit[0] // login
 										innerDF.MashupDetailedElement.Name = strings.TrimSuffix(statisticType, "/")
-										//statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
+										// statisticID := dashNameSplit[1]   //audguasdfniuasfd-gnasdfkj
 										newDf := tccore.InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
-										RetrieveStatistic(mod, newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+										RetrieveStatistic(mod, "", newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
 										innerDF.ChildNodes = append(innerDF.ChildNodes, newDf)
 									} else {
 										newDf := tccore.InitDataFlow(nil, strings.TrimSuffix(statisticName.(string), "/"), false)
-										RetrieveStatistic(mod, newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
+										RetrieveStatistic(mod, "", newDf, id.(string), project, idName.(string), service.(string), statisticName.(string), logger)
 										dfgroup.ChildNodes = append(dfgroup.ChildNodes, newDf)
 									}
 								}
@@ -294,8 +295,26 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	return &aFleet, nil
 }
 
-func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, logger *log.Logger, vaultWriteBack bool) {
-	//TODO : Write Statistic to vault
+func getDfsRegion(tfmContext *TrcFlowMachineContext) string {
+	if tfmContext != nil && tfmContext.DriverConfig != nil &&
+		tfmContext.DriverConfig.CoreConfig != nil &&
+		len(tfmContext.DriverConfig.CoreConfig.Regions) > 0 {
+		return tfmContext.DriverConfig.CoreConfig.Regions[0]
+	}
+	return "global" // Default value when no region available
+}
+
+func DeliverStatistic(tfmContext *TrcFlowMachineContext,
+	tfContext *TrcFlowContext,
+	mod *kv.Modifier,
+	dfs *tccore.TTDINode,
+	id string,
+	indexPath string,
+	idName string,
+	logger *log.Logger,
+	vaultWriteBack bool,
+) {
+	// TODO : Write Statistic to vault
 	dfs.FinishStatisticLog()
 	dsc, _, err := dfs.GetDeliverStatCtx()
 	if err != nil {
@@ -312,12 +331,17 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 		statMap := dataFlowStatistic.FinishStatistic(id, indexPath, idName, logger, vaultWriteBack, dsc)
 
 		mod.SectionPath = ""
+		region := getDfsRegion(tfmContext)
+		statMap["argosId"] = id
+		statMap["flowGroup"] = fmt.Sprintf("%s-%s-%s", dfStatDeliveryCtx.FlowGroup, region, tfmContext.KernelId)
 		statPath := fmt.Sprintf(
 			HIVE_STAT_CODE_PATH,
 			indexPath,
 			idName,
 			id,
 			dfStatDeliveryCtx.FlowGroup,
+			region,
+			tfmContext.KernelId,
 			dfStatDeliveryCtx.FlowName,
 			dfStatDeliveryCtx.StateCode,
 		)
@@ -330,7 +354,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 			}
 		} else {
 			if tfmContext != nil && tfContext != nil {
-				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsert(id, statMap, coreopts.BuildOptions.GetDatabaseName(), "DataFlowStatistics"), nil, true, "INSERT", []FlowNameType{FlowNameType("DataFlowStatistics")}, "")
+				_, changed := tfmContext.CallDBQuery(tfContext, dfssql.GetDataFlowStatisticInsertById(id, statMap, coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics"), nil, true, "INSERT", []flowcore.FlowNameType{flowcore.FlowNameType("DataFlowStatistics")}, "")
 				if !changed {
 					// Write directly even if query reports nothing changed...  We want all statistics to be written
 					// during registrations.
@@ -345,59 +369,95 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowConte
 	}
 }
 
-func RetrieveStatistic(mod *kv.Modifier, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
+func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *TrcFlowContext, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
+	flowG = strings.TrimSuffix(flowG, "/")
+	region := getDfsRegion(tfmContext)
+	regionless := false
+	suffix := fmt.Sprintf("-%s-%s", region, tfmContext.KernelId)
+	trimmedFlowG := strings.TrimSuffix(flowG, suffix)
+	if len(flowG) != len(trimmedFlowG) {
+		// If flowG ends with region, remove it to prevent a broken path
+		flowG = trimmedFlowG
+	} else {
+		regionless = true
+	}
+
 	statPath := fmt.Sprintf(
 		HIVE_STAT_PATH,
 		indexPath,
 		idName,
 		id,
 		flowG,
+		region,
+		tfmContext.KernelId,
 		flowN)
+	if regionless {
+		// Strip region from path...
+		statPath = strings.Replace(statPath, fmt.Sprintf("/%s-%s-%s/dataFlowName", flowG, region, tfmContext.KernelId), fmt.Sprintf("/%s/dataFlowName", flowG), 1)
+	}
+	return RetrieveStatistic(tfContext.GoMod, statPath, dfs, id, indexPath, idName, flowG, flowN, logger)
+}
+
+func RetrieveStatistic(mod *kv.Modifier, statPath string, dfs *tccore.TTDINode, id string, indexPath string, idName string, flowG string, flowN string, logger *log.Logger) error {
+	if len(statPath) == 0 {
+		statPath = fmt.Sprintf(
+			HIVE_STAT_PATH,
+			indexPath,
+			idName,
+			id,
+			flowG,
+			getDfsRegion(nil),
+			"65534", // 65534 - nobodoy
+			flowN)
+	}
 
 	listData, listErr := mod.List(statPath, logger)
 	if listErr != nil {
 		return listErr
 	}
 
-	for _, stateCodeList := range listData.Data {
-		for _, stateCode := range stateCodeList.([]interface{}) {
-			path := fmt.Sprintf("%s/%s", statPath, stateCode.(string))
-			data, readErr := mod.ReadData(path)
-			if readErr != nil {
-				return readErr
-			}
-			if data == nil {
-				time.Sleep(1000)
+	if listData != nil {
+		for _, stateCodeList := range listData.Data {
+			for _, stateCode := range stateCodeList.([]any) {
+				path := fmt.Sprintf("%s/%s", statPath, stateCode.(string))
 				data, readErr := mod.ReadData(path)
-				if readErr == nil && data == nil {
-					return nil
+				if readErr != nil {
+					return readErr
 				}
-			}
-			if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
-				if testedDate == "" {
-					flowData, flowReadErr := mod.ReadData(fmt.Sprintf("super-secrets/%s", data["flowGroup"].(string)))
-					// if flowReadErr != nil {
-					// 	return flowReadErr
-					// } ***
-
-					if _, ok := flowData["lastTestedDate"].(string); ok && flowReadErr != nil {
-						data["lastTestedDate"] = flowData["lastTestedDate"].(string)
-					} else {
-						data["lastTestedDate"] = ""
+				if data == nil {
+					time.Sleep(1000)
+					data, readErr := mod.ReadData(path)
+					if readErr == nil && data == nil {
+						return nil
 					}
-				} else {
-					data["lastTestedDate"] = testedDate
 				}
+				if testedDate, testedDateOk := data["lastTestedDate"].(string); testedDateOk {
+					if testedDate == "" {
+						flowData, flowReadErr := mod.ReadData(fmt.Sprintf("super-secrets/%s", data["flowGroup"].(string)))
+						// if flowReadErr != nil {
+						// 	return flowReadErr
+						// } ***
+
+						if _, ok := flowData["lastTestedDate"].(string); ok && flowReadErr != nil {
+							data["lastTestedDate"] = flowData["lastTestedDate"].(string)
+						} else {
+							data["lastTestedDate"] = ""
+						}
+					} else {
+						data["lastTestedDate"] = testedDate
+					}
+				}
+				df := tccore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
+				df.MapStatistic(data, logger)
+				dfs.ChildNodes = append(dfs.ChildNodes, &df)
 			}
-			df := tccore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
-			df.MapStatistic(data, logger)
-			dfs.ChildNodes = append(dfs.ChildNodes, &df)
 		}
 	}
+
 	return nil
 }
 
-func UpdateLastTestedDate(mod *kv.Modifier, dfs *tccore.DeliverStatCtx, statMap map[string]interface{}) {
+func UpdateLastTestedDate(mod *kv.Modifier, dfs *tccore.DeliverStatCtx, statMap map[string]any) {
 	if _, ok := statMap["lastTestedDate"].(string); ok {
 		if statMap["lastTestedDate"].(string) == "" {
 			flowData, flowReadErr := mod.ReadData(fmt.Sprintf("super-secrets/%s", dfs.FlowGroup))

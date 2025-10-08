@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
@@ -44,7 +44,7 @@ func NewServer(vaultAddrPtr *string, vaultTokenPtr *string) *Server {
 }
 
 // InitConfig initializes configuration information for the server.
-func (s *Server) InitConfig(config *core.CoreConfig, env string) error {
+func (s *Server) InitConfig(config *coreconfig.CoreConfig, env string) error {
 	connInfo, err := s.GetConfig(env, "apiLogins/meta")
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -64,7 +64,7 @@ func (s *Server) InitConfig(config *core.CoreConfig, env string) error {
 // ListServiceTemplates lists the templates under the requested project
 func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb.ListResp, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -90,7 +90,7 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 	}
 
 	fileNames := []string{}
-	for _, fileName := range secret.Data["keys"].([]interface{}) {
+	for _, fileName := range secret.Data["keys"].([]any) {
 		if strFile, ok := fileName.(string); ok {
 			if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
 				fileNames = append(fileNames, strFile)
@@ -108,7 +108,7 @@ func (s *Server) ListServiceTemplates(ctx context.Context, req *pb.ListReq) (*pb
 func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.TemplateResp, error) {
 	// Connect to the vault
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
@@ -136,7 +136,7 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 // Validate checks the vault to see if the requested credentials are validated
 func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.ValidationResp, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
@@ -161,7 +161,7 @@ func (s *Server) Validate(ctx context.Context, req *pb.ValidationReq) (*pb.Valid
 // GetValues gets values requested from the vault
 func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.ValuesRes, error) {
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -185,7 +185,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		if userPaths == nil {
 			continue
 		}
-		if localEnvs, ok := userPaths.Data["keys"].([]interface{}); ok {
+		if localEnvs, ok := userPaths.Data["keys"].([]any); ok {
 			for _, env := range localEnvs {
 				envStrings = append(envStrings, strings.Trim("local/"+e+"/"+env.(string), "/"))
 			}
@@ -265,7 +265,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		Envs: environments,
 	}, nil
 }
-func (s *Server) getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
+func (s *Server) getPaths(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName, s.Log)
 	//fmt.Println("secrets " + pathName)
 	//fmt.Println(secrets)
@@ -275,7 +275,7 @@ func (s *Server) getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathN
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		slicey := secrets.Data["keys"].([]any)
 		//fmt.Println("secrets are")
 		//fmt.Println(slicey)
 		for _, pathEnd := range slicey {
@@ -292,7 +292,7 @@ func (s *Server) getPaths(config *core.CoreConfig, mod *helperkv.Modifier, pathN
 	}
 	return pathList, nil
 }
-func (s *Server) getTemplateFilePaths(config *core.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
+func (s *Server) getTemplateFilePaths(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName, s.Log)
 	pathList := []string{}
 	if err != nil {
@@ -300,7 +300,7 @@ func (s *Server) getTemplateFilePaths(config *core.CoreConfig, mod *helperkv.Mod
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
 		//add paths
-		slicey := secrets.Data["keys"].([]interface{})
+		slicey := secrets.Data["keys"].([]any)
 
 		for _, pathEnd := range slicey {
 			//List is returning both pathEnd and pathEnd/
@@ -320,14 +320,14 @@ func (s *Server) getTemplateFilePaths(config *core.CoreConfig, mod *helperkv.Mod
 	}
 	return pathList, nil
 }
-func (s *Server) templateFileRecurse(config *core.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
+func (s *Server) templateFileRecurse(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	subPathList := []string{}
 	subsecrets, err := mod.List(pathName, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return subPathList, err
 	} else if subsecrets != nil {
-		subslice := subsecrets.Data["keys"].([]interface{})
+		subslice := subsecrets.Data["keys"].([]any)
 		if subslice[0] != "template-file" {
 			for _, pathEnd := range subslice {
 				//List is returning both pathEnd and pathEnd/
@@ -366,7 +366,7 @@ func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoPar
 	cmd := exec.Command(scriptPath, buildNum)
 	cmd.Dir = "/etc/opt/trcAPI"
 	err := cmd.Run()
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	eUtils.LogErrorObject(config, err, false)
 	return &pb.NoParams{}, err
 }
@@ -376,7 +376,7 @@ func (s *Server) ResetServer(ctx context.Context, req *pb.ResetReq) (*pb.NoParam
 	if eUtils.RefEquals(s.VaultTokenPtr, "") {
 		s.VaultTokenPtr = &req.PrivToken
 	}
-	config := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	SelectedEnvironment = SelectedWebEnvironment
 

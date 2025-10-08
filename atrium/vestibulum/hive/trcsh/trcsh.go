@@ -5,6 +5,13 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -12,12 +19,10 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -29,6 +34,10 @@ func main() {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
+	testopts.NewOptionsBuilder(testopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
+	pluginopts.NewOptionsBuilder(pluginopts.LoadOptions())
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
@@ -49,9 +58,6 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
-	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
-	secretIDPtr := flagset.String("secretID", "", "Secret for app role ID")
-	appRoleIDPtr := flagset.String("appRoleID", "", "Public app role ID")
 
 	logger, logErr := trcshbase.CreateLogFile()
 	if logErr != nil {
@@ -59,12 +65,14 @@ func main() {
 	}
 
 	driverConfig := config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
-			Log: logger,
+		CoreConfig: &coreconfig.CoreConfig{
+			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(),
+			Log:           logger,
 		},
 	}
 
-	err := trcshbase.CommonMain(envPtr, addrPtr, nil, secretIDPtr, appRoleIDPtr, flagset, os.Args, &driverConfig)
+	err := trcshbase.CommonMain(envPtr, nil, flagset, os.Args, nil, &driverConfig)
 	if err != nil {
 		os.Exit(1)
 	}

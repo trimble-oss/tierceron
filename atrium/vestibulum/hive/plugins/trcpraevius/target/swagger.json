@@ -1,0 +1,75 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Praevius Proxy API",
+    "description" : "API proxy calls into specific tenants keyed by tenantid in /{key}/",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/{key}/{*path}": {
+      "parameters": [
+        {
+          "name": "key",
+          "in": "path",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "name": "path",
+          "in": "path",
+          "required": false,
+          "type": "string"
+        }
+      ],
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Successful GET"
+          }
+        }
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Successful POST"
+          }
+        }
+      },
+      "put": {
+        "responses": {
+          "200": {
+            "description": "Successful PUT"
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Successful DELETE"
+          }
+        }
+      },
+      "patch": {
+        "responses": {
+          "200": {
+            "description": "Successful PATCH"
+          }
+        }
+      },
+      "head": {
+        "responses": {
+          "200": {
+            "description": "Successful HEAD"
+          }
+        }
+      },
+      "options": {
+        "responses": {
+          "200": {
+            "description": "Successful OPTIONS"
+          }
+        }
+      }
+    }
+  }
+}

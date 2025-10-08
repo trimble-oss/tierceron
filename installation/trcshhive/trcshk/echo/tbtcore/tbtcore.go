@@ -14,6 +14,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+
 	echocore "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/echocore"
 	tbtapi "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/tbtcore/tbtapi"
 	tbtgapi "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/tbtcore/tbtgapi"
@@ -26,6 +28,9 @@ import (
 var configContext *tccore.ConfigContext
 
 func init() {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open("/usr/local/trcshk/plugins/trcshtalkback.so")
 	if err != nil {
 		fmt.Println("Unable to sha256 plugin")
@@ -64,16 +69,16 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 	}
 }
 
-func receiver(receive_chan chan int) {
+func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
 		event := <-receive_chan
 		switch {
-		case event == tccore.PLUGIN_EVENT_START:
-			go start()
-		case event == tccore.PLUGIN_EVENT_STOP:
+		case event.Command == tccore.PLUGIN_EVENT_START:
+			go start("trcshtalkback")
+		case event.Command == tccore.PLUGIN_EVENT_STOP:
 			go stop()
 			return
-		case event == tccore.PLUGIN_EVENT_STATUS:
+		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			//TODO
 		default:
 			//TODO
@@ -81,7 +86,7 @@ func receiver(receive_chan chan int) {
 	}
 }
 
-func start() {
+func start(pluginName string) {
 	if configContext == nil {
 		fmt.Println("no config context initialized for trcshtalkback")
 		return
@@ -107,7 +112,7 @@ func stop() {
 
 func GetConfigContext() *tccore.ConfigContext { return configContext }
 
-func Init(properties *map[string]interface{}) {
+func Init(properties *map[string]any) {
 	var err error
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
@@ -119,7 +124,7 @@ func Init(properties *map[string]interface{}) {
 		chat_receiver,
 	)
 	if credentialsInterface, ok := (*properties)[tbtgapi.CREDENTIALS_PATH]; ok {
-		if credentialsMap, ok := credentialsInterface.(*map[string]interface{}); ok {
+		if credentialsMap, ok := credentialsInterface.(*map[string]any); ok {
 			// Scrub private_key
 			cert := (*credentialsMap)["private_key"].(string)
 			cert = strings.ReplaceAll(cert, "\\n", "\n")
@@ -176,7 +181,7 @@ func GetConfigPaths() []string {
 
 // Convenience function for starting trcshtalkback outside of the hive.
 func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS, envPtr *string, logFilePtr *string) *tccore.ChatMsg {
-	config := make(map[string]interface{})
+	config := make(map[string]any)
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
@@ -193,7 +198,7 @@ func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS,
 	}
 
 	// Create an empty map for the YAML data
-	var configCommon map[string]interface{}
+	var configCommon map[string]any
 
 	// Unmarshal the YAML data into the map
 	err = yaml.Unmarshal(configFileBytes, &configCommon)
@@ -208,7 +213,7 @@ func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS,
 	chatSenderChan := make(chan *tccore.ChatMsg, 2)
 	configContext.ChatSenderChan = &chatSenderChan
 
-	GetConfigContext().Start()
+	GetConfigContext().Start("")
 
 	// Recreate trcshtalk messaging mechanism to send
 	// a healthcheck message to ourselves to ensure

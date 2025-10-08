@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
-	"github.com/trimble-oss/tierceron/pkg/core/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -27,7 +27,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
 	fmt.Println("Initing vault")
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", true, false, false, logger)
 	if err != nil {
@@ -81,14 +81,15 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 		}
 
 		il.SeedVaultFromData(&config.DriverConfig{
-			CoreConfig: &core.CoreConfig{
-				WantCerts:       true,
-				Insecure:        false,
-				VaultAddressPtr: s.VaultAddrPtr,
-				TokenCache:      cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env), s.VaultTokenPtr),
-				Env:             seed.Env,
-				ExitOnFailure:   true,
-				Log:             logger,
+			CoreConfig: &coreconfig.CoreConfig{
+				WantCerts: true,
+				Insecure:  false,
+				TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env),
+					s.VaultTokenPtr,
+					s.VaultAddrPtr),
+				Env:           seed.Env,
+				ExitOnFailure: true,
+				Log:           logger,
 			},
 			ServicesWanted: []string{""}}, "", fBytes)
 	}
@@ -96,7 +97,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	il.UploadPolicies(coreConfig, policyPath, v, false)
 
 	tokens := il.UploadTokens(coreConfig, tokenPath, nil, v)
-	tokenMap := map[string]interface{}{}
+	tokenMap := map[string]any{}
 	for _, token := range tokens {
 		tokenMap[token.Name] = token.Value
 	}
@@ -113,7 +114,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	envStrings := SelectedEnvironment
 	for _, e := range envStrings {
 		mod.Env = e
-		warn, err = il.UploadTemplateDirectory(coreConfig, mod, templatePath, nil)
+		warn, err = il.UploadTemplateDirectory(nil, coreConfig, mod, templatePath, nil)
 		eUtils.LogErrorObject(coreConfig, err, false)
 		eUtils.LogWarningsObject(coreConfig, warn, false)
 	}
@@ -191,7 +192,7 @@ func (s *Server) APILogin(ctx context.Context, req *pb.LoginReq) (*pb.LoginResp,
 		Success:   false,
 		AuthToken: "",
 	}
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
@@ -223,7 +224,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 	if v != nil {
 		defer v.Close()
 	}
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(coreConfig, err, false)
 		return nil, err
@@ -244,7 +245,7 @@ func (s *Server) GetStatus(ctx context.Context, req *pb.NoParams) (*pb.VaultStat
 // Unseal passes the unseal key to the vault and tries to unseal the vault
 func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp, error) {
 	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", false, false, false, s.Log)
-	coreConfig := &core.CoreConfig{ExitOnFailure: false, Log: s.Log}
+	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if err != nil {
 		eUtils.LogErrorObject(coreConfig, err, false)
 		return nil, err

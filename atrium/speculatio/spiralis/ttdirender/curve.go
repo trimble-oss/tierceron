@@ -12,9 +12,9 @@ import (
 	"github.com/g3n/engine/graphic"
 	"github.com/g3n/engine/material"
 	"github.com/g3n/engine/math32"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron-nute/g3nd/g3nmash"
 	"github.com/trimble-oss/tierceron-nute/g3nd/g3nworld"
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
 
 	"github.com/trimble-oss/tierceron-nute/g3nd/worldg3n/g3nrender"
 
@@ -208,13 +208,13 @@ func (cr *CurveRenderer) getTimeSplits(worldApp *g3nworld.WorldApp, element *g3n
 			if strings.Contains(child.GetDetailedElement().Name, "Successful") {
 				succeeded = true
 			}
-			var decoded interface{}
+			var decoded any
 			err := json.Unmarshal([]byte(child.GetDetailedElement().Data), &decoded)
 			if err != nil {
 				log.Println("Error decoding data in curve renderer getTimeSplits")
 				break
 			}
-			if decodedData, ok := decoded.(map[string]interface{}); ok {
+			if decodedData, ok := decoded.(map[string]any); ok {
 				if decodedData["TimeSplit"] != nil {
 					timeNanoSeconds := decodedData["TimeSplit"].(float64)
 					if timeNanoSeconds == 0 && firstTime == 0 {
@@ -386,14 +386,14 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 	var path []math32.Vector3
 	if g3nDetailedElement.GetDetailedElement().Id == 2 {
 		if g3nDetailedElement.GetDetailedElement().Data != "" && cr.quartiles == nil {
-			var decoded interface{}
+			var decoded any
 			err := json.Unmarshal([]byte(g3nDetailedElement.GetDetailedElement().Data), &decoded)
 			if err != nil {
 				log.Println("Error decoding data in curve renderer RenderElement")
 			} else {
-				if decodedData, ok := decoded.(map[string]interface{}); ok {
+				if decodedData, ok := decoded.(map[string]any); ok {
 					if decodedData["Quartiles"] != nil && decodedData["MaxTime"] != nil && decodedData["Average"] != nil {
-						if interfaceQuartiles, ok := decodedData["Quartiles"].([]interface{}); ok {
+						if interfaceQuartiles, ok := decodedData["Quartiles"].([]any); ok {
 							for _, quart := range interfaceQuartiles {
 								if floatQuart, ok := quart.(float64); ok {
 									cr.quartiles = append(cr.quartiles, floatQuart)

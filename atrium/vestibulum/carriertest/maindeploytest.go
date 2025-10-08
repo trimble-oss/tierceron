@@ -10,12 +10,12 @@ import (
 
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/deploy"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
-	"github.com/trimble-oss/tierceron/pkg/core"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -41,7 +41,7 @@ func main() {
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 
 	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 			Log:           logger,
 		},
@@ -53,9 +53,9 @@ func main() {
 
 	//Grabbing configs
 	envMap := buildopts.BuildOptions.GetTestDeployConfig(tokenPtr)
-	envMap["vaddress"] = "https://tierceron.test:1234"
+	envMap["vaddress"] = os.Getenv("VAULT_ADDR")
 	tokenEnvPtr := new(string)
-	*tokenEnvPtr = "<sometoken>"
+	*tokenEnvPtr = os.Getenv("VAULT_TOKEN")
 	envMap["tokenptr"] = tokenEnvPtr
 	carrierfactory.InitLogger(logger)
 	//go carrierfactory.InitVaultHostRemoteBootstrap(envMap["vaddress"].(string))

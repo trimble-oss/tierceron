@@ -9,14 +9,15 @@ import (
 	"strconv"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/argosyopts"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
-	"github.com/trimble-oss/tierceron/pkg/core"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 var maxTime int64
@@ -36,13 +37,13 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 					stat.State = &mashupsdk.MashupElementState{Id: stat.Id, State: int64(mashupsdk.Init)}
 				}
 				detailedElements = append(detailedElements, stat)
-				var decodedstat interface{}
+				var decodedstat any
 				err := json.Unmarshal([]byte(stat.Data), &decodedstat)
 				if err != nil {
 					log.Println("Error in decoding data in buildDataFlowStatistics")
 					continue
 				}
-				decodedStatData := decodedstat.(map[string]interface{})
+				decodedStatData := decodedstat.(map[string]any)
 				timeNanoSeconds := int64(decodedStatData["TimeSplit"].(float64))
 				if timeNanoSeconds > int64(maxTime) {
 					maxTime = timeNanoSeconds
@@ -52,12 +53,12 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 				if i == len(node.ChildNodes)-2 {
 					detailedElements = append(detailedElements, nextStat)
 				}
-				var nextdecodedstat interface{}
+				var nextdecodedstat any
 				err = json.Unmarshal([]byte(nextStat.Data), &nextdecodedstat)
 				if err != nil {
 					log.Println("Error in decoding data in GetData")
 				}
-				nextDecodedStatData := nextdecodedstat.(map[string]interface{})
+				nextDecodedStatData := nextdecodedstat.(map[string]any)
 				nextTimeNanoSeconds := int64(nextDecodedStatData["TimeSplit"].(float64))
 				nextTimeSeconds := float64(nextTimeNanoSeconds) * math.Pow(10.0, -9.0)
 				if nextTimeSeconds-timeSeconds >= 0 {
@@ -84,23 +85,22 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 	return detailedElements, testTimes
 }
 
-// Returns an array of mashup detailed elements populated with each Tenant's data and Childnodes
+// Returns an array of mashup detailed elements populated with each entities' data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
+	addressPtr := new(string)
 	driverConfig := &config.DriverConfig{
-		CoreConfig: &core.CoreConfig{
+		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
+			TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
 			Insecure:      *insecure,
 			Log:           logger,
 		},
 	}
-	secretID := ""
-	appRoleID := ""
 	tokenPtr := new(string)
-	addressPtr := new(string)
-	approleconfig := new(string)
+	currentRoleEntityPtr := new(string)
 	empty := ""
 
-	autoErr := eUtils.AutoAuth(driverConfig, &secretID, &appRoleID, &empty, &tokenPtr, envPtr, addressPtr, nil, approleconfig, false)
+	autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
 	eUtils.CheckError(driverConfig.CoreConfig, autoErr, true)
 
 	mod, modErr := helperkv.NewModifier(*insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_protected", driverConfig.CoreConfig.EnvBasis)), addressPtr, *envPtr, nil, true, logger)
@@ -127,14 +127,14 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	avg = avg / (float64(count))
 	if len(DetailedElements) >= idForData {
 		argosyElement := DetailedElements[idForData]
-		decodedData := make(map[string]interface{})
+		decodedData := make(map[string]any)
 		if argosyElement.Data != "" {
-			var decoded interface{}
+			var decoded any
 			err := json.Unmarshal([]byte(argosyElement.Data), &decoded)
 			if err != nil {
 				log.Println("Error in decoding data in GetData")
 			}
-			decodedData = decoded.(map[string]interface{})
+			decodedData = decoded.(map[string]any)
 		}
 
 		decodedData["Quartiles"] = quartiles
@@ -169,7 +169,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 func GetHeadlessData(insecure *bool, logger *log.Logger) []*mashupsdk.MashupDetailedElement {
 	data, TimeData := argosyopts.GetStubbedDataFlowStatistics()
 
-	config := &core.CoreConfig{
+	config := &coreconfig.CoreConfig{
 		ExitOnFailure: true,
 		Log:           logger,
 	}

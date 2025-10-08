@@ -1,10 +1,10 @@
-//go:build darwin || linux
-// +build darwin linux
+//go:build darwin || linux || windows
+// +build darwin linux windows
 
 package core
 
 import (
-	"github.com/trimble-oss/tierceron-nute/mashupsdk"
+	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 )
 
 type AskFlumeMessage struct {
