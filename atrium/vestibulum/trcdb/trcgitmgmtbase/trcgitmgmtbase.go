@@ -45,18 +45,6 @@ func CloneRepository(
 		memprotectopts.MemProtectInit(nil)
 	}
 
-	// Get authentication token from the vault's Restricted section if available
-	authToken := ""
-	tempMap, readErr := mod.ReadData("super-secrets/Restricted/PluginTool/config")
-	if readErr == nil && len(tempMap) > 0 {
-		// If credentials exist, try to use them
-		if token, ok := tempMap["github_token"]; ok {
-			authToken = fmt.Sprintf("%v", token)
-		} else {
-			return fmt.Errorf("missing required github auth token")
-		}
-	}
-
 	// If no target directory is specified, create a directory structure that mirrors the repo URL
 	if targetDir == "" {
 		// Parse the repository URL to create a directory structure
@@ -120,6 +108,20 @@ func CloneRepository(
 	}
 
 	driverConfig.CoreConfig.Log.Printf("Cloning repository %s into %s", repoURL, targetDir)
+	tempMap, tokenReadAuthErr := mod.ReadData("super-secrets/Restricted/PluginTool/config")
+	authToken := ""
+	if tokenReadAuthErr == nil && len(tempMap) > 0 {
+		tokenKey := "githubToken"
+		if repoInfo.IsAzureDevOps {
+			tokenKey = "azureToken"
+		}
+		// If credentials exist, try to use them
+		if token, ok := tempMap[tokenKey]; ok {
+			authToken = fmt.Sprintf("%v", token)
+		} else {
+			return fmt.Errorf("missing required %s auth token", tokenKey)
+		}
+	}
 
 	// Different handling based on the repository type
 	if repoInfo.IsGitHub {
