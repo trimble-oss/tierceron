@@ -19,7 +19,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.27")
+	fmt.Println("Version: " + "1.28")
 }
 
 // Reads in template files in specified directory
@@ -81,8 +81,10 @@ func CommonMain(envPtr *string,
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	} else {
-		fmt.Printf("Please set the addr flag\n")
-		os.Exit(-1)
+		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
+			fmt.Printf("Please set the addr flag\n")
+			os.Exit(-1)
+		}
 	}
 	if envPtr == nil {
 		env := "dev"
@@ -153,7 +155,7 @@ func CommonMain(envPtr *string,
 	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	mod.Env = envBasis
 
-	warn, err := il.UploadTemplateDirectory(driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
+	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)

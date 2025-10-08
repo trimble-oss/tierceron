@@ -1,13 +1,16 @@
 package pluginopts
 
-import "github.com/trimble-oss/tierceron-core/v2/flow"
+import (
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
+)
 
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
 	GetPluginMessages         func(string) []string
 	GetConfigPaths            func(string) []string
-	GetFlowMachineInitContext func(string) *flow.FlowMachineInitContext
+	GetFlowMachineInitContext func(*coreconfig.CoreConfig, string) *flow.FlowMachineInitContext
 	Init                      func(string, *map[string]any)
 }
 

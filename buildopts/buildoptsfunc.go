@@ -7,7 +7,6 @@ import (
 	"io"
 
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
-	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
 // SetLogger is called by TrcDb and other utilities to provide the extensions
@@ -62,16 +61,18 @@ func GetSupportedSourceRegions() []string {
 func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
 	pluginConfig := map[string]any{}
 
-	//env = "dev"
+	// env = "dev"
 	pluginConfig["vaddress"] = "TODO"
 	pluginConfig["env"] = "dev"
 	pluginConfig["tokenptr"] = tokenPtr
 	pluginConfig["logNamespace"] = "db"
 
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
 		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
+	}
+	pluginConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
 	}
 
 	// plugin configs here...
@@ -133,8 +134,8 @@ func GetTestDeployConfig(tokenPtr *string) map[string]any {
 func ProcessPluginEnvConfig(pluginEnvConfig map[string]any) map[string]any {
 	pluginEnvConfig["templatePath"] = []string{
 		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
 	}
 	pluginEnvConfig["connectionPath"] = []string{
 		"trc_templates/TrcVault/VaultDatabase/config.yml.tmpl",
@@ -159,6 +160,7 @@ func ProcessPluginEnvConfig(pluginEnvConfig map[string]any) map[string]any {
 		"trcsh",
 	}
 	pluginEnvConfig["logNamespace"] = "db"
+	pluginEnvConfig["kernelId"] = "-1" // Non-hive runs in -1
 
 	return pluginEnvConfig
 }

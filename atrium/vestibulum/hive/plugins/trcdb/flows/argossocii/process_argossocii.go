@@ -65,8 +65,8 @@ func getInsertUpdateById(argosId string, data map[string]any, dbName string, tab
 	return sqlstr
 }
 
-func GetProcessFlowDefinition() *flowcore.FlowDefinitionContext {
-	return &flowcore.FlowDefinitionContext{
+func GetProcessFlowDefinition() *flowcore.FlowLibraryContext {
+	return &flowcore.FlowLibraryContext{
 		GetTableConfigurationById:   nil, //not pulling from remote
 		GetTableConfigurations:      nil, //not pulling from remote
 		CreateTableTriggers:         nil, // use default provided by tierceron.
@@ -81,6 +81,7 @@ func GetProcessFlowDefinition() *flowcore.FlowDefinitionContext {
 		GetIndexedPathExt:           getIndexedPathExt,
 		GetTableIndexColumnNames:    getIndexColumnNames,
 		GetTableGrant:               getTableGrant,
+		ShouldSyncRemote:            nil, // Don't sync remote.
 		GetFlowIndexComplex:         getFlowIndexComplex,
 	}
 }

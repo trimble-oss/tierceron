@@ -18,11 +18,15 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
-var AskFlumeFlow flowcore.FlowNameType = "AskFlumeFlow"
+var AskFlumeFlow flowcore.FlowDefinition = flowcore.FlowDefinition{
+	FlowHeader: flowcore.FlowHeaderType{Name: "AskFlumeFlow", Instances: "*"},
+}
 
-var signalChannel chan os.Signal
-var sourceDatabaseConnectionsMap map[string]map[string]any
-var tfmContextMap = make(map[string]*TrcFlowMachineContext, 5)
+var (
+	signalChannel                chan os.Signal
+	sourceDatabaseConnectionsMap map[string]map[string]any
+	tfmContextMap                = make(map[string]*TrcFlowMachineContext, 5)
+)
 
 const (
 	TableSyncFlow flowcore.FlowType = iota
@@ -102,30 +106,29 @@ func TriggerChangeChannel(table string) {
 	}
 }
 
-func TriggerAllChangeChannel(table string, changeIds map[string]string) {
-	for _, tfmContext := range tfmContextMap {
-		// If changIds identified, manually trigger a change.
-		if table != "" {
-			for changeIdKey, changeIdValue := range changeIds {
-				if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
-					if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
-						changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
-						bindings := map[string]sqle.Expression{
-							"id": sqlee.NewLiteral(changeIdValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
-						}
-						_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.QueryLock)
-						break
+func TriggerAllChangeChannel(tfmContext *TrcFlowMachineContext, table string, changeIds map[string]string) {
+	// If changIds identified, manually trigger a change.
+	if table != "" {
+		for changeIdKey, changeIDValue := range changeIds {
+			tfmContext.FlowMapLock.RLock()
+			if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
+				tfmContext.FlowMapLock.RUnlock()
+				if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
+					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName)
+					bindings := map[string]sqle.Expression{
+						"id": sqlee.NewLiteral(changeIDValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					}
+					_, _, _, _ = trcdb.QueryWithBindings(tfmContext.TierceronEngine, changeQuery, bindings, tfContext.QueryLock)
+					break
 				}
-			}
-			if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
-				notificationFlowChannel.Bcast(true)
-				continue
+			} else {
+				tfmContext.FlowMapLock.RUnlock()
 			}
 		}
-
-		for _, notificationFlowChannel := range tfmContext.ChannelMap {
+		if notificationFlowChannel, notificationChannelOk := tfmContext.ChannelMap[flowcore.FlowNameType(table)]; notificationChannelOk {
+			// Notify the affected flow that a change has occured.
 			notificationFlowChannel.Bcast(true)
+			return
 		}
 	}
 }
@@ -144,8 +147,8 @@ var tableModifierLock sync.Mutex
 
 // True if a time was most recent, false if b time was most recent.
 func WhichLastModified(a any, b any) bool {
-	//Check if a & b are time.time
-	//Check if they match.
+	// Check if a & b are time.time
+	// Check if they match.
 	var lastModifiedA time.Time
 	var lastModifiedB time.Time
 	var timeErr error

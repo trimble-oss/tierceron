@@ -2,6 +2,8 @@ package coreopts
 
 import (
 	"database/sql"
+
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
 type Option func(*OptionsBuilder)
@@ -20,12 +22,12 @@ type OptionsBuilder struct {
 	GetUserNameField            func() string
 	GetUserCodeField            func() string
 	ActiveSessions              func(db *sql.DB) ([]map[string]any, error)
-	IsSupportedFlow             func(flowName string) bool
 	GetSyncedTables             func() []string
-	FindIndexForService         func(project string, service string) (string, []string, string, error)
+	IsSupportedFlow             func(flowName string) bool
+	GetDatabaseName             func(flumeDbType flowcore.FlumeDbType) string
+	FindIndexForService         func(tfmContext flowcore.FlowMachineContext, project string, service string) (string, []string, string, error)
 	DecryptSecretConfig         func(map[string]any, map[string]any) (string, error)
 	GetDFSPathName              func() (string, string)
-	GetDatabaseName             func() string
 	CompareLastModified         func(dfStatMapA map[string]any, dfStatMapB map[string]any) bool
 	PreviousStateCheck          func(currentState int) int
 	GetMachineID                func() string

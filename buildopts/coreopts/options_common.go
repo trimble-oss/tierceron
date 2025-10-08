@@ -3,13 +3,13 @@ package coreopts
 import (
 	"database/sql"
 	"errors"
+	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 
-	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/pkg/trcnet"
 )
 
@@ -120,15 +120,22 @@ func ActiveSessions(db *sql.DB) ([]map[string]any, error) {
 }
 
 func IsSupportedFlow(flow string) bool {
-	return flow != "" && (flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
+	return flow != "" && (flow == flowcore.TierceronControllerFlow.FlowName() || flow == flowcore.ArgosSociiFlow.FlowName() || flow == flowcore.DataFlowStatConfigurationsFlow.FlowName())
 }
 
 // FindIndexForService - override to provide a custom index for a given service.  This should return
 // the name of the column that is to be treated as the index for the table.
 // TODO: This function is miss-named.  It should be called FindIndexForFlow where project = databaseName and service = tableName.
-func FindIndexForService(project string, service string) (string, []string, string, error) {
-	if project == flowcorehelper.TierceronFlowDB {
-		if service == flowcorehelper.TierceronFlowConfigurationTableName {
+func FindIndexForService(tfmContext flowcore.FlowMachineContext, project string, service string) (string, []string, string, error) {
+	var projectName string
+	if tfmContext != nil {
+		projectName = tfmContext.GetDatabaseName(tfmContext.GetFlumeDbType())
+	} else {
+		projectName = BuildOptions.GetDatabaseName(flowcore.TrcFlumeDb)
+	}
+
+	if project == projectName {
+		if service == flowcore.TierceronControllerFlow.FlowName() {
 			return "flowName", nil, "", nil
 		} else {
 			return "", nil, "", errors.New("not implemented")
@@ -144,15 +151,13 @@ func GetSyncedTables() []string {
 	return []string{}
 }
 
-// DecryptSecretConfig
-//   - provides the secret to be used in obtaining a database connection when provided
-//     with source database configuration attributes.  The config map contains
-//     additional global attributes that can be utilized in decrypting an
-//     encrypted password found within the source database configuration.
+// DecryptSecretConfig provides the secret to be used in obtaining a database connection when provided
+// with source database configuration attributes. The config map contains additional global attributes
+// that can be utilized in decrypting an encrypted password found within the source database configuration.
 //
-// returns: the decrypted password to be used in establishing a database connection.
+// Returns the decrypted password to be used in establishing a database connection.
 func DecryptSecretConfig(sourceDatabaseConfigs map[string]any, config map[string]any) (string, error) {
-	return "", nil
+	return url.QueryEscape(""), nil
 }
 
 // Utlized to provide Data Flow Statistics components: database name in which the DFS resides and the index
@@ -162,8 +167,14 @@ func GetDFSPathName() (string, string) {
 }
 
 // GetDatabaseName - returns a name to be used by TrcDb.
-func GetDatabaseName() string {
-	return "tiercerondb"
+func GetDatabaseName(flumeDbType flowcore.FlumeDbType) string {
+	switch flumeDbType {
+	case flowcore.TrcDb:
+		return "TrcDb"
+	case flowcore.TrcFlumeDb:
+		return "TrcFlumeDb"
+	}
+	return "TrcDb"
 }
 
 const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"
@@ -173,8 +184,8 @@ const RFC_ISO_8601 = "2006-01-02 15:04:05 -0700 MST"
 // Override to provide alternate fields to match on in your flows for comparing lastModified or
 // even other fields...
 func CompareLastModified(dfStatMapA map[string]any, dfStatMapB map[string]any) bool {
-	//Check if a & b are time.time
-	//Check if they match.
+	// Check if a & b are time.time
+	// Check if they match.
 	var lastModifiedA time.Time
 	var lastModifiedB time.Time
 	var timeErr error
@@ -264,13 +275,19 @@ func GetPluginRestrictedMappings() map[string][][]string {
 			[]string{"-templateFilter=TrcVault/SpiralDatabase", "-restricted=SpiralDatabase", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"healthcheck": {
-			[]string{"-templateFilter=Common/servicecert.crt,Common/servicekey.key,Hive/PluginHealthCheck,Hive/PluginHealthCheckBuild"},
+			[]string{"-templateFilter=Common/servicecert.crt,Common/servicekey.key,Hive/PluginHealthcheck,Hive/PluginHealthcheckBuild"},
 		},
 		"trcdb": {
-			[]string{"-templateFilter=Common/db_cert.pem,Common/db_key.pem,Hive/PluginTrcdb,Hive/PluginTrcdbBuild"},
+			[]string{"-templateFilter=Common/db_cert.pem,Common/servicecert.crt,Common/servicekey.key,Hive/PluginTrcdb,Hive/PluginTrcdbBuild"},
 		},
 		"rosea": {
-			[]string{"-templateFilter=Hive/PluginRosea"},
+			[]string{"-templateFilter=Hive/PluginRosea,Hive/PluginRoseaBuild"},
+		},
+		"mutabilis": {
+			[]string{"-templateFilter=Hive/PluginMutabilis,Hive/PluginMutabilisBuild"},
+		},
+		"spiralis": {
+			[]string{"-templateFilter=Hive/PluginSpiralis,Hive/PluginSpiralisBuild"},
 		},
 		"trchelloworld": {
 			[]string{"-templateFilter=Common/hello.crt,Common/hellokey.key,HelloProjectPlugin/HelloServicePlugin"},

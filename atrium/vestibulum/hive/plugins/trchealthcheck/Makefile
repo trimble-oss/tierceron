@@ -8,25 +8,18 @@ ROOT := .
 LD_FLAGS := -X $(ROOT).Version=$(VERSION) -X $(ROOT).Commit=$(COMMIT) -X $(ROOT).BuildTime=$(BUILD_TIME)
 GOBIN ?= ./bin
 
-.PHONY: help clean 
+.PHONY: help 
 help:
 	@echo "Please use \`make <ROOT>' where <ROOT> is one of"
-	@echo "  dependencies to go install the dependencies"
-	@echo "  hellocustosworld   to build best example of nute usage"
-	@echo "  test         to run unittests"
+	@echo "  depend to go install the dependencies"
+	@echo "  cleanhellosdk         to clean generated hellosdk files"
+	@echo "  hellosdk              to generate hellosdk files"
 
 depend:
 	go mod tidy
-
-clean:
-	rm -f bin
 
 cleanhellosdk:
 	rm hellosdk/hellosdk_grpc.pb.go; rm hellosdk/hellosdk.pb.go
 
 hellosdk: */*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative hellosdk/hellosdk.proto
-
-healthcheck:
-	go build -buildmode=plugin -trimpath -o="./healthcheck.so" -tags "tc azrcr memonly kernel" trchealthcheck.go
-

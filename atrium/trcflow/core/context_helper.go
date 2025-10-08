@@ -3,21 +3,21 @@ package core
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
+	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
-	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
-
-	sqlememory "github.com/dolthub/go-mysql-server/memory"
-	"github.com/dolthub/go-mysql-server/sql"
 )
 
 var changesLock sync.Mutex
@@ -61,12 +61,27 @@ func getCompositeDeleteChangeQuery(databaseName string, changeTable string, inde
 	return ""
 }
 
+func (tfmContext *TrcFlowMachineContext) NotifyFlowComponentLoaded(tableName string) {
+	switch tableName {
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
+		fallthrough
+	case flowcore.TierceronControllerFlow.TableName():
+		tfmContext.FlowMapLock.RLock()
+		if tfFlowContext, refOk := tfmContext.FlowMap[flowcore.FlowNameType(tableName)]; refOk {
+			tfmContext.FlowMapLock.RUnlock()
+			tfFlowContext.NotifyFlowComponentLoaded()
+		} else {
+			tfmContext.FlowMapLock.RUnlock()
+		}
+	}
+}
+
 // removeChangedTableEntries -- gets and removes any changed table entries.
 func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCols []string, indexColumnNames any) ([][]any, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
-	changedEntriesQuery = getCompositeChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, indexColumnNames)
+	changedEntriesQuery = getCompositeChangeIdQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, indexColumnNames)
 
 	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
 	if err != nil {
@@ -77,7 +92,7 @@ func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(t
 		indexColumnValues := []string{}
 		indexColumnValues = append(indexColumnValues, changedEntry[0].(string))
 		indexColumnValues = append(indexColumnValues, changedEntry[1].(string))
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getCompositeDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, indexColumnNames, indexColumnValues), tfContext.QueryLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getCompositeDeleteChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, indexColumnNames, indexColumnValues), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
@@ -92,11 +107,12 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	var changedEntriesQuery string
 
 	changesLock.Lock()
+	defer changesLock.Unlock()
 
 	/*if isInit {
 		changedEntriesQuery = `SELECT ` + identityColumnName + ` FROM ` + databaseName + `.` + tableName
 	} else { */
-	changedEntriesQuery = getChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName)
+	changedEntriesQuery = getChangeIdQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName)
 	//}
 
 	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
@@ -106,13 +122,12 @@ func (tfmContext *TrcFlowMachineContext) removeChangedTableEntries(tfContext *Tr
 	}
 	for _, changedEntry := range matrixChangedEntries {
 		changedId := changedEntry[0]
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId), tfContext.QueryLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedId), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
 		}
 	}
-	changesLock.Unlock()
 	return matrixChangedEntries, nil
 }
 
@@ -191,7 +206,7 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 					// TODO: test...
 					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s' AND %s='%s' AND %s='%s'", databaseName, changeTable, idColumns[0], valueSliceStr[0], idColumns[1], valueSliceStr[1], idColumns[2], valueSliceStr[2])
 				}
-				if indexColumnValuesSlice, removedVal = removeElementFromSliceInterface(indexColumnValuesSlice, valueSliceStr); removedVal != nil { //this logic is for dfs...names & values appear out of order in slices at this point but is needed for previous step.
+				if indexColumnValuesSlice, removedVal = removeElementFromSliceInterface(indexColumnValuesSlice, valueSliceStr); removedVal != nil { // this logic is for dfs...names & values appear out of order in slices at this point but is needed for previous step.
 
 					indexColumnNamesSlice, removedValName = removeElementFromSlice(indexColumnNamesSlice, idColumns) //							 may need to revist if a table has 3 identifiying column names (none currently).
 				}
@@ -229,7 +244,7 @@ func getStatisticChangedByIdQuery(databaseName string, changeTable string, idCol
 				}
 			}
 
-			if removedValName != "" { //Adding back in ordered name & val for dfs for next steps...
+			if removedValName != "" { // Adding back in ordered name & val for dfs for next steps...
 				indexColumnValuesSlice = append(indexColumnValuesSlice, removedVal)
 				indexColumnNamesSlice = append(indexColumnNamesSlice, removedValName)
 			}
@@ -256,7 +271,7 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	changesLock.Lock()
-	changedEntriesQuery = getStatisticChangeIdQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCols, indexColumnNames)
+	changedEntriesQuery = getStatisticChangeIdQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, idCols, indexColumnNames)
 
 	_, _, matrixChangedEntries, err := trcdb.Query(tfmContext.TierceronEngine, changedEntriesQuery, tfContext.QueryLock)
 	if err != nil {
@@ -268,7 +283,7 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 		indexColumnValues := []string{}
 		indexColumnValues = append(indexColumnValues, changedEntry[1].(string))
 		indexColumnValues = append(indexColumnValues, changedEntry[2].(string))
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticDeleteChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, idCols, idColVal, indexColumnNames, indexColumnValues), tfContext.QueryLock)
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticDeleteChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, idCols, idColVal, indexColumnNames, indexColumnValues), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			return nil, err
@@ -285,7 +300,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	indexColumnNames any,
 	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
-	flowPushRemote func(tcflow.FlowContext, map[string]any) error) error {
+	flowPushRemote func(tcflow.FlowContext, map[string]any) error,
+) error {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
 	var matrixChangedEntries [][]any
@@ -318,7 +334,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		var changedTableQuery string
 		var changedId any
 		var changeTableError error
-		changedTableQuery, changeTableError = getStatisticChangedByIdQuery(tfContext.FlowSourceAlias, tfContext.Flow.TableName(), identityColumnNames, indexColumnNames, changedEntry)
+		changedTableQuery, changeTableError = getStatisticChangedByIdQuery(tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName(), identityColumnNames, indexColumnNames, changedEntry)
 		if changeTableError != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, changeTableError, false)
 			continue
@@ -330,10 +346,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
-		if len(changedTableRowData) == 0 && err == nil && len(changedEntry) != 3 { //This change was a delete
+		if len(changedTableRowData) == 0 && err == nil && len(changedEntry) != 3 { // This change was a delete
 			syncDelete := false
 			for _, syncedTable := range coreopts.BuildOptions.GetSyncedTables() {
-				if tfContext.Flow.TableName() == syncedTable {
+				if tfContext.FlowHeader.TableName() == syncedTable {
 					syncDelete = true
 				}
 			}
@@ -343,8 +359,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			}
 
 			if tfContext.FlowState.State != 0 && (tfContext.FlowState.SyncMode == "push" || tfContext.FlowState.SyncMode == "pushonce") && flowPushRemote != nil {
-				//Check if it exists in trcdb
-				//Writeback to mysql to delete that
+				// Check if it exists in trcdb
+				// Writeback to mysql to delete that
 				rowDataMap := map[string]any{}
 				rowDataMap["Deleted"] = "true"
 				rowDataMap["changedId"] = changedId
@@ -367,7 +383,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 				rowDataMap[column] = changedEntry[index]
 			}
 
-			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine any, query map[string]any) (string, []string, [][]any, error) {
+			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName(), func(engine any, query map[string]any) (string, []string, [][]any, error) {
 				return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.QueryLock)
 			})
 			if indexPathErr != nil {
@@ -377,18 +393,81 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 
 			if !tfContext.ReadOnly {
 				if !strings.Contains(indexPath, "/PublicIndex/") {
-					indexPath = "Index/" + tfContext.FlowSource + indexPath
-					if !strings.HasSuffix(indexPath, tfContext.Flow.TableName()) {
-						indexPath = indexPath + "/" + tfContext.Flow.TableName()
+					indexPath = "Index/" + tfContext.FlowHeader.Source + indexPath
+					if !strings.HasSuffix(indexPath, tfContext.FlowHeader.TableName()) {
+						indexPath = indexPath + "/" + tfContext.FlowHeader.TableName()
 					}
 				}
 
 				deleteMap, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Logger)
 				if deleteErr != nil || deleteMap != nil {
-					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("Unable to process a delete query for "+tfContext.Flow.TableName()), false)
+					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("Unable to process a delete query for "+tfContext.FlowHeader.TableName()), false)
 				}
 			}
 			continue
+		} else {
+			// If this change concerns the Tierceron controller flow, update
+			// the TrcFlowContext state for the flow indicated in the changed row data.
+			if tfContext.FlowHeader != nil && tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() {
+				if len(changedTableRowData) > 0 {
+					row := changedTableRowData[0]
+
+					// The first column must be a string flow name. If not, skip.
+					targetFlowName, ok := row[0].(string)
+					if !ok {
+						tfmContext.Log("Controller change row did not contain a string flow name", nil)
+						continue
+					}
+
+					tfmContext.FlowMapLock.RLock()
+					targetTfContext, refOk := tfmContext.FlowMap[flowcore.FlowNameType(targetFlowName)]
+					tfmContext.FlowMapLock.RUnlock()
+
+					if !refOk || targetTfContext == nil {
+						tfmContext.Log("Could not find flow for controller change: "+targetFlowName, nil)
+						continue
+					}
+
+					// Safely copy current state then update fields found in the changed row
+					curState := targetTfContext.GetFlowState().(flowcorehelper.CurrentFlowState)
+					newState := curState
+
+					for i, col := range changedTableColumns {
+						val := row[i]
+						switch col {
+						case "state":
+							switch v := val.(type) {
+							case int64:
+								newState.State = v
+							case int:
+								newState.State = int64(v)
+							case string:
+								if parsed, err := strconv.ParseInt(v, 10, 64); err == nil {
+									newState.State = parsed
+								}
+							}
+						case "syncMode":
+							if s, ok := val.(string); ok {
+								newState.SyncMode = s
+							}
+						case "syncFilter":
+							if s, ok := val.(string); ok {
+								newState.SyncFilter = s
+							}
+						case "flowAlias":
+							if s, ok := val.(string); ok {
+								newState.FlowAlias = s
+							}
+						}
+					}
+
+					if targetTfContext.Logger != nil {
+						targetTfContext.Logger.Printf("Applying TierceronFlow change -> SetFlowState: flow=%s to=%+v", targetTfContext.FlowHeader.FlowName(), newState)
+					}
+
+					targetTfContext.SetFlowState(newState)
+				}
+			}
 		}
 
 		rowDataMap := map[string]any{}
@@ -401,21 +480,21 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		// Convert matrix/slice to table map
 		// Columns are keys, values in tenantData
 
-		//Use trigger to make another table
-		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowSourceAlias, tfContext.Flow.TableName(), func(engine any, query map[string]any) (string, []string, [][]any, error) {
+		// Use trigger to make another table
+		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, indexColumnNames, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName(), func(engine any, query map[string]any) (string, []string, [][]any, error) {
 			return trcdb.Query(engine.(*trcengine.TierceronEngine), query["TrcQuery"].(string), tfContext.QueryLock)
 		})
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			// Re-inject into changes because it might not be here yet...
 			if !strings.Contains(indexPath, "PublicIndex") {
-				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId), tfContext.QueryLock)
+				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedId), tfContext.QueryLock)
 				if err != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 				}
 			} else {
-				if len(changedEntry) == 3 { //Maybe there is a better way to do this, but this works for now.
-					_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedEntry[0], changedEntry[1], changedEntry[2]), tfContext.QueryLock)
+				if len(changedEntry) == 3 { // Maybe there is a better way to do this, but this works for now.
+					_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getStatisticInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedEntry[0], changedEntry[1], changedEntry[2]), tfContext.QueryLock)
 					if err != nil {
 						eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 					}
@@ -425,7 +504,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if indexPath == "" && indexPathErr == nil {
-			continue //This case is for when SEC row can't find a matching tenant
+			continue // This case is for when SEC row can't find a matching tenant
 		}
 
 		if len(identityColumnNames) > 0 && identityColumnNames[0] == "flowName" {
@@ -437,11 +516,11 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 		}
 
 		if !tfContext.ReadOnly {
-			seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.Flow.ServiceName(), tfmContext.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowSource)
+			seedError := trcvutils.SeedVaultById(tfmContext.DriverConfig, tfContext.GoMod, tfContext.FlowHeader.ServiceName(), tfmContext.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr, tfContext.Vault.GetToken(), tfContext.FlowData.(*extract.TemplateResultData), rowDataMap, indexPath, tfContext.FlowHeader.Source)
 			if seedError != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, seedError, false)
 				// Re-inject into changes because it might not be here yet...
-				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowSourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.QueryLock)
+				_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.QueryLock)
 				if err != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 				}
@@ -485,12 +564,35 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromChanges(
 	return nil
 }
 */
-// seedTrcDbFromVault - optimized implementation of seedTrcDbFromChanges
+
+// seedTrcDbFromVault - This loads all data from vault into TrcDb
 func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
-	tfContext *TrcFlowContext) error {
+	tfContext *TrcFlowContext,
+	filteredIndexProvidedValues []string,
+) error {
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
+
+	kernelID := tfmContext.GetKernelId()
+
+	if (kernelID > 0) &&
+		kernelopts.BuildOptions.IsKernel() &&
+		tfContext.FlowHeader.FlowName() != flowcore.TierceronControllerFlow.FlowName() {
+		// If a filtered list is provide, it'll be ok to continue even in the hive...
+		// This is because we're planning to have support for "sparse" TrcDb in the hive kernel
+		// for id's > 0.
+		if filteredIndexProvidedValues == nil {
+			// What still needs to be done here
+			if tfContext.Inserter != nil {
+				tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+				tfContext.Inserter = nil
+			}
+			return nil
+		} else {
+			indexValues = filteredIndexProvidedValues
+		}
+	}
 
 	if tfContext.CustomSeedTrcDb != nil {
 		customSeedErr := tfContext.CustomSeedTrcDb(tfmContext, tfContext)
@@ -501,17 +603,17 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		tfContext.GoMod.Version = "0"
 
 		index, secondaryI, indexExt, indexErr := func(tfCtx *TrcFlowContext) (string, []string, string, error) {
-			if tfCtx.FlowSource == flowcorehelper.TierceronFlowDB {
-				if tfCtx.Flow.ServiceName() == flowcorehelper.TierceronFlowConfigurationTableName {
+			if tfCtx.FlowHeader.Source == tfmContext.GetDatabaseName(tfmContext.GetFlumeDbType()) {
+				if tfCtx.FlowHeader.ServiceName() == flowcore.TierceronControllerFlow.FlowName() {
 					return "flowName", nil, "", nil
 				} else {
 					return "", nil, "", errors.New("not implemented")
 				}
 			} else {
-				if flowDefinitionContext := tfCtx.GetFlowDefinitionContext(); flowDefinitionContext != nil && flowDefinitionContext.GetFlowIndexComplex != nil {
+				if flowDefinitionContext := tfCtx.GetFlowLibraryContext(); flowDefinitionContext != nil && flowDefinitionContext.GetFlowIndexComplex != nil {
 					return flowDefinitionContext.GetFlowIndexComplex()
 				} else {
-					return coreopts.BuildOptions.FindIndexForService(tfCtx.FlowSource, tfCtx.Flow.ServiceName())
+					return coreopts.BuildOptions.FindIndexForService(tfmContext, tfCtx.FlowHeader.Source, tfCtx.FlowHeader.ServiceName())
 				}
 			}
 		}(tfContext)
@@ -521,8 +623,8 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 			secondaryIndexes = secondaryI
 			tfContext.GoMod.SubSectionName = indexExt
 		}
-		if tfContext.GoMod.SectionName != "" {
-			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowSource, tfContext.GoMod.SectionName, tfmContext.DriverConfig.CoreConfig.Log)
+		if tfContext.GoMod.SectionName != "" && filteredIndexProvidedValues == nil {
+			indexValues, err = tfContext.GoMod.ListSubsection("/Index/", tfContext.FlowHeader.Source, tfContext.GoMod.SectionName, tfmContext.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 				return err
@@ -530,97 +632,85 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDbFromVault(
 		}
 	}
 
-	rows := make([][]any, 0)
-	for _, indexValue := range indexValues {
-		if tfContext.GetFlowName() == flowcorehelper.TierceronFlowConfigurationTableName && !coreopts.BuildOptions.IsSupportedFlow(indexValue) {
-			if !tfmContext.DriverConfig.CoreConfig.IsEditor {
-				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
-			}
-			continue
-		}
-		if indexValue != "" {
-			tfContext.GoMod.SectionKey = "/Index/"
-			var subSection string
-			if tfContext.GoMod.SubSectionName != "" {
-				subSection = tfContext.GoMod.SubSectionName
+	var filteredIndexValues []string = []string{}
+
+	if tfContext.FlowHeader.FlowName() == flowcore.TierceronControllerFlow.FlowName() {
+		for _, indexValue := range indexValues {
+			if !tfmContext.IsSupportedFlow(indexValue) {
+				if !tfmContext.DriverConfig.CoreConfig.IsEditor {
+					eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skip seeding of unsupported flow: "+indexValue)
+				}
+				continue
 			} else {
-				subSection = tfContext.Flow.ServiceName()
+				filteredIndexValues = append(filteredIndexValues, indexValue)
 			}
-			tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection
+		}
+	} else {
+		filteredIndexValues = indexValues
+	}
+
+	var subSection string
+	tfContext.GoMod.SectionKey = "/Index/"
+	if tfContext.GoMod.SubSectionName != "" {
+		subSection = tfContext.GoMod.SubSectionName
+	} else {
+		subSection = tfContext.FlowHeader.ServiceName()
+	}
+	pathTemplate := "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/%s/" + subSection
+
+	for _, indexValue := range filteredIndexValues {
+		if indexValue != "" {
+			// Loading the tables now from vault.
+			tfContext.GoMod.SectionPath = fmt.Sprintf(pathTemplate, indexValue)
 			if len(secondaryIndexes) > 0 {
 				for _, secondaryIndex := range secondaryIndexes {
-					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex
+					tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex
 					if subSection != "" {
-						subIndexValues, _ := tfContext.GoMod.ListSubsection("/Index/"+tfContext.FlowSource+"/"+tfContext.GoMod.SectionName+"/"+indexValue+"/", subSection, secondaryIndex, tfmContext.DriverConfig.CoreConfig.Log)
+						subIndexValues, _ := tfContext.GoMod.ListSubsection("/Index/"+tfContext.FlowHeader.Source+"/"+tfContext.GoMod.SectionName+"/"+indexValue+"/", subSection, secondaryIndex, tfmContext.DriverConfig.CoreConfig.Log)
 						if subIndexValues != nil {
 							for _, subIndexValue := range subIndexValues {
-								tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowSource + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex + "/" + subIndexValue + "/" + tfContext.Flow.ServiceName()
-								row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+								tfContext.GoMod.SectionPath = "super-secrets/Index/" + tfContext.FlowHeader.Source + "/" + tfContext.GoMod.SectionName + "/" + indexValue + "/" + subSection + "/" + secondaryIndex + "/" + subIndexValue + "/" + tfContext.FlowHeader.ServiceName()
+								_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 								if rowErr != nil {
 									eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 									continue
 								}
-								rows = append(rows, row)
 							}
 						} else {
-							row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+							_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 							if rowErr != nil {
 								eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 								continue
 							}
-							rows = append(rows, row)
 						}
 					} else {
-						row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+						_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 						if rowErr != nil {
 							eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 							continue
 						}
-						rows = append(rows, row)
 					}
 				}
 			} else {
-				row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+				_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 				if rowErr != nil {
 					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 					continue
 				}
-				rows = append(rows, row)
 			}
 		} else {
-			row, rowErr := tfmContext.PathToTableRowHelper(tfContext)
+			_, rowErr := tfmContext.PathToTableRowHelper(tfContext)
 			if rowErr != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, rowErr, false)
 				continue
 			}
-			rows = append(rows, row)
 		}
 	}
 
-	var inserter sql.RowInserter
-	//Writes accumlated rows to the table.
-	tableSql, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.Flow.TableName())
-	if tableOk {
-		inserter = tableSql.(*sqlememory.Table).Inserter(tfmContext.TierceronEngine.Context)
-	} else {
-		insertErr := errors.New("Unable to insert rows into:" + tfContext.Flow.TableName())
-		eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, insertErr, false)
-		return insertErr
+	if tfContext.Inserter != nil {
+		tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+		tfContext.Inserter = nil
 	}
-	for _, row := range rows {
-		if row == nil {
-			continue
-		}
-		if err := inserter.Insert(tfmContext.TierceronEngine.Context, row); err != nil {
-			if !strings.Contains(err.Error(), "duplicate primary key") && !strings.Contains(err.Error(), "invalid type") {
-				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
-			}
-			continue
-		}
-	}
-	inserter.Close(tfmContext.TierceronEngine.Context)
-
-	inserter = nil
 
 	return nil
 }

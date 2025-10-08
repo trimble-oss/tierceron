@@ -70,6 +70,9 @@ harbinger: harbingplugintrcdbbuild harbingplugintrcdbsha
 certify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly azrcr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
 
+certifymac:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=1 GOOS=darwin GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "darwin memonly azrcr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
+
 localcertify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly dockercr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
 
@@ -89,13 +92,13 @@ trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -buildmode=pie -ldflags "-w" -tags "salty tc windows azrcr memonly" -o plugins/deploy/target/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 
 trcshkernelbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshkernelsha:
 	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
 trcshkernel: trcshkernelbuild trcshkernelsha
 
 trcshellkernelmbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshellkernelmsha:
 	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
 trcshellkernelm: trcshellkernelmbuild trcshellkernelmsha

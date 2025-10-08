@@ -86,7 +86,7 @@ func RegisterTrcshTalkServiceServer(s grpc.ServiceRegistrar, srv TrcshTalkServic
 	s.RegisterService(&TrcshTalkService_ServiceDesc, srv)
 }
 
-func _TrcshTalkService_RunDiagnostics_Handler(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
+func _TrcshTalkService_RunDiagnostics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DiagnosticRequest)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -98,7 +98,7 @@ func _TrcshTalkService_RunDiagnostics_Handler(srv any, ctx context.Context, dec 
 		Server:     srv,
 		FullMethod: TrcshTalkService_RunDiagnostics_FullMethodName,
 	}
-	handler := func(ctx context.Context, req any) (any, error) {
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(TrcshTalkServiceServer).RunDiagnostics(ctx, req.(*DiagnosticRequest))
 	}
 	return interceptor(ctx, in, info, handler)

@@ -15,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -74,7 +75,7 @@ var (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.31")
+	fmt.Println("Version: " + "1.32")
 }
 
 func CommonMain(envDefaultPtr *string,
@@ -141,9 +142,11 @@ func CommonMain(envDefaultPtr *string,
 	var diffPtr *bool
 
 	isShell := false
+	isDrone := false
 
 	if driverConfig != nil {
 		isShell = driverConfig.CoreConfig.IsShell
+		isDrone = driverConfig.IsDrone
 	}
 
 	if driverConfig == nil || !isShell {
@@ -210,7 +213,7 @@ func CommonMain(envDefaultPtr *string,
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
-	if !isShell {
+	if !isShell && !kernelopts.BuildOptions.IsKernel() && !isDrone {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Println("Missing required template folder: " + *startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
@@ -228,7 +231,7 @@ func CommonMain(envDefaultPtr *string,
 
 	var currentRoleEntityPtr *string
 	var driverConfigBase *config.DriverConfig
-	if driverConfig.CoreConfig.IsShell {
+	if driverConfig.CoreConfig.IsShell || driverConfig.IsDrone || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 || *endDirPtr != ENDDIR_DEFAULT {
 			// Honor inputs if provided...
@@ -595,7 +598,7 @@ func CommonMain(envDefaultPtr *string,
 	if driverConfig == nil {
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		close(configCtx.ResultChannel)
-	} else if driverConfig.CoreConfig.IsShell {
+	} else if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		// Just shut down result channel since not really used in shell..
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		select {

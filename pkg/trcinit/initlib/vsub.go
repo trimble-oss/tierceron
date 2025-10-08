@@ -68,6 +68,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 
 		if driverConfig.SubOutputMemCache {
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
+			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Billy File has been written to %s\n", templateFile))
 		} else {
 			err = os.MkdirAll(dirPath, os.ModePerm)
 			if err != nil {
@@ -93,8 +94,8 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("Couldn't sync file: %s", templateFile), false)
 				continue
 			}
+			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s\n", templateFile))
 		}
-		eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s\n", templateFile))
 	}
 }
 
@@ -105,6 +106,9 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 	}
 
 	for _, filter := range filterTemplateSlice {
+		if filter == "" {
+			continue
+		}
 		allTemplateFilePaths, err1 := mod.GetTemplateFilePaths(fmt.Sprintf("templates/%s/", filter), driverConfig.CoreConfig.Log)
 		if err1 != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't read into paths under templates/"+filter+"/", false)
@@ -153,11 +157,15 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't make directory: "+dirName+filePath, false)
 				continue
 			}
+			if file == "/template-file" {
+				file = ""
+			}
 
 			templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
 
 			if driverConfig.SubOutputMemCache {
 				driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
+				eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Billy File has been written to %s.tmpl\n", dirPath+file+ext))
 			} else {
 				err = os.MkdirAll(dirPath, os.ModePerm)
 				if err != nil {
@@ -183,8 +191,8 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't sync file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
+				eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s.tmpl\n", dirPath+file+ext))
 			}
-			eUtils.LogInfo(driverConfig.CoreConfig, fmt.Sprintf("File has been written to %s.tmpl\n", dirPath+file+ext))
 		}
 	}
 

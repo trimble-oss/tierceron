@@ -1,0 +1,3 @@
+Approle_Name: "rattan"
+Token_Permissions: 
+  config_token_plugindev: true

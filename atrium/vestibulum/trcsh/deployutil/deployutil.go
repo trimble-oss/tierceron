@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -12,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -72,9 +74,8 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 			// Swapping in project root...
 			tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-			approle := "config.yml"
-			tokenPtr := new(string)
-			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &approle, false)
+			approle := "bamboo"
+			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, nil, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &approle, false)
 			if autoErr != nil {
 				fmt.Println("Missing auth components.")
 				return nil, autoErr
@@ -144,8 +145,8 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 func MountPluginFileSystem(
 	trcshDriverConfig *config.DriverConfig,
 	trcPath string,
-	projectService string) error {
-
+	projectService string,
+) error {
 	if !strings.Contains(trcPath, "/deploy/") {
 		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
 		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
@@ -165,7 +166,11 @@ func MountPluginFileSystem(
 }
 
 // Gets list of supported deployers for current environment.
-func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...*bool) ([]string, error) {
+func GetDeployers(kernelPluginHandler *hive.PluginHandler,
+	trcshDriverConfig *capauth.TrcshDriverConfig,
+	deploymentShardsSet map[string]struct{},
+	exeTypeFlags ...*bool,
+) ([]string, error) {
 	isDrone := false
 	isShellRunner := false
 	if len(exeTypeFlags) > 0 {
@@ -177,9 +182,9 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 	// Swapping in project root...
 	tokenPtr := new(string)
 	tokenNamePtr := trcshDriverConfig.DriverConfig.CoreConfig.GetCurrentToken("config_token_%s")
-	if !isShellRunner {
+	if !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 		mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-		roleEntity := "config.yml"
+		roleEntity := "bamboo"
 		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &roleEntity, false)
 		if autoErr != nil {
 			fmt.Println("Missing auth components.")
@@ -201,8 +206,8 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failure to init to vault")
 		return nil, err
 	}
-	envParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, "-")
-	mod.Env = envParts[0]
+	envBasisParts := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis, "-")
+	mod.Env = envBasisParts[0]
 
 	deploymentListData, deploymentListDataErr := mod.List("super-secrets/Index/TrcVault/trcplugin", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if deploymentListDataErr != nil {
@@ -226,6 +231,11 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 
 			if len(deployment) == 0 {
 				continue
+			}
+			if len(deploymentShardsSet) > 0 {
+				if _, ok := deploymentShardsSet[deployment]; !ok {
+					continue
+				}
 			}
 
 			deploymentConfig, deploymentConfigErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
@@ -266,7 +276,34 @@ func GetDeployers(trcshDriverConfig *capauth.TrcshDriverConfig, exeTypeFlags ...
 						return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
 					}
 				}
-				if kernelopts.BuildOptions.IsKernel() && deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+				isValidInstance := false
+				if validEnv, ok := deploymentConfig["instances"]; ok && kernelopts.BuildOptions.IsKernel() {
+					kernelId := kernelPluginHandler.GetKernelId()
+					if instances, ok := validEnv.(string); ok {
+						if len(instances) > 0 {
+							instancesList := strings.Split(instances, ",")
+							for _, instance := range instancesList {
+								if instance == "*" {
+									isValidInstance = true
+									break
+								} else {
+									instanceKernelId := -1
+									if len(instance) > 0 {
+										instanceKernelId, _ = strconv.Atoi(instance)
+									}
+
+									if kernelId >= 0 && instanceKernelId >= 0 && instanceKernelId == kernelId {
+										isValidInstance = true
+										break
+									}
+								}
+							}
+						}
+					} else {
+						return nil, errors.New("unexpected type of instances returned from vault for " + deployment)
+					}
+				}
+				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") {
 					deploymentList = append(deploymentList, deployment)
 				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, deployment)

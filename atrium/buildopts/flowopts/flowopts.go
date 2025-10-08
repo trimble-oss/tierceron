@@ -3,15 +3,12 @@ package flowopts
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/argossocii"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flows/dataflowstatistics"
-	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
 // AllowTrcdbInterfaceOverride - by default trcdb plugins cannot expose
@@ -26,20 +23,20 @@ func AllowTrcdbInterfaceOverride() bool {
 // These business logic flows have direct access to other flow data via the internal
 // sql query engine, the ability to call other flows, and the ability to directly call
 // the secret provider for sensitive secrets to access services and features as needed.
-func GetAdditionalFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
 // GetAdditionalTestFlows - override to provide a list of additional test flows.  These
 // test flows are used to test the flow machine.
-func GetAdditionalTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{} // Noop
+func GetAdditionalTestFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{} // Noop
 }
 
 // GetAdditionalFlowsByState - override to provide a list of flows given a test state.
 // This list of flows will be notified when a given test state is reached.
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
 // Process a test flow.
@@ -52,29 +49,26 @@ func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, trcFlowCo
 // 1. DataFlowStatConfigurationsFlow
 func ProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
 	trcFlowContext := tfContext.(*trcflowcore.TrcFlowContext)
-	switch trcFlowContext.Flow {
-	case flowcore.DataFlowStatConfigurationsFlow:
+	switch trcFlowContext.FlowHeader.TableName() {
+	case flowcore.DataFlowStatConfigurationsFlow.TableName():
 		return dataflowstatistics.ProcessDataFlowStatConfigurations(tfmContext, tfContext)
-	case flowcore.ArgosSociiFlow:
-		tfContext.SetFlowDefinitionContext(argossocii.GetProcessFlowDefinition())
+	case flowcore.ArgosSociiFlow.TableName():
+		tfContext.SetFlowLibraryContext(argossocii.GetProcessFlowDefinition())
 		return flowcore.ProcessTableConfigurations(tfmContext, tfContext)
 	}
 	return errors.New("flow not implemented")
 }
 
-// GetFlowDatabaseName - override to provide a custom flow database name.
-// The default flow database name is FlumeDatabase
-func GetFlowDatabaseName() string {
-	return flowcorehelper.GetFlowDBName()
-}
-
 func GetFlowMachineTemplates() map[string]any {
 	pluginConfig := map[string]any{}
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",                                     // implemented.
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()), // implemented.
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),                 // implemented.
+		"trc_templates/TenantDatabase/DataFlowStatistics/DataFlowStatistics.tmpl", // implemented.
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",                          // implemented.
 	}
+	pluginConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
+	}
+
 	return pluginConfig
 }
 

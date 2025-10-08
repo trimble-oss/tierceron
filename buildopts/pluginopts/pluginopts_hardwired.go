@@ -4,13 +4,14 @@
 package pluginopts
 
 import (
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 	rcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore"
 	score "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore"
-	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
 
 // GetConfigPaths - Override GetConfigPaths calls.
@@ -46,13 +47,13 @@ func Init(pluginName string, properties *map[string]any) {
 	}
 }
 
-func GetFlowMachineInitContext(pluginName string) *flowcore.FlowMachineInitContext {
+func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName string) *flowcore.FlowMachineInitContext {
 	switch pluginName {
 	case "trcdb":
-		flowMachineInitContext := trcdbcore.GetFlowMachineInitContext(pluginName)
+		flowMachineInitContext := trcdbcore.GetFlowMachineInitContext(coreConfig, pluginName)
 		if flowMachineInitContext != nil {
 			if flowMachineInitContext.GetDatabaseName == nil {
-				flowMachineInitContext.GetDatabaseName = harbingeropts.GetDatabaseName
+				flowMachineInitContext.GetDatabaseName = coreopts.BuildOptions.GetDatabaseName
 			}
 		}
 		return flowMachineInitContext

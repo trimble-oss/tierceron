@@ -5,32 +5,34 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
-	"gopkg.in/yaml.v2"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 
-	hcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
 	// Update package path as needed
+	"gopkg.in/yaml.v2"
 )
 
 func GetConfigPaths(pluginName string) []string {
-	return hcore.GetConfigPaths(pluginName)
+	return hccore.GetConfigPaths(pluginName)
 }
 
-func Init(pluginName string, properties *map[string]any) {
-	hcore.Init(pluginName, properties)
+func Init(pluginName string, properties *map[string]interface{}) {
+	hccore.Init(pluginName, properties)
 }
 
 func main() {
-	logFilePtr := flag.String("log", "./trchelloworld.log", "Output path for log file")
+	logFilePtr := flag.String("log", "./trchealthcheck.log", "Output path for log file")
 	flag.Parse()
-	config := make(map[string]any)
+	config := make(map[string]interface{})
 
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	if err != nil {
 		fmt.Printf("Error opening log file: %v\n", err)
 		os.Exit(-1)
 	}
-	logger := log.New(f, "[trchelloworld]", log.LstdFlags)
+	logger := log.New(f, "[trchealthcheck]", log.LstdFlags)
 	config["log"] = logger
 
 	data, err := os.ReadFile("config.yml")
@@ -40,7 +42,7 @@ func main() {
 	}
 
 	// Create an empty map for the YAML data
-	var configCommon map[string]any
+	var configCommon map[string]interface{}
 
 	// Unmarshal the YAML data into the map
 	err = yaml.Unmarshal(data, &configCommon)
@@ -48,20 +50,26 @@ func main() {
 		logger.Println("Error unmarshaling YAML:", err)
 		os.Exit(-1)
 	}
-	config[hcore.COMMON_PATH] = &configCommon
+	config[hccore.COMMON_PATH] = &configCommon
 
-	helloCertBytes, err := os.ReadFile("./hello.crt")
+	serviceCertBytes, err := os.ReadFile(fmt.Sprintf("./local_config/%s", tccore.TRCSHHIVEK_CERT))
 	if err != nil {
-		log.Printf("Couldn't load cert: %v", err)
+		logger.Printf("Couldn't load cert: %v", err)
 	}
 
-	helloKeyBytes, err := os.ReadFile("./hellokey.key")
+	serviceKeyBytes, err := os.ReadFile(fmt.Sprintf("./local_config/%s", tccore.TRCSHHIVEK_KEY))
 	if err != nil {
-		log.Printf("Couldn't load key: %v", err)
+		logger.Printf("Couldn't load key: %v", err)
 	}
-	config[hcore.HELLO_CERT] = helloCertBytes
-	config[hcore.HELLO_KEY] = helloKeyBytes
+	config[tccore.TRCSHHIVEK_CERT] = serviceCertBytes
+	config[tccore.TRCSHHIVEK_KEY] = serviceKeyBytes
 
 	Init("healthcheck", &config)
-	hcore.GetConfigContext("healthcheck").Start("healthcheck")
+
+	hccore.GetConfigContext("healthcheck").Start("healthcheck")
+	time.Sleep(5 * time.Second)
+	msg := hccore.HelloWorldDiagnostic()
+	fmt.Println(msg)
+	wait := make(chan bool)
+	wait <- true
 }

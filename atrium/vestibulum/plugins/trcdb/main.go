@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
@@ -51,6 +52,7 @@ func main() {
 	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
+	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 
 	tiercerontls.InitRoot()

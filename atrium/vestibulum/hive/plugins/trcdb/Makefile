@@ -11,9 +11,9 @@ GOBIN ?= ./bin
 .PHONY: help clean 
 help:
 	@echo "Please use \`make <ROOT>' where <ROOT> is one of"
-	@echo "  dependencies to go install the dependencies"
-	@echo "  pluginvico   to build best example of vico usage"
-	@echo "  test         to run unittests"
+	@echo "  depend to go install the dependencies"
+	@echo "  trcdbplugin   build trcdb as a plugin"
+	@echo "  install       install plugin to plugin run directory"
 
 depend:
 	go mod tidy
@@ -22,5 +22,13 @@ clean:
 	rm -f bin
 
 trcdb:
-	go build -buildmode=plugin -trimpath -o="./trcdb.so" -tags "tc azrcr memonly kernel" trcdb.go
+	$(GO_VARS) $(GO) build -o="$(GOBIN)/trcdb" -ldflags="$(LD_FLAGS)" $(ROOT)/trcdb.go
 
+trcdbplugin:
+	go build -buildmode=plugin -trimpath -o="./trcdb.so" -tags "tc memonly trcshkernel" $(ROOT)/trcdb.go
+install:
+	cp trcdb.so /usr/local/trcshk/plugins
+
+test: *.go */*.go */*/*.go
+	$(GO_VARS) $(GO) test -v .
+	$(GO_VARS) $(GO) test -v ./tests

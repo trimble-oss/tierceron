@@ -31,7 +31,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.37")
+	fmt.Println("Version: " + "1.38")
 }
 
 // This is a controller program that can act as any command line utility.
@@ -92,6 +92,10 @@ func CommonMain(envDefaultPtr *string,
 	driverConfig.CoreConfig.Log = log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 	if utils.RefLength(addrPtr) == 0 {
 		eUtils.ReadAuthParts(driverConfig, false)
+		if utils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
+			fmt.Println("Missing required vault address")
+			return errors.New("Missing required vault address")
+		}
 	} else {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
@@ -247,7 +251,7 @@ func CommonMain(envDefaultPtr *string,
 		<-pluginCompleteChan
 
 	case "edit":
-		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow // This is not overridable in edit mode.
+		coreopts.BuildOptions.IsSupportedFlow = coreopts.IsSupportedFlow
 		var tokenName string
 		if eUtils.RefLength(tokenPtr) > 0 {
 			tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
@@ -270,18 +274,12 @@ func CommonMain(envDefaultPtr *string,
 					}
 					GeneratePluginSeedData(&pluginName, nil, ctl, tokenPtr, envPtr, envCtxPtr, tokenName, dc)
 				case "/edit/save.trc.tmpl":
-					if err != nil {
-						fmt.Printf("trcsh config setup failure: %s\n", err.Error())
-						os.Exit(124)
-					}
-					// TODO: get from somewhere else.
-					tokenName = fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
-					//Open deploy script and parse it.
-					trcinitbase.CommonMain(&dc.CoreConfig.Env, envPtr, &tokenName, nil, nil, []string{"", "deploy.trc.tmpl"}, dc)
+					uploadCert := false
+					trcinitbase.CommonMain(&dc.CoreConfig.Env, envPtr, dc.CoreConfig.CurrentTokenNamePtr, &uploadCert, nil, []string{"", "deploy.trc.tmpl"}, dc)
 				}
 			},
 			CoreConfig: &coreconfig.CoreConfig{
-				IsShell:             true, // Pretent to be shell to keep things in memory
+				IsShell:             true, // Pretend to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,

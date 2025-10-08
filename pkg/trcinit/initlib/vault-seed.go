@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -86,6 +87,10 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Printf("Seeding vault from seeds in: %s\n", driverConfig.StartDir[0])
 
+	if driverConfig.CoreConfig.IsEditor {
+		SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+driverConfig.CoreConfig.EnvBasis+"/"+driverConfig.CoreConfig.DynamicPathFilter+"/"+driverConfig.CoreConfig.EnvBasis+"_seed.yml")
+		return nil
+	}
 	files, err := os.ReadDir(driverConfig.StartDir[0])
 	if len(files) == 0 {
 		fmt.Println("Empty seed file directory")
@@ -145,27 +150,25 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 		driverConfig.CoreConfig.Regions = regions
 
 		var tempPaths []string
+		tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+		if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
+			driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
+			tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
+		}
+
+		mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
+		if err != nil {
+			return eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, -1)
+		}
+		if len(driverConfig.ProjectSections) > 0 {
+			mod.ProjectIndex = driverConfig.ProjectSections
+			mod.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, "_")[0]
+			mod.SectionName = driverConfig.SectionName
+			mod.SubSectionValue = driverConfig.SubSectionValue
+		}
 		for _, templatePath := range templatePaths {
 			var err error
-			tokenName := fmt.Sprintf("config_token_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
-			if driverConfig.CoreConfig.CurrentTokenNamePtr != nil &&
-				driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr) != nil {
-				tokenName = *driverConfig.CoreConfig.CurrentTokenNamePtr
-			}
-
-			mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.EnvBasis, true)
-			if err != nil {
-				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-				continue
-			}
-
 			mod.Env = driverConfig.CoreConfig.Env
-			if len(driverConfig.ProjectSections) > 0 {
-				mod.ProjectIndex = driverConfig.ProjectSections
-				mod.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, "_")[0]
-				mod.SectionName = driverConfig.SectionName
-				mod.SubSectionValue = driverConfig.SubSectionValue
-			}
 			templateParam, tParamErr := GetTemplateParam(driverConfig, mod, templatePath, ".certSourcePath")
 			if tParamErr != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, tParamErr, false)
@@ -185,7 +188,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 			_, fileError := os.Stat(wd + "/" + coreopts.BuildOptions.GetFolderPrefix(nil) + "_seeds/" + templateParam)
 			if fileError != nil {
 				if os.IsNotExist(fileError) {
-					eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("File does not exist\n"+templateParam), false)
+					eUtils.LogErrorObject(driverConfig.CoreConfig, fmt.Errorf("file does not exist: %s", templateParam), false)
 					continue
 				}
 			} else {
@@ -454,9 +457,23 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 
 // SeedVaultFromFile takes a file path and seeds the vault with the seeds found in an individual file
 func SeedVaultFromFile(driverConfig *config.DriverConfig, filepath string) {
-	rawFile, err := os.ReadFile(filepath)
+	var rawFile []byte
+	var err error
+	if driverConfig.CoreConfig.IsEditor {
+		seedFile, seedOpenErr := driverConfig.MemFs.Open(filepath)
+		if seedOpenErr != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, seedOpenErr.Error(), false)
+		}
+		defer seedFile.Close()
+		rawFile, err = io.ReadAll(seedFile)
+		if err != nil {
+			eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
+		}
+	} else {
+		rawFile, err = os.ReadFile(filepath)
+		eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
+	}
 	// Open file
-	eUtils.LogErrorAndSafeExit(driverConfig.CoreConfig, err, 1)
 	if driverConfig.CoreConfig.WantCerts && (strings.Contains(filepath, "/Index/") || strings.Contains(filepath, "/PublicIndex/") || strings.Contains(filepath, "/Restricted/")) {
 		driverConfig.CoreConfig.Log.Println("Skipping index: " + filepath + " Certs not allowed within index data.")
 		return

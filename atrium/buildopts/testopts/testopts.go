@@ -1,18 +1,15 @@
 package testopts
 
 import (
-	"fmt"
-
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	"github.com/trimble-oss/tierceron/buildopts/core"
 )
 
-func GetAdditionalTestFlows() []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalTestFlows() []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
-func GetAdditionalFlowsByState(teststate string) []flowcore.FlowNameType {
-	return []flowcore.FlowNameType{}
+func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinition {
+	return []flowcore.FlowDefinition{}
 }
 
 func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
@@ -30,9 +27,11 @@ func GetTestConfig(tokenPtr *string, wantPluginPaths bool) map[string]any {
 
 	// Main controller flow definition, but also other flows defined here.
 	pluginConfig["templatePath"] = []string{
-		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl",
-		fmt.Sprintf("trc_templates/%s/DataFlowStatistics/DataFlowStatistics.tmpl", core.GetDatabaseName()),
-		fmt.Sprintf("trc_templates/%s/ArgosSocii/ArgosSocii.tmpl", core.GetDatabaseName()),
+		"trc_templates/TrcDb/DataFlowStatistics/DataFlowStatistics.tmpl",
+		"trc_templates/TrcDb/ArgosSocii/ArgosSocii.tmpl",
+	}
+	pluginConfig["flumeTemplatePath"] = []string{
+		"trc_templates/FlumeDatabase/TierceronFlow/TierceronFlow.tmpl", // implemented.
 	}
 
 	// Service connection configurations defined here.

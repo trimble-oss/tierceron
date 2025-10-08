@@ -13,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -20,7 +21,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.27")
+	fmt.Println("Version: " + "1.28")
 }
 
 // Reads in template files in specified directory
@@ -105,13 +106,17 @@ func CommonMain(envDefaultPtr *string,
 	var driverConfigBase *config.DriverConfig
 	var currentRoleEntityPtr *string
 
-	if driverConfig.CoreConfig.IsShell {
+	if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
 		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
 		currentRoleEntityPtr = driverConfig.CoreConfig.CurrentRoleEntityPtr
+		if eUtils.RefLength(currentRoleEntityPtr) == 0 {
+			roleEntity := "bamboo"
+			currentRoleEntityPtr = &roleEntity
+		}
 
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
