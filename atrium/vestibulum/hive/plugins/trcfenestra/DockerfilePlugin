@@ -1,0 +1,2 @@
+FROM scratch
+ADD bin/fenestra.so /usr/local/trcshk/plugins

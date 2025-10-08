@@ -1,0 +1,13 @@
+#!/bin/bash
+# Only trcconfig commands make any sense to run as bash...
+
+{{or .disableServiceDeploy ""}}trcplgtool -winservicestop -pluginName=trchelloworld
+{{or .disableServiceConfigs ""}}trcsub -env={{.trcdeploy_ENVIRONMENT}} -templateFilter=HelloProject/HelloService
+{{or .disableServiceConfigs ""}}trcsub -env={{.trcdeploy_ENVIRONMENT}} -templatePaths=Common
+{{or .disableServiceConfigs ""}}trcconfig -env={{.trcdeploy_ENVIRONMENT}}
+{{or .disableServiceConfigs ""}}trcconfig -env={{.trcdeploy_ENVIRONMENT}} -certs
+trcplgtool -codebundledeploy -env={{.trcdeploy_ENVIRONMENT}} -pluginName=trchelloworld
+{{or .disableServiceDeploy ""}}trcplgtool -winservicestart -env={{.trcdeploy_ENVIRONMENT}} -pluginName=trchelloworld
+
+
+
