@@ -1,0 +1,6 @@
+policies: ["config_dev"]
+metadata:
+  user : "configu"
+
+ttl: "8760h"
+display_name: "Dev Configuration Token"

@@ -18,7 +18,7 @@ bin/trc*
 bin/api*
 bin
 .idea/
-.vscode/
+
 .DS_Store
 *.log
 trcinit/vaultfiles/azure/.terraform/
@@ -40,21 +40,53 @@ trcinit/vaultfiles/azure/.terraform.lock.hcl
 trcinit/vaultfiles/aws/.terraform.lock.hcl
 trcinit/vaultfiles/aws/.terraform/providers/registry.terraform.io/hashicorp/aws/4.10.0/linux_amd64/terraform-provider-aws_v4.10.0_x5
 trcinit/vaultfiles/azure/private_key.pem
+installation/trclocal/*.pem
 trcinit/vaultfiles/azure/variables.tf
 trcinit/vaultfiles/azure/.terraform/providers/registry.terraform.io/hashicorp/local/2.2.2/linux_amd64/terraform-provider-local_v2.2.2_x5
 bin/nc.h
 trcinit/vaultfiles/azure/resources/README.txt
 
-trcvault/deploy/target/
+plugins/deploy/target/
 trcvault/trc_seeds/
 
 tierceron.iml
 trcvault/deploy/deploy_dev.sh
-trcgorillaz/trcdatavisualizer/__debug_bin
-trcgorillaz/ttdivisualizer/tls/mashup.*
-trcgorillaz/ttdiserver/tls/mashup.*
-trcgorillaz/ttdivisualizer/__debug_bin
-trcgorillaz/ttdiserver/__debug_bin
+atrium/speculatio/spiralis/tls/mashup.*
+atrium/speculatio/fenestra/tls/mashup.*
+atrium/speculatio/spiralis/__debug_bin
+atrium/speculatio/fenestra/__debug_bin
+atrium/vestibulum/pluginutil/__debug*
+atrium/vestibulum/pluginutil/pluginutil_test.go
+pkg/core/util/cert/certutil_test.go
 
+cmd/shell/deploy/trc_seeds/*
 
+go.work*
+.vscode/*
+
+atrium/vestibulum/trcchatproxy/.vscode/*
+atrium/plugins/*
+atrium/.vscode/*
+
+installation/trclocal/tls/cert.*
+
+installation/trclocal/trchelloworld/deploy/*.trc
+installation/trclocal/trchelloworld/deploy/*.yaml
+installation/trclocal/trchelloworld/deploy/*/*.trc
+
+installation/trcshhive/trcsh-cursor/trc_seeds/*
+
+installation/trccarrier/deploy/
+installation/trccarrier/trc_seeds/
+installation/trcsh-curator/deploy/
+installation/trcsh-curator/trc_seeds/
+installation/trcagent/trc_seeds/
+installation/trcagent/setup.cmd
+installation/trcagent/install.sh
+installation/trccloud/terraform/azure/kubeboot/*.tf
+installation/trccloud/terraform/azure/kubeboot/*.sh
+installation/trccloud/terraform/azure/kubeboot/scripts/
+
+buildopts/saltyopts/saltguard.txt
+zeroconfiglib/zccommon/zccommon_test.go
 

@@ -1,0 +1,5 @@
+# Plugin resources needed for verification.
+docker-repository: <no value>
+docker-user: <no value>
+docker-password: <no value>
+

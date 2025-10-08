@@ -1,0 +1,1279 @@
+package kv
+
+import (
+	"context"
+	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron/buildopts"
+
+	"github.com/hashicorp/vault/api"
+)
+
+var EMPTY_STRING string = ""
+
+// Set all paths that don't use environments to true
+var noEnvironments = map[string]bool{
+	"templates/": true,
+	"cubbyhole/": true,
+}
+
+// Modifier maintains references to the active client and
+// respective logical needed to write to the vault. Path
+// can be changed to alter where in the vault the key,value
+// pair is stored
+type Modifier struct {
+	Insecure         bool         // Indicates if connections to vault should be secure
+	Direct           bool         // Bypass vault and utilize alternative source when possible.
+	httpClient       *http.Client // Handle to http client.
+	client           *api.Client  // Client connected to vault
+	logical          *api.Logical // Logical used for read/write options
+	SecretDictionary *api.Secret  // Current Secret Dictionary Cache -- populated by mod.List("templates"
+
+	Env             string // Environment (local/dev/QA; Initialized to secrets)
+	EnvBasis        string
+	Regions         []string // Supported regions
+	Version         string   // Version for data
+	VersionFilter   []string // Used to filter vault paths
+	TemplatePath    string   // Path to template we are processing.
+	ProjectIndex    []string // Which projects are indexed.
+	SectionKey      string   // The section key: Index or Restricted.
+	SectionName     string   // The name of the actual section.
+	SubSectionName  string   // The name of the actual subsection.
+	SubSectionValue string   // The actual value for the sub section.
+	SectionPath     string   // The path to the Index (both seed and vault)
+	Stale           bool     // If client is no longer usable, this will be true..
+}
+
+type modCache struct {
+	modCount     uint64
+	modifierChan chan *Modifier
+}
+
+var (
+	modifierCache    map[string]*modCache = map[string]*modCache{}
+	modifierCachLock sync.Mutex
+)
+
+// PreCheckEnvironment
+// Returns: env, parts, true if parts is path, false if part of file name, error
+func PreCheckEnvironment(environment string) (string, string, bool, error) {
+	envParts := strings.Split(environment, ".")
+	if len(envParts) == 2 {
+		if envParts[1] != "*" {
+			_, idErr := strconv.Atoi(envParts[1])
+			if idErr != nil && len(envParts[1]) == 3 {
+				return envParts[0], envParts[1], true, nil
+			} else if idErr != nil {
+				return "", "", false, idErr
+			}
+		}
+		return envParts[0], envParts[1], false, nil
+	} else if len(envParts) == 3 {
+		return envParts[0], envParts[1], true, nil
+	}
+
+	return environment, "", false, nil
+}
+
+// NewModifierFromCoreConfig Constructs a new modifier struct and connects to the vault
+// @param coreConfig 	core config containing components necessary to connect to vault.
+// @param useCache Whether to use the modcache or not.
+// @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
+//
+//	Any errors generated in creating the client
+func NewModifierFromCoreConfig(coreConfig *coreconfig.CoreConfig, tokenName string, env string, useCache bool) (*Modifier, error) {
+	return NewModifier(coreConfig.Insecure,
+		coreConfig.TokenCache.GetToken(tokenName),
+		coreConfig.TokenCache.VaultAddressPtr,
+		env,
+		coreConfig.Regions,
+		useCache,
+		coreConfig.Log)
+}
+
+// NewModifier Constructs a new modifier struct and connects to the vault
+// @param tokenPtr 	The access token needed to connect to the vault
+// @param address	The address of the API endpoint for the server
+// @param env   	The environment currently connecting to.
+// @param regions   Regions we want
+// @param useCache Whether to use the modcache or not.
+// @return 			A pointer to the newly contstructed modifier object (Note: path set to default),
+//
+//	Any errors generated in creating the client
+func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if addressPtr == nil || len(*addressPtr) == 0 {
+		addressPtr = new(string)
+		*addressPtr = "http://127.0.0.1:8020" // Default address
+	}
+
+	if useCache {
+		PruneCache(env, *addressPtr, 10)
+		checkoutModifier, err := cachedModifierHelper(env, *addressPtr)
+		if err == nil && checkoutModifier != nil {
+			checkoutModifier.Insecure = insecure
+			checkoutModifier.EnvBasis = env
+			checkoutModifier.Regions = regions
+			checkoutModifier.Version = ""               // Version for data
+			checkoutModifier.VersionFilter = []string{} // Used to filter vault paths
+			checkoutModifier.TemplatePath = ""          // Path to template we are processing.
+			checkoutModifier.ProjectIndex = []string{}  // Which projects are indexed.
+			checkoutModifier.SectionKey = ""            // The section key: Index or Restricted.
+			checkoutModifier.SectionName = ""           // The name of the actual section.
+			checkoutModifier.SubSectionName = ""        // The name of the actual subsection.
+			checkoutModifier.SubSectionValue = ""       // The actual value for the sub section.
+			checkoutModifier.SectionPath = ""           // The path to the Index (both seed and vault)
+			if tokenPtr != nil {
+				checkoutModifier.client.SetToken(*tokenPtr)
+			}
+			return checkoutModifier, nil
+		}
+	}
+
+	httpClient, err := CreateHTTPClient(insecure, *addressPtr, env, false)
+	if err != nil {
+		return nil, err
+	}
+	// Create client
+	modClient, err := api.NewClient(&api.Config{
+		Address:    *addressPtr,
+		HttpClient: httpClient,
+	})
+	if err != nil {
+		if logger != nil {
+			logger.Printf("vaultHost: %s\n", modClient.Address())
+		}
+		return nil, err
+	}
+
+	if (tokenPtr == nil || len(*tokenPtr) == 0) && !useCache {
+		return nil, errors.New("invalid token for modifier")
+	}
+
+	// Set access token and path for this modifier
+	if tokenPtr != nil {
+		modClient.SetToken(*tokenPtr)
+	}
+
+	// Return the modifier
+	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}
+	return newModifier, nil
+}
+
+func checkInitModCache(env string, addr string) {
+	if _, ok := modifierCache[fmt.Sprintf("%s+%s", env, addr)]; !ok {
+		modifierCachLock.Lock()
+		modifierCache[fmt.Sprintf("%s+%s", env, addr)] = &modCache{modCount: 0, modifierChan: make(chan *Modifier, 20)}
+		modifierCachLock.Unlock()
+	}
+}
+
+func cachedModifierHelper(env string, addr string) (*Modifier, error) {
+	checkInitModCache(env, addr)
+
+	for {
+		select {
+		case checkoutModifier := <-modifierCache[fmt.Sprintf("%s+%s", env, addr)].modifierChan:
+			atomic.AddUint64(&modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount, ^uint64(0))
+			return checkoutModifier, nil
+		case <-time.After(time.Millisecond * 200):
+			// Nothing here...
+			return nil, errors.New("no cached modifier")
+		}
+	}
+}
+
+// Release - releases the modifier back to the cache.
+func (m *Modifier) Release() {
+	if m.Stale {
+		m.httpClient.CloseIdleConnections()
+		return
+	}
+	m.client.SetToken("")
+	if _, ok := modifierCache[m.Env]; ok {
+		m.releaseHelper(m.Env)
+	} else {
+		m.releaseHelper(m.EnvBasis)
+	}
+}
+
+func (m *Modifier) releaseHelper(env string) {
+	checkInitModCache(env, m.client.Address())
+
+	// Since modifiers are re-used now, this may not be necessary or even desired for that
+	// matter.
+	key := fmt.Sprintf("%s+%s", env, m.client.Address())
+	modifierCachLock.Lock()
+	modifierCache[key].modCount++
+	if modifierCache[key].modCount > 10 {
+		modifierCachLock.Unlock()
+		m.CleanCache(10)
+	} else {
+		modifierCachLock.Unlock()
+	}
+	modifierCache[key].modifierChan <- m
+}
+
+func (m *Modifier) RemoveFromCache() {
+	m.CleanCache(20)
+}
+
+func cleanCacheHelper(env string, addr string, limit uint64) {
+	modifierCachLock.Lock()
+	if modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount > 1 {
+	emptied:
+		for i := uint64(0); i < limit; i++ {
+			select {
+			case mod := <-modifierCache[fmt.Sprintf("%s+%s", env, addr)].modifierChan:
+				mod.Close()
+				atomic.AddUint64(&modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount, ^uint64(0))
+			default:
+				break emptied
+			}
+		}
+	}
+	modifierCachLock.Unlock()
+}
+
+func (m *Modifier) EmptyCache() {
+	modifierCachLock.Lock()
+	for _, modCacheEntry := range modifierCache {
+	cacheempty:
+		for {
+			if modCacheEntry.modCount > 0 {
+				select {
+				case mod := <-modCacheEntry.modifierChan:
+					mod.Close()
+					atomic.AddUint64(&modCacheEntry.modCount, ^uint64(0))
+				default:
+					break cacheempty
+				}
+			} else {
+				break cacheempty
+			}
+		}
+	}
+	modifierCachLock.Unlock()
+}
+
+func PruneCache(env string, addr string, limit uint64) {
+	if modifierCache != nil && modifierCache[fmt.Sprintf("%s+%s", env, addr)] != nil {
+		if modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount > limit {
+			if _, ok := modifierCache[fmt.Sprintf("%s+%s", env, addr)]; ok {
+				cleanCacheHelper(env, addr, limit)
+			}
+		}
+	}
+}
+
+func (m *Modifier) Reset() {
+	m.ProjectIndex = []string{}
+	m.SectionKey = ""
+	m.SectionName = ""
+	m.SectionPath = ""
+	m.SubSectionName = ""
+	m.SubSectionValue = ""
+	m.VersionFilter = []string{}
+}
+
+func (m *Modifier) CleanCache(limit uint64) {
+	m.Close()
+	if _, ok := modifierCache[m.Env]; ok {
+		cleanCacheHelper(m.Env, m.client.Address(), limit)
+	} else {
+		cleanCacheHelper(m.EnvBasis, m.client.Address(), limit)
+	}
+}
+
+// ValidateEnvironment Ensures token has access to requested data.
+func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuffix string, logger *log.Logger) (bool, string, error) {
+	env, sub, _, envErr := PreCheckEnvironment(environment)
+
+	if envErr != nil {
+		logger.Printf("Environment format error: %v\n", envErr)
+		return false, "", envErr
+	} else {
+		if sub != "" {
+			environment = env
+		}
+	}
+
+	if strings.Contains(environment, "local") {
+		environment = "local"
+	}
+	desiredPolicy := "config_" + strings.ToLower(environment) + policySuffix
+
+	if init {
+		desiredPolicy = "vault_pub_" + strings.ToLower(environment)
+	}
+
+	secret, err := m.client.Auth().Token().LookupSelf()
+	if err != nil {
+		logger.Printf("LookupSelf Auth failure: %v\n", err)
+		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
+			if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
+				return false, desiredPolicy, err
+			}
+		} else if strings.Contains(err.Error(), "x509: certificate") {
+			return false, desiredPolicy, err
+		}
+		logger.Println("Possible attempted use of expired token")
+		fmt.Println("Possible attempted use of expired token")
+	}
+
+	valid := false
+	if err == nil {
+		policies, _ := secret.TokenPolicies()
+
+		for _, policy := range policies {
+			if policy == "root" {
+				valid = true
+				break
+			}
+			if strings.ToLower(policy) == desiredPolicy {
+				valid = true
+				break
+			}
+		}
+
+	}
+
+	return valid, desiredPolicy, nil
+}
+
+// Writes the key,value pairs in data to the vault
+//
+// @param   data A set of key,value pairs to be written
+//
+// @return	Warnings (if any) generated from the vault,
+//
+//	errors generated by writing
+func (m *Modifier) Write(path string, data map[string]any, logger *log.Logger) ([]string, error) {
+	// Wrap data and send
+	sendData := map[string]any{"data": data}
+
+	// Create full path
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	if len(pathBlocks) == 1 {
+		pathBlocks[0] += "/"
+	}
+	fullPath := pathBlocks[0] + "data/"
+	if !noEnvironments[pathBlocks[0]] { // if neither templates nor cubbyhole
+		fullPath += m.Env + "/"
+	} else if strings.HasPrefix(m.Env, "local") { // if local environment, add env to fullpath
+		fullPath += m.Env + "/"
+	}
+
+	if m.SectionPath != "" && !strings.HasPrefix(fullPath, "templates") {
+		fullPath += m.SectionPath + "/"
+	}
+
+	if len(pathBlocks) > 1 {
+		if !strings.Contains(fullPath, "/"+pathBlocks[1]+"/") {
+			fullPath += pathBlocks[1]
+		}
+	}
+
+	if strings.Contains(fullPath, "/super-secrets/") {
+		fullPath = strings.ReplaceAll(fullPath, "/super-secrets/", "/")
+	}
+	retries := 0
+retryQuery:
+	Secret, err := m.logical.Write(fullPath, sendData)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if Secret == nil { // No warnings
+		return nil, err
+	}
+	return Secret.Warnings, err
+}
+
+// Helper function to handle version-specific read logic
+func (m *Modifier) getVersionSpecificRead(path string, fullPath string, versionMap map[string][]string) (*api.Secret, error) {
+	if strings.HasSuffix(m.Version, "***X-Mode") { // x path
+		if m.Version != "" && m.Version != "0" && strings.HasPrefix(path, "templates") {
+			m.Version = strings.Split(m.Version, "***")[0]
+			versionSlice := []string{m.Version}
+			versionMap["version"] = versionSlice
+			return m.logical.ReadWithData(fullPath, versionMap)
+		}
+	} else if m.Version != "" && !strings.HasPrefix(path, "templates") { // config path
+		versionSlice := []string{m.Version}
+		versionMap["version"] = versionSlice
+		return m.logical.ReadWithData(fullPath, versionMap)
+	} else {
+		return m.logical.Read(fullPath)
+	}
+	return m.logical.Read(fullPath)
+}
+
+// ReadData Reads the most recent data from the path referenced by this Modifier
+// @return	A Secret pointer that contains key,value pairs and metadata
+//
+//	errors generated from reading
+func (m *Modifier) ReadData(path string) (map[string]any, error) {
+	bucket := path
+	// Create full path
+	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") && !strings.HasPrefix(path, "value-metrics") { // Template paths are not indexed -> values & super-secrets are
+		if strings.Contains(path, "values") {
+			path = strings.Replace(m.SectionPath, "super-secrets", "values", -1)
+		} else {
+			path = m.SectionPath
+		}
+		path = strings.TrimSuffix(path, "/")
+	}
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullPath := pathBlocks[0] + "data/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	} else if strings.HasPrefix(m.Env, "local") { // if local environment, add env to retrieve correct path mod.Write wrote to
+		fullPath += m.Env + "/"
+	}
+	if len(pathBlocks) > 1 {
+		fullPath += pathBlocks[1]
+	}
+	retryCount := 0
+retryVaultAccess:
+
+	// Add these variable declarations at the top of the function
+	var (
+		secret     *api.Secret
+		err        error
+		versionMap = make(map[string][]string)
+	)
+
+	// Create a timeout context and channel for results
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resultChan := make(chan struct {
+		s *api.Secret
+		e error
+	})
+
+	// Launch the vault operation in a goroutine
+	go func() {
+		var s *api.Secret
+		var e error
+
+		s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
+
+		// Try to send the result, but don't block if the context is already done
+		select {
+		case resultChan <- struct {
+			s *api.Secret
+			e error
+		}{s, e}:
+		case <-ctx.Done():
+			// Context expired, we don't need to send results anymore
+		}
+	}()
+
+	// Wait for the result or timeout
+	timeoutRetry := 0
+	maxTimeoutRetries := 3
+
+	for {
+		select {
+		case result := <-resultChan:
+			// Got a result, process it
+			secret = result.s
+			err = result.e
+			goto processResult
+
+		case <-ctx.Done():
+			// Timeout occurred
+			timeoutRetry++
+			if timeoutRetry >= maxTimeoutRetries {
+				// Max retries exceeded, mark as stale and return error
+				m.Stale = true
+				m.httpClient.CloseIdleConnections()
+				err = fmt.Errorf("vault operation timed out after %d retries: %s", maxTimeoutRetries, fullPath)
+				goto processResult
+			}
+
+			// Create new context for retry
+			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			// Launch a new attempt
+			go func() {
+				var s *api.Secret
+				var e error
+
+				s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
+
+				select {
+				case resultChan <- struct {
+					s *api.Secret
+					e error
+				}{s, e}:
+				case <-ctx.Done():
+					// Context expired
+				}
+			}()
+		}
+	}
+
+processResult:
+	// Continue with existing processing
+	if err != nil {
+		if retryCount < 7 {
+			retryCount = retryCount + 1
+			goto retryVaultAccess
+		}
+	}
+
+	if secret == nil {
+		return nil, err
+	}
+	if data, ok := secret.Data["data"].(map[string]any); ok {
+		//
+		// TODO: Bad data cleanup.
+		// TODO: Hacking around missing lastTestedDate data.
+		//
+		if testedDate, testedDateOk := data["lastTestedDate"]; testedDateOk {
+			if testedDate == "" {
+				if metadata, ok := secret.Data["metadata"].(map[string]any); ok {
+					data["lastTestedDate"] = metadata["created_time"]
+				}
+			}
+		}
+		// TODO: Bad data cleanup.
+		if strings.Contains(fullPath, "argosId") {
+			if _, argosIdOk := data["argosId"]; !argosIdOk {
+				pathParts := strings.Split(fullPath, "/")
+				for i := 0; i < len(pathParts); i++ {
+					if pathParts[i] == "argosId" {
+						data["argosId"] = pathParts[i+1]
+						break
+					}
+				}
+
+			}
+		}
+		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
+			for dataKey, dataValues := range data {
+				if !buildopts.BuildOptions.CheckMemLock(bucket, dataKey) {
+					continue
+				}
+				if dataValuesSlice, isSlice := dataValues.([]any); isSlice {
+					for _, dataValues := range dataValuesSlice {
+						if dataValueString, isString := dataValues.(string); isString {
+							memprotectopts.MemProtect(nil, &dataValueString)
+						} else if _, isBool := dataValues.(bool); isBool {
+							// memprotectopts.MemProtect(nil, &dataValueString)
+							// don't lock but accept bools.
+						} else if _, isInt64 := dataValues.(int64); isInt64 {
+							// memprotectopts.MemProtect(nil, &dataValueString)
+							// don't lock but accept int64.
+						} else if _, isInt := dataValues.(int); isInt {
+							// memprotectopts.MemProtect(nil, &dataValueString)
+							// don't lock but accept int.
+						} else if _, isNumber := dataValues.(json.Number); isNumber {
+							// memprotectopts.MemProtect(nil, &dataValueString)
+							// don't lock but accept json.Number.
+						} else {
+							return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. Nested. %T", dataValues)
+						}
+					}
+				} else if dataValueString, isString := dataValues.(string); isString {
+					memprotectopts.MemProtect(nil, &dataValueString)
+				} else if _, isBool := dataValues.(bool); isBool {
+					// memprotectopts.MemProtect(nil, &dataValueString)
+					// don't lock but accept bools.
+				} else if _, isInt64 := dataValues.(int64); isInt64 {
+					// memprotectopts.MemProtect(nil, &dataValueString)
+					// don't lock but accept int64.
+				} else if _, isInt := dataValues.(int); isInt {
+					// memprotectopts.MemProtect(nil, &dataValueString)
+					// don't lock but accept int.
+				} else if _, isNumber := dataValues.(json.Number); isNumber {
+					// memprotectopts.MemProtect(nil, &dataValueString)
+					// don't lock but accept json.Number.
+				} else {
+					return nil, fmt.Errorf("unexpected datatype. Refusing to read what we cannot lock. %T", dataValues)
+				}
+			}
+		}
+		if len(data) == 0 {
+			return nil, errors.New("could not get data from vault.  Provided token may lack permission to access provided path")
+		}
+		return data, err
+	}
+
+	if err == nil && secret != nil {
+		return nil, nil // Handle deleted, but not destroyed data from vault.
+	}
+	return nil, errors.New("could not get data from vault response")
+}
+
+// ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault
+func (m *Modifier) ReadMapValue(valueMap map[string]any, path string, key string) (string, error) {
+	// return value corresponding to the key
+	if valueMap[key] != nil {
+		if value, ok := valueMap[key].(string); ok {
+			return value, nil
+		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
+			mapval := stringer.GoString()
+			memprotectopts.MemProtect(nil, &mapval)
+			return mapval, nil
+		} else if stringer, ok := valueMap[key].((json.Number)); ok {
+			return stringer.String(), nil
+		} else {
+			return EMPTY_STRING, fmt.Errorf("cannot convert value at %s to string", key)
+		}
+	}
+	return EMPTY_STRING, fmt.Errorf("key '%s' not found in '%s' with env '%s'", key, path, m.Env)
+}
+
+// ReadValue takes a path and a key and returns the corresponding value from the vault
+func (m *Modifier) ReadValue(path string, key string) (string, error) {
+	valueMap, err := m.ReadData(path)
+	if err != nil {
+		return EMPTY_STRING, err
+	}
+	return m.ReadMapValue(valueMap, path, key)
+}
+
+// ReadMetadata Reads the Metadata from the path referenced by this Modifier
+// @return	A Secret pointer that contains key,value pairs and metadata
+//
+//	errors generated from reading
+func (m *Modifier) ReadMetadata(path string, logger *log.Logger) (map[string]any, error) {
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullPath := pathBlocks[0] + "data/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	}
+	fullPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Read(fullPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("modifier failing after %d retries.\n", retries)
+		return nil, err
+	}
+
+	if secret != nil {
+		if data, ok := secret.Data["metadata"].(map[string]any); ok {
+			return data, err
+		}
+	}
+	return nil, errors.New("could not get metadata from vault response")
+}
+
+// ReadVersionMetadata Reads the Metadata of all versions from the path referenced by this Modifier
+func (m *Modifier) ReadVersionMetadata(path string, logger *log.Logger) (map[string]any, error) {
+	// Create full path
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullPath := pathBlocks[0] + "metadata/"
+
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += m.Env + "/"
+	}
+	if len(pathBlocks) > 1 {
+		fullPath += pathBlocks[1]
+	}
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Read(fullPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if secret == nil || secret.Data["versions"] == nil {
+		return nil, errors.New("no version data")
+	}
+
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if versionsData, ok := secret.Data["versions"].(map[string]any); ok {
+		return versionsData, err
+	}
+	return nil, errors.New("could not get metadata of versions from vault response")
+}
+
+// List lists the paths underneath this one
+func (m *Modifier) List(path string, logger *log.Logger) (*api.Secret, error) {
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	if len(pathBlocks) == 1 {
+		pathBlocks[0] += "/"
+	}
+
+	fullPath := pathBlocks[0] + "metadata"
+	if !noEnvironments[pathBlocks[0]] {
+		fullPath += "/" + m.Env + "/"
+	} else if strings.HasPrefix(m.Env, "local") { // if local environment, add env to fullpath
+		fullPath += "/" + m.Env + "/"
+	}
+	if len(pathBlocks) > 1 {
+		if !strings.HasSuffix(fullPath, "/") {
+			fullPath += "/"
+		}
+		fullPath += pathBlocks[1]
+	}
+	retries := 0
+retryQuery:
+	result, err := m.logical.List(fullPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+		logger.Printf("Error: %s\n", err.Error())
+	}
+	return result, err
+}
+
+// List lists the paths underneath this one
+func (m *Modifier) ListEnv(path string, logger *log.Logger) (*api.Secret, error) {
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	var fullPath string
+	if len(pathBlocks) == 1 {
+		pathBlocks[0] += "/"
+		fullPath = pathBlocks[0] + "metadata/"
+	} else if len(pathBlocks) == 2 {
+		fullPath = pathBlocks[0] + "metadata/"
+		fullPath = fullPath + pathBlocks[1]
+	}
+	retries := 0
+retryQuery:
+	result, err := m.logical.List(fullPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	return result, err
+}
+
+// AdjustValue adjusts the value at the given path/key by n
+func (m *Modifier) AdjustValue(path string, data map[string]any, n int, logger *log.Logger) ([]string, error) {
+	// Get the existing data at the path
+	oldData, err := m.ReadData(path)
+	if err != nil {
+		return nil, err
+	}
+	if oldData == nil { // Path has not been used yet, create an empty map
+		oldData = make(map[string]any)
+	}
+	for _, v := range data {
+		if templateKey, ok := v.([]any); ok {
+			metricsKey := templateKey[0].(string) + "." + templateKey[1].(string)
+			// Try to fetch the value with the given key, start empty values with 0
+			if oldData[metricsKey] == nil {
+				oldData[metricsKey] = "0"
+			}
+			// Convert from stored string value to int
+			oldValue, err := strconv.Atoi(oldData[metricsKey].(string))
+			if err != nil {
+				logger.Printf("Could not convert value to int at: %s\n", strings.ReplaceAll(metricsKey, "\n", ""))
+				continue
+			}
+			newValue := strconv.Itoa(oldValue + n)
+			oldData[metricsKey] = newValue
+		}
+	}
+	return m.Write(path, oldData, logger)
+}
+
+// Proper shutdown of modifier.
+func (m *Modifier) Close() {
+	m.httpClient.CloseIdleConnections()
+}
+
+func (m *Modifier) Exists(path string) bool {
+	secret, err := m.logical.List(path)
+	if err != nil {
+		return false
+	}
+
+	if secret == nil {
+		return false
+	} else {
+		return true
+	}
+}
+
+// GetProjectServiceMap - returns a map of all projects with list of their available services.
+func (m *Modifier) GetProjectServicesMap(logger *log.Logger) (map[string][]string, error) {
+	projectServiceMap := map[string][]string{}
+	projectData, err := m.List("templates", logger)
+	if err != nil {
+		return nil, err
+	}
+
+	availProjects := projectData.Data["keys"].([]any)
+	for _, availProject := range availProjects {
+		serviceData, serviceErr := m.List("templates/"+availProject.(string), logger)
+		if serviceErr != nil {
+			return nil, serviceErr
+		}
+
+		availServices := serviceData.Data["keys"].([]any)
+		services := []string{}
+		for _, availService := range availServices {
+			services = append(services, strings.ReplaceAll(availService.(string), "/", ""))
+		}
+		projectServiceMap[strings.ReplaceAll(availProject.(string), "/", "")] = services
+	}
+
+	return projectServiceMap, nil
+}
+
+// GetVersionValues gets filepath for values and grabs metadata for those paths.
+func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath string, logger *log.Logger) (map[string]map[string]any, error) {
+	envCheck := make([]string, 2)
+	var realEnv string
+	lastIndex := strings.LastIndex(mod.Env, "_")
+	if lastIndex != -1 {
+		envCheck[0] = mod.Env[:lastIndex]
+		envCheck[1] = mod.Env[lastIndex+1:]
+		mod.Env = envCheck[0]
+	} else {
+		realEnv = mod.Env
+	}
+
+	if len(mod.ProjectIndex) > 0 {
+		enginePath = enginePath + "/Index/" + mod.ProjectIndex[0] + "/" + mod.SectionName + "/" + mod.SubSectionValue
+		mod.Env = mod.EnvBasis
+	}
+	userPaths, err := mod.List(enginePath+"/", logger)
+	versionDataMap := make(map[string]map[string]any, 0)
+	// data := make([]string, 0)
+	if err != nil {
+		return nil, err
+	}
+	if userPaths == nil {
+		return nil, err
+	}
+
+	if wantCerts {
+		// get a list of projects under values
+		certPaths, err := m.getPaths("values/Common/", logger)
+		if err != nil {
+			return nil, err
+		}
+
+		for i, service := range mod.VersionFilter { // Cleans filter for cert metadata search
+			if strings.Contains(service, "Common") {
+				mod.VersionFilter[i] = strings.Replace(service, "Common", "Common/", 1)
+			}
+		}
+
+		var filteredCertPaths []string
+		for _, certPath := range certPaths { // Filter paths for optimization
+			if certPath != "" {
+				foundService := false
+				for _, service := range mod.VersionFilter {
+					certPathNoExt := strings.Split(certPath, ".")
+					if strings.HasSuffix(certPathNoExt[0], service) && !foundService {
+						foundService = true
+					}
+				}
+
+				if !foundService {
+					continue
+				} else {
+					filteredCertPaths = append(filteredCertPaths, certPath)
+				}
+			}
+		}
+
+		certPaths = filteredCertPaths
+		for _, certPath := range certPaths {
+			certPath = strings.Replace(certPath, "/Common/", "/", 1)
+			certPathParts := strings.Split(certPath, ".")
+			certPath = certPathParts[0]
+			if _, ok := versionDataMap[certPath]; !ok {
+				metadataValue, err := mod.ReadVersionMetadata(certPath, logger)
+				if err != nil {
+					err := fmt.Errorf("unable to fetch data from %s", certPath)
+					return nil, err
+				}
+				if len(metadataValue) != 0 {
+					versionDataMap[certPath] = metadataValue
+				}
+			}
+		}
+	} else {
+		// Finds additional paths outside of nested dirs
+		for _, userPath := range userPaths.Data {
+			for _, interfacePath := range userPath.([]any) {
+				path := interfacePath.(string)
+				if path != "" {
+					foundService := false
+					for _, service := range mod.VersionFilter {
+						if (strings.HasSuffix(path, service) || strings.HasSuffix(path, service+"/")) && !foundService {
+							foundService = true
+							break
+						}
+					}
+
+					if !foundService {
+						continue
+					}
+					path = enginePath + "/" + path
+					if mod.SubSectionName != "" {
+						subSectionName := mod.SubSectionName
+						subSectionName = strings.TrimPrefix(subSectionName, "/")
+						path = path + subSectionName
+					}
+
+					if _, ok := versionDataMap[path]; !ok {
+						metadataValue, err := mod.ReadVersionMetadata(path, logger)
+						if err != nil {
+							logger.Println("Couldn't read version data at " + path)
+						}
+						if len(metadataValue) == 0 {
+							continue
+						}
+						versionDataMap[path] = metadataValue
+					}
+				}
+			}
+		}
+	}
+
+	mod.Env = realEnv
+	if len(versionDataMap) < 1 {
+		return nil, fmt.Errorf("no version data available for this env")
+	}
+	return versionDataMap, nil
+}
+
+func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[string]map[string]any, logger *log.Logger) {
+	for _, filePath := range filePaths {
+		foundService := false
+		for _, service := range m.VersionFilter {
+			if strings.Contains(filePath, service) && !foundService {
+				foundService = true
+			}
+		}
+
+		if !foundService {
+			continue
+		}
+
+		subFilePaths, err := m.getPaths(filePath, logger)
+
+		if len(subFilePaths) > 0 {
+			m.recursivePathFinder(subFilePaths, versionDataMap, logger)
+		}
+
+		if err != nil {
+			logger.Println(err.Error())
+		}
+
+		metadataValue, err := m.ReadVersionMetadata(filePath, logger)
+		if err != nil {
+			logger.Println(err.Error())
+		}
+		if len(metadataValue) == 0 {
+			continue
+		}
+		versionDataMap[filePath] = metadataValue
+	}
+}
+
+func (m *Modifier) getPaths(pathName string, logger *log.Logger) ([]string, error) {
+	secrets, err := m.List(pathName, logger)
+	// logger.Println("secrets " + pathName)
+	// logger.Println(secrets)
+	pathList := []string{}
+	if err != nil {
+		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, m.Env)
+	} else if secrets != nil {
+		// add paths
+		slicey := secrets.Data["keys"].([]any)
+		// logger.Println("secrets are")
+		// logger.Println(slicey)
+		for _, pathEnd := range slicey {
+			// skip local path if environment is not local
+			if pathEnd != "local/" {
+				// List is returning both pathEnd and pathEnd/
+				path := pathName + pathEnd.(string)
+				pathList = append(pathList, path)
+			}
+		}
+		// logger.Println("pathList")
+		// logger.Println(pathList)
+		return pathList, nil
+	}
+	return pathList, nil
+}
+
+func (m *Modifier) GetTemplateFilePaths(pathName string, logger *log.Logger) ([]string, error) {
+	secrets, err := m.List(pathName, logger)
+	pathList := []string{}
+	if err != nil {
+		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, m.Env)
+	} else if secrets != nil {
+		// add paths
+		slicey := secrets.Data["keys"].([]any)
+
+		for _, pathEnd := range slicey {
+			// List is returning both pathEnd and pathEnd/
+			path := pathName + pathEnd.(string)
+			pathList = append(pathList, path)
+		}
+
+		subPathList := []string{}
+		for _, path := range pathList {
+			if path != "template-file" {
+				subsubList, _ := m.templateFileRecurse(path, logger)
+				subPathList = append(subPathList, subsubList...)
+			} else {
+				subPathList = append(subPathList, path)
+			}
+		}
+		if len(subPathList) != 0 {
+			return subPathList, nil
+		}
+	}
+	return pathList, nil
+}
+
+func (m *Modifier) templateFileRecurse(pathName string, logger *log.Logger) ([]string, error) {
+	subPathList := []string{}
+	subsecrets, err := m.List(pathName, logger)
+	if err != nil {
+		return subPathList, err
+	} else if subsecrets != nil {
+		subslice := subsecrets.Data["keys"].([]any)
+		if subslice[0] != "template-file" {
+			for _, pathEnd := range subslice {
+				// List is returning both pathEnd and pathEnd/
+				subpath := pathName + pathEnd.(string)
+				subsubList, _ := m.templateFileRecurse(subpath, logger)
+				if len(subsubList) != 0 {
+					// List is returning both pathEnd and pathEnd/
+					subPathList = append(subPathList, subsubList...)
+				}
+				subPathList = append(subPathList, subpath)
+			}
+		} else {
+			subPathList = append(subPathList, pathName)
+		}
+	}
+	return subPathList, nil
+}
+
+func getPathEnd(path string) string {
+	strs := strings.Split(path, "/")
+	for strs[len(strs)-1] == "" {
+		strs = strs[:len(strs)-1]
+	}
+	return strs[len(strs)-1]
+}
+
+func (m *Modifier) ListSubsection(sectionKey string, project string, indexName string, logger *log.Logger) ([]string, error) {
+	var indexes []string
+	secret, err := m.List("super-secrets"+sectionKey+project+"/"+indexName, logger)
+	if secret != nil {
+		if _, ok := secret.Data["keys"].([]any); ok {
+			for _, index := range secret.Data["keys"].([]any) {
+				indexes = append(indexes, strings.TrimSuffix(index.(string), "/"))
+			}
+			return indexes, err
+		}
+	}
+	return nil, errors.New("no regions were found")
+}
+
+// Given Project and Service, looks for a key index and returns it.
+func (m *Modifier) FindIndexForService(project string, service string, logger *log.Logger) (string, error) {
+	index := ""
+
+	indexSecrets, err := m.List("super-secrets/Index/"+project, logger)
+	if err != nil {
+		return "", err
+	}
+	if indexSecrets != nil {
+		indexValues := indexSecrets.Data["keys"].([]any)
+
+		for _, indexValue := range indexValues {
+			indexValueSecrets, valueErr := m.List("super-secrets/Index/"+project+"/"+indexValue.(string), logger)
+			if valueErr != nil {
+				continue
+			}
+			indexValues := indexValueSecrets.Data["keys"].([]any)
+
+			subsectionValueSecrets, subsectionErr := m.List("super-secrets/Index/"+project+"/"+indexValue.(string)+"/"+indexValues[0].(string), logger)
+			if subsectionErr != nil {
+				continue
+			}
+			subsectionValues := subsectionValueSecrets.Data["keys"].([]any)
+
+			for _, subSectionValue := range subsectionValues {
+				if strings.TrimSuffix(subSectionValue.(string), "/") == service {
+					index = strings.TrimSuffix(indexValue.(string), "/")
+					goto indexFound
+				}
+			}
+		}
+	}
+indexFound:
+
+	return index, nil
+}
+
+func (m *Modifier) SoftDelete(path string, logger *log.Logger) (map[string]any, error) {
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
+		path = "super-secrets/" + path
+	}
+
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullDataPath := pathBlocks[0] + "data/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullDataPath += m.Env + "/"
+	}
+	fullDataPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Delete(fullDataPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if secret == nil && err == nil {
+		return nil, nil
+	}
+	return nil, errors.New("could not get metadata from vault response")
+}
+
+func (m *Modifier) HardDelete(path string, logger *log.Logger) (map[string]any, error) {
+	if !strings.HasPrefix(path, "super-secrets") && !strings.HasPrefix(path, "values") {
+		path = "super-secrets/" + path
+	}
+	pathBlocks := strings.SplitAfterN(path, "/", 2)
+	fullDataPath := pathBlocks[0] + "data/"
+	fullMetadataPath := pathBlocks[0] + "metadata/"
+	if !noEnvironments[pathBlocks[0]] {
+		fullDataPath += m.Env + "/"
+	}
+	if !noEnvironments[pathBlocks[0]] {
+		fullMetadataPath += m.Env + "/"
+	}
+	fullDataPath += pathBlocks[1]
+	fullMetadataPath += pathBlocks[1]
+	retries := 0
+retryQuery:
+	secret, err := m.logical.Delete(fullDataPath)
+	if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+		if retries < 3 {
+			retries = retries + 1
+			goto retryQuery
+		}
+	}
+	if err != nil {
+		logger.Printf("Modifier failing after %d retries.\n", retries)
+	}
+
+	if secret == nil && err == nil {
+		metadataSecret, err := m.logical.Delete(fullMetadataPath)
+		if netErr, netErrOk := err.(*url.Error); netErrOk && netErr.Unwrap().Error() == "EOF" {
+			if retries < 3 {
+				retries = retries + 1
+				goto retryQuery
+			}
+		} else if err == context.DeadlineExceeded || os.IsTimeout(err) {
+			if retries < 3 {
+				retries = retries + 1
+				goto retryQuery
+			}
+		}
+		if err != nil {
+			logger.Printf("Modifier failing after %d retries.\n", retries)
+		}
+
+		if metadataSecret == nil && err == nil {
+			return nil, err
+		} else {
+			logger.Printf("Unable to delete metadata %d retries.\n", retries)
+			return nil, err
+		}
+	}
+	return nil, errors.New("could not get metadata from vault response")
+}

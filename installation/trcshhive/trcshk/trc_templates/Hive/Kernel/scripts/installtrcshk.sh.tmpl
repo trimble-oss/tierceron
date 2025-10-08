@@ -1,0 +1,51 @@
+#!/bin/bash -e
+
+# Using heredoc '<<'' in terraform doesn't
+# allow for terraform variable substitution.
+# it's neccessary to insert '<<' as a variable
+# to add the host and host port to the script.
+# ${write_service} serves this purpose.
+cat << EOF >/tmp/upstart
+[Unit]
+Description=Trcsh Drone Service
+After=systemd-user-sessions.service
+
+[Install]
+WantedBy=multi-user.target
+WantedBy=sysinit.target
+
+[Service]
+Environment="GOMAXPROCS=$(nproc)"
+ExecStart={{.trcDeployStartDirectory}}{{.trcDeployExecutable}} -env=$AGENT_ENV
+User=trcshk
+LimitMEMLOCK=infinity
+Type=simple
+Restart=on-failure
+RestartSec=10
+PrivateTmp=true  # Set to false for trcsh
+PrivateDevices=false # Figure out how to make this true...
+PrivateNetwork=false
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+sudo mv /tmp/upstart /lib/systemd/system/trcshk.service
+sudo chown root:root /lib/systemd/system/trcshk.service
+sudo chmod 0644 /lib/systemd/system/trcshk.service
+
+# Set up environment variables.
+cat << BASHEOF >> /home/trcshk/.bashrc
+export AGENT_ENV={{.trcDeployAgentEnv}}
+export AGENT_TOKEN={{.trcDeployAgentToken}}
+export DEPLOYMENTS={{.trcDeployDeployments}}
+export VAULT_ADDR={{.trcDeployVaultAddr}}
+
+BASHEOF
+
+sudo chown trcshk:trcshk /home/trcshk/.bashrc
+sudo chmod 700 /home/trcshk/.bashrc
+
+# Start trcshk
+#sudo systemctl enable /lib/systemd/system/trcshk.service

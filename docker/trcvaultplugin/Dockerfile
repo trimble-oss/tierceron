@@ -1,2 +1,2 @@
 FROM scratch
-ADD trc-vault-plugin /etc/opt/vault/plugins/trc-vault-plugin
+ADD trc-vault-plugin /usr/local/vault/plugins/trc-vault-plugin
