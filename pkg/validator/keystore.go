@@ -13,7 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 
@@ -30,14 +32,14 @@ const (
 	rsaPrivateKeyType = "RSA PRIVATE KEY"
 )
 
-func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]byte, error) {
+func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	keystoreWriter := bufio.NewWriter(buffer)
 
-	if config.KeyStore == nil {
+	if driverConfig.KeyStore == nil {
 		return nil, errors.New("cert bundle not properly named")
 	}
-	storeErr := config.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
+	storeErr := driverConfig.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
 	if storeErr != nil {
 		return nil, storeErr
 	}
@@ -46,17 +48,17 @@ func StoreKeystore(config *eUtils.DriverConfig, trustStorePassword string) ([]by
 	return buffer.Bytes(), nil
 }
 
-func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
+func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []byte, certBundleJks string, data []byte) error {
 	// TODO: Add support for this format?  golang.org/x/crypto/pkcs12
 
-	if !strings.HasSuffix(config.WantKeystore, ".jks") && strings.HasSuffix(certBundleJks, ".jks") {
-		config.WantKeystore = certBundleJks
+	if !strings.HasSuffix(driverConfig.WantKeystore, ".jks") && strings.HasSuffix(certBundleJks, ".jks") {
+		driverConfig.WantKeystore = certBundleJks
 	}
 
-	if config.KeyStore == nil {
+	if driverConfig.KeyStore == nil {
 		fmt.Println("Making new keystore.")
 		ks := keystore.New()
-		config.KeyStore = &ks
+		driverConfig.KeyStore = &ks
 	}
 
 	block, _ := pem.Decode(data)
@@ -70,7 +72,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 			return err
 		}
 
-		config.KeyStore.SetPrivateKeyEntry(alias, keystore.PrivateKeyEntry{
+		driverConfig.KeyStore.SetPrivateKeyEntry(alias, keystore.PrivateKeyEntry{
 			CreationTime: time.Now(),
 			PrivateKey:   pkcs8Key,
 			CertificateChain: []keystore.Certificate{
@@ -84,7 +86,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 	} else {
 		if block.Type == certificateType {
 			aliasCommon := strings.Replace(alias, "cert.pem", "", 1)
-			config.KeyStore.SetTrustedCertificateEntry(aliasCommon, keystore.TrustedCertificateEntry{
+			driverConfig.KeyStore.SetTrustedCertificateEntry(aliasCommon, keystore.TrustedCertificateEntry{
 				CreationTime: time.Now(),
 				Certificate: keystore.Certificate{
 					Type:    "X509",
@@ -101,7 +103,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 			}
 			aliasCommon := strings.Replace(alias, "key.pem", "", 1)
 
-			config.KeyStore.SetPrivateKeyEntry(aliasCommon, keystore.PrivateKeyEntry{
+			driverConfig.KeyStore.SetPrivateKeyEntry(aliasCommon, keystore.PrivateKeyEntry{
 				CreationTime: time.Now(),
 				PrivateKey:   privateKeyBytes,
 			}, password)
@@ -114,7 +116,7 @@ func AddToKeystore(config *eUtils.DriverConfig, alias string, password []byte, c
 }
 
 // ValidateKeyStore validates the sendgrid API key.
-func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string) (bool, error) {
+func ValidateKeyStore(config *coreconfig.CoreConfig, filename string, pass string) (bool, error) {
 	file, err := os.ReadFile(filename)
 	if err != nil {
 		return false, err
@@ -138,7 +140,7 @@ func ValidateKeyStore(config *eUtils.DriverConfig, filename string, pass string)
 				return false, errors.New("failed to parse: " + err.Error())
 			}
 
-			isCertValid, err := VerifyCertificate(&cert, "")
+			isCertValid, err := VerifyCertificate(&cert, "", true)
 			if err != nil {
 				eUtils.LogInfo(config, "Certificate validation failure.")
 			}

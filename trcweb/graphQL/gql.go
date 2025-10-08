@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 
 	"github.com/graphql-go/graphql"
@@ -51,12 +53,16 @@ func main() {
 	apiClient := pb.NewEnterpriseServiceBrokerProtobufClient(*addrPtr, &http.Client{})
 
 	makeVaultReq := &pb.GetValuesReq{}
-	config := &eUtils.DriverConfig{ExitOnFailure: true}
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			ExitOnFailure: true,
+		},
+	}
 
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 
-	config.ExitOnFailure = false
+	driverConfig.CoreConfig.ExitOnFailure = false
 
 	envList := []Env{}
 	for i, env := range vault.Envs {
@@ -98,7 +104,7 @@ func main() {
 				},
 				"key": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).fileID
 						serv := params.Source.(Value).servID
@@ -108,7 +114,7 @@ func main() {
 				},
 				"value": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).fileID
@@ -134,7 +140,7 @@ func main() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						file := params.Source.(File).ID
 						serv := params.Source.(File).servID
 						env := params.Source.(File).envID
@@ -151,7 +157,7 @@ func main() {
 						// 	Type: graphql.String,
 						// },
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						//get list of values and return
 						keyStr, keyOK := params.Args["keyName"].(string)
 						// valStr, valOK := params.Args["valName"].(string)
@@ -192,7 +198,7 @@ func main() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						serv := params.Source.(Service).ID
 						env := params.Source.(Service).envID
 						return vaultQL.envs[env].services[serv].name, nil
@@ -205,7 +211,7 @@ func main() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						fileStr, isOK := params.Args["fileName"].(string)
 						serv := params.Source.(Service).ID
 						env := params.Source.(Service).envID
@@ -231,7 +237,7 @@ func main() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						env := params.Source.(Env).ID
 						return vaultQL.envs[env].name, nil
 					},
@@ -244,7 +250,7 @@ func main() {
 						},
 					},
 
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 
 						servStr, isOK := params.Args["servName"].(string)
 						env := params.Source.(Env).ID
@@ -274,7 +280,7 @@ func main() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						envStr, isOK := params.Args["envName"].(string)
 						if isOK {
 							for i, e := range vaultQL.envs {

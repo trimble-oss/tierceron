@@ -14,23 +14,19 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	regionPtr *string,
 	startDirPtr *string,
-	c *eUtils.DriverConfig,
+	driverConfig *config.DriverConfig,
 	mod *kv.Modifier) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
@@ -96,20 +92,20 @@ func CommonMain(envPtr *string,
 		apimConfigMap["azureClientSecret"],
 		nil)
 	if err != nil {
-		c.Log.Fatalf("failed to obtain a credential: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to obtain a credential: %v", err)
 		return err
 	}
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	clientFactory, err := armapimanagement.NewClientFactory(apimConfigMap["SUBSCRIPTION_ID"], svc, nil)
 	if err != nil {
-		c.Log.Fatalf("failed to create client: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to create client: %v", err)
 		return err
 	}
 
 	_, eTagErr := clientFactory.NewAPIPolicyClient().GetEntityTag(ctx, apimConfigMap["RESOURCE_GROUP_NAME"], apimConfigMap["SERVICE_NAME"], apimConfigMap["API_NAME"], armapimanagement.PolicyIDNamePolicy, nil)
 	if eTagErr != nil {
-		c.Log.Fatalf("failed to finish the request: %v", eTagErr)
+		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", eTagErr)
 		return eTagErr
 	}
 
@@ -125,11 +121,11 @@ func CommonMain(envPtr *string,
 		},
 	}, &armapimanagement.APIClientBeginCreateOrUpdateOptions{IfMatch: &etag})
 	if err != nil {
-		c.Log.Fatalf("failed to finish the request: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to finish the request: %v", err)
 		return err
 	}
 
-	//Adding a 3 minute timeout on APIM Update.
+	//Adding a 2 minute timeout on APIM Update.
 	go func(ctxC context.CancelFunc) {
 		time.Sleep(time.Second * 120)
 		ctxC()
@@ -137,7 +133,7 @@ func CommonMain(envPtr *string,
 
 	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		c.Log.Fatalf("failed to pull the result: %v", err)
+		driverConfig.CoreConfig.Log.Fatalf("failed to pull the result: %v", err)
 		return err
 	}
 

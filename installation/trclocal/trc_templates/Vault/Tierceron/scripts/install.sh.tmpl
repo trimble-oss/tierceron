@@ -9,17 +9,32 @@ cat << EOF >/tmp/upstart
 [Unit]
 Description=Vault Service
 After=systemd-user-sessions.service
-[Service]
 
-Type=simple
+[Install]
+WantedBy=multi-user.target
+WantedBy=sysinit.target
+
+[Service]
 Environment="VAULT_API_ADDR=https://{{.vault_ip}}:{{.hostport}}"
 Environment="GOMAXPROCS=$(nproc)"
-ExecStart=/usr/local/vault/vault server -config /usr/local/vault/vault_properties.hcl
+ExecStart={{.vault_root_install}}/vault server -config {{.vault_root_install}}/vault_properties.hcl
+User=root
 LimitMEMLOCK=infinity
+Type=simple
+Restart=on-failure
+RestartSec=10
+PrivateTmp=true  # Set to false for trcsh
+PrivateDevices=false # Figure out how to make this true...
+PrivateNetwork=false
+ProtectSystem=full
 
-#end script
+[Install]
+WantedBy=multi-user.target
+
 EOF
 sudo mv /tmp/upstart /lib/systemd/system/vault.service
+sudo chown root:root /lib/systemd/system/vault.service
+sudo chmod 0644 /lib/systemd/system/vault.service
 
 # Start Vault
-#sudo service vault start
+#sudo systemctl enable /lib/systemd/system/vault.service

@@ -4,13 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"os"
 	"strings"
 	"text/template/parse"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -20,7 +23,7 @@ const (
 )
 
 type TemplateResultData struct {
-	InterfaceTemplateSection interface{}
+	InterfaceTemplateSection any
 	ValueSection             map[string]map[string]map[string]string
 	SecretSection            map[string]map[string]map[string]string
 	TemplateDepth            int
@@ -36,23 +39,23 @@ type TemplateResultData struct {
 //
 // Output:
 //   - Parsed string containing the .yml file
-func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
+func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 	cds *vcutils.ConfigDataStore,
 	templatePath string,
 	project string,
 	service string,
 	templateFromVault bool,
-	interfaceTemplateSection *interface{},
+	interfaceTemplateSection *any,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
-) (*interface{}, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int, error) {
+) (*any, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int, error) {
 
 	// TODO: replace string sections with maps
 	templatePath = strings.ReplaceAll(templatePath, "\\", "/")
 	pathSlice := strings.SplitN(templatePath, "/", -1)
 
 	// Initialize map subsections
-	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(config, pathSlice)
+	templatePathSlice, templateDir, templateDepth := GetInitialTemplateStructure(driverConfig, pathSlice)
 
 	// Gets the template file
 	var newTemplate string
@@ -63,16 +66,29 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			templatePathExtended = templatePath
 			serviceRaw = ""
 		} else {
-			templatePathExtended = strings.Replace(templatePath, coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates/", "/", 1)
+			templatePathExtended = strings.Replace(templatePath, coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates/", "/", 1)
 		}
 		configuredFilePath := "./"
-		templateFile, _ := vcutils.ConfigTemplateRaw(config, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, config.ExitOnFailure)
+		templateFile, _ := vcutils.ConfigTemplateRaw(driverConfig, mod, templatePathExtended, configuredFilePath, true, project, serviceRaw, false, true, driverConfig.CoreConfig.ExitOnFailure)
 		newTemplate = string(templateFile)
 	} else {
-		templateFile, err := os.ReadFile(templatePath)
+		var templateFile []byte
+		var err error
+		if driverConfig.ReadMemCache {
+			templateFileRWC, openerr := driverConfig.MemFs.Open(templatePath)
+			if openerr != nil {
+				return nil, nil, nil, 0, openerr
+			}
+			templateFile, err = io.ReadAll(templateFileRWC)
+			if openerr != nil {
+				return nil, nil, nil, 0, err
+			}
+		} else {
+			templateFile, err = os.ReadFile(templatePath)
+		}
 		newTemplate = string(templateFile)
 		if err != nil {
-			return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
+			return nil, nil, nil, 0, eUtils.LogAndSafeExit(driverConfig.CoreConfig, err.Error(), -1)
 		}
 	}
 
@@ -80,7 +96,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 	t := template.New("template")
 	theTemplate, err := t.Parse(newTemplate)
 	if err != nil {
-		return nil, nil, nil, 0, eUtils.LogAndSafeExit(config, err.Error(), -1)
+		return nil, nil, nil, 0, eUtils.LogAndSafeExit(driverConfig.CoreConfig, err.Error(), -1)
 	}
 	commandList := theTemplate.Tree.Root
 
@@ -91,14 +107,14 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 			for _, arg := range fields.Cmds[0].Args {
 				templateParameter := strings.ReplaceAll(arg.String(), "\\\"", "\"")
 				if strings.Contains(templateParameter, "~") {
-					eUtils.LogInfo(config, "Unsupported parameter name character ~: "+templateParameter)
+					eUtils.LogInfo(driverConfig.CoreConfig, "Unsupported parameter name character ~: "+templateParameter)
 					return nil, nil, nil, 0, errors.New("Unsupported parameter name character ~: " + templateParameter)
 				}
 				args = append(args, templateParameter)
 			}
 
 			// Gets the parsed file line
-			errParse := Parse(config, cds,
+			errParse := Parse(driverConfig.CoreConfig, cds,
 				args,
 				pathSlice[len(pathSlice)-2],
 				templatePathSlice,
@@ -124,7 +140,7 @@ func ToSeed(config *eUtils.DriverConfig, mod *helperkv.Modifier,
 //
 // Output:
 //   - String(s) containing the structure of the template section
-func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice []string) ([]string, int, int) {
+func GetInitialTemplateStructure(driverConfig *config.DriverConfig, templatePathSlice []string) ([]string, int, int) {
 
 	var templateDir int
 	var templateDepth int
@@ -137,7 +153,7 @@ func GetInitialTemplateStructure(config *eUtils.DriverConfig, templatePathSlice 
 
 	// Find the index in the slice of the vault_template subdirectory
 	for i, folder := range templatePathSlice {
-		if folder == coreopts.BuildOptions.GetFolderPrefix(config.StartDir)+"_templates" {
+		if folder == coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates" {
 			templateDir = i
 			templatePathSlice[i] = "templates"
 		}
@@ -203,14 +219,14 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 //
 // Output:
 //   - String(s) containing the .yml file subsections
-func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
+func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 	args []string,
 	currentDir string,
 	templatePathSlice []string,
 	templateDir int,
 	templateDepth int,
 	service string,
-	interfaceTemplateSection *interface{},
+	interfaceTemplateSection *any,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
 ) error {
@@ -294,13 +310,24 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 			defaultSecret)
 
 		if cds != nil {
-			for _, region := range cds.Regions {
+			if len(cds.Regions) > 0 {
+				for _, region := range cds.Regions {
+					parseAndSetSection(cds,
+						secretSection,
+						"super-secrets",
+						service,
+						keyPath,
+						keyName+"~"+region,
+						secret,
+						defaultSecret)
+				}
+			} else {
 				parseAndSetSection(cds,
 					secretSection,
 					"super-secrets",
 					service,
 					keyPath,
-					keyName+"~"+region,
+					keyName,
 					secret,
 					defaultSecret)
 			}
@@ -314,7 +341,7 @@ func Parse(config *eUtils.DriverConfig, cds *vcutils.ConfigDataStore,
 
 // AppendToTemplateSection Add parse line to template section
 func AppendToTemplateSection(
-	interfaceTemplateSection *interface{},
+	interfaceTemplateSection *any,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
 	templatePathSlice []string,
@@ -331,18 +358,18 @@ func AppendToTemplateSection(
 	if len(name) == 2 {
 		wholeName = false
 	}
-	if _, ok := (*interfaceTemplateSection).(map[string]interface{}); !ok {
-		*interfaceTemplateSection = map[string]interface{}{}
+	if _, ok := (*interfaceTemplateSection).(map[string]any); !ok {
+		*interfaceTemplateSection = map[string]any{}
 	}
 
-	itLevel := (*interfaceTemplateSection).(map[string]interface{})
+	itLevel := (*interfaceTemplateSection).(map[string]any)
 
 	for i := templateDir; i < len(templatePathSlice); i++ {
 		currentEntry := templatePathSlice[i]
-		if _, ok := itLevel[currentEntry].(map[string]interface{}); !ok {
-			itLevel[currentEntry] = map[string]interface{}{}
+		if _, ok := itLevel[currentEntry].(map[string]any); !ok {
+			itLevel[currentEntry] = map[string]any{}
 		}
-		itLevel = itLevel[currentEntry].(map[string]interface{})
+		itLevel = itLevel[currentEntry].(map[string]any)
 	}
 	//name[0] = keyName, name[1] = service name
 	if wholeName {

@@ -19,7 +19,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]interface{}) error {
+func getImageSHA(driverConfig *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map[string]any) error {
 	imageInput := &ecr.BatchGetImageInput{
 		ImageIds: []*ecr.ImageIdentifier{
 			{
@@ -27,7 +27,7 @@ func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map
 			},
 		},
 		RepositoryName: aws.String(pluginToolConfig["trcplugin"].(string)),
-		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
+		RegistryId:     aws.String(strings.Split(pluginToolConfig["aws-repository"].(string), ".")[0]),
 	}
 
 	batchImages, err := svc.BatchGetImage(imageInput)
@@ -53,15 +53,15 @@ func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map
 	}
 
 	var layerDigest string
-	var data map[string]interface{}
+	var data map[string]any
 	err = json.Unmarshal([]byte(*batchImages.Images[0].ImageManifest), &data)
 	if err != nil {
 		return errors.New(err.Error())
 	}
 
-	layers := data["layers"].([]interface{})
+	layers := data["layers"].([]any)
 	for _, layerMetadata := range layers {
-		mapLayerMetdata := layerMetadata.(map[string]interface{})
+		mapLayerMetdata := layerMetadata.(map[string]any)
 		layerDigest = mapLayerMetdata["digest"].(string)
 	}
 
@@ -70,19 +70,19 @@ func getImageSHA(config *eUtils.DriverConfig, svc *ecr.ECR, pluginToolConfig map
 }
 
 // Return url to the image to be used for download.
-func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) (string, error) {
+func GetImageDownloadUrl(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) (string, error) {
 	svc := ecr.New(session.New(&aws.Config{
 		Region:      aws.String("us-west-2"),
-		Credentials: credentials.NewStaticCredentials(pluginToolConfig["awspassword"].(string), pluginToolConfig["awsaccesskey"].(string), ""),
+		Credentials: credentials.NewStaticCredentials(pluginToolConfig["aws-password"].(string), pluginToolConfig["aws-accesskey"].(string), ""),
 	}))
 
-	err := getImageSHA(config, svc, pluginToolConfig)
+	err := getImageSHA(driverConfig, svc, pluginToolConfig)
 	if err != nil {
 		return "", err
 	}
 	downloadInput := &ecr.GetDownloadUrlForLayerInput{
 		LayerDigest:    aws.String(pluginToolConfig["layerDigest"].(string)),
-		RegistryId:     aws.String(strings.Split(pluginToolConfig["ecrrepository"].(string), ".")[0]),
+		RegistryId:     aws.String(strings.Split(pluginToolConfig["aws-repository"].(string), ".")[0]),
 		RepositoryName: aws.String(pluginToolConfig["trcplugin"].(string)),
 	}
 
@@ -111,8 +111,8 @@ func GetImageDownloadUrl(config *eUtils.DriverConfig, pluginToolConfig map[strin
 	return *downloadOutput.DownloadUrl, nil
 }
 
-func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig map[string]interface{}) error {
-	downloadUrl, downloadURlError := GetImageDownloadUrl(config, pluginToolConfig)
+func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) error {
+	downloadUrl, downloadURlError := GetImageDownloadUrl(driverConfig, pluginToolConfig)
 	if downloadURlError != nil {
 		return errors.New("Failed to get download url.")
 	}
@@ -120,11 +120,11 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	if downloadError != nil {
 		return errors.New("Failed to get download from url.")
 	}
-	pluginTarredData, gUnZipError := gUnZipData(pluginImageDataCompressed)
+	pluginTarredData, gUnZipError := gUnZipData(&pluginImageDataCompressed)
 	if gUnZipError != nil {
 		return errors.New("Gunzip failed.")
 	}
-	pluginImage, gUnTarError := untarData(pluginTarredData)
+	pluginImage, gUnTarError := untarData(&pluginTarredData)
 	if gUnTarError != nil {
 		return errors.New("Untarring failed.")
 	}
@@ -132,4 +132,9 @@ func GetImageAndShaFromDownload(config *eUtils.DriverConfig, pluginToolConfig ma
 	pluginToolConfig["rawImageFile"] = pluginImage
 	pluginToolConfig["imagesha256"] = fmt.Sprintf("%x", pluginSha)
 	return nil
+}
+
+// Pushes image to docker registry from: "rawImageFile", and "pluginname" in the map pluginToolConfig.
+func PushImage(driverConfig *eUtils.DriverConfig, pluginToolConfig map[string]any) error {
+	return errors.New("Not defined")
 }

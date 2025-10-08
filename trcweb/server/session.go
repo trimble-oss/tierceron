@@ -13,13 +13,14 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 
 	//mysql and mssql go libraries
 	_ "github.com/denisenkom/go-mssqldb"
 )
 
-func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
+func (s *Server) authUser(config *coreconfig.CoreConfig, mod *helperkv.Modifier, operatorId string, operatorPassword string) (bool, string, error) {
 	connInfo, err := mod.ReadData("apiLogins/meta")
 	if err != nil {
 		return false, "", err
@@ -58,8 +59,8 @@ func (s *Server) authUser(config *eUtils.DriverConfig, mod *helperkv.Modifier, o
 	return buildopts.BuildOptions.Authorize(db, operatorId, operatorPassword)
 }
 
-func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+func (s *Server) getActiveSessions(config *coreconfig.CoreConfig, env string) ([]map[string]any, error) {
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func (s *Server) getActiveSessions(config *eUtils.DriverConfig, env string) ([]m
 	return coreopts.BuildOptions.ActiveSessions(db)
 }
 
-func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, string, error) {
+func parseURL(config *coreconfig.CoreConfig, url string) (string, string, string, string, error) {
 	//only works with jdbc:mysql or jdbc:sqlserver.
 	regex := regexp.MustCompile(`(?i)(mysql|sqlserver)://([\w\-\.]+)(?::(\d{0,5}))?(?:/|.*;DatabaseName=)(\w+).*`)
 	m := regex.FindStringSubmatch(url)
@@ -110,14 +111,14 @@ func parseURL(config *eUtils.DriverConfig, url string) (string, string, string, 
 	return m[1], m[2], m[3], m[4], nil
 }
 
-func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) {
-	mod, err := helperkv.NewModifier(false, s.VaultToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+func (s *Server) getVaultSessions(env string) ([]map[string]any, error) {
+	mod, err := helperkv.NewModifier(false, s.VaultTokenPtr, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		return nil, err
 	}
 	mod.Env = ""
 
-	sessions := []map[string]interface{}{}
+	sessions := []map[string]any{}
 	paths, err := mod.List("apiLogins/"+env, s.Log)
 	if paths == nil {
 		return nil, fmt.Errorf("Nothing found under apiLogins/" + env)
@@ -129,7 +130,7 @@ func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) 
 
 	// Pass through all registered users
 	var id int
-	if users, ok := paths.Data["keys"].([]interface{}); ok {
+	if users, ok := paths.Data["keys"].([]any); ok {
 		for _, user := range users {
 			if user == "meta" {
 				continue
@@ -152,7 +153,7 @@ func (s *Server) getVaultSessions(env string) ([]map[string]interface{}, error) 
 				userData["Issued"] = -1
 				userData["Expires"] = -1
 			} else {
-				sessions = append(sessions, map[string]interface{}{
+				sessions = append(sessions, map[string]any{
 					"ID":        id,
 					"User":      strings.TrimSpace(user.(string)),
 					"LastLogIn": issued,

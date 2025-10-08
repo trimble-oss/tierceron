@@ -1,6 +1,7 @@
 package initlib
 
 import (
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
@@ -15,7 +16,7 @@ var engines = [...]string{
 }
 
 // CreateEngines adds engines specified by the list 'engines'
-func CreateEngines(config *eUtils.DriverConfig, v *sys.Vault) {
+func CreateEngines(config *coreconfig.CoreConfig, v *sys.Vault) {
 	// Delete the kv path secreat first time (originally v1)
 	for _, eng := range engines {
 		err := v.CreateKVPath(eng, eng+" vault engine")

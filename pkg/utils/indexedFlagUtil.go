@@ -47,9 +47,11 @@ func checkInitFlagHelper() {
 	}
 }
 
-func CheckInitFlags(flagset *flag.FlagSet) {
+func CheckInitFlags(flagset *flag.FlagSet, arguments []string) {
 	filtered := false
 	initglobals(flagset)
+	flagset.Parse(arguments)
+
 	//Cannot specify a pathed indexed/restricted seed file while specifying a restricted/indexed section.
 	if len(*IndexNameFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 {
 		filtered = true

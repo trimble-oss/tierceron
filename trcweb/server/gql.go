@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 
@@ -78,7 +79,7 @@ type Provider struct {
 	EnvID    int
 	ID       int
 	Name     string
-	Sessions []map[string]interface{}
+	Sessions []map[string]any
 }
 
 // GraphQL Accepts a GraphQL query and creates a response
@@ -100,12 +101,15 @@ func (s *Server) GraphQL(ctx context.Context, req *pb.GraphQLQuery) (*pb.GraphQL
 func (s *Server) InitGQL() {
 	s.Log.Println("InitGQL")
 	makeVaultReq := &pb.GetValuesReq{}
-	integrationSessions := map[string][]map[string]interface{}{} //
-	vaultSessions := map[string][]map[string]interface{}{}       //
+	integrationSessions := map[string][]map[string]any{} //
+	vaultSessions := map[string][]map[string]any{}       //
 
 	// Fetch template keys and values
 	vault, err := s.GetValues(context.Background(), makeVaultReq)
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{
+		ExitOnFailure: false,
+		Log:           s.Log,
+	}
 
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -122,8 +126,8 @@ func (s *Server) InitGQL() {
 	}
 
 	envStrings := SelectedEnvironment
-	for _, e := range envStrings { //Not including itdev and servicepack
-		// Get spectrum sessions
+	for _, e := range envStrings { // Not including itdev and servicepack
+		// Get sessions
 		integrationSessions[e], err = s.getActiveSessions(config, e)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
@@ -152,7 +156,7 @@ func (s *Server) InitGQL() {
 			envList = append(envList, Env{ID: len(envList), Name: env.Name, Projects: []Project{}})
 			envQL = &envList[len(envList)-1]
 		}
-		//envQL is env at index
+		// envQL is env at index
 
 		projectIndices := envIndices[env.Name].children // Track indices of projects in list
 		projectList := append([]Project{}, envQL.Projects...)
@@ -238,7 +242,7 @@ func (s *Server) InitGQL() {
 	}
 	vaultQL := VaultVals{Envs: envList}
 	// Convert data to a nested structure
-	var ValueObject = graphql.NewObject(
+	ValueObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Value",
 			Fields: graphql.Fields{
@@ -260,7 +264,7 @@ func (s *Server) InitGQL() {
 				},
 				"key": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).FileID
 
@@ -272,8 +276,7 @@ func (s *Server) InitGQL() {
 				},
 				"value": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).FileID
 
@@ -285,8 +288,7 @@ func (s *Server) InitGQL() {
 				},
 				"source": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).FileID
 
@@ -298,7 +300,7 @@ func (s *Server) InitGQL() {
 				},
 			},
 		})
-	var FileObject = graphql.NewObject(
+	FileObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "File",
 			Fields: graphql.Fields{
@@ -317,7 +319,7 @@ func (s *Server) InitGQL() {
 
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						file := params.Source.(File).ID
 
 						serv := params.Source.(File).ServID
@@ -339,8 +341,8 @@ func (s *Server) InitGQL() {
 						// 	Type: graphql.String,
 						// },
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						//get list of values and return
+					Resolve: func(params graphql.ResolveParams) (any, error) {
+						// get list of values and return
 						keyStr, keyOK := params.Args["keyName"].(string)
 						// valStr, valOK := params.Args["valName"].(string)
 						sourceStr, sourceOK := params.Args["sourceName"].(string)
@@ -372,7 +374,7 @@ func (s *Server) InitGQL() {
 							}
 							values = filteredValues
 						}
-						//else if valOK {
+						// else if valOK {
 						// 	for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 						// 		if v.value == valStr {
 						// 			return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
@@ -385,7 +387,7 @@ func (s *Server) InitGQL() {
 				},
 			},
 		})
-	var ServiceObject = graphql.NewObject(
+	ServiceObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Service",
 			Fields: graphql.Fields{
@@ -400,7 +402,7 @@ func (s *Server) InitGQL() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						serv := params.Source.(Service).ID
 						proj := params.Source.(Service).ProjID
 						env := params.Source.(Service).EnvID
@@ -414,7 +416,7 @@ func (s *Server) InitGQL() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						fileStr, isOK := params.Args["fileName"].(string)
 						serv := params.Source.(Service).ID
 						proj := params.Source.(Service).ProjID
@@ -432,7 +434,7 @@ func (s *Server) InitGQL() {
 				},
 			},
 		})
-	var ProjectObject = graphql.NewObject(
+	ProjectObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Project",
 			Fields: graphql.Fields{
@@ -444,7 +446,7 @@ func (s *Server) InitGQL() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						proj := params.Source.(Project).ID
 						env := params.Source.(Project).EnvID
 						return vaultQL.Envs[env].Projects[proj].Name, nil
@@ -457,7 +459,7 @@ func (s *Server) InitGQL() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						servStr, isOK := params.Args["servName"].(string)
 						proj := params.Source.(Project).ID
 						env := params.Source.(Project).EnvID
@@ -475,7 +477,7 @@ func (s *Server) InitGQL() {
 			},
 		})
 
-	var SessionObject = graphql.NewObject(
+	SessionObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Session",
 			Fields: graphql.Fields{
@@ -490,19 +492,19 @@ func (s *Server) InitGQL() {
 				},
 				"User": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						eID := params.Source.(map[string]interface{})["EnvID"].(int)
-						pID := params.Source.(map[string]interface{})["IntegrationID"].(int)
-						sID := params.Source.(map[string]interface{})["ID"].(int)
+					Resolve: func(params graphql.ResolveParams) (any, error) {
+						eID := params.Source.(map[string]any)["EnvID"].(int)
+						pID := params.Source.(map[string]any)["IntegrationID"].(int)
+						sID := params.Source.(map[string]any)["ID"].(int)
 						return vaultQL.Envs[eID].Providers[pID].Sessions[sID]["User"].(string), nil
 					},
 				},
 				"LastLogIn": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.Int),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-						eID := params.Source.(map[string]interface{})["EnvID"].(int)
-						pID := params.Source.(map[string]interface{})["IntegrationID"].(int)
-						sID := params.Source.(map[string]interface{})["ID"].(int)
+					Resolve: func(params graphql.ResolveParams) (any, error) {
+						eID := params.Source.(map[string]any)["EnvID"].(int)
+						pID := params.Source.(map[string]any)["IntegrationID"].(int)
+						sID := params.Source.(map[string]any)["ID"].(int)
 						return vaultQL.Envs[eID].Providers[pID].Sessions[sID]["LastLogIn"].(int64), nil
 					},
 				},
@@ -510,7 +512,7 @@ func (s *Server) InitGQL() {
 		},
 	)
 
-	var ProviderObject = graphql.NewObject(
+	ProviderObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Provider",
 			Fields: graphql.Fields{
@@ -522,7 +524,7 @@ func (s *Server) InitGQL() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						eid := params.Source.(Provider).EnvID
 						pid := params.Source.(Provider).ID
 						return vaultQL.Envs[eid].Providers[pid].Name, nil
@@ -535,13 +537,13 @@ func (s *Server) InitGQL() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						eid := params.Source.(Provider).EnvID
 						pid := params.Source.(Provider).ID
 
 						if userName, ok := params.Args["userName"].(string); ok {
 							regex := regexp.MustCompile(`(?i).*` + userName + `.*`)
-							sessions := []map[string]interface{}{}
+							sessions := []map[string]any{}
 							for _, s := range vaultQL.Envs[eid].Providers[pid].Sessions {
 								if regex.MatchString(s["User"].(string)) {
 									sessions = append(sessions, s)
@@ -557,7 +559,7 @@ func (s *Server) InitGQL() {
 		},
 	)
 
-	var EnvObject = graphql.NewObject(
+	EnvObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Env",
 			Fields: graphql.Fields{
@@ -566,7 +568,7 @@ func (s *Server) InitGQL() {
 				},
 				"name": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						env := params.Source.(Env).ID
 						return vaultQL.Envs[env].Name, nil
 					},
@@ -579,8 +581,7 @@ func (s *Server) InitGQL() {
 						},
 					},
 
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
-
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						env := params.Source.(Env).ID
 						if projStr, ok := params.Args["projName"].(string); ok {
 							for i, s := range vaultQL.Envs[env].Projects {
@@ -591,7 +592,6 @@ func (s *Server) InitGQL() {
 							return vaultQL.Envs[env].Projects, errors.New("projName not found")
 						}
 						return vaultQL.Envs[env].Projects, nil
-
 					},
 				},
 				"providers": &graphql.Field{
@@ -601,7 +601,7 @@ func (s *Server) InitGQL() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						eid := params.Source.(Env).ID
 						if provName, ok := params.Args["provName"].(string); ok {
 							for _, p := range vaultQL.Envs[eid].Providers {
@@ -619,7 +619,7 @@ func (s *Server) InitGQL() {
 				},
 			},
 		})
-	var VaultValObject = graphql.NewObject(
+	VaultValObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "VaultVals",
 
@@ -631,7 +631,7 @@ func (s *Server) InitGQL() {
 							Type: graphql.String,
 						},
 					},
-					Resolve: func(params graphql.ResolveParams) (interface{}, error) {
+					Resolve: func(params graphql.ResolveParams) (any, error) {
 						envs := []Env{}
 						for _, e := range vaultQL.Envs {
 							if e.Name == "dev" || e.Name == "QA" || e.Name == "RQA" || e.Name == "auto" || e.Name == "performance" || e.Name == "itdev" || e.Name == "servicepack" || e.Name == "staging" {
@@ -652,7 +652,6 @@ func (s *Server) InitGQL() {
 							return envs, fmt.Errorf("envName not found: %s", envStr)
 						}
 						return envs, nil
-
 					},
 				},
 			},
@@ -660,5 +659,4 @@ func (s *Server) InitGQL() {
 	s.GQLSchema, _ = graphql.NewSchema(graphql.SchemaConfig{
 		Query: VaultValObject,
 	})
-
 }

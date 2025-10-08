@@ -4,12 +4,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
-// UploadPolicies accepts a file directory and vault object to upload policies to. Logs to pased logger
-func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPermissions bool) error {
+// UploadPolicies accepts a file directory and vault object to upload policies to. Logs to passed logger
+func UploadPolicies(config *coreconfig.CoreConfig, dir string, v *sys.Vault, noPermissions bool) error {
 	config.Log.SetPrefix("[POLICY]")
 	config.Log.Printf("Writing policies from %s\n", dir)
 	files, err := os.ReadDir(dir)
@@ -40,8 +41,8 @@ func UploadPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault, noPer
 	return nil
 }
 
-// GetExistsPolicies accepts a file directory and vault object to check policies for. Logs to pased logger
-func GetExistsPolicies(config *eUtils.DriverConfig, dir string, v *sys.Vault) (bool, error) {
+// GetExistsPolicies accepts a file directory and vault object to check policies for. Logs to passed logger
+func GetExistsPolicies(config *coreconfig.CoreConfig, dir string, v *sys.Vault) (bool, error) {
 	config.Log.SetPrefix("[POLICY]")
 	config.Log.Printf("Checking exists token policies from %s\n", dir)
 	files, err := os.ReadDir(dir)

@@ -4,15 +4,15 @@ type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
 	CheckIncomingColumnName      func(col string) bool
-	CheckMysqlFileIncoming       func(secretColumns map[string]string, secretValue string, dbName string, tableName string) ([]byte, string, string, string, error)
+	CheckFlowDataIncoming        func(secretColumns map[string]string, secretValue string, dbName string, tableName string) ([]byte, string, string, string, error)
 	CheckIncomingAliasColumnName func(col string) bool
-	GetTrcDbUrl                  func(data map[string]interface{}) string
+	GetTrcDbUrl                  func(data map[string]any) string
 }
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
 		optionsBuilder.CheckIncomingColumnName = CheckIncomingColumnName
-		optionsBuilder.CheckMysqlFileIncoming = CheckMysqlFileIncoming
+		optionsBuilder.CheckFlowDataIncoming = CheckFlowDataIncoming
 		optionsBuilder.CheckIncomingAliasColumnName = CheckIncomingAliasColumnName
 		optionsBuilder.GetTrcDbUrl = GetTrcDbUrl
 	}

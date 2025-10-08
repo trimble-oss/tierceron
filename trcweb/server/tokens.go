@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	jwt "github.com/golang-jwt/jwt"
+	jwt "github.com/golang-jwt/jwt/v5"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -17,7 +18,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 	tokenSecret := s.TrcAPITokenSecret
 	currentTime := time.Now().Unix()
 	expTime := currentTime + 24*60*60
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  id,
@@ -31,7 +32,7 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 	// Upload token information to vault
 	if mod != nil {
 		defer func() {
-			tokenData := map[string]interface{}{
+			tokenData := map[string]any{
 				"ID":      id,
 				"Issued":  currentTime,
 				"Expires": expTime,
@@ -48,8 +49,8 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 // GetVaultTokens takes app role credentials and attempts to fetch names tokens from the vault
 func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.TokensResp, error) {
 	// Create 2 vault connections, one for checking/rolling tokens, the other for accessing the AWS user cubbyhole
-	v, err := sys.NewVault(false, s.VaultAddr, "nonprod", false, false, false, s.Log)
-	config := &eUtils.DriverConfig{ExitOnFailure: false, Log: s.Log}
+	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", false, false, false, s.Log)
+	config := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 	if v != nil {
 		defer v.Close()
 	}
@@ -59,7 +60,7 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 		return nil, err
 	}
 
-	v.SetToken(s.VaultToken)
+	v.SetToken(s.VaultTokenPtr)
 
 	if len(req.AppRoleID) == 0 || len(req.AppRoleSecretID) == 0 {
 		return nil, fmt.Errorf("need both role ID and secret ID to login through app role")
@@ -72,12 +73,12 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 	}
 
 	// Modifier to access token values granted to bamboo
-	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddr, "nonprod", nil, true, s.Log)
+	mod, err := helperkv.NewModifier(false, arToken, s.VaultAddrPtr, "nonprod", nil, true, s.Log)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, err
 	}
-	mod.RawEnv = "bamboo"
+	mod.EnvBasis = "bamboo"
 	mod.Env = "bamboo"
 
 	data, err := mod.ReadData("super-secrets/tokens")

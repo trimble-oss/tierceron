@@ -28,6 +28,10 @@ path "super-secrets/data/dev/Index/TrcVault/trcplugin/overrides/*" {
   capabilities = ["create", "update", "read", "list"]
 }
 
+path "super-secrets/data/dev/Index/TrcVault/trcplugin/trcctl/*" {
+  capabilities = ["read", "list"]
+}
+
 path "value-metrics/dev/*" {
   capabilities = ["read", "list", "create", "update"]
 }

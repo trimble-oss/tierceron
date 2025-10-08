@@ -46,7 +46,7 @@ path "super-secrets/data/dev/Index/TrcVault/trcplugin/*" {
   capabilities = ["create", "update", "read", "list"]
 }
 
-path "super-secrets/data/dev/Restricted/TrcshAgent/*" {
+path "super-secrets/data/dev/Restricted/TrcshCursor*" {
   capabilities = ["read", "list"]
 }
 

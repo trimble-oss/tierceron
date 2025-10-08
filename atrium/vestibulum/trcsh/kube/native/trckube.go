@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -25,7 +26,8 @@ import (
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
-	"github.com/go-git/go-billy/v5"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -65,10 +67,10 @@ type TrcKubeConfig struct {
 	// Current kubectl directive... configmap, secret, apply, etc...
 	KubeDirective *TrcKubeDirective
 
-	PipeOS billy.File // Where to send output.
+	PipeOS trcshio.TrcshReadWriteCloser // Where to send output.
 }
 
-func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
+func LoadFromKube(kubeConfigBytes []byte, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
 	// kubeConfig, err := clientcmd.Load(kubeConfigBytes)
 	// if err != nil {
 	// 	return nil, err
@@ -108,8 +110,8 @@ func LoadFromKube(kubeConfigBytes []byte, config *eUtils.DriverConfig) (*TrcKube
 	return trcConfig, nil
 }
 
-func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *eUtils.DriverConfig) (*TrcKubeConfig, error) {
-	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfig)
+func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
+	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfigPtr)
 	if decodeErr != nil {
 		fmt.Println("Decoding error")
 		eUtils.LogErrorObject(config, decodeErr, false)
@@ -123,7 +125,7 @@ func ParseTrcKubeContext(trcKubeContext *TrcKubeContext, deployArgs []string) *T
 		trcKubeContext = &TrcKubeContext{}
 	}
 
-	for i, _ := range deployArgs {
+	for i := range deployArgs {
 		if deployArgs[i] == "set-context" {
 			if i+1 < len(deployArgs) {
 				trcKubeContext.Context = deployArgs[i+1]
@@ -159,7 +161,7 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	trcKubeDirective.Action = deployArgs[0]
 	deployArgs = deployArgs[1:]
 
-	for i, _ := range deployArgs {
+	for i := range deployArgs {
 		if trcKubeDirective.Action == "create" && (deployArgs[i] == "secret" || deployArgs[i] == "configmap") {
 			trcKubeDirective.Object = deployArgs[i]
 			if i+1 < len(deployArgs) {
@@ -192,7 +194,7 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 	return trcKubeDirective
 }
 
-func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.DriverConfig) error {
 	configFlags := genericclioptions.NewConfigFlags(true).
 		WithDeprecatedPasswordFlag().
 		WithDiscoveryBurst(300).
@@ -245,7 +247,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
 
 	configFlags.PathVisitorLoader = func() resource.PathVisitor {
-		return &path.MemPathVisitor{MemFs: config.MemFs, Iostreams: iostreams}
+		return &path.MemPathVisitor{MemFs: driverConfig.MemFs, Iostreams: iostreams}
 	}
 
 	configFlags.HandleSecretFromFileSources = func(secret *corev1.Secret, fileSources []string) error {
@@ -256,10 +258,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 			}
 			var data []byte
 
-			var memFile billy.File
+			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = config.MemFs.Open(filePath); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(filePath); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -287,10 +289,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 			}
 			var data []byte
 
-			var memFile billy.File
+			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = config.MemFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -309,10 +311,10 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 		for _, fileSource := range fileSources {
 			var data []byte
 
-			var memFile billy.File
+			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = config.MemFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
@@ -329,11 +331,11 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 	}
 
 	if trcKubeDeploymentConfig.PipeOS != nil {
-		if iostat, ioerr := config.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
+		if iostat, ioerr := driverConfig.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
 			if iostat.Size() > 0 {
 				pipeName := trcKubeDeploymentConfig.PipeOS.Name()
 				trcKubeDeploymentConfig.PipeOS.Close()
-				if trcKubeDeploymentConfig.PipeOS, ioerr = config.MemFs.Open(pipeName); ioerr == nil {
+				if trcKubeDeploymentConfig.PipeOS, ioerr = driverConfig.MemFs.Open(pipeName); ioerr == nil {
 					iostreams.In = trcKubeDeploymentConfig.PipeOS
 				}
 			} else {
@@ -358,7 +360,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig
 }
 
 // KubeApply applies an in memory yaml file to a kubernetes cluster
-func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConfig) error {
+func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.DriverConfig) error {
 	configFlags := genericclioptions.
 		NewConfigFlags(true).
 		WithDeprecatedPasswordFlag()
@@ -403,7 +405,7 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, config *eUtils.DriverConf
 
 	f := cmdutil.NewFactory(
 		cmdutil.NewMatchVersionFlags(configFlags),
-		&path.MemPathVisitor{MemFs: config.MemFs},
+		&path.MemPathVisitor{MemFs: driverConfig.MemFs},
 		configFlags.HandleSecretFromFileSources,
 		configFlags.HandleConfigMapFromFileSources,
 		configFlags.HandleConfigMapFromEnvFileSources,

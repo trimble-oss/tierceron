@@ -11,40 +11,168 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-git/go-billy/v5"
-
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
 var mutex = &sync.Mutex{}
+var ConfiginatorOsPathSeparator string = string(os.PathSeparator)
+
+func trimPath(e string, toReplace string) (string, bool) {
+	if len(toReplace) == 0 || !strings.Contains(e, toReplace) {
+		return e, false
+	}
+	if strings.HasPrefix(e, toReplace) && !strings.HasSuffix(toReplace, ConfiginatorOsPathSeparator) {
+		toReplace = toReplace + ConfiginatorOsPathSeparator
+	}
+	if strings.HasPrefix(e, toReplace) || strings.Index(e, toReplace) != 0 && string(e[strings.Index(e, toReplace)-1]) == ConfiginatorOsPathSeparator {
+		e = strings.Replace(e, toReplace, "", 1)
+	} else {
+		e = strings.Replace(e, toReplace, ConfiginatorOsPathSeparator, 1)
+	}
+	return e, true
+}
+
+func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error) {
+	//initialized := false
+	templatePaths := []string{}
+	endPaths := []string{}
+	if driverConfig == nil {
+		return templatePaths, endPaths, errors.New("empty configuration passed in")
+	}
+
+	var trcProjectService string = ""
+	var trcService string = ""
+	var project string = ""
+
+	if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 || len(driverConfig.ServicesWanted) == 1 {
+		if driverConfig.CoreConfig.WantCerts {
+			trcProjectService = "Common"
+		} else {
+			if ok && len(driverConfig.ServicesWanted) == 0 {
+				trcProjectService = strings.ReplaceAll(projectService.(string), "\\", "/")
+			} else {
+				trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
+			}
+			if !strings.Contains(trcProjectService, "/") {
+				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service specified without slash")
+			}
+			if !strings.HasSuffix(trcProjectService, "/") {
+				trcProjectService = trcProjectService + "/"
+			}
+		}
+		if trcProjectService != "Common" {
+			trcProjectServiceParts := strings.Split(trcProjectService, "/")
+			if len(trcProjectServiceParts) < 2 {
+				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service not specified correctly")
+			}
+			project = trcProjectServiceParts[0] + "/"
+			trcService = "/" + trcProjectServiceParts[1] + "/"
+		}
+		if len(driverConfig.StartDir) > 1 {
+			// If multiple starting directories, filter starting directories based on project name
+			startDirFiltered := []string{}
+			for _, startDir := range driverConfig.StartDir {
+				startDir = strings.ReplaceAll(startDir, "\\", "/")
+				if !strings.HasSuffix(startDir, "/") {
+					startDir = startDir + "/"
+				}
+				if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, "/") {
+					project = "/" + project
+				}
+				if strings.Contains(startDir, project) { //HasSuffix
+					startDirFiltered = append(startDirFiltered, startDir)
+				}
+			}
+			driverConfig.StartDir = startDirFiltered
+			if len(driverConfig.StartDir) == 0 {
+				fmt.Println("Invalid starting directory, ensure directory includes project name.")
+				return templatePaths, endPaths, errors.New("invalid starting directory passed in")
+			}
+		}
+	}
+
+	for _, startDir := range driverConfig.StartDir {
+		if ConfiginatorOsPathSeparator == "\\" || eUtils.IsWindows() {
+			// Note: Checking path separator for testing and keeping IsWindows to be safe
+			startDir = strings.ReplaceAll(startDir, "/", ConfiginatorOsPathSeparator)
+			if driverConfig.ReadMemCache {
+				// Trim everything before trc_templates...
+				if i := strings.Index(startDir, "trc_templates"); i >= 0 {
+					startDir = "./" + startDir[i:]
+				}
+			}
+			trcProjectService = strings.ReplaceAll(trcProjectService, "/", ConfiginatorOsPathSeparator)
+			trcService = strings.ReplaceAll(trcService, "/", ConfiginatorOsPathSeparator)
+		}
+		if !strings.HasSuffix(startDir, ConfiginatorOsPathSeparator) {
+			startDir = startDir + ConfiginatorOsPathSeparator
+		}
+
+		//get files from directory
+		tp, ep := getDirFiles(driverConfig, startDir, driverConfig.EndDir)
+		if len(trcProjectService) > 0 {
+			epScrubbed := []string{}
+			tpScrubbed := []string{}
+			// Do some scrubbing...
+			for ie, e := range ep {
+				matched := false
+				if len(trcProjectService) > 0 && strings.Contains(e, trcProjectService) {
+					e, matched = trimPath(e, trcProjectService)
+				} else if len(trcService) > 0 && strings.Contains(e, trcService) {
+					e, matched = trimPath(e, trcService)
+				}
+
+				if matched {
+					epScrubbed = append(epScrubbed, e)
+					tpScrubbed = append(tpScrubbed, tp[ie])
+				}
+			}
+			if len(epScrubbed) > 0 {
+				// Only overwrite if something
+				ep = epScrubbed
+				tp = tpScrubbed
+			}
+		}
+		templatePaths = append(templatePaths, tp...)
+		endPaths = append(endPaths, ep...)
+	}
+	return templatePaths, endPaths, nil
+}
 
 // GenerateConfigsFromVault configures the templates in trc_templates and writes them to trcconfig
-func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.ConfigContext, config *eUtils.DriverConfig) (interface{}, error) {
+func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
 	/*Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if utils.IsWindows() {
 		Reset = ""
 		Cyan = ""
 	}*/
-	modCheck, err := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
-	modCheck.Env = config.Env
-	version := ""
+	//Should check if driverConfig is nil here...
+	tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+
+	modCheck, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
 	if err != nil {
-		eUtils.LogErrorObject(config, err, false)
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		return nil, err
 	}
-	modCheck.VersionFilter = config.VersionFilter
+	modCheck.Env = driverConfig.CoreConfig.Env
+	version := ""
+	modCheck.VersionFilter = driverConfig.VersionFilter
 
 	//Check if templateInfo is selected for template or values
 	templateInfo := false
 	versionInfo := false
-	if strings.Contains(config.Env, "_") {
-		envVersion := eUtils.SplitEnv(config.Env)
+	if strings.Contains(driverConfig.CoreConfig.Env, "_") {
+		envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
 
-		config.Env = envVersion[0]
+		driverConfig.CoreConfig.Env = envVersion[0]
 		version = envVersion[1]
 		switch version {
 		case "versionInfo":
@@ -53,99 +181,85 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 			templateInfo = true
 		}
 	}
-	versionData := make(map[string]interface{})
-	if config.Token != "novault" {
-		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "", config.Log); errValidateEnvironment != nil || !valid {
+	versionData := make(map[string]any)
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetTokenStr(tokenNamePtr), "novault") {
+		// Chewbacca: break here...
+		if valid, baseDesiredPolicy, errValidateEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "", driverConfig.CoreConfig.Log); errValidateEnvironment != nil || !valid {
 			if errValidateEnvironment != nil {
 				if urlErr, urlErrOk := errValidateEnvironment.(*url.Error); urlErrOk {
 					if _, sErrOk := urlErr.Err.(*tls.CertificateVerificationError); sErrOk {
-						return nil, eUtils.LogAndSafeExit(config, "Invalid certificate.", 1)
+						return nil, eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Invalid certificate.", 1)
 					}
 				}
 			}
 
-			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.RawEnv, false, "_unrestricted", config.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
-				return nil, eUtils.LogAndSafeExit(config, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", config.Env, baseDesiredPolicy, desiredPolicy), 1)
+			if unrestrictedValid, desiredPolicy, errValidateUnrestrictedEnvironment := modCheck.ValidateEnvironment(modCheck.EnvBasis, false, "_unrestricted", driverConfig.CoreConfig.Log); errValidateUnrestrictedEnvironment != nil || !unrestrictedValid {
+				return nil, eUtils.LogAndSafeExit(driverConfig.CoreConfig, fmt.Sprintf("Mismatched token for requested environment: %s base policy: %s policy: %s", driverConfig.CoreConfig.Env, baseDesiredPolicy, desiredPolicy), 1)
 			}
 		}
 	}
 
-	//initialized := false
-	templatePaths := []string{}
-	endPaths := []string{}
-
-	//templatePaths
-	for _, startDir := range config.StartDir {
-		//get files from directory
-		tp, ep := getDirFiles(startDir, config.EndDir)
-		if trcProjectService, ok := config.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
-			epScrubbed := []string{}
-			// Do some scrubbing...
-			for _, e := range ep {
-				e = strings.Replace(e, trcProjectService.(string), "/", 1)
-				projectService := strings.Replace(trcProjectService.(string), "/", "\\", 1)
-				e = strings.Replace(e, projectService, "\\", 1)
-				epScrubbed = append(epScrubbed, e)
-			}
-			ep = epScrubbed
-		}
-
-		templatePaths = append(templatePaths, tp...)
-		endPaths = append(endPaths, ep...)
+	templatePaths, endPaths, err := generatePaths(driverConfig)
+	if err != nil {
+		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
-	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(config.Env)
+	_, _, indexedEnv, _ := helperkv.PreCheckEnvironment(driverConfig.CoreConfig.Env)
 	if indexedEnv {
-		templatePaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, templatePaths)
+		templatePaths, err = eUtils.GetAcceptedTemplatePaths(driverConfig, modCheck, templatePaths)
 		if err != nil {
-			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
-		endPaths, err = eUtils.GetAcceptedTemplatePaths(config, modCheck, endPaths)
+		endPaths, err = eUtils.GetAcceptedTemplatePaths(driverConfig, modCheck, endPaths)
 		if err != nil {
-			eUtils.LogErrorObject(config, err, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 	}
 
 	//File filter
-	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, config.FileFilter, false)
+	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, driverConfig.FileFilter, false)
 
-	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, config.ServicesWanted, false)
+	templatePaths, endPaths = FilterPaths(templatePaths, endPaths, driverConfig.ServicesWanted, false)
+
+	if len(templatePaths) == 0 || len(endPaths) == 0 {
+		eUtils.LogErrorObject(driverConfig.CoreConfig, errors.New("filtered paths returned empty template or end paths"), false)
+	}
 
 	for _, templatePath := range templatePaths {
-		if !config.WantCerts && strings.Contains(templatePath, "Common") {
+		if !driverConfig.CoreConfig.WantCerts && strings.Contains(templatePath, "Common") {
 			continue
 		}
-		_, service, _ := eUtils.GetProjectService(templatePath)      //This checks for nested project names
-		config.VersionFilter = append(config.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
+		_, service, _, _ := eUtils.GetProjectService(driverConfig, templatePath) //This checks for nested project names
+		driverConfig.VersionFilter = append(driverConfig.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
 	}
 
-	if config.WantCerts && versionInfo { //For cert version history
-		config.VersionFilter = append(config.VersionFilter, "Common")
+	if driverConfig.CoreConfig.WantCerts && versionInfo { //For cert version history
+		driverConfig.VersionFilter = append(driverConfig.VersionFilter, "Common")
 	}
 
-	config.VersionFilter = eUtils.RemoveDuplicates(config.VersionFilter)
-	modCheck.VersionFilter = config.VersionFilter
+	driverConfig.VersionFilter = eUtils.RemoveDuplicates(driverConfig.VersionFilter)
+	modCheck.VersionFilter = driverConfig.VersionFilter
 
 	if versionInfo {
-		//versionDataMap := make(map[string]map[string]interface{})
+		//versionDataMap := make(map[string]map[string]any)
 		//Gets version metadata for super secrets or values if super secrets don't exist.
 		if strings.Contains(modCheck.Env, ".") {
 			envVersion := eUtils.SplitEnv(modCheck.Env)
-			config.VersionFilter = append(config.VersionFilter, envVersion[0])
+			driverConfig.VersionFilter = append(driverConfig.VersionFilter, envVersion[0])
 			modCheck.Env = envVersion[0]
 		}
 
-		versionMetadataMap := eUtils.GetProjectVersionInfo(config, modCheck)
+		versionMetadataMap := eUtils.GetProjectVersionInfo(driverConfig, modCheck)
 		//var masterKey string
 		project := ""
 		neverPrinted := true
-		if len(config.VersionFilter) > 0 {
-			project = config.VersionFilter[0]
+		if len(driverConfig.VersionFilter) > 0 {
+			project = driverConfig.VersionFilter[0]
 		}
 		first := true
 		for key := range versionMetadataMap {
 			passed := false
-			if config.WantCerts {
+			if driverConfig.CoreConfig.WantCerts {
 				//If paths were clean - this would be logic
 				/*
 					if len(key) > 0 {
@@ -155,11 +269,11 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					}
 				*/
 				//This is happening because of garbage paths that look like this -> values/{projectName}/{service}/Common/{file.cer}
-				for _, service := range config.VersionFilter { //The following for loop could be removed if vault paths were clean
+				for _, service := range driverConfig.VersionFilter { //The following for loop could be removed if vault paths were clean
 					if !passed && strings.Contains(key, "Common") && strings.Contains(key, service) && !strings.Contains(key, project) && !strings.HasSuffix(key, "Common") {
 						if len(key) > 0 {
 							keySplit := strings.Split(key, "/")
-							config.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], neverPrinted)
+							driverConfig.VersionInfo(versionMetadataMap[key], false, keySplit[len(keySplit)-1], neverPrinted)
 							passed = true
 							neverPrinted = false
 						}
@@ -167,7 +281,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 				}
 			} else {
 				if len(key) > 0 {
-					config.VersionInfo(versionMetadataMap[key], false, key, first)
+					driverConfig.VersionInfo(versionMetadataMap[key], false, key, first)
 					//return nil, eUtils.LogAndSafeExit(config, "", 1)
 					if first {
 						neverPrinted = false
@@ -178,7 +292,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 
 		}
 		if neverPrinted {
-			eUtils.LogInfo(config, "No version data available for this env")
+			eUtils.LogInfo(driverConfig.CoreConfig, "No version data available for this env")
 		}
 		return nil, nil //End of -versions flag
 		/*	we might need this commented code - but seems unnecessary
@@ -207,26 +321,28 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 		*/
 	} else if !templateInfo {
 		if version != "0" { //Check requested version bounds
-			versionMetadataMap := eUtils.GetProjectVersionInfo(config, modCheck)
-			versionNumbers := eUtils.GetProjectVersions(config, versionMetadataMap)
+			versionMetadataMap := eUtils.GetProjectVersionInfo(driverConfig, modCheck)
+			versionNumbers := eUtils.GetProjectVersions(driverConfig, versionMetadataMap)
 
-			eUtils.BoundCheck(config, versionNumbers, version)
+			eUtils.BoundCheck(driverConfig, versionNumbers, version)
 		}
 	}
 
 	var wg sync.WaitGroup
 	//configure each template in directory
-	config.DiffCounter = len(templatePaths)
+	driverConfig.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string, version string, versionData map[string]interface{}) error {
+		go func(i int, templatePath string, version string, versionData map[string]any) error {
 			defer wg.Done()
 
-			mod, _ := helperkv.NewModifier(config.Insecure, config.Token, config.VaultAddress, config.EnvRaw, config.Regions, true, config.Log)
-			mod.Env = config.Env
+			tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
+
+			mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
+			mod.Env = driverConfig.CoreConfig.Env
 			mod.Version = version
 			//check for template_files directory here
-			project, service, templatePath := GetProjectService(config, templatePath)
+			project, service, _, templatePath := eUtils.GetProjectService(driverConfig, templatePath)
 
 			var isCert bool
 			if service != "" {
@@ -244,84 +360,78 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					isCert = true
 				}
 
-				if config.WantCerts != isCert {
+				if driverConfig.CoreConfig.WantCerts != isCert {
 					goto wait
-				}
-
-				if strings.HasSuffix(templatePath, ".tmpl") {
-					if !config.ZeroConfig {
-						if strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-							goto wait
-						}
-					} else {
-						if !strings.HasSuffix(templatePath, "nc.properties.tmpl") {
-							goto wait
-						}
-					}
 				}
 
 				var configuredTemplate string
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data, errTemplateVersion := getTemplateVersionData(config, mod, project, service, endPaths[i])
+					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
 					if errTemplateVersion != nil {
 						return errTemplateVersion
 					}
 
 					mutex.Lock()
 					if data == nil {
-						return eUtils.LogAndSafeExit(config, "Template version data could not be retrieved", 1)
+						return eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Template version data could not be retrieved", 1)
 					}
 					versionData[endPaths[i]] = data
 					mutex.Unlock()
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(config, mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, driverConfig.ZeroConfig)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							eUtils.CheckError(config, ctErr, true)
+							eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
+							goto wait
 						}
-					} else if config.WantKeystore != "" && len(certData) == 0 {
-						if config.KeystorePassword == "" {
-							projectSecrets, err := mod.ReadData(fmt.Sprintf("super-secrets/%s", config.VersionFilter[0]))
+					} else if driverConfig.WantKeystore != "" && len(certData) == 0 {
+						if driverConfig.KeystorePassword == "" {
+							projectSecrets, err := mod.ReadData(fmt.Sprintf("super-secrets/%s", driverConfig.VersionFilter[0]))
 							if err == nil {
 								if trustStorePassword, tspOk := projectSecrets["trustStorePassword"].(string); tspOk {
-									config.KeystorePassword = trustStorePassword
+									driverConfig.KeystorePassword = trustStorePassword
+								}
+							} else {
+								if driverConfig.CoreConfig.TokenCache != nil {
+									mod.EmptyCache()
+									driverConfig.CoreConfig.TokenCache.Clear()
 								}
 							}
 						}
 					}
 				}
 				//generate template or certificate
-				if config.WantCerts && certLoaded {
-					if config.WantKeystore != "" && len(certData) == 0 {
+				if driverConfig.CoreConfig.WantCerts && certLoaded {
+					if driverConfig.WantKeystore != "" && len(certData) == 0 {
 						// Keystore is serialized at end.
 						goto wait
 					}
 					if len(certData) == 0 {
-						eUtils.LogInfo(config, "Could not load cert "+endPaths[i])
+						eUtils.LogInfo(driverConfig.CoreConfig, "Could not load cert "+endPaths[i])
 						goto wait
 					}
 					destFile := certData[0]
-					certDestination := config.EndDir + "/" + destFile
-					writeToFile(config, certData[1], certDestination)
-					if config.OutputMemCache {
-						eUtils.LogInfo(config, "certificate pre-processed for "+certDestination)
+					certDestination := driverConfig.EndDir + "/" + destFile
+					writeToFile(driverConfig, certData[1], certDestination)
+					if driverConfig.OutputMemCache {
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate pre-processed for "+certDestination)
 					} else {
-						eUtils.LogInfo(config, "certificate written to "+certDestination)
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate written to "+certDestination)
 					}
 					goto wait
 				} else {
-					if config.Diff {
+					if driverConfig.Diff {
 						if version != "" {
-							config.Update(configCtx, &configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							config.Update(configCtx, &configuredTemplate, config.Env+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"||"+endPaths[i])
 						}
 					} else {
-						writeToFile(config, configuredTemplate, endPaths[i])
+						writeToFile(driverConfig, configuredTemplate, endPaths[i])
 					}
 				}
 			} else {
@@ -333,7 +443,7 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 					isCert = true
 				}
 
-				if config.WantCerts != isCert {
+				if driverConfig.CoreConfig.WantCerts != isCert {
 					goto wait
 				}
 				//assume the starting directory was trc_templates
@@ -341,57 +451,58 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data, errTemplateVersion := getTemplateVersionData(config, mod, project, service, endPaths[i])
+					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
 					if errTemplateVersion != nil {
-						return errTemplateVersion
+						goto wait
 					}
 					versionData[endPaths[i]] = data
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(config, mod, templatePath, config.SecretMode, project, service, config.WantCerts, false)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
-							eUtils.CheckError(config, ctErr, true)
+							eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
+							goto wait
 						}
 					}
 				}
-				if config.WantCerts && certLoaded {
-					if config.WantKeystore != "" {
+				if driverConfig.CoreConfig.WantCerts && certLoaded {
+					if driverConfig.WantKeystore != "" {
 						// Keystore is serialized at end.
 						goto wait
 					}
-					certDestination := config.EndDir + "/" + certData[0]
-					writeToFile(config, certData[1], certDestination)
-					if config.OutputMemCache {
-						eUtils.LogInfo(config, "certificate pre-processed for "+certDestination)
+					certDestination := driverConfig.EndDir + "/" + certData[0]
+					writeToFile(driverConfig, certData[1], certDestination)
+					if driverConfig.OutputMemCache {
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate pre-processed for "+certDestination)
 					} else {
-						eUtils.LogInfo(config, "certificate written to "+certDestination)
+						eUtils.LogInfo(driverConfig.CoreConfig, "certificate written to "+certDestination)
 					}
 					goto wait
 				} else {
-					if config.Diff {
+					if driverConfig.Diff {
 						if version != "" {
-							config.Update(configCtx, &configuredTemplate, config.Env+"_"+version+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"_"+version+"||"+endPaths[i])
 						} else {
-							config.Update(configCtx, &configuredTemplate, config.Env+"||"+endPaths[i])
+							driverConfig.Update(configCtx, &configuredTemplate, driverConfig.CoreConfig.Env+"||"+endPaths[i])
 						}
 					} else {
-						writeToFile(config, configuredTemplate, endPaths[i])
+						writeToFile(driverConfig, configuredTemplate, endPaths[i])
 					}
 				}
 			}
 
 			//print that we're done
-			if !config.Diff && !isCert && !templateInfo {
+			if !driverConfig.Diff && !isCert && !templateInfo {
 				messageBase := "template configured and written to "
-				if config.OutputMemCache {
+				if driverConfig.OutputMemCache {
 					messageBase = "template configured and pre-processed for "
 				}
 				if utils.IsWindows() {
-					eUtils.LogInfo(config, messageBase+endPaths[i])
+					eUtils.LogInfo(driverConfig.CoreConfig, messageBase+endPaths[i])
 				} else {
-					eUtils.LogInfo(config, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
+					eUtils.LogInfo(driverConfig.CoreConfig, "\033[0;33m"+messageBase+endPaths[i]+"\033[0m")
 				}
 			}
 
@@ -403,117 +514,143 @@ func GenerateConfigsFromVault(ctx eUtils.ProcessContext, configCtx *eUtils.Confi
 	}
 	wg.Wait()
 	if templateInfo {
-		config.VersionInfo(versionData, true, "", false)
+		driverConfig.VersionInfo(versionData, true, "", false)
 	}
-	if config.WantKeystore != "" {
+	if driverConfig.WantKeystore != "" {
 		// Keystore is serialized at end.
-		ks, ksErr := validator.StoreKeystore(config, config.KeystorePassword)
+		ks, ksErr := validator.StoreKeystore(driverConfig, driverConfig.KeystorePassword)
 		if ksErr != nil {
-			eUtils.LogErrorObject(config, ksErr, false)
+			eUtils.LogErrorObject(driverConfig.CoreConfig, ksErr, false)
 		}
-		certDestination := config.EndDir + "/" + config.WantKeystore
-		eUtils.LogInfo(config, "certificates written to "+certDestination)
-		writeToFile(config, string(ks), certDestination)
+		certDestination := driverConfig.EndDir + "/" + driverConfig.WantKeystore
+		eUtils.LogInfo(driverConfig.CoreConfig, "certificates written to "+certDestination)
+		writeToFile(driverConfig, string(ks), certDestination)
 	}
 
 	return nil, nil
 }
 
-var memCacheLock sync.Mutex
-
-func writeToFile(config *eUtils.DriverConfig, data string, path string) {
+func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
 		if len(tag) > 0 {
 			var matched bool
 			var err error
-			if config.Env == "staging" || config.Env == "prod" {
+			if prod.IsStagingProd(driverConfig.CoreConfig.Env) {
 				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+				if !matched || err != nil {
+					matched, err = regexp.MatchString("^v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+				}
 			} else {
 				matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
 			}
 
 			if !matched || err != nil {
 				fmt.Println("Invalid build tag")
-				eUtils.LogInfo(config, "Invalid build tag was found:"+tag+"- exiting...")
+				eUtils.LogInfo(driverConfig.CoreConfig, "Invalid build tag was found:"+tag+"- exiting...")
 				os.Exit(-1)
 			}
 		}
 		data = strings.Replace(data, "${TAG}", tag, -1)
+	}
+	if strings.Contains(data, "${RELEASE}") {
+		release := os.Getenv("RELEASE")
+		data = strings.Replace(data, "${RELEASE}", release, -1)
 	}
 
 	byteData := []byte(data)
 	//Ensure directory has been created
 	var newFile *os.File
 
-	if config.OutputMemCache {
-		var memFile billy.File
-		memCacheLock.Lock()
-		if _, err := config.MemFs.Stat(path); errors.Is(err, os.ErrNotExist) {
-			if strings.HasPrefix(path, "./") {
-				path = strings.TrimLeft(path, "./")
-			}
-			memFile, err = config.MemFs.Create(path)
-			if err != nil {
-				eUtils.CheckError(config, err, true)
-			}
-			memFile.Write(byteData)
-			memFile.Close()
-			memCacheLock.Unlock()
-		} else {
-			memCacheLock.Unlock()
-			eUtils.CheckError(config, err, true)
-		}
+	if driverConfig.OutputMemCache {
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, path)
 	} else {
 		dirPath := filepath.Dir(path)
 		err := os.MkdirAll(dirPath, os.ModePerm)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		//create new file
 		newFile, err = os.Create(path)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		defer newFile.Close()
 		//write to file
 		_, err = newFile.Write(byteData)
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		err = newFile.Sync()
-		eUtils.CheckError(config, err, true)
+		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	}
 }
 
-func getDirFiles(dir string, endDir string) ([]string, []string) {
-	files, err := os.ReadDir(dir)
+func getDirFiles(driverConfig *config.DriverConfig, dir string, endDir string) ([]string, []string) {
 	filePaths := []string{}
 	endPaths := []string{}
-	if err != nil {
-		//this is a file
-		return []string{dir}, []string{endDir}
-	}
-	for _, file := range files {
-		//add this directory to path names
-		if dir[len(dir)-1] != '/' {
-			dir = dir + "/"
+
+	if driverConfig.ReadMemCache {
+		files, err := driverConfig.MemFs.ReadDir(dir)
+		if err != nil || len(files) == 0 {
+			dirInfo, err := driverConfig.MemFs.Lstat(dir)
+			if err == nil && !dirInfo.IsDir() {
+				//this is a file
+				return []string{dir}, []string{endDir}
+			}
+		}
+		for _, file := range files {
+			//add this directory to path names
+			if dir[len(dir)-1] != os.PathSeparator {
+				dir = dir + string(os.PathSeparator)
+			}
+			//take off .tmpl extension
+			filename := file.Name()
+			filePath := dir + filename
+			if strings.HasSuffix(filename, ".DS_Store") {
+				continue
+			}
+			extension := filepath.Ext(filename)
+			endPath := ""
+			if extension == ".tmpl" {
+				name := filename[0 : len(filename)-len(extension)]
+				endPath = endDir + string(os.PathSeparator) + name
+			} else {
+				endPath = endDir + string(os.PathSeparator) + filename
+			}
+			//recurse to next level
+			newPaths, newEndPaths := getDirFiles(driverConfig, filePath, endPath)
+			filePaths = append(filePaths, newPaths...)
+			endPaths = append(endPaths, newEndPaths...)
+			//add endings of path names
 		}
 
-		filePath := dir + file.Name()
+	} else {
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			//this is a file
+			return []string{dir}, []string{endDir}
+		}
+		for _, file := range files {
+			//add this directory to path names
+			if dir[len(dir)-1] != os.PathSeparator {
+				dir = dir + string(os.PathSeparator)
+			}
+			//take off .tmpl extension
+			filename := file.Name()
+			filePath := dir + filename
+			if strings.HasSuffix(filename, ".DS_Store") {
+				continue
+			}
+			extension := filepath.Ext(filename)
+			endPath := ""
+			if extension == ".tmpl" {
+				name := filename[0 : len(filename)-len(extension)]
+				endPath = endDir + string(os.PathSeparator) + name
+			} else {
+				endPath = endDir + string(os.PathSeparator) + filename
+			}
+			//recurse to next level
+			newPaths, newEndPaths := getDirFiles(driverConfig, filePath, endPath)
+			filePaths = append(filePaths, newPaths...)
+			endPaths = append(endPaths, newEndPaths...)
+			//add endings of path names
+		}
 
-		//take off .tmpl extension
-		filename := file.Name()
-		if strings.HasSuffix(filename, ".DS_Store") {
-			continue
-		}
-		extension := filepath.Ext(filename)
-		endPath := ""
-		if extension == ".tmpl" {
-			name := filename[0 : len(filename)-len(extension)]
-			endPath = endDir + "/" + name
-		} else {
-			endPath = endDir + "/" + filename
-		}
-		//recurse to next level
-		newPaths, newEndPaths := getDirFiles(filePath, endPath)
-		filePaths = append(filePaths, newPaths...)
-		endPaths = append(endPaths, newEndPaths...)
-		//add endings of path names
 	}
 	return filePaths, endPaths
 }

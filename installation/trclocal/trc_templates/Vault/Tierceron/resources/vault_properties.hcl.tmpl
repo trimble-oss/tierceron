@@ -11,25 +11,19 @@ storage "file" {
 //    address="TRCDBNAME" #This should match the private dns for the database.
 //    max_parallel="{{or .maxParallel "512"}}"
 //    max_entry_size="{{or .maxEntrySize "16777216"}}"
-//    tls_ca_file= "/usr/local/vault/certs/{{.dbcert_name}}"
+//    tls_ca_file= "{{.vault_root_install}}certs/{{.dbcert_name}}"
 // }
 
 listener "tcp" {
    address = "127.0.0.1:{{.hostport}}"
    tls_disable = "false"
 
-   tls_cert_file = "/usr/local/vault/certs/cert.pem"
-   tls_key_file = "/usr/local/vault/certs/key.pem"
+   tls_cert_file = "{{.vault_root_install}}/certs/serv_cert.pem"
+   tls_key_file = "{{.vault_root_install}}/certs/serv_key.pem"
 }
 
-listener "tcp" {
-    address     = "{{.vault_ip}}:{{.hostport}}"
-    tls_disable = "false"
-    tls_cert_file = "/usr/local/vault/certs/cert.pem"
-    tls_key_file = "/usr/local/vault/certs/key.pem"
-}
 disable_mlock = false
 ui = false
 default_lease_ttl = "1h"
 max_lease_ttl = "8760h"
-plugin_directory = "/usr/local/vault/plugins/"
+plugin_directory = "{{.vault_root_install}}plugins/"

@@ -2,36 +2,27 @@ package xencryptopts
 
 import (
 	"errors"
-
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-//	"time"
-
-func FieldValidator(fields string, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error {
+func SetEncryptionSecret(encryptionSecret string) error {
 	return errors.New("not implemented")
 }
 
-func SetEncryptionSecret(config *eUtils.DriverConfig) error {
-	return errors.New("not implemented")
+// MakeNewEncryption is a function that returns a new encryption key and a new encryption salt
+func MakeNewEncryption() (string, string, error) {
+	return "", "", errors.New("not implemented")
 }
 
-func GetEncrpytors(secSection map[string]map[string]map[string]string) (map[string]interface{}, error) {
-	return nil, errors.New("not implemented")
+// Encrypt is a function accepts and input string to be encoded and an encryption map.  The map should contain
+// the base64 encoded attributes: "salt" and "initial_value".  These attributes are used to encrypt the input
+// string.  The function returns the base64 encoded encrypted string.
+func Encrypt(input string, encryption map[string]any) (string, error) {
+	return "", errors.New("not implemented")
 }
 
-func CreateEncrpytedReadMap(encrypted string) map[string]interface{} {
-	return nil
-}
-
-func FieldReader(encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string, decryption map[string]interface{}) error {
-	return errors.New("not implemented")
-}
-
-func PromptUserForFields(fields string, encrypted string, encryption map[string]interface{}) (map[string]interface{}, map[string]interface{}, error) {
-	return nil, nil, errors.New("not implemented")
-}
-
-func FieldReplacer(fieldMap map[string]interface{}, encryptedMap map[string]interface{}, secSection map[string]map[string]map[string]string, valSection map[string]map[string]map[string]string) error {
-	return errors.New("not implemented")
+// Decrypt is a function that accepts a base64 encoded encrypted string and a decryption map.  The map should
+// contain the base64 encoded attributes: "salt" and "initial_value".  These attributes are used to decrypt the
+// input string.  The function returns the decrypted string.
+func Decrypt(passStr string, decryption map[string]any) (string, error) {
+	return "", errors.New("not implemented")
 }

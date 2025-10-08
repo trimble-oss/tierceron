@@ -7,13 +7,20 @@ import (
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
+
+func PrintVersion() {
+	fmt.Println("Version: " + "1.28")
+}
 
 // Reads in template files in specified directory
 // Template directory should contain directories for each service
@@ -22,19 +29,28 @@ import (
 // Vault automatically encodes the file into base64
 
 func CommonMain(envPtr *string,
-	addrPtr *string,
-	tokenPtr *string,
 	envCtxPtr *string,
-	secretIDPtr *string,
-	appRoleIDPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	c *eUtils.DriverConfig) {
+	driverConfig *config.DriverConfig) {
+
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		driverConfig = &config.DriverConfig{
+			CoreConfig: &coreconfig.CoreConfig{
+				ExitOnFailure: true,
+				TokenCache:    cache.NewTokenCacheEmpty(),
+			},
+		}
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
+	var tokenPtr *string = nil
+	var addrPtr *string = nil
 	if flagset == nil {
+		PrintVersion()
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
@@ -43,27 +59,47 @@ func CommonMain(envPtr *string,
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
-		flagset.String("secretID", "", "Public app role ID")
-		flagset.String("appRoleID", "", "Secret app role ID")
+		flagset.String("secretID", "", "Secret for app role ID")
+		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this "+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub to access the vault")
+	} else {
+		tokenPtr = flagset.String("token", "", "Vault access token")
+		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 	}
 	dirPtr := flagset.String("dir", coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates", "Directory containing template files for vault")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
-	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection is secure.  Allows to continue with server connections considered insecure.")
+	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log", "Output path for log files")
-	appRolePtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
+	roleEntityPtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
+	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
-	if c == nil || !c.IsShellSubProcess {
+	if driverConfig == nil || !driverConfig.IsShellSubProcess {
 		flagset.Parse(argLines[1:])
 	} else {
 		flagset.Parse(nil)
 	}
+	if eUtils.RefLength(addrPtr) > 0 {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+	} else {
+		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
+			fmt.Printf("Please set the addr flag\n")
+			os.Exit(-1)
+		}
+	}
+	if envPtr == nil {
+		env := "dev"
+		envPtr = &env
+	}
+	envBasis := eUtils.GetEnvBasis(*envPtr)
 
-	var configBase *eUtils.DriverConfig
-	if c != nil {
-		configBase = c
-		*insecurePtr = configBase.Insecure
-		*appRolePtr = configBase.AppRoleConfig
+	var driverConfigBase *config.DriverConfig
+	if driverConfig.CoreConfig.IsShell {
+		driverConfigBase = driverConfig
+		*insecurePtr = driverConfigBase.CoreConfig.Insecure
+
+		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
+			roleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
+		}
 	} else {
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
@@ -71,42 +107,61 @@ func CommonMain(envPtr *string,
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
-		configBase = &eUtils.DriverConfig{Insecure: true, Log: logger, ExitOnFailure: true}
-		eUtils.CheckError(configBase, err, true)
+		driverConfigBase = driverConfig
+		driverConfigBase.CoreConfig.Insecure = false
+		driverConfigBase.CoreConfig.Log = logger
+		if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
+			tokenName := fmt.Sprintf("vault_pub_token_%s", envBasis)
+			tokenNamePtr = &tokenName
+		}
+		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
+
+		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
+			roleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
+		} else {
+			appRole := "configpub.yml"
+			roleEntityPtr = &appRole
+		}
+
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	autoErr := eUtils.AutoAuth(configBase, secretIDPtr, appRoleIDPtr, tokenPtr, tokenNamePtr, envPtr, addrPtr, envCtxPtr, *appRolePtr, *pingPtr)
-	eUtils.CheckError(configBase, autoErr, true)
+	autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, &envBasis, envCtxPtr, roleEntityPtr, *pingPtr)
+	eUtils.CheckError(driverConfigBase.CoreConfig, autoErr, true)
 
-	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
+	if envPtr != nil && len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
 		fmt.Println(*envPtr)
-		eUtils.CheckError(configBase, err, true)
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	if c != nil && c.IsShell {
-		c.Log.Printf("Connecting to vault @ %s\n", *addrPtr)
-		c.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
+	if driverConfig != nil && driverConfig.CoreConfig.IsShell {
+		driverConfig.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+		driverConfig.CoreConfig.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	} else {
-		fmt.Printf("Connecting to vault @ %s\n", *addrPtr)
+		fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	}
 
-	mod, err := helperkv.NewModifier(*insecurePtr, *tokenPtr, *addrPtr, *envPtr, nil, true, configBase.Log)
+	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
+		fmt.Sprintf("vault_pub_token_%s", envBasis),
+		envBasis,
+		true)
 	if mod != nil {
 		defer mod.Release()
 	}
-	eUtils.CheckError(configBase, err, true)
-	mod.Env = *envPtr
+	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+	mod.Env = envBasis
 
-	warn, err := il.UploadTemplateDirectory(configBase, mod, *dirPtr)
+	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
 			os.Exit(-1)
 		}
 	}
 
-	eUtils.CheckError(configBase, err, true)
-	eUtils.CheckWarnings(configBase, warn, true)
+	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+	eUtils.CheckWarnings(driverConfigBase.CoreConfig, warn, true)
 }

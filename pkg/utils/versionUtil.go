@@ -6,7 +6,10 @@ import (
 	"strconv"
 	"strings"
 
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
@@ -24,11 +27,13 @@ func SplitEnv(env string) []string {
 	return envVersion
 }
 
-func GetRawEnv(env string) string {
+func GetEnvBasis(env string) string {
 	if strings.HasPrefix(env, "dev") {
 		return "dev"
 	} else if strings.HasPrefix(env, "QA") {
 		return "QA"
+	} else if strings.HasPrefix(env, "itdev") {
+		return "itdev"
 	} else if strings.HasPrefix(env, "RQA") {
 		return "RQA"
 	} else if strings.HasPrefix(env, "staging") {
@@ -40,28 +45,29 @@ func GetRawEnv(env string) string {
 	}
 }
 
-func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[string]map[string]interface{} {
-	versionMetadataMap := make(map[string]map[string]interface{})
-	mod.VersionFilter = config.VersionFilter
-	var secretMetadataMap map[string]map[string]interface{}
+func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modifier) map[string]map[string]any {
+	versionMetadataMap := make(map[string]map[string]any)
+	mod.VersionFilter = driverConfig.VersionFilter
+	var secretMetadataMap map[string]map[string]any
 	var err error
-	mod.SectionKey = config.SectionKey
-	mod.SubSectionName = config.SubSectionName
-	mod.RawEnv = strings.Split(config.EnvRaw, ".")[0]
-	if !config.WantCerts {
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "super-secrets", config.Log)
+	mod.SectionKey = driverConfig.SectionKey
+	mod.SubSectionName = driverConfig.SubSectionName
+	mod.EnvBasis = strings.Split(driverConfig.CoreConfig.EnvBasis, ".")[0]
+	if !driverConfig.CoreConfig.WantCerts {
+		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "super-secrets", driverConfig.CoreConfig.Log)
 		if secretMetadataMap == nil {
-			secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", config.Log)
+			secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "values", driverConfig.CoreConfig.Log)
 		}
 	} else {
 		//Certs are in values, not super secrets
-		secretMetadataMap, err = mod.GetVersionValues(mod, config.WantCerts, "values", config.Log)
+		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "values", driverConfig.CoreConfig.Log)
 	}
 	var foundKey string
 	for key, value := range secretMetadataMap {
 		foundService := false
 		for _, service := range mod.VersionFilter {
-			if strings.HasSuffix(key, service) {
+			keyNoExt := strings.Split(key, ".")
+			if strings.HasSuffix(keyNoExt[0], service) {
 				foundService = true
 				foundKey = key
 				break
@@ -78,22 +84,22 @@ func GetProjectVersionInfo(config *DriverConfig, mod *helperkv.Modifier) map[str
 
 	if err != nil {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(config, err, false)
+		LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 	if len(versionMetadataMap) == 0 {
 		fmt.Println("No version data available for this env")
-		LogErrorObject(config, err, false)
+		LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
 	return versionMetadataMap
 }
 
-func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[string]interface{}) []int {
+func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap map[string]map[string]any) []int {
 	var versionNumbers []int
 	for valuePath, data := range versionMetadataMap {
-		if len(config.ServiceFilter) > 0 {
+		if len(driverConfig.ServiceFilter) > 0 {
 			found := false
-			for _, index := range config.ServiceFilter {
+			for _, index := range driverConfig.ServiceFilter {
 				if strings.Contains(valuePath, index) {
 					found = true
 				}
@@ -103,7 +109,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 			}
 		}
 		projectFound := false
-		for _, project := range config.VersionFilter {
+		for _, project := range driverConfig.VersionFilter {
 			if strings.Contains(valuePath, project) {
 				projectFound = true
 				for key := range data {
@@ -124,7 +130,7 @@ func GetProjectVersions(config *DriverConfig, versionMetadataMap map[string]map[
 	return versionNumbers
 }
 
-func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
+func BoundCheck(driverConfig *config.DriverConfig, versionNumbers []int, version string) {
 	Cyan := "\033[36m"
 	Reset := "\033[0m"
 	if IsWindows() {
@@ -136,20 +142,20 @@ func BoundCheck(config *DriverConfig, versionNumbers []int, version string) {
 		oldestVersion := versionNumbers[0]
 		userVersion, _ := strconv.Atoi(version)
 		if userVersion > latestVersion || userVersion < oldestVersion && len(versionNumbers) != 1 {
-			LogAndSafeExit(config, Cyan+"This version "+config.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
+			LogAndSafeExit(driverConfig.CoreConfig, Cyan+"This version "+driverConfig.CoreConfig.Env+" is not available as the latest version is "+strconv.Itoa(versionNumbers[len(versionNumbers)-1])+" and oldest version available is "+strconv.Itoa(versionNumbers[0])+Reset, 1)
 		}
 	} else {
-		LogAndSafeExit(config, Cyan+"No version data found"+Reset, 1)
+		LogAndSafeExit(driverConfig.CoreConfig, Cyan+"No version data found"+Reset, 1)
 	}
 }
 
-func GetProjectServices(templateFiles []string) ([]string, []string, []string) {
+func GetProjectServices(driverConfig *config.DriverConfig, templateFiles []string) ([]string, []string, []string) {
 	projects := []string{}
 	services := []string{}
 	templateFilesContents := []string{}
 
 	for _, templateFile := range templateFiles {
-		project, service, templateFileContent := GetProjectService(templateFile)
+		project, service, _, templateFileContent := GetProjectService(driverConfig, templateFile)
 
 		projects = append(projects, project)
 		services = append(services, service)
@@ -159,33 +165,25 @@ func GetProjectServices(templateFiles []string) ([]string, []string, []string) {
 	return projects, services, templateFilesContents
 }
 
-func GetProjectService(templateFile string) (string, string, string) {
-	templateFile = strings.ReplaceAll(strings.ReplaceAll(templateFile, "\\\\", "/"), "\\", "/")
-	splitDir := strings.Split(templateFile, "/")
-	var project, service string
-	offsetBase := 0
+// GetProjectService - returns project, service, and path to template on filesystem.
+// driverConfig - driver configuration
+// templateFile - full path to template file
+// returns project, service, templatePath
+func GetProjectService(driverConfig *config.DriverConfig, templateFile string) (string, string, int, string) {
+	var startDir []string = nil
+	var driverConfigProjectService string = ""
 
-	for i, component := range splitDir {
-		if component == coreopts.BuildOptions.GetFolderPrefix(nil)+"_templates" {
-			offsetBase = i
-			break
+	if driverConfig != nil {
+		startDir = driverConfig.StartDir
+		if len(driverConfig.DeploymentConfig) > 0 {
+			if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok {
+				driverConfigProjectService = projectService.(string)
+			}
 		}
 	}
+	trcTemplateParam := coreopts.BuildOptions.GetFolderPrefix(startDir) + "_templates"
 
-	project = splitDir[offsetBase+1]
-	service = splitDir[offsetBase+2]
-
-	// Clean up service naming (Everything after '.' removed)
-	if !strings.Contains(templateFile, "Common") {
-		dotIndex := strings.Index(service, ".")
-		if dotIndex > 0 && dotIndex <= len(service) {
-			service = service[0:dotIndex]
-		}
-	} else if strings.Contains(service, ".mf.tmpl") {
-		service = strings.Split(service, ".mf.tmpl")[0]
-	}
-
-	return project, service, templateFile
+	return coreutil.GetProjectService(driverConfigProjectService, trcTemplateParam, templateFile)
 }
 
 func GetTemplateFileName(templateFile string, service string) string {

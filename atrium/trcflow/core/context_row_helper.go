@@ -4,8 +4,8 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/trimble-oss/tierceron/buildopts/memonly"
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 )
 
 var m sync.Mutex
@@ -36,14 +36,14 @@ func removeDuplicateValues(slice []string) []string {
 	return list
 }
 
-func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, config *eUtils.DriverConfig, tableLock *sync.Mutex) error {
+func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, driverConfig *eUtils.DriverConfig, tableLock *sync.Mutex) error {
 	listPath := "templates/" + project + "/" + service
 	secret, err := goMod.List(listPath, config.Log)
 	if err != nil {
 		return nil
 	}
 	templatePaths := []string{}
-	for _, fileName := range secret.Data["keys"].([]interface{}) {
+	for _, fileName := range secret.Data["keys"].([]any) {
 		if strFile, ok := fileName.(string); ok {
 			if strFile[len(strFile)-1] != '/' { // Skip subdirectories where template files are stored
 				templatePaths = append(templatePaths, listPath+"/"+strFile)
@@ -88,7 +88,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEn
 					return err
 				}
 				if subsectionValues != nil {
-					for _, subsectionValue := range subsectionValues.Data["keys"].([]interface{}) {
+					for _, subsectionValue := range subsectionValues.Data["keys"].([]any) {
 						goMod.SectionPath = "super-secrets/Index/" + project + "/" + goMod.SectionName + "/" + indexValue + "/" + service + "/" + subsectionValue.(string)
 						rowErr := templateToTableRowHelper(goMod, te, config.Env, "0", project, projectAlias, service, templatePath, config)
 						if rowErr != nil {
@@ -114,7 +114,7 @@ func TransformConfig(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEn
 	return nil
 }
 
-func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, config *eUtils.DriverConfig) error {
+func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngine, envEnterprise string, version string, project string, projectAlias string, service string, templatePath string, driverConfig *eUtils.DriverConfig) error {
 	cds := new(vcutils.ConfigDataStore)
 	var templateResult extract.TemplateResultData
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
@@ -150,7 +150,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngi
 	return nil
 }
 
-func writeToTable(te *engine.TierceronEngine, config *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
+func writeToTable(te *engine.TierceronEngine, driverConfig *eUtils.DriverConfig, envEnterprise string, version string, project string, projectAlias string, service string, templateResult *extract.TemplateResultData) {
 
 	//
 	// What we need is in ValueSection and SecretSection...
@@ -161,7 +161,7 @@ func writeToTable(te *engine.TierceronEngine, config *eUtils.DriverConfig, envEn
 	}
 
 	// Create tables with naming convention: Service.configFileName  Column names should be template variable names.
-	configTableMap := templateResult.InterfaceTemplateSection.(map[string]interface{})["templates"].(map[string]interface{})[project].(map[string]interface{})[service].(map[string]interface{})
+	configTableMap := templateResult.InterfaceTemplateSection.(map[string]any)["templates"].(map[string]any)[project].(map[string]any)[service].(map[string]any)
 	for configTableName, _ := range configTableMap {
 		valueColumns := templateResult.ValueSection["values"][service]
 		secretColumns := templateResult.SecretSection["super-secrets"][service]

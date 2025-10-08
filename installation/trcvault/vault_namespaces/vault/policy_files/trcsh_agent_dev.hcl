@@ -14,10 +14,10 @@ path "super-secrets/metadata/dev/Restricted/PluginTool/*" {
   capabilities = ["read", "list"]
 }
 
-path "super-secrets/data/dev/Restricted/TrcshAgent/*" {
+path "super-secrets/data/dev/Restricted/TrcshCursor*" {
   capabilities = ["read", "list"]
 }
-path "super-secrets/metadata/dev/Restricted/TrcshAgent/*" {
+path "super-secrets/metadata/dev/Restricted/TrcshCursor*" {
   capabilities = ["read", "list"]
 }
 path "values/data/dev/Restricted/*" {

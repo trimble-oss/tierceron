@@ -3,11 +3,14 @@ package kv
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
 
 func IsUrlIp(address string) (bool, error) {
@@ -74,6 +77,27 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 			}
 			if allowNonLocal {
 				tlsConfig = &tls.Config{RootCAs: certPool, InsecureSkipVerify: true}
+			}
+		}
+	} else {
+		if coreopts.BuildOptions.IsLocalEndpoint(address) {
+			tlsConfig.VerifyPeerCertificate = func(certificates [][]byte, verifiedChains [][]*x509.Certificate) error {
+				if verifiedChains != nil {
+					serverIP := net.ParseIP("127.0.0.1") // Change to local IP for self signed cert local debugging
+					for _, certChain := range verifiedChains {
+						for _, cert := range certChain {
+							if cert.IPAddresses != nil {
+								for _, ip := range cert.IPAddresses {
+									if ip.Equal(serverIP) {
+										return nil
+									}
+								}
+							}
+						}
+					}
+					return errors.New("TLS certificate verification failed (IP SAN mismatch)")
+				}
+				return nil
 			}
 		}
 	}

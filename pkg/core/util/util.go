@@ -1,32 +1,38 @@
 package util
 
 import (
+	"archive/zip"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"gopkg.in/yaml.v2"
 
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 
 	"log"
 )
 
-type ProcessFlowConfig func(pluginEnvConfig map[string]interface{}) map[string]interface{}
-type ProcessFlowInitConfig func(pluginConfig map[string]interface{}, logger *log.Logger) error
-type ProcessFlowFunc func(pluginConfig map[string]interface{}, logger *log.Logger) error
+type ProcessFlowConfig func(pluginEnvConfig map[string]any) map[string]any
+type ProcessFlowInitConfig func(flowMachineInitContext *flowcore.FlowMachineInitContext, pluginConfig map[string]any, logger *log.Logger) error
+type BootFlowMachineFunc func(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error)
 
 // Unused/deprecated
 func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrChan chan error, logger *log.Logger) {
@@ -43,8 +49,8 @@ func GetLocalVaultHost(withPort bool, vaultHostChan chan string, vaultLookupErrC
 	}
 }
 
-func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
-	var jsonData map[string]interface{}
+func GetJSONFromClientByGet(config *coreconfig.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
+	var jsonData map[string]any
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -63,7 +69,8 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 		defer response.Body.Close()
 	}
 
-	if response.StatusCode == http.StatusOK {
+	switch response.StatusCode {
+	case http.StatusOK:
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
@@ -77,15 +84,15 @@ func GetJSONFromClientByGet(config *eUtils.DriverConfig, httpClient *http.Client
 		}
 
 		return jsonData, response.StatusCode, nil
-	} else if response.StatusCode == http.StatusNoContent {
+	case http.StatusNoContent:
 		return jsonData, response.StatusCode, nil
 	}
 
 	return nil, response.StatusCode, errors.New("http status failure")
 }
 
-func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]interface{}, int, error) {
-	var jsonData map[string]interface{}
+func GetJSONFromClientByPost(config *coreconfig.CoreConfig, httpClient *http.Client, headers map[string]string, address string, body io.Reader) (map[string]any, int, error) {
+	var jsonData map[string]any
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
@@ -97,15 +104,21 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	// request.Header.Set("Content-Type", "application/json")
 	response, err := httpClient.Do(request)
 	if err != nil {
-		return nil, response.StatusCode, err
+		if response != nil {
+			return nil, response.StatusCode, err
+		} else {
+			return nil, 204, err
+		}
+
 	}
 	if response.Body != nil {
 		defer response.Body.Close()
 	}
 
-	if response.StatusCode == http.StatusUnauthorized {
+	switch response.StatusCode {
+	case http.StatusUnauthorized:
 		return nil, response.StatusCode, fmt.Errorf("http auth failure: %d", response.StatusCode)
-	} else if response.StatusCode == http.StatusOK {
+	case http.StatusOK:
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 
 		if err != nil {
@@ -123,7 +136,7 @@ func GetJSONFromClientByPost(config *eUtils.DriverConfig, httpClient *http.Clien
 	return nil, response.StatusCode, fmt.Errorf("http status failure: %d", response.StatusCode)
 }
 
-func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
+func LoadBaseTemplate(driverConfig *config.DriverConfig, templateResult *extract.TemplateResultData, goMod *helperkv.Modifier, project string, service string, templatePath string) error {
 	templateResult.ValueSection = map[string]map[string]map[string]string{}
 	templateResult.ValueSection["values"] = map[string]map[string]string{}
 
@@ -135,11 +148,12 @@ func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.Templ
 	if goMod != nil {
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
-		cds.Init(config, goMod, true, true, project, commonPaths, service) //CommonPaths = "" - empty - not needed for tenant config
+		servicePath := fmt.Sprintf("%s/%s", service, service)
+		cds.Init(driverConfig.CoreConfig, goMod, true, true, project, commonPaths, servicePath) //CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	var errSeed error
-	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(config, goMod,
+	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(driverConfig, goMod,
 		cds,
 		templatePath,
 		project,
@@ -153,7 +167,7 @@ func LoadBaseTemplate(config *eUtils.DriverConfig, templateResult *extract.Templ
 	return errSeed
 }
 
-func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, service string, address string, token string, baseTemplate *extract.TemplateResultData, tableData map[string]interface{}, indexPath string, project string) error {
+func SeedVaultById(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, service string, addressPtr *string, tokenPtr *string, baseTemplate *extract.TemplateResultData, tableData map[string]any, indexPath string, project string) error {
 	// Copy the base template
 	templateResult := *baseTemplate
 	valueCombinedSection := map[string]map[string]map[string]string{}
@@ -163,8 +177,8 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	secretCombinedSection["super-secrets"] = map[string]map[string]string{}
 
 	// Declare local variables
-	templateCombinedSection := map[string]interface{}{}
-	sliceTemplateSection := []interface{}{}
+	templateCombinedSection := map[string]any{}
+	sliceTemplateSection := []any{}
 	sliceValueSection := []map[string]map[string]map[string]string{}
 	sliceSecretSection := []map[string]map[string]map[string]string{}
 	for key, value := range tableData {
@@ -212,9 +226,9 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	sliceValueSection = append(sliceValueSection, templateResult.ValueSection)
 	sliceSecretSection = append(sliceSecretSection, templateResult.SecretSection)
 
-	xutil.CombineSection(config, sliceTemplateSection, maxDepth, templateCombinedSection)
-	xutil.CombineSection(config, sliceValueSection, -1, valueCombinedSection)
-	xutil.CombineSection(config, sliceSecretSection, -1, secretCombinedSection)
+	xutil.CombineSection(driverConfig.CoreConfig, sliceTemplateSection, maxDepth, templateCombinedSection)
+	xutil.CombineSection(driverConfig.CoreConfig, sliceValueSection, -1, valueCombinedSection)
+	xutil.CombineSection(driverConfig.CoreConfig, sliceSecretSection, -1, secretCombinedSection)
 
 	template, errT := yaml.Marshal(templateCombinedSection)
 	value, errV := yaml.Marshal(valueCombinedSection)
@@ -238,24 +252,24 @@ func SeedVaultById(config *eUtils.DriverConfig, goMod *helperkv.Modifier, servic
 	//VaultX Section Ends
 	//VaultInit Section Begins
 	if strings.Contains(indexPath, "/PublicIndex/") {
-		config.ServicesWanted = []string{""}
-		config.WantCerts = false
-		il.SeedVaultFromData(config, indexPath, []byte(seedData))
+		driverConfig.ServicesWanted = []string{""}
+		driverConfig.CoreConfig.WantCerts = false
+		il.SeedVaultFromData(driverConfig, indexPath, []byte(seedData))
 	} else {
-		config.ServicesWanted = []string{service}
-		config.WantCerts = false
-		il.SeedVaultFromData(config, "Index/"+project+indexPath, []byte(seedData))
+		driverConfig.ServicesWanted = []string{service}
+		driverConfig.CoreConfig.WantCerts = false
+		il.SeedVaultFromData(driverConfig, "Index/"+project+indexPath, []byte(seedData))
 	}
 	return nil
 }
 
-func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]interface{}, defineService bool) (map[string]interface{}, error) {
-	config.Log.Println("GetPluginToolConfig begin processing plugins.")
+func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]any, defineService bool) (map[string]any, error) {
+	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig begin processing plugins.")
 	//templatePaths
 	indexFound := false
 	templatePaths := pluginConfig["templatePath"].([]string)
 
-	config.Log.Println("GetPluginToolConfig reading base configurations.")
+	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig reading base configurations.")
 	tempEnv := mod.Env
 	envParts := strings.Split(mod.Env, "-")
 	mod.Env = envParts[0]
@@ -265,15 +279,15 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 	}(mod, tempEnv)
 
 	if err != nil {
-		config.Log.Println("GetPluginToolConfig errored with missing base PluginTool configurations.")
+		driverConfig.CoreConfig.Log.Println("GetPluginToolConfig errored with missing base PluginTool configurations.")
 		return nil, err
 	} else {
 		if len(pluginToolConfig) == 0 {
-			config.Log.Println("GetPluginToolConfig empty base PluginTool configurations.")
+			driverConfig.CoreConfig.Log.Println("GetPluginToolConfig empty base PluginTool configurations.")
 			return nil, errors.New("Tierceron plugin management presently not configured for env: " + mod.Env)
 		}
 	}
-	pluginEnvConfigClone := make(map[string]interface{})
+	pluginEnvConfigClone := make(map[string]any)
 
 	for k, v := range pluginToolConfig {
 		if _, okStr := v.(string); okStr {
@@ -297,23 +311,23 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		}
 	}
 
-	var ptc1 map[string]interface{}
+	var ptc1 map[string]any
 
-	config.Log.Println("GetPluginToolConfig loading plugin data.")
+	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig loading plugin data.")
 	for _, templatePath := range templatePaths {
-		project, service, _ := eUtils.GetProjectService(templatePath)
-		config.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
+		project, service, _, _ := eUtils.GetProjectService(nil, templatePath)
+		driverConfig.CoreConfig.Log.Println("GetPluginToolConfig project: " + project + " plugin: " + driverConfig.SubSectionValue + " service: " + service)
 
 		if pluginPath, pathOk := pluginToolConfig["pluginpath"]; pathOk && len(pluginPath.(string)) != 0 {
-			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + config.SubSectionValue + "/" + service
+			mod.SectionPath = "super-secrets/Index/" + project + pluginPath.(string) + driverConfig.SubSectionValue + "/" + service
 		} else {
-			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + config.SubSectionValue + "/" + service
+			mod.SectionPath = "super-secrets/Index/" + project + "/trcplugin/" + driverConfig.SubSectionValue + "/" + service
 		}
 		ptc1, err = mod.ReadData(mod.SectionPath)
 
 		pluginToolConfig["pluginpath"] = mod.SectionPath
 		if err != nil || ptc1 == nil {
-			config.Log.Println("No data found for project: " + project + " plugin: " + config.SubSectionValue + " service: " + service)
+			driverConfig.CoreConfig.Log.Println("No data found for project: " + project + " plugin: " + driverConfig.SubSectionValue + " service: " + service)
 			continue
 		}
 		indexFound = true
@@ -332,11 +346,11 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 		break
 	}
 	mod.SectionPath = ""
-	config.Log.Println("GetPluginToolConfig plugin data load process complete.")
+	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig plugin data load process complete.")
 	mod.Env = tempEnv
 
-	if pluginEnvConfigClone == nil {
-		config.Log.Println("No data found for plugin.")
+	if len(pluginEnvConfigClone) == 0 {
+		driverConfig.CoreConfig.Log.Println("No data found for plugin.")
 		if err == nil {
 			err = errors.New("no data and unexpected error")
 		}
@@ -357,7 +371,84 @@ func GetPluginToolConfig(config *eUtils.DriverConfig, mod *helperkv.Modifier, pl
 			pluginEnvConfigClone["pluginpath"] = pluginToolConfig["pluginpath"]
 		}
 	}
-	config.Log.Println("GetPluginToolConfig end processing plugins.")
+	driverConfig.CoreConfig.Log.Println("GetPluginToolConfig end processing plugins.")
 
 	return pluginEnvConfigClone, nil
+}
+
+func UncompressZipFile(filePath string) (bool, []error) {
+	errorList := []error{}
+	// Open zip archive
+	r, readErr := zip.OpenReader(filePath)
+	if readErr != nil {
+		fmt.Println("Could not open zip file -  " + readErr.Error())
+		errorList = append(errorList, readErr)
+	}
+	defer r.Close()
+
+	//Range archive
+	for _, f := range r.File {
+		// GOOD: Check that path does not contain ".." before using it - must be absolute path.
+		if strings.Contains(f.Name, "..") {
+			fmt.Println("Path must be absolute in archive - " + f.Name + ".")
+			errorList = append(errorList, fmt.Errorf("path must be absolute in archive - %s", f.Name))
+			return false, errorList
+		}
+		rc, openErr := f.Open()
+		if openErr != nil {
+			fmt.Println("Could not open file inside archive - " + f.Name + " - " + openErr.Error())
+			errorList = append(errorList, openErr)
+		}
+		defer rc.Close()
+		pathParts := strings.Split(filePath, ".")
+		rootPath := pathParts[0]
+
+		newFilePath := fmt.Sprintf("%s%c%s", rootPath, filepath.Separator, f.Name)
+
+		// if we have a directory we have to create it
+		if f.FileInfo().IsDir() {
+			dirErr := os.MkdirAll(newFilePath, 0700)
+			if dirErr != nil {
+				fmt.Println("Could not create directory  - " + dirErr.Error())
+				errorList = append(errorList, dirErr)
+			}
+			// we can go to next iteration
+			continue
+		}
+
+		dir := filepath.Dir(newFilePath)
+		if dir != "." {
+			dirErr := os.MkdirAll(dir, 0700)
+			if dirErr != nil {
+				fmt.Println("Could not create directory  - " + dirErr.Error())
+				errorList = append(errorList, dirErr)
+			}
+		}
+
+		// create new uncompressed file if not directory
+		uncompressedFile, createErr := os.Create(newFilePath)
+		if createErr != nil {
+			fmt.Println("Could not open create uncompressed file - " + createErr.Error())
+			errorList = append(errorList, createErr)
+		}
+		_, uncompressErr := io.Copy(uncompressedFile, rc)
+		if uncompressErr != nil {
+			fmt.Println("Could not copy uncompressed file into directory - " + uncompressErr.Error())
+			errorList = append(errorList, uncompressErr)
+		}
+	}
+
+	if len(errorList) == 0 {
+		return true, nil
+	} else {
+		return false, errorList
+	}
+
+}
+
+func Sanitize(input any) string {
+	if input == nil {
+		return ""
+	}
+	return strings.ReplaceAll(input.(string), "\n", "")
 }
