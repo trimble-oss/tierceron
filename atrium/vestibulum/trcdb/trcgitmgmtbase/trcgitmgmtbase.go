@@ -45,60 +45,51 @@ func CloneRepository(
 		memprotectopts.MemProtectInit(nil)
 	}
 
-	// If no target directory is specified, create a directory structure that mirrors the repo URL
+	// If no target directory is specified, use "../<repositoryname>"
 	if targetDir == "" {
-		// Parse the repository URL to create a directory structure
+		// Parse the URL to extract repository name
+		repoName := ""
+
+		// Try to parse the URL properly
 		u, err := url.Parse(repoURL)
 		if err == nil {
-			// Create a path that includes the host and path components
-			// Remove http:// or https:// prefix and create directories for each part
-			host := u.Host
-			path := u.Path
-
-			// Remove leading slash from path
-			path = strings.TrimPrefix(path, "/")
-
-			// Remove .git suffix if present in the path
-			path = strings.TrimSuffix(path, ".git")
-
-			// Create a directory structure that mirrors the URL
-			targetDir = filepath.Join(".", host, path)
-		} else {
-			// If URL parsing fails, just use the raw string parts
-			parts := strings.Split(repoURL, "/")
+			// Extract the last part of the path as the repository name
+			path := strings.TrimPrefix(u.Path, "/")
+			parts := strings.Split(path, "/")
 			if len(parts) > 0 {
-				// Remove http:// or https:// prefix if present
-				if strings.HasPrefix(repoURL, "http://") || strings.HasPrefix(repoURL, "https://") {
-					repoURL = strings.Split(repoURL, "://")[1]
-				}
-
+				repoName = parts[len(parts)-1]
 				// Remove .git suffix if present
-				repoURL = strings.TrimSuffix(repoURL, ".git")
-
-				// Use the entire URL path as the directory structure
-				targetDir = filepath.Join(".", repoURL)
-			} else {
-				// Fallback to a generic name if we can't parse the URL
-				targetDir = filepath.Join(".", "repo-clone")
+				repoName = strings.TrimSuffix(repoName, ".git")
 			}
 		}
+
+		// If we couldn't get a repo name from URL parsing, try simpler approach
+		if repoName == "" {
+			parts := strings.Split(repoURL, "/")
+			if len(parts) > 0 {
+				repoName = parts[len(parts)-1]
+				// Remove .git suffix if present
+				repoName = strings.TrimSuffix(repoName, ".git")
+			} else {
+				// Fallback if we can't extract a name
+				repoName = "repo-clone"
+			}
+		}
+
+		// Set target directory to "../<repositoryname>"
+		targetDir = filepath.Join("..", repoName)
 	}
 
-	// Create parent directories as needed
-	// This ensures all parent directories are created for nested URL paths
+	// Create the entire directory path in one go
+	// This ensures all directories in the path are created
 	// But doesn't fail if directories already exist
-	if err := os.MkdirAll(filepath.Dir(targetDir), 0o755); err != nil {
-		return fmt.Errorf("failed to create parent directories: %w", err)
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory structure: %w", err)
 	}
 
 	// Check if the target directory already exists, but don't fail - just log it
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 		driverConfig.CoreConfig.Log.Printf("Note: Target directory already exists, continuing: %s", targetDir)
-	}
-
-	// Create the target directory if it doesn't exist
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
 	}
 
 	// Parse repository URL to extract repo info
@@ -160,11 +151,7 @@ func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir stri
 	}
 
 	// No need to get repository information since we're just downloading files
-
-	// Create target directory
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
-	}
+	// Target directory already created in main function
 
 	driverConfig.CoreConfig.Log.Printf("Downloading files from %s/%s/%s using Azure DevOps API...", organization, project, repo)
 
@@ -319,20 +306,14 @@ func cloneGitHubRepo(authToken, owner, repo, targetDir string, driverConfig *con
 		client = github.NewClient(nil)
 	}
 
-	// Create target directory
-	if err := os.MkdirAll(targetDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
-	}
-
+	// Target directory already created in main function
 	driverConfig.CoreConfig.Log.Printf("Downloading files from %s/%s using GitHub API...", owner, repo)
 
 	// Use default branch (main/master) for downloading files
 	defaultBranch := "main"
 
-	var err error
-
 	// Download repository contents
-	err = downloadRepositoryContents(ctx, client, owner, repo, "", targetDir, defaultBranch, driverConfig)
+	err := downloadRepositoryContents(ctx, client, owner, repo, "", targetDir, defaultBranch, driverConfig)
 	if err != nil {
 		return fmt.Errorf("failed to download repository contents: %w", err)
 	}
