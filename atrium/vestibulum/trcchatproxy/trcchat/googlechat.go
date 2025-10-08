@@ -27,20 +27,20 @@ func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 		switch {
 		case msg.Alias == "Active":
 			tenant := info[0]
-			enterpriseId := info[1]
+			sociiId := info[1]
 			error_msg := info[2]
 			err_time := info[3]
 			// Stack trace was empty, so skipping index of 4
 			snap_mode := info[5]
-			msg.Data = fmt.Sprintf("The pipeline tenant %v with enterprise ID %v is running with last error message %v at %v and snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
+			msg.Data = fmt.Sprintf("The pipeline tenant %v with socii ID %v is running with last error message %v at %v and snapshot mode %v", tenant, sociiId, error_msg, err_time, snap_mode)
 		case msg.Alias == "Error":
 			tenant := info[0]
-			enterpriseId := info[1]
+			sociiId := info[1]
 			error_msg := info[2]
 			err_time := info[3]
 			// Stack trace was empty, so skipping index of 4
 			snap_mode := info[5]
-			msg.Data = fmt.Sprintf("The pipeline tenant %v with enterprise ID %v is failing with error message %v at %v with snapshot mode %v", tenant, enterpriseId, error_msg, err_time, snap_mode)
+			msg.Data = fmt.Sprintf("The pipeline tenant %v with socii ID %v is failing with error message %v at %v with snapshot mode %v", tenant, sociiId, error_msg, err_time, snap_mode)
 
 		case msg.Alias == "Tenant":
 		case msg.Alias == "DataFlowState":

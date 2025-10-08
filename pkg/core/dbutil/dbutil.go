@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
 	trctls "github.com/trimble-oss/tierceron/pkg/tls"
@@ -35,11 +36,16 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	var conn *sql.DB
 	var tlsConfig *tls.Config
 
-	if goMod != nil {
+	if goMod != nil && (kernelopts.BuildOptions.IsKernel() || !prod.IsProd()) {
 		var clientCertBytes []byte
 		var clientCertPath string
 		if driver == "mysql" || driver == "mariadb" {
-			clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+			if prod.IsProd() {
+				// TODO: If prod combines to a common domain, we can get rid of this.
+				clientCertPath = "Common/db_cert.pem.mf.tmpl"
+			} else {
+				clientCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+			}
 		} else if driver == "sqlserver" {
 			clientCertPath = "Common/servicecert.crt.mf.tmpl"
 		} else {
