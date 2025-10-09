@@ -859,12 +859,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 			(serviceConfig)["certify"] = certifyMap
 
-			go func() {
-				pendingPluginHandlers <- pluginHandler
-			}()
-
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
 			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
+				go func() {
+					pendingPluginHandlers <- pluginHandler
+				}()
 				pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(*currentTokenNamePtr)
 				pluginConfig["pluginName"] = pluginHandler.Name
 				if kernelopts.BuildOptions.IsKernel() {
@@ -999,6 +998,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
 
 				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
+			} else {
+				go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, nil)
+				go pluginHandler.receiver(driverConfig)
 			}
 
 			if len(driverConfig.CoreConfig.Regions) > 0 {
@@ -1281,7 +1283,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 					KernelId:      &pluginHandler.Id,
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
-					// StatisticsDoc: msg.StatisticsDoc,
+					StatisticsDoc: msg.StatisticsDoc,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*new_msg.Query = append(*new_msg.Query, *msg.Name)
