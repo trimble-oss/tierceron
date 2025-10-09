@@ -120,24 +120,44 @@ func CommonMain(envPtr *string,
 	// APIM flags
 	updateAPIMPtr := flagset.Bool("updateAPIM", false, "Used to update Azure APIM")
 
-	// Repository cloning flags
-	gitClonePtr := flagset.Bool("clone", false, "Clone a Git repository")
-	repoURLPtr := flagset.String("repo", "", "Repository URL to clone")
-	//	targetDirPtr := flagset.String("targetDir", "", "Target directory for the cloned repository")
+	// Repository commands
+	// We need to keep the getCmd flag for compatibility with existing checks in the code
+	excludePtr := flagset.String("exclude", "trc_templates", "Comma-delimited list of directories to exclude from download")
 
 	// Cert flags
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
+	isGetCommand := false
+	repoName := ""
 
 	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		args := argLines[1:]
-		for i := 0; i < len(args); i++ {
-			s := args[i]
-			if s[0] != '-' {
-				fmt.Println("Wrong flag syntax: ", s)
-				return fmt.Errorf("wrong flag syntax: %s", s)
+		argOffset := 1
+		// Check for commands before validating flags
+		if len(args) > 1 && args[0] == "get" {
+			// This is the "get <repo>" command pattern, don't validate first two args as flags
+			for i := 2; i < len(args); i++ {
+				s := args[i]
+				if s[0] != '-' {
+					fmt.Println("Wrong flag syntax: ", s)
+					return fmt.Errorf("wrong flag syntax: %s", s)
+				}
+			}
+			// Look for "get" command and the repo URL immediately following it in argLines
+			isGetCommand = true
+			repoName = args[1]
+
+			argOffset = 3
+		} else {
+			// Standard flag validation
+			for i := 0; i < len(args); i++ {
+				s := args[i]
+				if s[0] != '-' {
+					fmt.Println("Wrong flag syntax: ", s)
+					return fmt.Errorf("wrong flag syntax: %s", s)
+				}
 			}
 		}
-		err := flagset.Parse(argLines[1:])
+		err := flagset.Parse(argLines[argOffset:])
 		if err != nil {
 			return err
 		}
@@ -255,7 +275,7 @@ func CommonMain(envPtr *string,
 		*pluginTypePtr = "trcshservice"
 	}
 
-	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr && !*gitClonePtr {
+	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr && !isGetCommand {
 		switch *pluginTypePtr {
 		case "vault": // A vault plugin
 			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
@@ -426,21 +446,28 @@ func CommonMain(envPtr *string,
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Regions = regions
 	}
 
-	if *gitClonePtr {
+	// Handle both command-style "get <repo>" and flag-style "-get"
+	if isGetCommand {
 		// Validate required parameters
-		if *repoURLPtr == "" {
-			fmt.Println("Repository URL is required for git clone operation")
-			return errors.New("repository URL is required for git clone operation")
+		if repoName == "" {
+			fmt.Println("Repository URL is required for get operation. Use 'trcplgtool get <repo>'")
+			return errors.New("repository URL is required for get operation")
+		}
+
+		// Parse exclude directories
+		excludeDirs := []string{}
+		if len(*excludePtr) > 0 {
+			excludeDirs = strings.Split(*excludePtr, ",")
 		}
 
 		// Execute the clone repository function
-		err := trcgitmgmtbase.CloneRepository(*repoURLPtr, "" /* *targetDirPtr */, envPtr, tokenNamePtr, driverConfig, mod)
+		err := trcgitmgmtbase.CloneRepository(repoName, "" /* targetDir */, envPtr, tokenNamePtr, driverConfig, mod, excludeDirs)
 		if err != nil {
-			fmt.Printf("Git clone operation failed: %s\n", err)
+			fmt.Printf("Repository get operation failed: %s\n", err)
 			return err
 		}
 
-		fmt.Printf("Successfully cloned repository: %s\n", *repoURLPtr)
+		fmt.Printf("Successfully downloaded repository: %s\n", repoName)
 		return nil
 	}
 

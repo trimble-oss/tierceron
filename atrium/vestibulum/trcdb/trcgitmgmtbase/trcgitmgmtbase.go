@@ -26,7 +26,7 @@ import (
 
 // CloneRepository clones a Git repository using the GitHub API.
 // It accepts a repository URL and creates a local copy with the complete
-// Git directory structure.
+// Git directory structure. Directories in excludeDirs will be skipped during download.
 func CloneRepository(
 	repoURL string,
 	targetDir string,
@@ -34,6 +34,7 @@ func CloneRepository(
 	tokenNamePtr *string,
 	driverConfig *config.DriverConfig,
 	mod *kv.Modifier,
+	excludeDirs []string,
 ) error {
 	// If we're running inside the hive, disable this function
 	if kernelopts.BuildOptions.IsKernel() {
@@ -117,13 +118,13 @@ func CloneRepository(
 	// Different handling based on the repository type
 	if repoInfo.IsGitHub {
 		// Clone GitHub repository using the GitHub API
-		err = cloneGitHubRepo(authToken, repoInfo.Owner, repoInfo.RepoName, targetDir, driverConfig)
+		err = cloneGitHubRepo(authToken, repoInfo.Owner, repoInfo.RepoName, targetDir, driverConfig, excludeDirs)
 		if err != nil {
 			return fmt.Errorf("GitHub API clone failed: %w", err)
 		}
 	} else if repoInfo.IsAzureDevOps {
 		// Clone Azure DevOps repository using the Azure DevOps API
-		err = cloneAzureDevOpsRepo(authToken, repoInfo.Owner, repoInfo.Project, repoInfo.RepoName, targetDir, driverConfig)
+		err = cloneAzureDevOpsRepo(authToken, repoInfo.Owner, repoInfo.Project, repoInfo.RepoName, targetDir, driverConfig, excludeDirs)
 		if err != nil {
 			return fmt.Errorf("azure DevOps API clone failed: %w", err)
 		}
@@ -136,7 +137,7 @@ func CloneRepository(
 }
 
 // cloneAzureDevOpsRepo clones an Azure DevOps repository using the Azure DevOps API
-func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir string, driverConfig *config.DriverConfig) error {
+func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir string, driverConfig *config.DriverConfig, excludeDirs []string) error {
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -180,6 +181,23 @@ func cloneAzureDevOpsRepo(authToken, organization, project, repo, targetDir stri
 		}
 		relativePath := *item.Path
 		relativePath = strings.TrimPrefix(relativePath, "/")
+
+		// Check if the path is in an excluded root directory
+		isExcluded := false
+		for _, excludeDir := range excludeDirs {
+			if excludeDir != "" {
+				// Check if this is the excluded directory itself or a file/directory inside it
+				if relativePath == excludeDir ||
+					strings.HasPrefix(relativePath, excludeDir+"/") {
+					driverConfig.CoreConfig.Log.Printf("Skipping path in excluded root directory: %s", relativePath)
+					isExcluded = true
+					break
+				}
+			}
+		}
+		if isExcluded {
+			continue
+		}
 
 		// Create the file path
 		filePath := filepath.Join(targetDir, relativePath)
@@ -289,7 +307,7 @@ func parseRepoURL(repoURL string) (RepoInfo, error) {
 }
 
 // cloneGitHubRepo clones a GitHub repository using the GitHub API
-func cloneGitHubRepo(authToken, owner, repo, targetDir string, driverConfig *config.DriverConfig) error {
+func cloneGitHubRepo(authToken, owner, repo, targetDir string, driverConfig *config.DriverConfig, excludeDirs []string) error {
 	// Create a context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -313,7 +331,7 @@ func cloneGitHubRepo(authToken, owner, repo, targetDir string, driverConfig *con
 	defaultBranch := "main"
 
 	// Download repository contents
-	err := downloadRepositoryContents(ctx, client, owner, repo, "", targetDir, defaultBranch, driverConfig)
+	err := downloadRepositoryContents(ctx, client, owner, repo, "", targetDir, defaultBranch, driverConfig, excludeDirs)
 	if err != nil {
 		return fmt.Errorf("failed to download repository contents: %w", err)
 	}
@@ -324,7 +342,7 @@ func cloneGitHubRepo(authToken, owner, repo, targetDir string, driverConfig *con
 }
 
 // downloadRepositoryContents recursively downloads all files in the repository
-func downloadRepositoryContents(ctx context.Context, client *github.Client, owner, repo, path, targetDir, ref string, driverConfig *config.DriverConfig) error {
+func downloadRepositoryContents(ctx context.Context, client *github.Client, owner, repo, path, targetDir, ref string, driverConfig *config.DriverConfig, excludeDirs []string) error {
 	_, directoryContent, _, err := client.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
 		Ref: ref,
 	})
@@ -334,9 +352,28 @@ func downloadRepositoryContents(ctx context.Context, client *github.Client, owne
 
 	for _, content := range directoryContent {
 		// Skip if content or Type is nil
-		if content == nil || content.Type == nil {
+		if content == nil || content.Type == nil || content.Path == nil {
 			continue
 		}
+
+		// Check if the path is in an excluded root directory
+		isExcluded := false
+		contentPath := *content.Path
+		for _, excludeDir := range excludeDirs {
+			if excludeDir != "" {
+				// Check if this is the excluded directory itself or a file/directory inside it
+				if contentPath == excludeDir ||
+					strings.HasPrefix(contentPath, excludeDir+"/") {
+					driverConfig.CoreConfig.Log.Printf("Skipping path in excluded root directory: %s", contentPath)
+					isExcluded = true
+					break
+				}
+			}
+		}
+		if isExcluded {
+			continue
+		}
+
 		switch *content.Type {
 		case "file":
 			// Download file
@@ -380,7 +417,7 @@ func downloadRepositoryContents(ctx context.Context, client *github.Client, owne
 			}
 
 			// Recursively download the directory contents
-			if err := downloadRepositoryContents(ctx, client, owner, repo, *content.Path, targetDir, ref, driverConfig); err != nil {
+			if err := downloadRepositoryContents(ctx, client, owner, repo, *content.Path, targetDir, ref, driverConfig, excludeDirs); err != nil {
 				return err
 			}
 		}
