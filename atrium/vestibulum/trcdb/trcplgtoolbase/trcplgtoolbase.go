@@ -175,11 +175,30 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	} else {
-		err := flagset.Parse(argLines)
-		if err != nil {
-			return err
+		argOffset := 1
+		if len(argLines) > 1 && (argLines[0] == "get" || (len(argLines) > 2 && argLines[1] == "get")) {
+			// Determine the correct get command position and repoName position
+			getIndex := 0
+			if argLines[0] != "get" {
+				getIndex = 1
+			}
+
+			// This is the "get <repo>" command pattern, don't validate first two args as flags
+			for i := getIndex + 2; i < len(argLines); i++ {
+				s := argLines[i]
+				if s[0] != '-' {
+					fmt.Println("Wrong flag syntax: ", s)
+					return fmt.Errorf("wrong flag syntax: %s", s)
+				}
+			}
+
+			// Look for "get" command and the repo URL immediately following it in argLines
+			isGetCommand = true
+			repoName = argLines[getIndex+1]
+
+			argOffset = getIndex + 3
 		}
-		err = flagset.Parse(argLines[1:])
+		err := flagset.Parse(argLines[argOffset:])
 		if err != nil {
 			return err
 		}
