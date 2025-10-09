@@ -196,7 +196,7 @@ func CommonMain(envPtr *string,
 			isGetCommand = true
 			repoName = argLines[getIndex+1]
 
-			argOffset = getIndex + 3
+			argOffset = getIndex + 2
 		}
 		err := flagset.Parse(argLines[argOffset:])
 		if err != nil {
