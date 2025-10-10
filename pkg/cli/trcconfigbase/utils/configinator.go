@@ -564,7 +564,7 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	// Ensure directory has been created
 	var newFile *os.File
 
-	if driverConfig.OutputMemCache && !strings.HasPrefix(path, "Dockerfile") && path != "go.mod" {
+	if driverConfig.OutputMemCache && !strings.HasPrefix(path, "Dockerfile") && !strings.HasPrefix(path, "./Dockerfile") && path != "go.mod" && path != "./go.mod" {
 		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, path)
 	} else {
 		dirPath := filepath.Dir(path)
