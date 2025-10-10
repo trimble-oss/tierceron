@@ -25,27 +25,30 @@ type diagnosticsServiceServer struct {
 	pb.UnimplementedTrcshTalkServiceServer
 }
 
-var configContext *tccore.ConfigContext
-var grpcServer *grpc.Server
-var dfstat *tccore.TTDINode
+var (
+	configContext *tccore.ConfigContext
+	grpcServer    *grpc.Server
+	dfstat        *tccore.TTDINode
+)
 
-var shutdownChan chan bool = make(chan bool)
-var shutdownConfirmChan chan bool = make(chan bool)
+var (
+	shutdownChan        chan bool = make(chan bool)
+	shutdownConfirmChan chan bool = make(chan bool)
+)
 
 // Runs diagnostic services for each Diagnostic within the DiagnosticRequest.
 // Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
 // and providing the results of the diagnostics ran.
 func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
-
 	// TODO: Implement diagnostics plugin
 	// if req.Diagnostics contains 0, run all
 	// else run each
 	cmds := req.GetDiagnostics()
 	queries := []string{}
-	tenant_test := req.GetTenantId() + ":"
+	queryTest := req.GetQueryId() + ":"
 	if slices.Contains(cmds, pb.Diagnostics_ALL) {
 		// run all
-		//set queries to all cmds
+		// set queries to all cmds
 		configContext.Log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
 	} else {
@@ -60,9 +63,9 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.D
 				trcdb_tests := req.GetData()
 				for i, test := range trcdb_tests {
 					if i == 0 {
-						tenant_test = fmt.Sprintf("%s%s", tenant_test, test)
+						queryTest = fmt.Sprintf("%s%s", queryTest, test)
 					} else {
-						tenant_test = fmt.Sprintf("%s,%s", tenant_test, test)
+						queryTest = fmt.Sprintf("%s,%s", queryTest, test)
 					}
 				}
 			}
@@ -84,7 +87,7 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.D
 	name := "trcshtalk"
 	*configContext.ChatSenderChan <- &tccore.ChatMsg{
 		RoutingId: &req.MessageId,
-		ChatId:    &tenant_test,
+		ChatId:    &queryTest,
 		Name:      &name,
 		Query:     &queries,
 	}
@@ -252,7 +255,7 @@ func StartTrashTalking(remoteServerName string, port int, ttbToken *string, isRe
 func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 	cmds := req.GetDiagnostics()
 	queries := []string{}
-	tenant_test := req.GetTenantId() + ":"
+	queryTest := req.GetQueryId() + ":"
 	if slices.Contains(cmds, pb.Diagnostics_ALL) {
 		configContext.Log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
@@ -261,7 +264,7 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 			if q == pb.Diagnostics_HEALTH_CHECK {
 				health_data := req.GetData()
 				if len(health_data) == 1 && health_data[0] == "PROGRESS" {
-					tenant_test = "PROGRESS"
+					queryTest = "PROGRESS"
 				}
 				configContext.Log.Println("Running healthcheck diagnostic.")
 				queries = append(queries, "healthcheck")
@@ -270,19 +273,19 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 				queries = append(queries, "trcdb")
 				for i, trcdb_report := range req.GetData() {
 					if i == 0 && trcdb_report == "PROGRESS" {
-						tenant_test = "PROGRESS"
+						queryTest = "PROGRESS"
 						break
 					}
 					if i == 0 {
-						tenant_test = fmt.Sprintf("%s%s", tenant_test, trcdb_report)
+						queryTest = fmt.Sprintf("%s%s", queryTest, trcdb_report)
 					} else {
-						tenant_test = fmt.Sprintf("%s,%s", tenant_test, trcdb_report)
+						queryTest = fmt.Sprintf("%s,%s", queryTest, trcdb_report)
 					}
 				}
 			}
 		}
 	}
-	msgID, results := common.CollectQueryResponses(configContext, &req.MessageId, "trcshtalk", &tenant_test, queries)
+	msgID, results := common.CollectQueryResponses(configContext, &req.MessageId, "trcshtalk", &queryTest, queries)
 	return &pb.DiagnosticResponse{MessageId: msgID, Results: results}
 }
 
