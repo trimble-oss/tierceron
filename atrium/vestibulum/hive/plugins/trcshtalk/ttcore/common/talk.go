@@ -98,7 +98,7 @@ func StartTrashTalking(ctx *tccore.ConfigContext, shutdownChan chan bool, remote
 func TrcshTalkBack(ctx *tccore.ConfigContext, req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 	cmds := req.GetDiagnostics()
 	queries := []string{}
-	tenantTest := req.GetTenantId() + ":"
+	tenantTest := req.GetQueryId() + ":"
 	if contains(cmds, pb.Diagnostics_ALL) {
 		ctx.Log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
