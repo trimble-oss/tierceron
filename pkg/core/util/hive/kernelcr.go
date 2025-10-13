@@ -671,6 +671,28 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						configuredCert, err := addToCache(path, driverConfig, mod)
 						if err != nil {
 							driverConfig.CoreConfig.Log.Printf("Unable to load cert: %v for plugin: %s\n", err, service)
+							if pluginHandler.ConfigContext.ChatReceiverChan != nil {
+								reportMsg := fmt.Sprintf("🚨Critical failure loading plugin: %s. Unable to load cert: %s\n", service, path)
+								msg := &core.ChatMsg{
+									Name:        &service,
+									Query:       &[]string{"trcshtalk"},
+									IsBroadcast: true,
+									Response:    &reportMsg,
+								}
+								go func(recChan *chan *core.ChatMsg, m *core.ChatMsg) {
+									for {
+										if len(globalPluginStatusChan) == 0 {
+											break
+										}
+										time.Sleep(5 * time.Second)
+									}
+									if recChan != nil {
+										*recChan <- m
+									}
+								}(pluginHandler.ConfigContext.ChatReceiverChan, msg)
+							} else {
+								driverConfig.CoreConfig.Log.Printf("Unable to broadcast invalid cert: %s loading for plugin: %s\n", path, service)
+							}
 						} else {
 							serviceConfig[path] = *configuredCert
 						}
