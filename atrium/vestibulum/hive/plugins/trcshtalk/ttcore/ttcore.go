@@ -239,7 +239,13 @@ func StartTrashTalking(remoteServerName string, port int, ttbToken *string, isRe
 		func(req any, broadcast bool) (any, error) {
 			return processTrcshTalkRequest(remoteServerName, port, ttbToken, isRemote, req.(*pb.DiagnosticRequest), func() proto.Message { return &pb.DiagnosticResponse{} }, broadcast)
 		},
-		func(resp any) string { return resp.(*pb.DiagnosticResponse).GetResults() },
+		func(resp any) string {
+			if resp != nil {
+				return resp.(*pb.DiagnosticResponse).GetResults()
+			} else {
+				return ""
+			}
+		},
 		func(data string) (any, error) {
 			r := &pb.DiagnosticRequest{}
 			return r, protojson.Unmarshal([]byte(data), r)
