@@ -8,10 +8,13 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/validator"
 )
 
 func main() {
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+
 	if len(os.Args) != 4 {
 		fmt.Printf("Usage: %s <cert.pem> <key.pem> <domain>\n", os.Args[0])
 		os.Exit(1)
