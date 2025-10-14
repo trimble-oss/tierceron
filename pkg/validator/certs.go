@@ -122,7 +122,7 @@ func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPo
 	}
 
 	if !utils.IsWindows() {
-		if verifyBySystemCertPool {
+		if verifyBySystemCertPool || true {
 			rootCAs, err := x509.SystemCertPool()
 			if err != nil {
 				return false, err
@@ -135,7 +135,7 @@ func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPo
 		}
 	}
 
-	if verifyBySystemCertPool {
+	if verifyBySystemCertPool || true {
 		// First attempt: Try with system cert pool as-is
 		if _, err := cert.Verify(opts); err == nil {
 			return true, nil
@@ -172,8 +172,8 @@ func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPo
 			// Fourth attempt: If all else fails, try hostname verification only
 			// This is less secure but may work for self-signed or unusual certificates
 			// Only do this if the certificate appears valid otherwise
-			if time.Now().After(cert.NotBefore) && time.Now().Before(cert.NotAfter) {
-				return verifyCertHelper(cert, host)
+			if time.Now().Before(cert.NotBefore) || time.Now().After(cert.NotAfter) {
+				return false, errors.New("certificate is outside valid range probably expired")
 			}
 
 			return false, errors.New("failed to verify certificate after all attempts")
