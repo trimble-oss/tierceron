@@ -71,7 +71,11 @@ func main() {
 
 	// Optionally, check if the private key matches the certificate
 	if len(certPair.Certificate) > 0 {
-		fmt.Println("Key pair appears valid and matches the certificate.")
+		if isValid {
+			fmt.Println("Key pair appears valid and matches the certificate.")
+		} else {
+			fmt.Println("Key pair matches the certificate, but is not valid.  Possible domain mismatch or other issue.")
+		}
 	} else {
 		fmt.Println("Key pair does not match the certificate.")
 	}
