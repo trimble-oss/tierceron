@@ -122,7 +122,7 @@ func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPo
 	}
 
 	if !utils.IsWindows() {
-		if verifyBySystemCertPool || true {
+		if verifyBySystemCertPool {
 			rootCAs, err := x509.SystemCertPool()
 			if err != nil {
 				return false, err
@@ -135,7 +135,7 @@ func VerifyCertificate(cert *x509.Certificate, host string, verifyBySystemCertPo
 		}
 	}
 
-	if verifyBySystemCertPool || true {
+	if verifyBySystemCertPool {
 		// First attempt: Try with system cert pool as-is
 		if _, err := cert.Verify(opts); err == nil {
 			return true, nil
