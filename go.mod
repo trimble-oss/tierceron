@@ -9,7 +9,6 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/vault/api v1.12.0
-	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // indirect; IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/rs/cors v1.7.0
 	github.com/sergi/go-diff v1.2.0
@@ -248,7 +247,6 @@ require (
 	github.com/aws/aws-sdk-go v1.43.30
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
 	github.com/golang-sql/sqlexp v0.0.0-20170517235910-f1bb20e5a188 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
@@ -259,7 +257,6 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/pierrec/lz4 v2.5.2+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
@@ -269,7 +266,6 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
