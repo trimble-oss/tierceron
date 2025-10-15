@@ -9,7 +9,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
-	github.com/hashicorp/vault/api v1.1.0
+	github.com/hashicorp/vault/api v1.12.0
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/twitchtv/twirp v5.12.1+incompatible // indirect
@@ -57,12 +57,16 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/BurntSushi/toml v1.4.0 // indirect
+	github.com/cenkalti/backoff/v3 v3.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/ftbe/dawg v0.0.0-20131228112149-aadae8139481 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.1 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.6 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/jeandeaual/go-locale v0.0.0-20240223122105-ce5225dcaa49 // indirect
 	github.com/nicksnyder/go-i18n/v2 v2.4.0 // indirect
 	github.com/oasdiff/yaml v0.0.0-20250309154309-f31be36b4037 // indirect
@@ -269,24 +273,12 @@ require (
 	golang.org/x/tools v0.32.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.5.0 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
 
 //replace github.com/trimble-oss/tierceron-hat => ../../tierceron-hat
 
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
-
-//replace github.com/square/go-jose.v2 => ../../go-jose
-exclude (
-	gopkg.in/square/go-jose.v2 v2.3.1
-	gopkg.in/square/go-jose.v2 v2.4.0
-	gopkg.in/square/go-jose.v2 v2.4.1
-	gopkg.in/square/go-jose.v2 v2.5.1
-	gopkg.in/square/go-jose.v2 v2.6.0
-)
-
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
