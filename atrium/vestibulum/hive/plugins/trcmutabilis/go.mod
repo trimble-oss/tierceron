@@ -20,4 +20,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
 
-//replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
