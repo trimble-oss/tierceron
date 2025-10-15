@@ -62,5 +62,6 @@ require (
 )
 
 // replace github.com/trimble-oss/tierceron-nute => github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda
+replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4
 
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.30
