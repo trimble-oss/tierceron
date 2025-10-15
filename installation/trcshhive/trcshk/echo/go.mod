@@ -55,3 +55,5 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
+
+replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4

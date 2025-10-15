@@ -76,4 +76,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
+replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4
+
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
