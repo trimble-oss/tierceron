@@ -1,5 +1,7 @@
 go 1.25.3
 
+use .
+
 use ./atrium
 
 use ./atrium/vestibulum/hive/plugins/trcfenestra
