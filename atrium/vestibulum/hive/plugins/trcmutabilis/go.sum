@@ -18,8 +18,8 @@ github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/
 github.com/orcaman/concurrent-map/v2 v2.0.1/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
 github.com/trimble-oss/tierceron v1.45.3 h1:383VJzKqCklMcnR5RfWWeKwzbJFpdA1cjwROF+hb1s8=
 github.com/trimble-oss/tierceron v1.45.3/go.mod h1:5SB2ikqS1R9EJJbLXd5xmVy04kQBA3cXoecu04YNl3I=
-github.com/trimble-oss/tierceron-core/v2 v2.8.3 h1:41C3DIuQmGDInz/8zwkutiwhNdSme6nLjIMwrK0AQcM=
-github.com/trimble-oss/tierceron-core/v2 v2.8.3/go.mod h1:et02oOhnyvfnipOhV4gKwhMNvvXUzyP1ciqhvmVSqK0=
+github.com/trimble-oss/tierceron-core/v2 v2.8.8 h1:5EVEs5DWLWtzwQOqFbfF7TxBfUiSmxuB+byPjz3ZR+I=
+github.com/trimble-oss/tierceron-core/v2 v2.8.8/go.mod h1:et02oOhnyvfnipOhV4gKwhMNvvXUzyP1ciqhvmVSqK0=
 github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlCjxAOUzzJ7Igyid3Y=
 github.com/trimble-oss/tierceron-nute-core v1.0.3/go.mod h1:2M/uT8pm7AJMzRxsasQsQdjXvDXbXpBPCqd3ghb03ss=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=

@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.25.2
+go 1.25.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -265,7 +265,7 @@ require (
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
-	gopkg.in/square/go-jose.v2 v2.5.0 // indirect
+	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
@@ -277,18 +277,6 @@ replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-2022112118
 replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.30
 
 replace github.com/docker/distribution => github.com/distribution/distribution v2.8.2+incompatible
-
-//replace github.com/square/go-jose.v2 => ../go-jose
-
-exclude (
-	gopkg.in/square/go-jose.v2 v2.3.1
-	gopkg.in/square/go-jose.v2 v2.4.0
-	gopkg.in/square/go-jose.v2 v2.4.1
-	gopkg.in/square/go-jose.v2 v2.5.1
-	gopkg.in/square/go-jose.v2 v2.6.0
-)
-
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
 
