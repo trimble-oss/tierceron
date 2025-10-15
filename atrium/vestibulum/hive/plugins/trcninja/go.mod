@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja
 
-go 1.25.2
+go 1.25.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -47,4 +47,4 @@ exclude (
 	gopkg.in/square/go-jose.v2 v2.6.0
 )
 
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
+//replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
