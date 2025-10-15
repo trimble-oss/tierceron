@@ -268,6 +268,8 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 )
 
+replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4 
+
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
 replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.2
