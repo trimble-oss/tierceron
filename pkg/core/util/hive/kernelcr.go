@@ -1298,7 +1298,12 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 
 		for _, q := range *msg.Query {
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
-			if plugin, ok := (*pluginHandler.Services)[q]; ok && plugin.State == 1 {
+			queryPlugin := strings.Split(q, ":")
+			if len(queryPlugin) == 0 {
+				driverConfig.CoreConfig.Log.Println("No plugin specified in query.")
+				continue
+			}
+			if plugin, ok := (*pluginHandler.Services)[queryPlugin[0]]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
 				new_msg := &core.ChatMsg{
 					Name:          &q,

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/glycerine/bchan"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
@@ -123,6 +124,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		PreloadChan:               make(chan trcflowcore.PermissionUpdate, 1),
 		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
 		DfsChan:                   flowMachineInitContext.DfsChan, // Channel for sending data flow statistics
+		FlowChatMsgSenderChan:     flowMachineInitContext.FlowChatMsgSenderChan,
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]any
@@ -398,6 +400,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			continue
 		}
 
+		flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
 		tfContext := trcflowcore.TrcFlowContext{
 			RemoteDataSource:      make(map[string]any),
 			QueryLock:             &sync.Mutex{},
@@ -406,6 +409,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			ReadOnly:              false,
 			Init:                  true,
 			Logger:                tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1),
+			FlowChatMsgReceiverChan: &flowChatMsgReceiverChan,
 		}
 		tfContext.RemoteDataSource["flowStateControllerMap"] = flowStateControllerMap
 		tfContext.RemoteDataSource["flowStateReceiverMap"] = flowStateReceiverMap
@@ -474,7 +478,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}
 			continue
 		}
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
+		flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
 		tableFlow := table
 		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.FlowHeader.TableName()]
 		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.FlowHeader.TableName()]
@@ -549,8 +554,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			}
 			continue
 		}
-
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
+		flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
 		tfContext.FlowHeader = &businessFlow.FlowHeader
 		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[businessFlow.FlowHeader.TableName()]
 		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[businessFlow.FlowHeader.TableName()]
@@ -589,7 +594,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			go func(testFlow flowcore.FlowDefinition, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.FlowHeader.ServiceName())
 				defer flowWG.Done()
-				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1)}
+				flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
+				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
 				tfContext.FlowHeader = &testFlow.FlowHeader
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)
