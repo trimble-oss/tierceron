@@ -332,6 +332,23 @@ func chat_receiver(chat_receive_chan chan *core.ChatMsg) {
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
 			configContext.Log.Println("Received trcdb request.")
+			if event.Name != nil && strings.Contains(*event.Name, ":") {
+				pluginFlow := strings.Split(*event.Name, ":")
+				if len(pluginFlow) > 1 {
+					for i, flow := range pluginFlow {
+						if i == 0 {
+							continue
+						}
+						tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(flow))
+						tfCtxChatReceiverChan := tfCtx.GetFlowChatMsgReceiverChan()
+						go func(tfCtxChatReceiverChan *chan *core.ChatMsg, msg *core.ChatMsg) {
+							*tfCtxChatReceiverChan <- msg
+							configContext.Log.Printf("Sent request to flow %s\n", flow)
+						}(tfCtxChatReceiverChan, event)
+					}
+					continue
+				}
+			}
 			ProcessTrcdb((*event).TrcdbExchange)
 			handledResponse := "Handled Trcdb request successfully"
 			(*event).Response = &handledResponse
@@ -406,6 +423,7 @@ func start(pluginName string) {
 			configContext.Log.Println(msg, err)
 		})
 	send_dfstat()
+	start_flow_machine_listener()
 	if configContext.CmdSenderChan != nil {
 		*configContext.CmdSenderChan <- core.KernelCmd{
 			Command: core.PLUGIN_EVENT_START,
@@ -414,6 +432,24 @@ func start(pluginName string) {
 	} else {
 		configContext.Log.Println("No command sender channel available, trcdb cannot send start event.")
 	}
+}
+
+func start_flow_machine_listener() {
+	if tfmContext == nil || tfmContext.GetFlowChatMsgSenderChan() == nil {
+		configContext.Log.Println("No flow machine context available for trcdb plugin.")
+		return
+	}
+	go func() {
+		for {
+			event := <-*tfmContext.GetFlowChatMsgSenderChan()
+			if event == nil {
+				continue
+			}
+			if event.TrcdbExchange != nil && len(event.TrcdbExchange.Request.Rows) != 0 {
+				// TODO: Process message from flow
+			}
+		}
+	}()
 }
 
 func stop(pluginName string) {
@@ -587,6 +623,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 		isSupportedFlow = IsHiveSupportedFlow
 	}
 	flowMachineTemplates := flowMachineTemplatesFunc()
+	flowChatMsgSenderChan := make(chan *core.ChatMsg)
 
 	return &flowcore.FlowMachineInitContext{
 		GetFlowMachineTemplates:     flowMachineTemplatesFunc,
@@ -617,10 +654,11 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 			}
 			return tableFlows
 		},
-		GetBusinessFlows:    GetBusinessFlows,
-		GetTestFlows:        GetTestFlows,
-		GetTestFlowsByState: GetTestFlowsByState,
-		FlowController:      ProcessFlowController,
-		TestFlowController:  TestFlowController,
+		GetBusinessFlows:      GetBusinessFlows,
+		GetTestFlows:          GetTestFlows,
+		GetTestFlowsByState:   GetTestFlowsByState,
+		FlowController:        ProcessFlowController,
+		TestFlowController:    TestFlowController,
+		FlowChatMsgSenderChan: &flowChatMsgSenderChan,
 	}
 }
