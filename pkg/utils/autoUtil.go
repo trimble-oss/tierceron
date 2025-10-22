@@ -58,7 +58,11 @@ func IsRegionSupported(driverConfig *config.DriverConfig, region string) bool {
 			region = "east"
 		}
 	case "qa":
-		region = "west"
+		if plugincoreopts.BuildOptions.IsPluginHardwired() {
+			region = "east"
+		} else {
+			region = "west"
+		}
 	}
 
 	for _, supportedRegion := range driverConfig.CoreConfig.Regions {
@@ -97,8 +101,10 @@ func userHome(logger *log.Logger) (string, error) {
 	return userHome, err
 }
 
-const configDir = "/.tierceron/config.yml"
-const envContextPrefix = "envContext: "
+const (
+	configDir        = "/.tierceron/config.yml"
+	envContextPrefix = "envContext: "
+)
 
 func GetSetEnvContext(env string, envContext string) (string, string, error) {
 	dirname, err := os.UserHomeDir()
@@ -106,7 +112,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 		return "", "", err
 	}
 
-	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
+	// This will use env by default, if blank it will use context. If context is defined, it will replace context.
 	if env == "" {
 		if _, errNotExist := os.Stat(dirname + configDir); errNotExist == nil {
 			file, err := os.ReadFile(dirname + configDir)
@@ -126,7 +132,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 					output = fileContent + envContextPrefix + envContext + "\n"
 				}
 
-				if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+				if err = os.WriteFile(dirname+configDir, []byte(output), 0o600); err != nil {
 					return "", "", err
 				}
 				fmt.Println("Context flag has been written out.")
@@ -138,7 +144,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 				}
 				if envContext != "" {
 					output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-					if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+					if err = os.WriteFile(dirname+configDir, []byte(output), 0o600); err != nil {
 						return "", "", err
 					}
 					fmt.Println("Context flag has been written out.")
@@ -166,7 +172,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	envPtr *string,
 	envCtxPtr *string,
 	roleEntityPtr *string,
-	ping bool) error {
+	ping bool,
+) error {
 	// Declare local variables
 	var v *sys.Vault
 
@@ -270,7 +277,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		return nil
 	}
 
-	//if using appRole
+	// if using appRole
 	// If the wanted token name is empty, we select and appropriate default token for the role.
 	if !IsApproleEmpty && *wantedTokenNamePtr == "" {
 		fmt.Printf("No token name specified.  Selecting appropriate token default\n")
@@ -325,7 +332,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			*wantedTokenNamePtr = "Invalid environment"
 		}
 	skipswitch:
-		//check that none are empty
+		// check that none are empty
 		if len((*appRoleSecret)[1]) == 0 {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Missing required secretID", 1)
 		} else if len((*appRoleSecret)[0]) == 0 {
@@ -335,7 +342,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		} else if *wantedTokenNamePtr == "Invalid environment" {
 			return LogAndSafeExit(driverConfig.CoreConfig, "Invalid environment:"+*envPtr, 1)
 		}
-		//check that token matches environment
+		// check that token matches environment
 		tokenParts := strings.Split(*wantedTokenNamePtr, "_")
 		tokenEnv := tokenParts[len(tokenParts)-1]
 		if GetEnvBasis(env) != tokenEnv {
@@ -548,14 +555,14 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 
 				// Create hidden folder
 				if _, err := os.Stat(userHome + "/.tierceron"); os.IsNotExist(err) {
-					err = os.MkdirAll(userHome+"/.tierceron", 0700)
+					err = os.MkdirAll(userHome+"/.tierceron", 0o700)
 					if err != nil {
 						return nil, false, nil, err
 					}
 				}
 
 				// Create cert file
-				writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0600)
+				writeErr := os.WriteFile(userHome+"/.tierceron/config.yml", dump, 0o600)
 				if writeErr != nil {
 					LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Unable to write file: %v\n", writeErr))
 				}
@@ -574,7 +581,8 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 }
 
 func ReadAuthParts(driverConfig *config.DriverConfig,
-	readAuthParts bool) (bool, string, error) {
+	readAuthParts bool,
+) (bool, string, error) {
 	exists := false
 	var c cert
 	if !driverConfig.CoreConfig.IsProd() {
