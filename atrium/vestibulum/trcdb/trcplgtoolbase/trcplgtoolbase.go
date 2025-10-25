@@ -76,6 +76,7 @@ func CommonMain(envPtr *string,
 	}
 	defineServicePtr := flagset.Bool("defineService", false, "Specified when defining a service.")
 	certifyImagePtr := flagset.Bool("certify", false, "Used to certifies vault plugin.")
+	certifyInfoImagePtr := flagset.Bool("certifyInfo", false, "Used to certifies vault plugin.")
 	// These functions only valid for pluginType trcshservice
 	pluginservicestartPtr := flagset.Bool("pluginservicestart", false, "To start a trcshell kernel service for a particular plugin.")
 	pluginservicestopPtr := flagset.Bool("pluginservicestop", false, "To stop a trcshell kernel service for a particular plugin.")
@@ -236,6 +237,10 @@ func CommonMain(envPtr *string,
 	if *certifyImagePtr && (len(*pluginNamePtr) == 0 || len(*sha256Ptr) == 0) {
 		fmt.Println("Must use -pluginName && -sha256 flags to use -certify flag")
 		return errors.New("must use -pluginName && -sha256 flags to use -certify flag")
+	}
+	if *certifyInfoImagePtr && (len(*pluginNamePtr) == 0) {
+		fmt.Println("Must use -pluginName flag to use -certifyInfo flag")
+		return errors.New("must use -pluginName flag to use -certifyInfo flag")
 	}
 
 	if *checkDeployedPtr && (len(*pluginNamePtr) == 0) {
@@ -512,6 +517,9 @@ func CommonMain(envPtr *string,
 	}
 	if *certifyImagePtr {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
+	}
+	if *certifyInfoImagePtr {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify info begin activities\n")
 	}
 
 	if len(*sha256Ptr) > 0 {
@@ -936,7 +944,7 @@ func CommonMain(envPtr *string,
 			}
 			// SHA MATCHES
 			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("TrcCarrierUpdate getting plugin settings for env: " + mod.Env)
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Curator getting plugin settings for env: " + mod.Env)
 			// The following confirms that this version of carrier has been certified to run...
 			// It will bail if it hasn't.
 			if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { // If region is set
@@ -993,6 +1001,44 @@ func CommonMain(envPtr *string,
 		} else {
 			fmt.Println("Invalid or nonexistent image.")
 			return err
+		}
+	} else if *certifyInfoImagePtr {
+		eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, fmt.Sprintf("Connecting to vault @ %s\n", *trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr))
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Trcplgtool getting plugin settings for env: " + mod.Env)
+		// The following confirms that this version of carrier has been certified to run...
+		// It will bail if it hasn't.
+		if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { // If region is set
+			mod.SectionName = "trcplugin"
+			mod.SectionKey = "/Index/"
+
+			pluginSource := pluginToolConfig["trcplugin"].(string)
+			if strings.HasPrefix(*pluginNamePtr, pluginSource) {
+				pluginSource = *pluginNamePtr
+			}
+			mod.SubSectionValue = pluginSource
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = pluginSource
+
+			if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
+				trcshDriverConfigBase.DriverConfig.StartDir = []string{""}
+			}
+			mod.ProjectIndex = []string{"TrcVault"}
+			driverConfig.VersionFilter = []string{"Certify"}
+
+			versionMetadataMap := eUtils.GetProjectVersionInfo(driverConfig, mod)
+			// var masterKey string
+			for key := range versionMetadataMap {
+				versionMap := versionMetadataMap[key]
+				fmt.Printf("%s: %s\n", key, versionMap)
+				for versionKey := range versionMap {
+					mod.SectionKey = "/"
+
+					mod.Version = versionKey
+					pluginMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginSource))
+
+					fmt.Printf("%s: %v %v\n", versionKey, pluginMap, err)
+
+				}
+			}
 		}
 	} else if *agentdeployPtr {
 		if trcshConfig.FeatherCtlCb != nil {
