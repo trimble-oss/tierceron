@@ -14,6 +14,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1050,7 +1052,17 @@ func CommonMain(envPtr *string,
 					for k := range versionMap {
 						versionKeys = append(versionKeys, k)
 					}
-					// Take last 10 (or all if <10)
+					// Sort versionKeys numerically so earliest (oldest) is first
+					sort.Slice(versionKeys, func(i, j int) bool {
+						vi, err1 := strconv.Atoi(versionKeys[i])
+						vj, err2 := strconv.Atoi(versionKeys[j])
+						if err1 == nil && err2 == nil {
+							return vi < vj
+						}
+						// fallback to string compare if not numeric
+						return versionKeys[i] < versionKeys[j]
+					})
+					// Take last 10 (or all if <10), but keep earliest first
 					if len(versionKeys) > 10 {
 						versionKeys = versionKeys[len(versionKeys)-10:]
 					}
@@ -1074,13 +1086,35 @@ func CommonMain(envPtr *string,
 					}
 				}
 			}
+			// Prune grouped: keep only the most recent version for each sha256 in each environment
+			pruned := make(map[string][]VersionRow)
+			envs = []string{"dev", "QA", "staging"}
+			for sha, rows := range grouped {
+				envLatest := make(map[string]VersionRow)
+				envVer := make(map[string]string)
+				for _, r := range rows {
+					env := r.Env
+					v := r.Version
+					vi, err1 := strconv.Atoi(v)
+					vmax, err2 := strconv.Atoi(envVer[env])
+					if _, ok := envVer[env]; !ok || (err1 == nil && err2 == nil && vi > vmax) || (err1 == nil && err2 != nil) || (err1 != nil && v > envVer[env]) {
+						envLatest[env] = r
+						envVer[env] = v
+					}
+				}
+				for _, env := range envs {
+					if latest, ok := envLatest[env]; ok {
+						pruned[sha] = append(pruned[sha], latest)
+					}
+				}
+			}
 			type OutputReport struct {
 				Date string                  `json:"date"`
 				Rows map[string][]VersionRow `json:"rows"`
 			}
 			report := OutputReport{
 				Date: time.Now().Format("2006-01-02_15-04-05"),
-				Rows: grouped,
+				Rows: pruned,
 			}
 			jsonBytes, err := json.MarshalIndent(report, "", "  ")
 			if err != nil {
