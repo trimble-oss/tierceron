@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -1008,36 +1009,96 @@ func CommonMain(envPtr *string,
 		// The following confirms that this version of carrier has been certified to run...
 		// It will bail if it hasn't.
 		if _, pluginPathOk := pluginToolConfig["pluginpath"].(string); !pluginPathOk { // If region is set
-			mod.SectionName = "trcplugin"
-			mod.SectionKey = "/Index/"
 
-			pluginSource := pluginToolConfig["trcplugin"].(string)
-			if strings.HasPrefix(*pluginNamePtr, pluginSource) {
-				pluginSource = *pluginNamePtr
-			}
-			mod.SubSectionValue = pluginSource
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = pluginSource
-
-			if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
-				trcshDriverConfigBase.DriverConfig.StartDir = []string{""}
-			}
-			mod.ProjectIndex = []string{"TrcVault"}
-			driverConfig.VersionFilter = []string{"Certify"}
-
-			versionMetadataMap := eUtils.GetProjectVersionInfo(driverConfig, mod)
-			// var masterKey string
-			for key := range versionMetadataMap {
-				versionMap := versionMetadataMap[key]
-				fmt.Printf("%s: %s\n", key, versionMap)
-				for versionKey := range versionMap {
-					mod.SectionKey = "/"
-
-					mod.Version = versionKey
-					pluginMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginSource))
-
-					fmt.Printf("%s: %v %v\n", versionKey, pluginMap, err)
-
+			// --- Enhancement: Multi-environment, SHA256 grouping, JSON report output ---
+			// Only run if a new flag is set, e.g. -jsonReport
+			jsonReportPtr := flagset.Bool("jsonReport", false, "Output grouped version releases as JSON report")
+			if *jsonReportPtr {
+				type VersionRow struct {
+					Env       string                 `json:"env"`
+					Version   string                 `json:"version"`
+					TrcSha256 string                 `json:"trcsha256"`
+					Data      map[string]interface{} `json:"data"`
 				}
+				envs := []string{"dev", "QA", "staging"}
+				grouped := make(map[string][]VersionRow) // trcsha256 -> []VersionRow
+
+				//
+				// Prepare modifier for reading plugin version data
+				//
+				mod.SectionName = "trcplugin"
+				mod.SectionKey = "/Index/"
+
+				pluginSource := pluginToolConfig["trcplugin"].(string)
+				if strings.HasPrefix(*pluginNamePtr, pluginSource) {
+					pluginSource = *pluginNamePtr
+				}
+				mod.SubSectionValue = pluginSource
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = pluginSource
+
+				if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
+					trcshDriverConfigBase.DriverConfig.StartDir = []string{""}
+				}
+				mod.ProjectIndex = []string{"TrcVault"}
+				driverConfig.VersionFilter = []string{"Certify"}
+				//
+				// End plugin modifier preparations
+				//
+				for _, env := range envs {
+					mod.Env = env
+					driverConfig.CoreConfig.EnvBasis = env
+					versionMetadataMap := eUtils.GetProjectVersionInfo(driverConfig, mod)
+					for _, versionMap := range versionMetadataMap {
+						// Get sorted version keys (assume versionMap is map[string]any)
+						var versionKeys []string
+						for k := range versionMap {
+							versionKeys = append(versionKeys, k)
+						}
+						// Take last 10 (or all if <10)
+						if len(versionKeys) > 10 {
+							versionKeys = versionKeys[len(versionKeys)-10:]
+						}
+						for _, versionKey := range versionKeys {
+							//							mod.SectionKey = "/"
+							mod.Version = versionKey
+							pluginMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", *pluginNamePtr))
+							if err != nil || pluginMap == nil {
+								continue
+							}
+							trcsha, _ := pluginMap["trcsha256"].(string)
+							row := VersionRow{
+								Env:       env,
+								Version:   versionKey,
+								TrcSha256: trcsha,
+								Data:      pluginMap,
+							}
+							if trcsha != "" {
+								grouped[trcsha] = append(grouped[trcsha], row)
+							}
+						}
+					}
+				}
+				// Output JSON file
+				type OutputReport struct {
+					Date string                  `json:"date"`
+					Rows map[string][]VersionRow `json:"rows"`
+				}
+				report := OutputReport{
+					Date: time.Now().Format("2006-01-02_15-04-05"),
+					Rows: grouped,
+				}
+				jsonBytes, err := json.MarshalIndent(report, "", "  ")
+				if err != nil {
+					fmt.Println("Failed to marshal JSON report:", err)
+					return err
+				}
+				fname := fmt.Sprintf("trcplgtool_report_%s.json", report.Date)
+				err = os.WriteFile(fname, jsonBytes, 0o644)
+				if err != nil {
+					fmt.Println("Failed to write JSON report:", err)
+					return err
+				}
+				fmt.Printf("JSON report written to %s\n", fname)
 			}
 		}
 	} else if *agentdeployPtr {
