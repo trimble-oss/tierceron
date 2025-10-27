@@ -1,10 +1,10 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis
 
-go 1.25.1
+go 1.25.3
 
 require (
 	github.com/hanwen/go-fuse/v2 v2.7.2
-	github.com/trimble-oss/tierceron v1.45.3
+	github.com/trimble-oss/tierceron v1.47.8-0.20251015165712-02036bb1ec14
 	github.com/trimble-oss/tierceron-core/v2 v2.8.8
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
@@ -19,13 +19,3 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
-
-exclude (
-	gopkg.in/square/go-jose.v2 v2.3.1
-	gopkg.in/square/go-jose.v2 v2.4.0
-	gopkg.in/square/go-jose.v2 v2.4.1
-	gopkg.in/square/go-jose.v2 v2.5.1
-	gopkg.in/square/go-jose.v2 v2.6.0
-)
-
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4
