@@ -663,6 +663,44 @@ func CommonMain(envPtr *string,
 			fmt.Println(err.Error())
 		} else {
 			fmt.Println("Image successfully pushed")
+			// Read from Certify
+			mod.SectionName = "trcplugin"
+			mod.SectionKey = "/Index/"
+
+			pluginNameVersion := pluginToolConfig["trcplugin"].(string)
+			var pluginName string
+			var releaseTag string
+			if strings.HasPrefix(*pluginNamePtr, pluginNameVersion) {
+				pluginNameVersion = *pluginNamePtr
+			}
+			if len(strings.Split(pluginNameVersion, ":")) > 1 {
+				pluginName = strings.Split(pluginNameVersion, ":")[0]
+				releaseTag = strings.Split(pluginNameVersion, ":")[1]
+				pluginToolConfig["trcplugin"] = pluginName
+			}
+			mod.SubSectionValue = pluginName
+			trcshDriverConfigBase.DriverConfig.SubSectionValue = pluginName
+
+			if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
+				trcshDriverConfigBase.DriverConfig.StartDir = []string{""}
+			}
+
+			properties, err := trcvutils.NewProperties(trcshDriverConfigBase.DriverConfig.CoreConfig, vault, mod, mod.Env, "TrcVault", "Certify")
+			if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
+				fmt.Println("Couldn't create properties for regioned certify:" + err.Error())
+				return err
+			}
+
+			writeMap, replacedFields := properties.GetPluginData(*regionPtr, "Certify", "config", trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
+
+			writeMap["trcrelease"] = releaseTag
+			writeMap["trcplugin"] = pluginName
+			writeMap["trctype"] = *pluginTypePtr
+			writeErr := properties.WritePluginData(certify.WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), replacedFields, mod, trcshDriverConfigBase.DriverConfig.CoreConfig.Log, *regionPtr, pluginName)
+			if writeErr != nil {
+				fmt.Println(writeErr)
+				return err
+			}
 		}
 	}
 
