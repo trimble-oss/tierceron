@@ -1108,14 +1108,84 @@ func CommonMain(envPtr *string,
 					}
 				}
 			}
-			type OutputReport struct {
-				Date string                  `json:"date"`
-				Rows map[string][]VersionRow `json:"rows"`
+			// Sort pruned rows for each sha256 so higher dev version appears first
+			// Safe sorting: build a new slice, sort, then assign
+			for sha, rows := range pruned {
+				devVersion := 0
+				for _, r := range rows {
+					if r.Env == "dev" {
+						v, err := strconv.Atoi(r.Version)
+						if err == nil && v > devVersion {
+							devVersion = v
+						}
+					}
+				}
+				newRows := make([]VersionRow, len(rows))
+				copy(newRows, rows)
+				sort.SliceStable(newRows, func(i, j int) bool {
+					var vi, vj int
+					if newRows[i].Env == "dev" {
+						vi, _ = strconv.Atoi(newRows[i].Version)
+					} else {
+						vi = devVersion
+					}
+					if newRows[j].Env == "dev" {
+						vj, _ = strconv.Atoi(newRows[j].Version)
+					} else {
+						vj = devVersion
+					}
+					return vi > vj
+				})
+				pruned[sha] = newRows
 			}
+			// Convert pruned map into an ordered slice of groups so JSON output is
+			// deterministic and can be sorted by the dev version for each group.
+			type RowGroup struct {
+				TrcSha string       `json:"trcsha256"`
+				Rows   []VersionRow `json:"rows"`
+			}
+
+			// helper struct used for sorting by dev version
+			type groupWithDev struct {
+				sha       string
+				rows      []VersionRow
+				devNumber int
+			}
+
+			var groups []groupWithDev
+			for sha, rows := range pruned {
+				devNumber := 0
+				for _, r := range rows {
+					if r.Env == "dev" {
+						if v, err := strconv.Atoi(r.Version); err == nil && v > devNumber {
+							devNumber = v
+						}
+					}
+				}
+				groups = append(groups, groupWithDev{sha: sha, rows: rows, devNumber: devNumber})
+			}
+
+			// sort groups by devNumber descending (highest dev version first)
+			sort.SliceStable(groups, func(i, j int) bool {
+				return groups[i].devNumber > groups[j].devNumber
+			})
+
+			// build final ordered slice for JSON
+			var outRows []RowGroup
+			for _, g := range groups {
+				outRows = append(outRows, RowGroup{TrcSha: g.sha, Rows: g.rows})
+			}
+
+			type OutputReport struct {
+				Date string     `json:"date"`
+				Rows []RowGroup `json:"rows"`
+			}
+
 			report := OutputReport{
 				Date: time.Now().Format("2006-01-02_15-04-05"),
-				Rows: pruned,
+				Rows: outRows,
 			}
+
 			jsonBytes, err := json.MarshalIndent(report, "", "  ")
 			if err != nil {
 				fmt.Println("Failed to marshal JSON report:", err)
