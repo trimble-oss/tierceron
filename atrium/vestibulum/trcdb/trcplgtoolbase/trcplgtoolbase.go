@@ -90,6 +90,7 @@ func CommonMain(envPtr *string,
 	projectservicePtr := flagset.String("projectservice", "", "Provide template path in form project/service")
 	buildImagePtr := flagset.String("buildImage", "", "Path to Dockerfile to build")
 	pushImagePtr := flagset.Bool("pushImage", false, "Push an image to the registry.")
+	outputDestinationPtr := flagset.String("o", "", "Command output destination")
 	pushAliasPtr := flagset.String("pushAlias", "", "Image name:tag to push to registry, separated by commas (eg: egg:plant,egg:salad,egg:bar).")
 
 	// Common flags...
@@ -1226,13 +1227,17 @@ func CommonMain(envPtr *string,
 				fmt.Fprintln(os.Stderr, "Failed to marshal JSON report:", err)
 				return err
 			}
-			fname := fmt.Sprintf("trcplgtool_report_%s.json", report.Date)
-			err = os.WriteFile(fname, jsonBytes, 0o644)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Failed to write JSON report:", err)
-				return err
+			if len(*outputDestinationPtr) > 0 {
+				fname := fmt.Sprintf("trcplgtool_report_%s.json", report.Date)
+				err = os.WriteFile(fname, jsonBytes, 0o644)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Failed to write JSON report:", err)
+					return err
+				}
+				fmt.Fprintf(os.Stderr, "JSON report written to %s\n", fname)
+			} else {
+				fmt.Println(string(jsonBytes))
 			}
-			fmt.Fprintf(os.Stderr, "JSON report written to %s\n", fname)
 		}
 	} else if *agentdeployPtr {
 		if trcshConfig.FeatherCtlCb != nil {
