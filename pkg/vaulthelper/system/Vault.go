@@ -68,7 +68,7 @@ func NewVaultWithNonlocal(insecure bool, addressPtr *string, env string, newVaul
 	}
 
 	if pingVault {
-		fmt.Println("Ping success!")
+		fmt.Fprintln(os.Stderr, "Ping success!")
 		logger.Println("Ping success!")
 		return nil, nil
 	}
@@ -79,7 +79,8 @@ func NewVaultWithNonlocal(insecure bool, addressPtr *string, env string, newVaul
 
 	return &Vault{
 		client: client,
-		shards: nil}, err
+		shards: nil,
+	}, err
 }
 
 // Confirms we have a valid and active connection to vault.  If it doesn't, it re-establishes a new connection.
@@ -151,9 +152,10 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 	tokenFileFiltersSet map[string]bool,
 	tokenExpiration bool,
 	doTidy bool,
-	logger *log.Logger) error {
-	var tokenPath = dir
-	var tokenPolicies = []string{}
+	logger *log.Logger,
+) error {
+	tokenPath := dir
+	tokenPolicies := []string{}
 
 	files, err := os.ReadDir(tokenPath)
 	if err != nil {
@@ -167,7 +169,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 		if len(tokenFileFiltersSet) > 0 {
 			found := false
 
-			for tokenFilter, _ := range tokenFileFiltersSet {
+			for tokenFilter := range tokenFileFiltersSet {
 				if strings.HasPrefix(f.Name(), tokenFilter) {
 					found = true
 					break
@@ -178,7 +180,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 			}
 		}
 
-		var file, err = os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0644)
+		file, err := os.OpenFile(tokenPath+string(os.PathSeparator)+f.Name(), os.O_RDWR, 0o644)
 		if file != nil {
 			defer file.Close()
 		}
@@ -262,7 +264,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 					continue
 				revokeAccessor:
 					if tokenExpiration {
-						fmt.Println("Token with the policy " + matchedPolicy + " expires on " + expirationDate)
+						fmt.Fprintln(os.Stderr, "Token with the policy "+matchedPolicy+" expires on "+expirationDate)
 						continue
 					} else {
 						b := v.client.NewRequest("POST", "/v1/auth/token/revoke-accessor")
@@ -284,10 +286,10 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 						}
 
 						if response.StatusCode == 204 {
-							fmt.Println("Revoked token with policy: " + matchedPolicy)
+							fmt.Fprintln(os.Stderr, "Revoked token with policy: "+matchedPolicy)
 						} else {
-							fmt.Printf("Failed with status: %s\n", response.Status)
-							fmt.Printf("Failed with status code: %d\n", response.StatusCode)
+							fmt.Fprintf(os.Stderr, "Failed with status: %s\n", response.Status)
+							fmt.Fprintf(os.Stderr, "Failed with status code: %d\n", response.StatusCode)
 							return errors.New("failure to revoke tokens")
 						}
 					}
@@ -304,7 +306,7 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 					log.Fatal(err)
 				}
 
-				fmt.Printf("Tidy success status: %s\n", response.Status)
+				fmt.Fprintf(os.Stderr, "Tidy success status: %s\n", response.Status)
 
 				if response.StatusCode == 202 {
 					var tidyResponseMap map[string]any
@@ -313,12 +315,12 @@ func (v *Vault) GetOrRevokeTokensInScope(dir string,
 					}
 					if warnings, ok := tidyResponseMap["warnings"].([]any); ok {
 						for _, warning := range warnings {
-							fmt.Println(warning.(string))
+							fmt.Fprintln(os.Stderr, warning.(string))
 						}
 					}
 				} else {
-					fmt.Printf("Non critical tidy success failure: %s\n", response.Status)
-					fmt.Printf("Non critical tidy success failure: %d\n", response.StatusCode)
+					fmt.Fprintf(os.Stderr, "Non critical tidy success failure: %s\n", response.Status)
+					fmt.Fprintf(os.Stderr, "Non critical tidy success failure: %d\n", response.StatusCode)
 				}
 			}
 		}
@@ -332,7 +334,8 @@ func (v *Vault) CreateKVPath(path string, description string) error {
 	return v.client.Sys().Mount(path, &api.MountInput{
 		Type:        "kv",
 		Description: description,
-		Options:     map[string]string{"version": "2"}})
+		Options:     map[string]string{"version": "2"},
+	})
 }
 
 // DeleteKVPath Deletes a KV path at a specified point.
@@ -344,24 +347,26 @@ func (v *Vault) DeleteKVPath(path string) error {
 func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, error) {
 	request := api.InitRequest{
 		SecretShares:    keyShares,
-		SecretThreshold: keyThreshold}
+		SecretThreshold: keyThreshold,
+	}
 
 	response, err := v.client.Sys().Init(&request)
 	if err != nil {
-		fmt.Println("There was an error with initializing vault @ " + v.client.Address())
+		fmt.Fprintln(os.Stderr, "There was an error with initializing vault @ "+v.client.Address())
 		return nil, err
 	}
 	// Remove for deployment
-	fmt.Println("Vault successfully Init'd")
-	fmt.Println("=========================")
+	fmt.Fprintln(os.Stderr, "Vault successfully Init'd")
+	fmt.Fprintln(os.Stderr, "=========================")
 	for _, key := range response.KeysB64 {
-		fmt.Printf("Unseal key: %s\n", key)
+		fmt.Fprintf(os.Stderr, "Unseal key: %s\n", key)
 	}
-	fmt.Printf("Root token: %s\n\n", response.RootToken)
+	fmt.Fprintf(os.Stderr, "Root token: %s\n\n", response.RootToken)
 
 	keyToken := KeyTokenWrapper{
 		Keys:     response.KeysB64,
-		TokenPtr: &response.RootToken}
+		TokenPtr: &response.RootToken,
+	}
 
 	return &keyToken, nil
 }
@@ -379,7 +384,7 @@ func (v *Vault) GetExistsTokenRoleFromFile(filename string) (bool, error) {
 		return false, yamlErr
 	}
 
-	fmt.Printf("Role: %s\n", tokenRole.RoleName)
+	fmt.Fprintf(os.Stderr, "Role: %s\n", tokenRole.RoleName)
 
 	r := v.client.NewRequest("GET", fmt.Sprintf("/v1/auth/token/roles/%s", tokenRole.RoleName))
 	response, err := v.client.RawRequest(r)

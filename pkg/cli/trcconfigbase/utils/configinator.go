@@ -61,7 +61,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 				trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
 			}
 			if !strings.Contains(trcProjectService, "/") {
-				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
 				return templatePaths, endPaths, errors.New("project and service specified without slash")
 			}
 			if !strings.HasSuffix(trcProjectService, "/") {
@@ -71,7 +71,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 		if trcProjectService != "Common" {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
 			if len(trcProjectServiceParts) < 2 {
-				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
 				return templatePaths, endPaths, errors.New("project and service not specified correctly")
 			}
 			project = trcProjectServiceParts[0] + "/"
@@ -94,7 +94,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 			}
 			driverConfig.StartDir = startDirFiltered
 			if len(driverConfig.StartDir) == 0 {
-				fmt.Println("Invalid starting directory, ensure directory includes project name.")
+				fmt.Fprintln(os.Stderr, "Invalid starting directory, ensure directory includes project name.")
 				return templatePaths, endPaths, errors.New("invalid starting directory passed in")
 			}
 		}
@@ -536,20 +536,12 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	if strings.Contains(data, "${TAG}") {
 		tag := os.Getenv("TRCENV_TAG")
 		if len(tag) > 0 {
-			var matched bool
-			var err error
-			if prod.IsStagingProd(driverConfig.CoreConfig.Env) {
-				matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
-				if !matched || err != nil {
-					matched, err = regexp.MatchString("^v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
-				}
-			} else {
-				matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
-			}
-
+			matched, err := ValidateTag(driverConfig, tag)
 			if !matched || err != nil {
-				fmt.Println("Invalid build tag")
-				eUtils.LogInfo(driverConfig.CoreConfig, "Invalid build tag was found:"+tag+"- exiting...")
+				fmt.Fprintln(os.Stderr, "Invalid build tag")
+				if err != nil {
+					eUtils.LogInfo(driverConfig.CoreConfig, err.Error())
+				}
 				os.Exit(-1)
 			}
 		}
@@ -580,6 +572,24 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 		err = newFile.Sync()
 		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	}
+}
+
+func ValidateTag(driverConfig *config.DriverConfig, tag string) (bool, error) {
+	var matched bool
+	var err error
+	if prod.IsStagingProd(driverConfig.CoreConfig.Env) {
+		matched, err = regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+		if !matched || err != nil {
+			matched, err = regexp.MatchString("^v[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$", tag)
+		}
+		if !matched && err == nil {
+			return matched, fmt.Errorf("invalid build tag was found:%s  exiting", tag)
+		}
+	} else {
+		matched, err = regexp.MatchString("^[a-fA-F0-9]{40}$", tag)
+	}
+
+	return matched, err
 }
 
 func getDirFiles(driverConfig *config.DriverConfig, dir string, endDir string) ([]string, []string) {

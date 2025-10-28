@@ -15,10 +15,9 @@ import (
 )
 
 func UploadTemplateDirectory(tfmContext flowcore.FlowMachineContext, config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
-
 	dirs, err := os.ReadDir(dirName)
 	if err != nil {
-		fmt.Println("Read directory couldn't be completed.")
+		fmt.Fprintln(os.Stderr, "Read directory couldn't be completed.")
 		return nil, err
 	}
 
@@ -30,7 +29,7 @@ func UploadTemplateDirectory(tfmContext flowcore.FlowMachineContext, config *cor
 			if templateFilter == nil || len(*templateFilter) == 0 || strings.HasPrefix(*templateFilter, subDir.Name()) {
 				warn, err := UploadTemplates(tfmContext, config, mod, pathName, templateFilter)
 				if err != nil || len(warn) > 0 {
-					fmt.Printf("Upload templates couldn't be completed. %v", err)
+					fmt.Fprintf(os.Stderr, "Upload templates couldn't be completed. %v", err)
 					return warn, err
 				}
 			}
@@ -71,7 +70,7 @@ func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.
 			if config != nil && config.IsShell {
 				config.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
 			} else {
-				fmt.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
+				fmt.Fprintf(os.Stderr, "Found template file %s for %s\n", file.Name(), mod.Env)
 				if config != nil {
 					config.Log.Printf("Found template file %s for %s\n", file.Name(), mod.Env)
 				}
@@ -111,7 +110,7 @@ func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.
 			if len(dirSplit) >= 2 {
 				project, _, _, _ := coreopts.BuildOptions.FindIndexForService(tfmContext, dirSplit[0], dirSplit[1])
 				if project != "" && strings.Contains(string(fileBytes), "{or") {
-					fmt.Printf("Cannot have an indexed template with default values for or %s for %s \n", file.Name(), mod.Env)
+					fmt.Fprintf(os.Stderr, "Cannot have an indexed template with default values for or %s for %s \n", file.Name(), mod.Env)
 					return nil, nil
 				}
 			}

@@ -19,9 +19,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var configContext *tccore.ConfigContext
-var sender chan error
-var dfstat *tccore.TTDINode
+var (
+	configContext *tccore.ConfigContext
+	sender        chan error
+	dfstat        *tccore.TTDINode
+)
 
 var projectServices [][]any
 
@@ -40,9 +42,9 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 			sender <- errors.New("rosea shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -53,7 +55,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/rosea.so")
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
 		return
 	}
 
@@ -61,16 +63,16 @@ func init() {
 
 	h := sha256.New()
 	if _, err := io.Copy(h, peerExe); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("rosea Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "rosea Version: %s\n", sha)
 }
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for rosea.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for rosea.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -84,7 +86,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for rosea.")
+		fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for rosea.")
 		return
 	}
 	if dfstat != nil {
@@ -126,7 +128,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for rosea")
+		fmt.Fprintln(os.Stderr, "no config context initialized for rosea")
 		return
 	}
 	var config *map[string]any
@@ -214,7 +216,7 @@ func Init(pluginName string, properties *map[string]any) {
 		return
 	}
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
-		fmt.Println("Missing common config components")
+		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
 	}
 

@@ -3,11 +3,11 @@ package trcnet
 import (
 	"fmt"
 	"net"
+	"os"
 	"strings"
 )
 
 func NetIpAddr(isValidIpFn func(string) (bool, error)) (string, error) {
-
 	var lastErr error
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -18,7 +18,7 @@ func NetIpAddr(isValidIpFn func(string) (bool, error)) (string, error) {
 		if strings.HasPrefix(iface.Name, "eth") {
 			addrs, err := iface.Addrs()
 			if err != nil {
-				fmt.Println("Error getting addresses for", iface.Name, ":", err)
+				fmt.Fprintln(os.Stderr, "Error getting addresses for", iface.Name, ":", err)
 				continue
 			}
 

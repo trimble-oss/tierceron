@@ -14,9 +14,11 @@ import (
 	//	"time"
 )
 
-var data []string = []string{"One", "Two", "Three", "Four", "Five",
+var data []string = []string{
+	"One", "Two", "Three", "Four", "Five",
 	"Six", "Seven", "Eight", "Nine",
-	"Ten", "Eleven", "Twelve"}
+	"Ten", "Eleven", "Twelve",
+}
 
 var TimeData = map[string][]float64{
 	data[0]:  {0.0, .650, .95, 5.13, 317.85, 317.85},
@@ -28,7 +30,7 @@ var TimeData = map[string][]float64{
 	data[6]:  {0.0, 0.11, 0.13, 4.89, 32.47, 32.47},
 	data[7]:  {0.0, 0.08, 0.1, 4.82, 32.49, 32.49},
 	data[8]:  {0.0, 0.33, 0.5, 5.21, 89.53, 89.53},
-	data[9]:  {0.0, 0.3, 0.62, 5, 599.99}, //when test fails no repeat at end
+	data[9]:  {0.0, 0.3, 0.62, 5, 599.99}, // when test fails no repeat at end
 	data[10]: {0.0, 0.19, 0.47, 4.87, 38.5, 38.5},
 	data[11]: {0.0, 0.26, 0.58, 5, 39.08, 39.08},
 }
@@ -38,7 +40,7 @@ var pointer int
 func buildArgosies(startID int64, argosysize int, dfgsize int, dfsize int, dfstatsize int) ([]*util.TTDINode, []int64, []int64) {
 	// for j := 0; j < len(data); j++ {
 	// 	for i := 0; i < len(TimeData[data[j]])-1; i++ {
-	// 		fmt.Println(TimeData[data[j]][i+1] - TimeData[data[j]][i])
+	// 		fmt.Fprintln(os.Stderr, TimeData[data[j]][i+1] - TimeData[data[j]][i])
 	// 	}
 	// }
 	argosyId := startID - 1
@@ -173,7 +175,7 @@ func buildDataFlowStatistics(startID int64, dfstatsize int, parentID int64) ([]*
 			MashupDetailedElement: &mashupsdk.MashupDetailedElement{
 				Id:          argosyId,
 				State:       &mashupsdk.MashupElementState{Id: argosyId, State: int64(mashupsdk.Hidden)},
-				Name:        "DataFlowStatistic-" + strconv.Itoa(int(argosyId)), //data[pointer], //
+				Name:        "DataFlowStatistic-" + strconv.Itoa(int(argosyId)), // data[pointer], //
 				Alias:       "It",
 				Description: "",
 				Renderer:    "Curve",

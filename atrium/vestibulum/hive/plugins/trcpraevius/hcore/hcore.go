@@ -31,11 +31,13 @@ type server struct {
 	pb.UnimplementedGenericProxyServer
 }
 
-var configContext *tccore.ConfigContext
-var grpcServer *grpc.Server
-var sender chan error
-var serverAddr *string //another way to do this...
-var dfstat *tccore.TTDINode
+var (
+	configContext *tccore.ConfigContext
+	grpcServer    *grpc.Server
+	sender        chan error
+	serverAddr    *string // another way to do this...
+	dfstat        *tccore.TTDINode
+)
 
 func (s *server) SayHello(ctx context.Context, in *pb.HttpRequest) (*pb.HttpResponse, error) {
 	log.Printf("Received: %v", in.Path)
@@ -68,9 +70,9 @@ func receiver(receive_chan *chan core.KernelCmd) {
 			sender <- errors.New("hello shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -81,7 +83,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/praevius.so")
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
 		return
 	}
 
@@ -89,16 +91,16 @@ func init() {
 
 	h := sha256.New()
 	if _, err := io.Copy(h, peerExe); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("praevius Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "praevius Version: %s\n", sha)
 }
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for praevius.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for praevius.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -112,7 +114,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for praevius.")
+		fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for praevius.")
 		return
 	}
 	if dfstat != nil {
@@ -145,7 +147,7 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fmt.Println("Failed to listen:", err)
+		fmt.Fprintln(os.Stderr, "Failed to listen:", err)
 		return nil, nil, err
 	}
 
@@ -156,7 +158,7 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for praevius")
+		fmt.Fprintln(os.Stderr, "no config context initialized for praevius")
 		return
 	}
 	var config map[string]any
@@ -249,7 +251,6 @@ func start(pluginName string) {
 		send_err(errors.New("missing common configs"))
 		return
 	}
-
 }
 
 func stop(pluginName string) {
@@ -260,7 +261,7 @@ func stop(pluginName string) {
 	if grpcServer != nil {
 		grpcServer.Stop()
 	} else {
-		fmt.Println("no server initialized for praevius")
+		fmt.Fprintln(os.Stderr, "no server initialized for praevius")
 	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped server")
@@ -318,7 +319,7 @@ func Init(pluginName string, properties *map[string]any) {
 		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
 	}
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
-		fmt.Println("Missing common config components")
+		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
 	}
 }

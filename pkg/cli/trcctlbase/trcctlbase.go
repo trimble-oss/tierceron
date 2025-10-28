@@ -31,7 +31,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.38")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.39")
 }
 
 // This is a controller program that can act as any command line utility.
@@ -43,8 +43,8 @@ func CommonMain(envDefaultPtr *string,
 	prodPtr *bool,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *config.DriverConfig) error {
-
+	driverConfig *config.DriverConfig,
+) error {
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
@@ -63,13 +63,13 @@ func CommonMain(envDefaultPtr *string,
 	var addrPtr *string = nil
 
 	if flagset == nil {
-		fmt.Println("Version: " + "1.36")
+		fmt.Fprintln(os.Stderr, "Version: "+"1.37")
 		flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 			flagset.PrintDefaults()
 		}
-		envPtr = flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
+		envPtr = flagset.String("env", "", "Environment to be seeded") // If this is blank -> use context otherwise override context.
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.Bool("certs", false, "Upload certs if provided")
@@ -85,7 +85,7 @@ func CommonMain(envDefaultPtr *string,
 		envPtr = envDefaultPtr
 	}
 
-	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if logErr != nil {
 		return logErr
 	}
@@ -93,7 +93,7 @@ func CommonMain(envDefaultPtr *string,
 	if utils.RefLength(addrPtr) == 0 {
 		eUtils.ReadAuthParts(driverConfig, false)
 		if utils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
-			fmt.Println("Missing required vault address")
+			fmt.Fprintln(os.Stderr, "Missing required vault address")
 			return errors.New("Missing required vault address")
 		}
 	} else {
@@ -101,11 +101,11 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	var ctl string
-	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { //This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
+	if len(os.Args) > 1 && !strings.HasPrefix(os.Args[1], "-") { // This pre checks arguments for ctl switch to allow parse to work with non "-" flags.
 		ctl = os.Args[1]
 		ctlSplit := strings.Split(ctl, " ")
 		if len(ctlSplit) >= 2 {
-			fmt.Println("Invalid arguments - only 1 non flag argument available at a time.")
+			fmt.Fprintln(os.Stderr, "Invalid arguments - only 1 non flag argument available at a time.")
 			return errors.New("Invalid arguments - only 1 non flag argument available at a time.")
 		}
 
@@ -126,15 +126,15 @@ func CommonMain(envDefaultPtr *string,
 			if len(contextSplit) == 1 {
 				*envPtr, *envCtxPtr, err = eUtils.GetSetEnvContext(*envPtr, *envCtxPtr)
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Fprintln(os.Stderr, err.Error())
 					return err
 				}
-				fmt.Println("Current context is set to " + *envCtxPtr)
+				fmt.Fprintln(os.Stderr, "Current context is set to "+*envCtxPtr)
 			} else if len(contextSplit) == 2 {
 				*envCtxPtr = contextSplit[1]
 				*envPtr, *envCtxPtr, err = eUtils.GetSetEnvContext(*envPtr, *envCtxPtr)
 				if err != nil {
-					fmt.Println(err.Error())
+					fmt.Fprintln(os.Stderr, err.Error())
 					return err
 				}
 			}
@@ -145,7 +145,7 @@ func CommonMain(envDefaultPtr *string,
 
 	*envPtr, *envCtxPtr, err = eUtils.GetSetEnvContext(*envPtr, *envCtxPtr)
 	if err != nil {
-		fmt.Println(err.Error())
+		fmt.Fprintln(os.Stderr, err.Error())
 		return err
 	}
 
@@ -159,7 +159,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		trcsubbase.CommonMain(envPtr, envCtxPtr, &tokenName, flagset, os.Args, driverConfig)
 	case "init":
-		//tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
+		// tokenName := fmt.Sprintf("config_token_%s_unrestricted", eUtils.GetEnvBasis(*envPtr))
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
@@ -205,13 +205,13 @@ func CommonMain(envDefaultPtr *string,
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 		if len(*pluginNamePtr) == 0 {
-			fmt.Printf("Must specify either -pluginName flag \n")
+			fmt.Fprintf(os.Stderr, "Must specify either -pluginName flag \n")
 			return errors.New("Must specify either -pluginName flag \n")
 		}
 
-		os.Mkdir(*pluginNamePtr, 0700)
+		os.Mkdir(*pluginNamePtr, 0o700)
 		os.Chdir(*pluginNamePtr)
-		fmt.Printf("%s\n", *pluginNamePtr)
+		fmt.Fprintf(os.Stderr, "%s\n", *pluginNamePtr)
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		GeneratePluginSeedData(pluginNamePtr, flagset, ctl, tokenPtr, envPtr, envCtxPtr, tokenName, driverConfig)
 		os.Chdir("..")
@@ -237,13 +237,13 @@ func CommonMain(envDefaultPtr *string,
 		}
 		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
 		if len(*pluginNamePtr) == 0 {
-			fmt.Printf("Must specify either -pluginName flag \n")
+			fmt.Fprintf(os.Stderr, "Must specify either -pluginName flag \n")
 			return errors.New("Must specify either -pluginName flag \n")
 		}
 
-		os.Mkdir(*pluginNamePtr, 0700)
+		os.Mkdir(*pluginNamePtr, 0o700)
 		os.Chdir(*pluginNamePtr)
-		fmt.Printf("%s\n", *pluginNamePtr)
+		fmt.Fprintf(os.Stderr, "%s\n", *pluginNamePtr)
 		flagset = flag.NewFlagSet(ctl, flag.ExitOnError)
 		GetPluginConfigs(&driverConfig, flagset, pluginNamePtr, ctl, envCtxPtr)
 		os.Chdir("..")
@@ -299,7 +299,7 @@ func CommonMain(envDefaultPtr *string,
 			tokenWanted := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
 			autoErr := eUtils.AutoAuth(&editDriverConfig, &tokenWanted, &tokenPtr, &editDriverConfig.CoreConfig.Env, &editDriverConfig.CoreConfig.EnvBasis, &role, false)
 			if autoErr != nil {
-				fmt.Println(autoErr.Error())
+				fmt.Fprintln(os.Stderr, autoErr.Error())
 				return autoErr
 			}
 			tokenName = tokenWanted
@@ -335,7 +335,7 @@ func CommonMain(envDefaultPtr *string,
 		mainthread.Run(func() {
 			err := trcshbase.CommonMain(envPtr, nil, flagset, trcshArgs, &configMap, &editDriverConfig)
 			if err != nil {
-				fmt.Println(err.Error())
+				fmt.Fprintln(os.Stderr, err.Error())
 				return
 			}
 		})
@@ -355,11 +355,11 @@ func GeneratePluginSeedData(pluginNamePtr *string, flagset *flag.FlagSet, ctl st
 
 		if driverConfig.OutputMemCache {
 			if _, err := driverConfig.MemFs.Create(fmt.Sprintf("trc_seeds/%s/TODO.txt", *envPtr)); err != nil {
-				fmt.Printf("Error setting up utility directory: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Error setting up utility directory: %v\n", err)
 				return
 			}
 		} else {
-			os.Mkdir("trc_seeds", 0700)
+			os.Mkdir("trc_seeds", 0o700)
 		}
 		for _, restrictedMapping := range pluginRestrictedMappings {
 			restrictedMappingSub := append([]string{"", os.Args[1]}, restrictedMapping[0])
@@ -387,7 +387,7 @@ func GeneratePluginSeedData(pluginNamePtr *string, flagset *flag.FlagSet, ctl st
 				driverConfig)
 		}
 	} else {
-		fmt.Printf("Plugin not registered with trcctl.\n")
+		fmt.Fprintf(os.Stderr, "Plugin not registered with trcctl.\n")
 	}
 }
 
@@ -466,6 +466,6 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			pluginHandler.RunPlugin(driverConfig, *pluginNamePtr, &serviceConfig)
 		}
 	} else {
-		fmt.Printf("Plugin not registered with trcctl.\n")
+		fmt.Fprintf(os.Stderr, "Plugin not registered with trcctl.\n")
 	}
 }
