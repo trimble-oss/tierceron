@@ -37,7 +37,7 @@ func main() {
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
-			fmt.Println(mLockErr)
+			fmt.Fprintln(os.Stderr, mLockErr)
 			os.Exit(-1)
 		}
 	}
@@ -55,10 +55,10 @@ func main() {
 
 	eUtils.InitHeadless(true)
 	logFile := cursoropts.BuildOptions.GetLogPath()
-	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if logErr != nil {
 		logFile = "./trccursor.log"
-		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	}
 	logger = log.New(f, fmt.Sprintf("[%s]", cursoropts.BuildOptions.GetPluginName(true)), log.LstdFlags)
 	eUtils.CheckError(&coreconfig.CoreConfig{

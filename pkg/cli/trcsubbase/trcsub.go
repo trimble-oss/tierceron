@@ -21,7 +21,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.28")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.28")
 }
 
 // Reads in template files in specified directory
@@ -35,8 +35,8 @@ func CommonMain(envDefaultPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *config.DriverConfig) error {
-
+	driverConfig *config.DriverConfig,
+) error {
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
@@ -55,7 +55,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if flagset == nil {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			fmt.Println("Version: " + "1.6")
+			fmt.Fprintln(os.Stderr, "Version: "+"1.6")
 		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -100,7 +100,7 @@ func CommonMain(envDefaultPtr *string,
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*projectInfoPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
-		fmt.Printf("Must specify either -projectInfo, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
+		fmt.Fprintf(os.Stderr, "Must specify either -projectInfo, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
 		return errors.New("must specify either -projectInfo or -templateFilter flag")
 	}
 	var driverConfigBase *config.DriverConfig
@@ -123,9 +123,9 @@ func CommonMain(envDefaultPtr *string,
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log" {
 			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "sub.log"
 		}
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		if err != nil {
-			fmt.Println("Log init failure")
+			fmt.Fprintln(os.Stderr, "Log init failure")
 			return err
 		}
 
@@ -147,7 +147,7 @@ func CommonMain(envDefaultPtr *string,
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
-		fmt.Println(*envPtr)
+		fmt.Fprintln(os.Stderr, *envPtr)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
 		return err
 	}
@@ -161,11 +161,11 @@ func CommonMain(envDefaultPtr *string,
 		currentRoleEntityPtr,
 		*pingPtr)
 	if autoErr != nil {
-		fmt.Println("Missing auth components.")
+		fmt.Fprintln(os.Stderr, "Missing auth components.")
 		return autoErr
 	}
 	if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-		fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+		fmt.Fprintf(os.Stderr, "Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 	}
 
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
@@ -209,7 +209,7 @@ func CommonMain(envDefaultPtr *string,
 		for _, pluginPath := range pluginList.Data {
 			for _, pluginInterface := range pluginPath.([]any) {
 				plugin := pluginInterface.(string)
-				fmt.Println(strings.TrimRight(plugin, "/"))
+				fmt.Fprintln(os.Stderr, strings.TrimRight(plugin, "/"))
 			}
 		}
 
@@ -222,7 +222,7 @@ func CommonMain(envDefaultPtr *string,
 		if driverConfigBase.CoreConfig.IsEditor {
 			driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
 		} else {
-			fmt.Printf("\nProjects available:\n")
+			fmt.Fprintf(os.Stderr, "\nProjects available:\n")
 		}
 		for _, templatePath := range templateList.Data {
 			for _, projectInterface := range templatePath.([]any) {
@@ -230,7 +230,7 @@ func CommonMain(envDefaultPtr *string,
 				if driverConfigBase.CoreConfig.IsEditor {
 					driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
 				} else {
-					fmt.Println(strings.TrimRight(project, "/"))
+					fmt.Fprintln(os.Stderr, strings.TrimRight(project, "/"))
 				}
 			}
 		}

@@ -15,14 +15,14 @@ func GetApproleFileNames(config *coreconfig.CoreConfig, namespace string) []stri
 	var approleFileNames []string
 	cwd, cwdErr := os.Getwd()
 	if cwdErr != nil {
-		fmt.Println("Error reading current directory.  Cannot continue.")
+		fmt.Fprintln(os.Stderr, "Error reading current directory.  Cannot continue.")
 		eUtils.LogErrorObject(config, cwdErr, false)
 		os.Exit(-1)
 	}
 
 	approleFiles, approleFilesErr := os.ReadDir(cwd + "/vault_namespaces/" + namespace + "/approle_files")
 	if approleFilesErr != nil {
-		fmt.Println("Error reading approle_files directory. Cannot continue.")
+		fmt.Fprintln(os.Stderr, "Error reading approle_files directory. Cannot continue.")
 		eUtils.LogErrorObject(config, approleFilesErr, false)
 		os.Exit(-1)
 	}
@@ -31,7 +31,7 @@ func GetApproleFileNames(config *coreconfig.CoreConfig, namespace string) []stri
 		if strings.Contains(approleFile.Name(), ".yml") {
 			approleFileNames = append(approleFileNames, strings.TrimSuffix(approleFile.Name(), ".yml"))
 		} else {
-			fmt.Println(approleFile.Name() + " is not a yaml file. Continuing with other files.")
+			fmt.Fprintln(os.Stderr, approleFile.Name()+" is not a yaml file. Continuing with other files.")
 			eUtils.LogErrorObject(config, approleFilesErr, false)
 			continue
 		}

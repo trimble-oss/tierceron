@@ -95,11 +95,13 @@ func ParseCursorFields(e *logical.StorageEntry, cursorSecretData *map[string]any
 	return pluginutil.ValidateVaddr(vaddrCheck, logger)
 }
 
-var environments []string = []string{"dev"}
-var environmentsProd []string = []string{"staging"}
-var cursorFields map[string]cursoropts.CursorFieldAttributes
-var KvInitialize func(context.Context, *logical.InitializationRequest) error
-var curatorPluginConfig map[string]any
+var (
+	environments        []string = []string{"dev"}
+	environmentsProd    []string = []string{"staging"}
+	cursorFields        map[string]cursoropts.CursorFieldAttributes
+	KvInitialize        func(context.Context, *logical.InitializationRequest) error
+	curatorPluginConfig map[string]any
+)
 
 var kvRead framework.OperationFunc
 
@@ -119,7 +121,7 @@ var createUpdateFunc func(ctx context.Context, req *logical.Request, data *frame
 
 	// Check that some fields are given
 	if len(req.Data) == 0 {
-		//ctx.Done()
+		// ctx.Done()
 		return logical.ErrorResponse("missing data fields"), nil
 	}
 
@@ -164,7 +166,7 @@ func PersistCursorFieldsToVault(ctx context.Context, key string, storage *logica
 	// JSON encode the data
 	buf, err := json.Marshal(tapMap)
 	if err != nil {
-		//ctx.Done()
+		// ctx.Done()
 		logger.Printf("PersistToVault encode failure\n")
 		return nil, fmt.Errorf("json encoding failed: %v", err)
 	}
@@ -175,7 +177,7 @@ func PersistCursorFieldsToVault(ctx context.Context, key string, storage *logica
 		Value: buf,
 	}
 	if err := (*storage).Put(ctx, entry); err != nil {
-		//ctx.Done()
+		// ctx.Done()
 		logger.Printf("PersistToVault write failure\n")
 		return nil, fmt.Errorf("failed to write: %v", err)
 	}
@@ -199,7 +201,7 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 	return &plugin.ServeOpts{
 		BackendFactoryFunc: func(ctx context.Context, config *logical.BackendConfig) (logical.Backend, error) {
 			// Access backend configuration if needed
-			fmt.Println("Backend configuration:", config)
+			fmt.Fprintln(os.Stderr, "Backend configuration:", config)
 
 			bkv, err := kv.Factory(ctx, config)
 			KvInitialize = bkv.(*kv.PassthroughBackend).InitializeFunc

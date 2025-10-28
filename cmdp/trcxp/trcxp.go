@@ -28,7 +28,7 @@ func main() {
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
-	fmt.Println("Version: " + "1.5")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.5")
 	env := "local"
 	addr := coreopts.BuildOptions.GetVaultHostPort()
 	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &env, &addr, nil, nil, nil, os.Args, nil)

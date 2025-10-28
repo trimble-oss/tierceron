@@ -32,17 +32,17 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 	configCtx.Mutex.Lock()
 	_, present := configCtx.ResultMap["filesys||."+inPathSplit[1]]
 	configCtx.Mutex.Unlock()
-	//If data is filesys - skip fileSys loop
+	// If data is filesys - skip fileSys loop
 	if strings.Contains(inPath, "filesys") {
 		goto skipSwitch
 	}
 
-	//Read file from filesys once per new file
+	// Read file from filesys once per new file
 	if configCtx.FileSysIndex != -1 && !present {
 		path, err := os.Getwd()
 		fileData, err1 := os.ReadFile(filepath.FromSlash(path + inPathSplit[1]))
 		if err != nil || err1 != nil {
-			fmt.Println("Error reading file: " + inPathSplit[1])
+			fmt.Fprintln(os.Stderr, "Error reading file: "+inPathSplit[1])
 			return
 		}
 		dataStr := string(fileData)
@@ -54,7 +54,6 @@ skipSwitch:
 }
 
 func receiver(configCtx *config.ConfigContext) {
-
 	for data := range configCtx.ResultChannel {
 		if data != nil && data.Done {
 			return
@@ -65,17 +64,14 @@ func receiver(configCtx *config.ConfigContext) {
 			configCtx.Mutex.Unlock()
 		}
 	}
-
 }
 
 var STARTDIR_DEFAULT string
 
-var (
-	ENDDIR_DEFAULT = "."
-)
+var ENDDIR_DEFAULT = "."
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.32")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.32")
 }
 
 func CommonMain(envDefaultPtr *string,
@@ -84,7 +80,8 @@ func CommonMain(envDefaultPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *config.DriverConfig) error {
+	driverConfig *config.DriverConfig,
+) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -116,7 +113,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("secretID", "", "Secret for app role ID")
-		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+		flagset.String("region", "", "Region to be processed") // If this is blank -> use context otherwise override context.
 		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 	} else {
@@ -154,7 +151,7 @@ func CommonMain(envDefaultPtr *string,
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
-				fmt.Println("Wrong flag syntax: ", s)
+				fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)
 				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
@@ -215,7 +212,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 	if !isShell && !kernelopts.BuildOptions.IsKernel() && !isDrone {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required template folder: " + *startDirPtr)
+			fmt.Fprintln(os.Stderr, "Missing required template folder: "+*startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
 		}
 	}
@@ -225,7 +222,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if strings.Contains(*envPtr, "*") {
-		fmt.Println("* is not available as an environment suffix.")
+		fmt.Fprintln(os.Stderr, "* is not available as an environment suffix.")
 		return errors.New("* is not available as an environment suffix")
 	}
 
@@ -248,9 +245,9 @@ func CommonMain(envDefaultPtr *string,
 		}
 
 		if driverConfigBase.CoreConfig.Log == nil {
-			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 			if err != nil {
-				fmt.Println("Error creating log file: " + *logFilePtr)
+				fmt.Fprintln(os.Stderr, "Error creating log file: "+*logFilePtr)
 				return errors.New("Error creating log file: " + *logFilePtr)
 			}
 			logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
@@ -262,7 +259,7 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.NoVault = *noVaultPtr
 		}
 	} else {
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		if *wantCertsPtr {
 			// Cannot have different certs per env-x instance.  Use basis.
@@ -275,7 +272,8 @@ func CommonMain(envDefaultPtr *string,
 				CurrentTokenNamePtr: driverConfig.CoreConfig.CurrentTokenNamePtr,
 				ExitOnFailure:       true,
 				Insecure:            *insecurePtr,
-				Log:                 logger},
+				Log:                 logger,
+			},
 			StartDir:   append([]string{}, *startDirPtr),
 			EndDir:     *endDirPtr,
 			ZeroConfig: *zcPtr,
@@ -292,34 +290,34 @@ func CommonMain(envDefaultPtr *string,
 		currentRoleEntityPtr = new(string)
 	}
 
-	//Dont allow these combinations of flags
+	// Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
-		fmt.Println("Cannot use -diff flag and -templateInfo flag together")
+		fmt.Fprintln(os.Stderr, "Cannot use -diff flag and -templateInfo flag together")
 		return errors.New("cannot use -diff flag and -templateInfo flag together")
 	} else if *versionInfoPtr && *diffPtr {
-		fmt.Println("Cannot use -diff flag and -versionInfo flag together")
+		fmt.Fprintln(os.Stderr, "Cannot use -diff flag and -versionInfo flag together")
 		return errors.New("cannot use -diff flag and -versionInfo flag together")
 	} else if *wantCertsPtr && *diffPtr {
-		fmt.Println("Cannot use -diff flag and -certs flag together")
+		fmt.Fprintln(os.Stderr, "Cannot use -diff flag and -certs flag together")
 		return errors.New("cannot use -diff flag and -certs flag together")
 	} else if *certDestPathPtr != "" && !*wantCertsPtr {
-		fmt.Println("Cannot use -certDestPath flag without including -certs flag")
+		fmt.Fprintln(os.Stderr, "Cannot use -certDestPath flag without including -certs flag")
 		return errors.New("Cannot use -certDestPath flag without including -certs flag")
 	} else if *versionInfoPtr && *templateInfoPtr {
-		fmt.Println("Cannot use -templateInfo flag and -versionInfo flag together")
+		fmt.Fprintln(os.Stderr, "Cannot use -templateInfo flag and -versionInfo flag together")
 		return errors.New("cannot use -templateInfo flag and -versionInfo flag together")
 	} else if *diffPtr {
-		if strings.ContainsAny(*envPtr, ",") { //Multiple environments
+		if strings.ContainsAny(*envPtr, ",") { // Multiple environments
 			*envPtr = strings.ReplaceAll(*envPtr, "latest", "0")
 			configCtx.EnvSlice = strings.Split(*envPtr, ",")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 			if len(configCtx.EnvSlice) > 4 {
-				fmt.Println("Unsupported number of environments - Maximum: 4")
+				fmt.Fprintln(os.Stderr, "Unsupported number of environments - Maximum: 4")
 				return errors.New("unsupported number of environments - Maximum: 4")
 			}
 			for i, env := range configCtx.EnvSlice {
 				if env == "local" {
-					fmt.Println("Unsupported env: local not available with diff flag")
+					fmt.Fprintln(os.Stderr, "Unsupported env: local not available with diff flag")
 					return errors.New("unsupported env: local not available with diff flag")
 				}
 				if !strings.Contains(env, "_") && env != "filesys" {
@@ -333,19 +331,19 @@ func CommonMain(envDefaultPtr *string,
 				}
 			}
 		} else {
-			fmt.Println("Incorrect format for diff: -env=env1,env2,...")
+			fmt.Fprintln(os.Stderr, "Incorrect format for diff: -env=env1,env2,...")
 			return errors.New("incorrect format for diff: -env=env1,env2")
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
-			fmt.Println("-diff flag is required for multiple environments - env: -env=env1,env2,...")
+			fmt.Fprintln(os.Stderr, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
 			return errors.New("-diff flag is required for multiple environments - env: -env=env1,env2")
 		}
 		if strings.Contains(*envPtr, "filesys") {
-			fmt.Println("Unsupported env: filesys only available with diff flag")
+			fmt.Fprintln(os.Stderr, "Unsupported env: filesys only available with diff flag")
 			return errors.New("unsupported env: filesys only available with diff flag")
 		}
-		envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
+		envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
 		*envPtr = envVersion[0]
 
 		if !*noVaultPtr {
@@ -363,7 +361,7 @@ func CommonMain(envDefaultPtr *string,
 				} else {
 					driverConfigBase.CoreConfig.Log.Printf("auth error: %s", autoErr)
 				}
-				fmt.Println("Missing auth components.")
+				fmt.Fprintln(os.Stderr, "Missing auth components.")
 				return errors.New("missing auth components")
 			}
 			if *pingPtr {
@@ -378,10 +376,10 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 		}
 
-		if len(envVersion) >= 2 { //Put back env+version together
+		if len(envVersion) >= 2 { // Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
-				fmt.Println("Must declare desired version number after '_' : -env=env1_ver1")
+				fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1")
 				return errors.New("must declare desired version number after '_' : -env=env1_ver1")
 			}
 		} else {
@@ -389,7 +387,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 	}
 
-	//Check if version is added on, process without it for versions & templateInfo flag
+	// Check if version is added on, process without it for versions & templateInfo flag
 	if *versionInfoPtr || *templateInfoPtr {
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
@@ -399,14 +397,14 @@ func CommonMain(envDefaultPtr *string,
 				Reset = ""
 				Yellow = ""
 			}
-			fmt.Println(Yellow + "Specified versioning not available, using " + envVersion[0] + " as environment" + Reset)
+			fmt.Fprintln(os.Stderr, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
 		}
 	}
 
 	if len(configCtx.EnvSlice) > 1 {
 		removeDuplicateValuesSlice := eUtils.RemoveDuplicateValues(configCtx.EnvSlice)
 		if !cmp.Equal(configCtx.EnvSlice, removeDuplicateValuesSlice) {
-			fmt.Println("There is a duplicate environment in the -env flag")
+			fmt.Fprintln(os.Stderr, "There is a duplicate environment in the -env flag")
 			return errors.New("there is a duplicate environment in the -env flag")
 		}
 	}
@@ -415,7 +413,7 @@ func CommonMain(envDefaultPtr *string,
 		if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
-			fmt.Println(*envPtr)
+			fmt.Fprintln(os.Stderr, *envPtr)
 			if err != nil {
 				return err
 			}
@@ -434,7 +432,7 @@ func CommonMain(envDefaultPtr *string,
 				}
 			}
 			if len(regions) == 0 {
-				fmt.Println("Unsupported region: " + *regionPtr)
+				fmt.Fprintln(os.Stderr, "Unsupported region: "+*regionPtr)
 				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
@@ -452,19 +450,19 @@ func CommonMain(envDefaultPtr *string,
 		for _, rebind := range strings.Split(*certDestPathPtr, ",") {
 			split := strings.Split(rebind, ":")
 			if len(split) != 2 {
-				fmt.Println("Incorrect format for certDestPath: " + rebind)
+				fmt.Fprintln(os.Stderr, "Incorrect format for certDestPath: "+rebind)
 				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
 			}
 			certFileName, certFileDest := split[0], split[1]
 			if split[0] == "" || split[1] == "" {
-				fmt.Println("Incorrect format for certDestPath: " + rebind)
+				fmt.Fprintln(os.Stderr, "Incorrect format for certDestPath: "+rebind)
 				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
 			}
 			certOverrides[certFileName] = certFileDest
 		}
 	}
 
-	//channel receiver
+	// channel receiver
 	go receiver(configCtx)
 	if *diffPtr && !driverConfigBase.CoreConfig.IsShell {
 		configSlice := make([]config.DriverConfig, 0, len(configCtx.EnvSlice)-1)
@@ -474,7 +472,7 @@ func CommonMain(envDefaultPtr *string,
 			if !*noVaultPtr {
 				autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, *pingPtr)
 				if autoErr != nil {
-					fmt.Println("Missing auth components.")
+					fmt.Fprintln(os.Stderr, "Missing auth components.")
 					return errors.New("missing auth components")
 				}
 				if *pingPtr {
@@ -484,10 +482,10 @@ func CommonMain(envDefaultPtr *string,
 				token := "novault"
 				driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 			}
-			if len(envVersion) >= 2 { //Put back env+version together
+			if len(envVersion) >= 2 { // Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
-					fmt.Println("Must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
+					fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
 					return errors.New("must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
 				}
 			} else {
@@ -530,8 +528,8 @@ func CommonMain(envDefaultPtr *string,
 			go func(cs *[]config.DriverConfig) {
 				defer configCtx.ConfigWg.Done()
 				config.ConfigControl(nil, configCtx, &(*cs)[len(*cs)-1], vcutils.GenerateConfigsFromVault)
-				if int(configCtx.GetDiffFileCount()) < (*cs)[len(*cs)-1].DiffCounter { //Without this, resultMap may be missing data when diffing.
-					configCtx.SetDiffFileCount((*cs)[len(*cs)-1].DiffCounter) //This counter helps the diff wait for results
+				if int(configCtx.GetDiffFileCount()) < (*cs)[len(*cs)-1].DiffCounter { // Without this, resultMap may be missing data when diffing.
+					configCtx.SetDiffFileCount((*cs)[len(*cs)-1].DiffCounter) // This counter helps the diff wait for results
 				}
 			}(&configSlice)
 		}
@@ -594,7 +592,7 @@ func CommonMain(envDefaultPtr *string,
 			config.ConfigControl(nil, configCtx, dc, vcutils.GenerateConfigsFromVault)
 		}(&dConfig)
 	}
-	configCtx.ConfigWg.Wait() //Wait for templates
+	configCtx.ConfigWg.Wait() // Wait for templates
 	if driverConfig == nil {
 		configCtx.ResultChannel <- &config.ResultData{Done: true}
 		close(configCtx.ResultChannel)
@@ -611,7 +609,7 @@ func CommonMain(envDefaultPtr *string,
 			break
 		}
 	}
-	if *diffPtr { //Diff if needed
+	if *diffPtr { // Diff if needed
 		if configCtx.FileSysIndex != -1 {
 			configCtx.EnvSlice = append(configCtx.EnvSlice, "filesys")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
@@ -622,6 +620,6 @@ func CommonMain(envDefaultPtr *string,
 			eUtils.DiffHelper(configCtx, true)
 		}()
 	}
-	configCtx.ConfigWg.Wait() //Wait for diff
+	configCtx.ConfigWg.Wait() // Wait for diff
 	return nil
 }

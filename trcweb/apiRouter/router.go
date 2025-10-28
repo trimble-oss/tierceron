@@ -24,18 +24,20 @@ import (
 )
 
 // Must be the same secret used to sign valid tokens
-var s *server.Server
-var noAuthRoutes = map[string]bool{
-	"APILogin":        true,
-	"CheckConnection": true,
-	"GetStatus":       true,
-	"GetVaultTokens":  true,
-	"InitVault":       true,
-	"ResetServer":     true,
-	"Unseal":          true,
-	"UpdateAPI":       true,
-	"Environments":    true,
-}
+var (
+	s            *server.Server
+	noAuthRoutes = map[string]bool{
+		"APILogin":        true,
+		"CheckConnection": true,
+		"GetStatus":       true,
+		"GetVaultTokens":  true,
+		"InitVault":       true,
+		"ResetServer":     true,
+		"Unseal":          true,
+		"UpdateAPI":       true,
+		"Environments":    true,
+	}
+)
 
 func validateClaims(claims jwt.MapClaims) error {
 	now := time.Now()
@@ -156,7 +158,6 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		s.Log.Printf("%d: %s", http.StatusUnauthorized, errMsg)
 		return
-
 	}
 	gql := func(w http.ResponseWriter, r *http.Request, ps rtr.Params) {
 		query := strings.Replace(r.URL.Query().Get("query"), `"`, `\"`, -1)
@@ -209,12 +210,14 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 var localHost bool
 
 // environments
-var environments = []string{"dev", "QA", "RQA", "auto", "performance", "servicepack", "itdev"}
-var prodEnvironments = []string{"staging", "prod"}
-var webAPIProdEnvironments = []string{"staging"}
+var (
+	environments           = []string{"dev", "QA", "RQA", "auto", "performance", "servicepack", "itdev"}
+	prodEnvironments       = []string{"staging", "prod"}
+	webAPIProdEnvironments = []string{"staging"}
+)
 
 func main() {
-	fmt.Println("Version: " + "1.1")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.1")
 	addrPtr := flag.String("addr", coreopts.BuildOptions.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"API/server.log", "Log file path for this server")
@@ -233,7 +236,7 @@ func main() {
 		},
 	}
 
-	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	s.Log.SetOutput(f)
 	memprotectopts.MemProtectInit(nil)
@@ -254,7 +257,7 @@ func main() {
 	}
 
 	twirpHandler := twp.NewEnterpriseServiceBrokerServer(s, nil)
-	//twirpHandler.
+	// twirpHandler.
 	router := authrouter(twirpHandler, *authPtr)
 	c := cors.New(cors.Options{
 		AllowedOrigins: []string{"*"},
@@ -274,7 +277,7 @@ func main() {
 	go func() {
 		s.Log.Fatal(http.ListenAndServe(port, http.HandlerFunc(redirectToTLS)))
 	}()
-	fmt.Println("Server initialized and running")
+	fmt.Fprintln(os.Stderr, "Server initialized and running")
 	s.Log.Printf("Listening for HTTPS requests on port %s\n", securePort)
 	s.Log.Printf("Redirecting HTTP requests from port %s to HTTPS on port %s\n", port, securePort)
 	s.Log.Fatal(http.ListenAndServeTLS(securePort, *tlsPathPtr+"/serv_cert.pem", *tlsPathPtr+"/serv_key.pem", c.Handler(router)))

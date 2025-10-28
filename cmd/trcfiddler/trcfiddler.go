@@ -12,7 +12,7 @@ import (
 // of automating setup and initial seeding
 
 func main() {
-	fmt.Println("Version: " + "1.29")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.29")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
@@ -22,12 +22,12 @@ func main() {
 
 	ipcLockCapSet, err := cap.FromText("cap_ipc_lock=+ep")
 	if err != nil {
-		fmt.Printf("%v", err)
+		fmt.Fprintf(os.Stderr, "%v", err)
 	}
 	setErr := ipcLockCapSet.SetFile("/home/joel/workspace/github/mrjrieke/tierceron/bin/trcconfig")
 
 	if setErr != nil {
-		fmt.Printf("%v", setErr)
+		fmt.Fprintf(os.Stderr, "%v", setErr)
 		os.Exit(1)
 	}
 }

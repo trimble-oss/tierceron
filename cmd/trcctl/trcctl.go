@@ -56,13 +56,13 @@ func main() {
 	deployopts.NewOptionsBuilder(deployloadopts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcloadopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptloadopts.LoadOptions())
-	fmt.Println("Version: " + "1.36")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.36")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 		flagset.PrintDefaults()
 	}
-	envPtr := flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
+	envPtr := flagset.String("env", "", "Environment to be seeded") // If this is blank -> use context otherwise override context.
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 	tokenPtr := flagset.String("token", "", "Vault access token")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")

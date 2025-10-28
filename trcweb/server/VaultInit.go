@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
@@ -17,16 +18,18 @@ import (
 	pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 )
 
-const tokenPath string = "token_files"
-const policyPath string = "policy_files"
-const templatePath string = "template_files"
+const (
+	tokenPath    string = "token_files"
+	policyPath   string = "policy_files"
+	templatePath string = "template_files"
+)
 
 // InitVault Takes init request and inits/seeds vault with contained file data
 func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, error) {
 	logBuffer := new(bytes.Buffer)
 	logger := log.New(logBuffer, "[INIT]", log.LstdFlags)
 
-	fmt.Println("Initing vault")
+	fmt.Fprintln(os.Stderr, "Initing vault")
 	coreConfig := &coreconfig.CoreConfig{ExitOnFailure: false, Log: s.Log}
 
 	v, err := sys.NewVault(false, s.VaultAddrPtr, "nonprod", true, false, false, logger)
@@ -53,7 +56,7 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 	v.SetToken(keyToken.TokenPtr)
 	v.SetShards(keyToken.Keys)
 	s.VaultTokenPtr = keyToken.TokenPtr
-	//check error returned by unseal
+	// check error returned by unseal
 	v.Unseal()
 	if err != nil {
 		eUtils.LogErrorObject(coreConfig, err, false)
@@ -91,7 +94,8 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 				ExitOnFailure: true,
 				Log:           logger,
 			},
-			ServicesWanted: []string{""}}, "", fBytes)
+			ServicesWanted: []string{""},
+		}, "", fBytes)
 	}
 
 	il.UploadPolicies(coreConfig, policyPath, v, false)
@@ -253,7 +257,6 @@ func (s *Server) Unseal(ctx context.Context, req *pb.UnsealReq) (*pb.UnsealResp,
 
 	v.AddShard(req.UnsealKey)
 	prog, need, sealed, err := v.Unseal()
-
 	if err != nil {
 		eUtils.LogErrorObject(coreConfig, err, false)
 		return nil, err

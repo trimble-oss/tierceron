@@ -101,7 +101,7 @@ func main() {
 
 	driverConfig, err := eUtils.InitDriverConfigForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
 	if err != nil {
-		fmt.Printf("Error initializing driver config: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error initializing driver config: %v\n", err)
 		os.Exit(1)
 	}
 

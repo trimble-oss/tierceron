@@ -515,7 +515,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 
 	certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
 	if err != nil {
-		fmt.Printf("Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
+		fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
 		return
 	}
 	(*serviceConfig)["certify"] = certifyMap
@@ -536,13 +536,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
 		}
 	} else {
-		fmt.Println("No logger passed in to plugin service")
+		fmt.Fprintln(os.Stderr, "No logger passed in to plugin service")
 		return
 	}
 	if kernelopts.BuildOptions.IsKernel() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Printf("Recovered with stack trace of" + string(debug.Stack()) + "\n")
+				fmt.Fprintf(os.Stderr, "Recovered with stack trace of"+string(debug.Stack())+"\n")
 			}
 		}()
 	}
@@ -876,7 +876,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
 			if err != nil {
-				fmt.Printf("Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
+				fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
 				return
 			}
 			(serviceConfig)["certify"] = certifyMap
@@ -1128,7 +1128,7 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 	if kernelopts.BuildOptions.IsKernel() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Printf("Recovered with stack trace of" + string(debug.Stack()) + "\n")
+				fmt.Fprintf(os.Stderr, "Recovered with stack trace of"+string(debug.Stack())+"\n")
 			}
 		}()
 	}

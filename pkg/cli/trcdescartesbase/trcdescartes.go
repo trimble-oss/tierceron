@@ -19,12 +19,10 @@ import (
 
 var STARTDIR_DEFAULT string
 
-var (
-	ENDDIR_DEFAULT = "."
-)
+var ENDDIR_DEFAULT = "."
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.31")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.31")
 }
 
 func CommonMain(envDefaultPtr *string,
@@ -36,7 +34,8 @@ func CommonMain(envDefaultPtr *string,
 	regionPtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *config.DriverConfig) error {
+	driverConfig *config.DriverConfig,
+) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -65,7 +64,7 @@ func CommonMain(envDefaultPtr *string,
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
 		flagset.String("secretID", "", "Secret for app role ID")
-		flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+		flagset.String("region", "", "Region to be processed") // If this is blank -> use context otherwise override context.
 		flagset.String("appRoleID", "", "Public app role ID")
 		flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 	} else {
@@ -89,7 +88,7 @@ func CommonMain(envDefaultPtr *string,
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
-				fmt.Println("Wrong flag syntax: ", s)
+				fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)
 				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
@@ -115,13 +114,13 @@ func CommonMain(envDefaultPtr *string,
 	}
 	if !isShell {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Println("Missing required template folder: " + *startDirPtr)
+			fmt.Fprintln(os.Stderr, "Missing required template folder: "+*startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
 		}
 	}
 
 	if strings.Contains(*envPtr, "*") {
-		fmt.Println("* is not available as an environment suffix.")
+		fmt.Fprintln(os.Stderr, "* is not available as an environment suffix.")
 		return errors.New("* is not available as an environment suffix")
 	}
 
@@ -140,9 +139,9 @@ func CommonMain(envDefaultPtr *string,
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 
 		if driverConfigBase.CoreConfig.Log == nil {
-			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 			if err != nil {
-				fmt.Println("Error creating log file: " + *logFilePtr)
+				fmt.Fprintln(os.Stderr, "Error creating log file: "+*logFilePtr)
 				return errors.New("Error creating log file: " + *logFilePtr)
 			}
 			logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
@@ -153,7 +152,7 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.NoVault = *noVaultPtr
 		}
 	} else {
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 		driverConfigBase = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{Env: *envPtr, ExitOnFailure: true, Insecure: *insecurePtr, Log: logger},
@@ -172,7 +171,7 @@ func CommonMain(envDefaultPtr *string,
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
-	envVersion := strings.Split(*envPtr, "_") //Break apart env+version for token
+	envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
 	*envPtr = envVersion[0]
 
 	if !*noVaultPtr {
@@ -190,7 +189,7 @@ func CommonMain(envDefaultPtr *string,
 			} else {
 				driverConfigBase.CoreConfig.Log.Printf("auth error: %s", autoErr)
 			}
-			fmt.Println("Missing auth components.")
+			fmt.Fprintln(os.Stderr, "Missing auth components.")
 			return errors.New("missing auth components")
 		}
 		if *pingPtr {
@@ -201,10 +200,10 @@ func CommonMain(envDefaultPtr *string,
 		driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
 	}
 
-	if len(envVersion) >= 2 { //Put back env+version together
+	if len(envVersion) >= 2 { // Put back env+version together
 		*envPtr = envVersion[0] + "_" + envVersion[1]
 		if envVersion[1] == "" {
-			fmt.Println("Must declare desired version number after '_' : -env=env1_ver1")
+			fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1")
 			return errors.New("must declare desired version number after '_' : -env=env1_ver1")
 		}
 	} else {

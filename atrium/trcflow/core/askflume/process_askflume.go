@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
@@ -13,9 +14,11 @@ import (
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 )
 
-var askFlumeContext *flowcore.AskFlumeContext
-var tfmcontext *flowcore.TrcFlowMachineContext
-var tfContext *flowcore.TrcFlowContext
+var (
+	askFlumeContext *flowcore.AskFlumeContext
+	tfmcontext      *flowcore.TrcFlowMachineContext
+	tfContext       *flowcore.TrcFlowContext
+)
 
 var msg string
 
@@ -34,12 +37,12 @@ func ProcessAskFlumeController(tfmContext *flowcore.TrcFlowMachineContext, trcFl
 	tfContext = trcFlowContext
 
 	if err != nil {
-		fmt.Printf("Error initializing AskFlume %v", err)
+		fmt.Fprintf(os.Stderr, "Error initializing AskFlume %v", err)
 		return err
 	}
 
 	if err != nil {
-		fmt.Printf("Error initializing Google Chat %v", err)
+		fmt.Fprintf(os.Stderr, "Error initializing Google Chat %v", err)
 		return err
 	}
 	var askFlumeWg sync.WaitGroup
@@ -151,7 +154,7 @@ func GetQuery(message *mashupsdk.MashupDetailedElement) {
 func handleGChatQuery(askFlumeContext *flowcore.AskFlumeContext) error {
 	if askFlumeContext.Query.Message != "" {
 		askFlumeContext.Queries = append(askFlumeContext.Queries, askFlumeContext.Query)
-		fmt.Println("Received query from google chat channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
+		fmt.Fprintln(os.Stderr, "Received query from google chat channel in Flume: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
 		if Flumeworld.DetailedElements[askFlumeContext.Query.Id] != nil {
 			Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "DialogFlow"
 			Flumeworld.DetailedElements[askFlumeContext.Query.Id].Data = askFlumeContext.Query.Message
@@ -192,7 +195,7 @@ func handleDFAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
 	if askFlumeContext.Query.Message != "" {
 		log.Println("Received response from DialogFlow channel: ", askFlumeContext.Query.Message, " with ID: ", askFlumeContext.Query.Id)
 		Flumeworld.DetailedElements[askFlumeContext.Query.Id].Name = "GChatResponse"
-		fmt.Println("Sending formatted response back to Google Chat to send to the user")
+		fmt.Fprintln(os.Stderr, "Sending formatted response back to Google Chat to send to the user")
 		askFlumeContext.Upsert <- &mashupsdk.MashupDetailedElementBundle{
 			DetailedElements: Flumeworld.DetailedElements,
 		}
@@ -204,7 +207,7 @@ func handleDFAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
 // Response has been sent back to user, new "Get Message" call is set
 // so user can ask more questions
 func handleGchatAnswer(askFlumeContext *flowcore.AskFlumeContext) error {
-	fmt.Println("Sending response back to user and ending flow")
+	fmt.Fprintln(os.Stderr, "Sending response back to user and ending flow")
 	offset := flowcore.GetId()
 	if Flumeworld.MashupDetailedElementLibrary == nil {
 		Flumeworld.MashupDetailedElementLibrary = make(map[int64]*mashupsdk.MashupDetailedElement)
@@ -253,7 +256,7 @@ func InitGoogleChat(authToken string) error {
 		})
 		if upsertErr != nil {
 			log.Printf("Failed to upsert google chat query to client: %v", upsertErr)
-			break //Don't know if I should break loop if error or just keep trying again
+			break // Don't know if I should break loop if error or just keep trying again
 		}
 
 		for _, updatedElement := range updated_elements.DetailedElements {

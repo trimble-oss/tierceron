@@ -61,7 +61,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 				trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
 			}
 			if !strings.Contains(trcProjectService, "/") {
-				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
 				return templatePaths, endPaths, errors.New("project and service specified without slash")
 			}
 			if !strings.HasSuffix(trcProjectService, "/") {
@@ -71,7 +71,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 		if trcProjectService != "Common" {
 			trcProjectServiceParts := strings.Split(trcProjectService, "/")
 			if len(trcProjectServiceParts) < 2 {
-				fmt.Println("Make sure both Project/Service is specified with proper formatting.")
+				fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
 				return templatePaths, endPaths, errors.New("project and service not specified correctly")
 			}
 			project = trcProjectServiceParts[0] + "/"
@@ -94,7 +94,7 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 			}
 			driverConfig.StartDir = startDirFiltered
 			if len(driverConfig.StartDir) == 0 {
-				fmt.Println("Invalid starting directory, ensure directory includes project name.")
+				fmt.Fprintln(os.Stderr, "Invalid starting directory, ensure directory includes project name.")
 				return templatePaths, endPaths, errors.New("invalid starting directory passed in")
 			}
 		}
@@ -538,7 +538,7 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 		if len(tag) > 0 {
 			matched, err := ValidateTag(driverConfig, tag)
 			if !matched || err != nil {
-				fmt.Println("Invalid build tag")
+				fmt.Fprintln(os.Stderr, "Invalid build tag")
 				if err != nil {
 					eUtils.LogInfo(driverConfig.CoreConfig, err.Error())
 				}
