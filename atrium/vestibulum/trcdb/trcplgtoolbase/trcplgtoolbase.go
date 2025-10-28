@@ -659,7 +659,7 @@ func CommonMain(envPtr *string,
 
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Pushing image to registry...")
 		err := repository.PushImage(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
-		if err != nil || pluginToolConfig["trcsha256"] == nil {
+		if err != nil || (pluginToolConfig["imagesha256"] == nil && pluginToolConfig["trcsha256"] == nil) {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Push image failed: %v", err)
 		} else {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Image successfully pushed")
