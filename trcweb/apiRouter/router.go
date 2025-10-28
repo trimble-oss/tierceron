@@ -217,7 +217,7 @@ var (
 )
 
 func main() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.1")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.2")
 	addrPtr := flag.String("addr", coreopts.BuildOptions.GetVaultHostPort(), "API endpoint for the vault")
 	tokenPtr := flag.String("token", "", "Vault access token")
 	logPathPtr := flag.String("log", "/etc/opt/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"API/server.log", "Log file path for this server")

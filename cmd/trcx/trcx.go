@@ -30,7 +30,7 @@ func main() {
 	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
-	fmt.Fprintln(os.Stderr, "Version: "+"1.26")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.27")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])

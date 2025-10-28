@@ -12,7 +12,7 @@ import (
 // of automating setup and initial seeding
 
 func main() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.29")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.30")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])

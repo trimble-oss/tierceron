@@ -67,7 +67,7 @@ func main() {
 	}, logErr, true)
 
 	cursorlib.InitLogger(logger)
-	logger.Println("Version: 1.1")
+	logger.Println("Version: 1.2")
 	logger.Println("Beginning plugin startup.")
 	if strings.HasSuffix(executableName, "-prod") {
 		logger.Println("Running prod plugin")

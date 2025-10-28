@@ -55,9 +55,9 @@ func CommonMain(envPtr *string,
 	// Main functions are as follows:
 	if flagset == nil {
 		if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig != nil {
-			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, "Version: "+"1.05")
+			eUtils.LogInfo(trcshDriverConfig.DriverConfig.CoreConfig, "Version: "+"1.06")
 		} else {
-			fmt.Fprintln(os.Stderr, "Version: 1.05")
+			fmt.Fprintln(os.Stderr, "Version: 1.06")
 		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ContinueOnError)
 		// set and ignore..

@@ -31,7 +31,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.38")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.39")
 }
 
 // This is a controller program that can act as any command line utility.
@@ -63,7 +63,7 @@ func CommonMain(envDefaultPtr *string,
 	var addrPtr *string = nil
 
 	if flagset == nil {
-		fmt.Fprintln(os.Stderr, "Version: "+"1.36")
+		fmt.Fprintln(os.Stderr, "Version: "+"1.37")
 		flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])

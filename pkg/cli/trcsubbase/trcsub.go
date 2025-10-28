@@ -21,7 +21,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.28")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.29")
 }
 
 // Reads in template files in specified directory
@@ -55,7 +55,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if flagset == nil {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			fmt.Fprintln(os.Stderr, "Version: "+"1.6")
+			fmt.Fprintln(os.Stderr, "Version: "+"1.7")
 		}
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {

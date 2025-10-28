@@ -22,7 +22,7 @@ var STARTDIR_DEFAULT string
 var ENDDIR_DEFAULT = "."
 
 func PrintVersion() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.31")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.32")
 }
 
 func CommonMain(envDefaultPtr *string,

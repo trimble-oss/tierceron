@@ -19,7 +19,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.28")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.29")
 }
 
 // Reads in template files in specified directory
