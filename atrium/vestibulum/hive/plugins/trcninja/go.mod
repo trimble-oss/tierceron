@@ -9,7 +9,7 @@ require (
 	github.com/linkedin/goavro/v2 v2.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/segmentio/kafka-go v0.4.49
-	github.com/trimble-oss/tierceron-core/v2 v2.8.8
+	github.com/trimble-oss/tierceron-core/v2 v2.9.0
 	github.com/vbauerster/mpb/v8 v8.10.2
 	github.com/wildbeavers/schema-registry v0.3.0
 	github.com/xo/dburl v0.9.0

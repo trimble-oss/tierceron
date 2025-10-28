@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"time"
 
@@ -30,17 +31,18 @@ type diagnosticsServiceServer struct {
 	ttsdk.UnimplementedTrcshTalkServiceServer
 }
 
-var grpcServer *grpc.Server
-var serverAddr *string //another way to do this...
-var dfstat *tccore.TTDINode
-var configContext *tccore.ConfigContext
+var (
+	grpcServer    *grpc.Server
+	serverAddr    *string // another way to do this...
+	dfstat        *tccore.TTDINode
+	configContext *tccore.ConfigContext
+)
 
 func SetConfigContext(cc *tccore.ConfigContext) {
 	configContext = cc
 }
 
 func InitConfigCerts(mc embed.FS, mk embed.FS) error {
-
 	mashupCertBytes, err := mc.ReadFile("tls/mashup.crt")
 	if err != nil {
 		return err
@@ -59,7 +61,7 @@ func InitConfigCerts(mc embed.FS, mk embed.FS) error {
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for echo.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for echo.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -76,7 +78,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for echo.")
+		fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for echo.")
 		return
 	}
 	if dfstat != nil {
@@ -124,14 +126,14 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fmt.Println("Failed to listen:", err)
+		fmt.Fprintln(os.Stderr, "Failed to listen:", err)
 		return nil, nil, err
 	}
 
 	if echocore.IsKernelPluginMode() {
 		cert, err := tls.X509KeyPair(certBytes, keyBytes)
 		if err != nil {
-			log.Printf("Couldn't construct key pair: %v\n", err) //Should this just return instead?? - no panic
+			log.Printf("Couldn't construct key pair: %v\n", err) // Should this just return instead?? - no panic
 		}
 		creds := credentials.NewServerTLSFromCert(&cert)
 
@@ -157,7 +159,7 @@ func InitGServer() (func(error), func()) {
 				return send_err, send_dfstat
 			}
 		}
-		fmt.Printf("Server listening on :%d\n", echoPort)
+		fmt.Fprintf(os.Stderr, "Server listening on :%d\n", echoPort)
 		lis, gServer, err := InitServer(echoPort,
 			(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
 			(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
@@ -208,14 +210,14 @@ func InitGServer() (func(error), func()) {
 
 func StopGServer() {
 	if grpcServer == nil || configContext == nil {
-		fmt.Println("no server initialized for echo")
+		fmt.Fprintln(os.Stderr, "no server initialized for echo")
 		return
 	}
 	configContext.Log.Println("Healthcheck received shutdown message from kernel.")
 	configContext.Log.Println("Stopping server")
-	fmt.Println("Stopping server")
+	fmt.Fprintln(os.Stderr, "Stopping server")
 	grpcServer.Stop()
-	fmt.Println("Stopped server")
+	fmt.Fprintln(os.Stderr, "Stopped server")
 	configContext.Log.Println("Stopped server for echo.")
 	dfstat.UpdateDataFlowStatistic("System", "TrcshTalkBack", "Shutdown", "0", 1, nil)
 	send_dfstat()

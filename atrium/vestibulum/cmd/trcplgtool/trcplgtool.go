@@ -39,7 +39,7 @@ func main() {
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 
-	fmt.Println("Version: " + "1.05")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.06")
 
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {

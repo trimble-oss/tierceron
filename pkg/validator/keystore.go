@@ -56,7 +56,7 @@ func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []b
 	}
 
 	if driverConfig.KeyStore == nil {
-		fmt.Println("Making new keystore.")
+		fmt.Fprintln(os.Stderr, "Making new keystore.")
 		ks := keystore.New()
 		driverConfig.KeyStore = &ks
 	}

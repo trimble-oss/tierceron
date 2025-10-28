@@ -33,7 +33,7 @@ func init() {
 	}
 	peerExe, err := os.Open("/usr/local/trcshk/plugins/trcshtalkback.so")
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
 		return
 	}
 
@@ -41,11 +41,11 @@ func init() {
 
 	h := sha256.New()
 	if _, err := io.Copy(h, peerExe); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("TrcshTalkBack Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "TrcshTalkBack Version: %s\n", sha)
 }
 
 func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
@@ -55,13 +55,13 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		case event == nil:
 			fallthrough
 		case event.Name != nil && *event.Name == "SHUTDOWN":
-			fmt.Println("trcshtalkback shutting down message receiver")
+			fmt.Fprintln(os.Stderr, "trcshtalkback shutting down message receiver")
 			return
 		case event.Response != nil && *event.Response == "Service unavailable":
-			fmt.Println("Healthcheck unable to access chat service.")
+			fmt.Fprintln(os.Stderr, "Healthcheck unable to access chat service.")
 			return
 		default:
-			fmt.Println("trcshtalkback received chat message")
+			fmt.Fprintln(os.Stderr, "trcshtalkback received chat message")
 			response := tbtgapi.HelloWorldDiagnostic()
 			(*event).Response = &response
 			*configContext.ChatSenderChan <- event
@@ -79,16 +79,16 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 			go stop()
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for trcshtalkback")
+		fmt.Fprintln(os.Stderr, "no config context initialized for trcshtalkback")
 		return
 	}
 	var send_err func(error)
@@ -142,7 +142,6 @@ func Init(properties *map[string]any) {
 				}
 			}
 		}
-
 	}
 	echocore.InitNetwork(configContext)
 
@@ -161,9 +160,9 @@ func Init(properties *map[string]any) {
 	if err != nil {
 		if configContext != nil {
 			configContext.Log.Println("Successfully initialized trcshtalkback.")
-			fmt.Println(err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 		} else {
-			fmt.Println(err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 		}
 	} else {
 		configContext.Log.Println("Successfully initialized trcshtalkback.")
@@ -183,9 +182,9 @@ func GetConfigPaths() []string {
 func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS, envPtr *string, logFilePtr *string) *tccore.ChatMsg {
 	config := make(map[string]any)
 
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
-		fmt.Printf("Error opening log file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
 		os.Exit(-1)
 	}
 	logger := log.New(f, "[trcshtalkback]", log.LstdFlags)

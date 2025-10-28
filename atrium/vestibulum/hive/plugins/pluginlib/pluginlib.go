@@ -4,15 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 func Init(pluginName string,
 	properties *map[string]any,
-	PostInit func(*tccore.ConfigContext)) (*tccore.ConfigContext, error) {
+	PostInit func(*tccore.ConfigContext),
+) (*tccore.ConfigContext, error) {
 	if properties == nil {
-		fmt.Println("Missing initialization components")
+		fmt.Fprintln(os.Stderr, "Missing initialization components")
 		return nil, errors.New("missing initialization component")
 	}
 	var logger *log.Logger

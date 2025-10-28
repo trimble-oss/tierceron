@@ -43,7 +43,7 @@ func isTimeout(err error) bool {
 // Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	if driverConfig == nil {
-		fmt.Println("InitVaultMod failure.  driverConfig provided is nil")
+		fmt.Fprintln(os.Stderr, "InitVaultMod failure.  driverConfig provided is nil")
 		return driverConfig, nil, nil, errors.New("invalid nil driverConfig")
 	}
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod begins..")
@@ -191,10 +191,10 @@ func InitPluginLogs(pluginConfig map[string]any, logger *log.Logger) *log.Logger
 			if tLogger, logOk := logMap.Load(logFile); !logOk {
 				logger.Printf("Checking log permissions for logfile: %s\n", logFile)
 
-				f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+				f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 				if logErr != nil {
 					logFile = fmt.Sprintf("trcplugin%s-%s.log", pluginConfig["logNamespace"].(string), pluginConfig["env"].(string))
-					f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+					f, logErr = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 					if logErr != nil {
 						logger.Println("Log permissions failure.  Will exit.")
 					}
