@@ -117,7 +117,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 		if _, errNotExist := os.Stat(dirname + configDir); errNotExist == nil {
 			file, err := os.ReadFile(dirname + configDir)
 			if err != nil {
-				fmt.Printf("Could not read the context file due to this %s error \n", err)
+				fmt.Fprintf(os.Stderr, "Could not read the context file due to this %s error \n", err)
 				return "", "", err
 			}
 			fileContent := string(file)
@@ -135,7 +135,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 				if err = os.WriteFile(dirname+configDir, []byte(output), 0o600); err != nil {
 					return "", "", err
 				}
-				fmt.Println("Context flag has been written out.")
+				fmt.Fprintln(os.Stderr, "Context flag has been written out.")
 				env = envContext
 			} else {
 				currentEnvContext := "dev"
@@ -147,7 +147,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 					if err = os.WriteFile(dirname+configDir, []byte(output), 0o600); err != nil {
 						return "", "", err
 					}
-					fmt.Println("Context flag has been written out.")
+					fmt.Fprintln(os.Stderr, "Context flag has been written out.")
 					env = envContext
 				} else if env == "" {
 					env = currentEnvContext
@@ -160,7 +160,7 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 		}
 	} else {
 		envContext = env
-		fmt.Println("Context flag will be ignored as env is defined.")
+		fmt.Fprintln(os.Stderr, "Context flag will be ignored as env is defined.")
 	}
 	return env, envContext, nil
 }
@@ -246,7 +246,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 
 	if IsCmdLineTool {
 		var err1 error
-		fmt.Printf("Cmd tool auth\n")
+		fmt.Fprintf(os.Stderr, "Cmd tool auth\n")
 		appRoleSecret, IsApproleEmpty, addrPtr, err1 = cmdAutoAuthHelper(appRoleSecret, IsApproleEmpty, tokenPtr, driverConfig, wantedTokenNamePtr, cEnvCtx, addrPtr, envPtr, &v, err, ping, envCtxPtr)
 		if v != nil {
 			defer v.Close()
@@ -256,7 +256,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	} else {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			fmt.Printf("No override auth connecting to vault @ %s\n", *addrPtr)
+			fmt.Fprintf(os.Stderr, "No override auth connecting to vault @ %s\n", *addrPtr)
 		}
 		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 
@@ -280,7 +280,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	// if using appRole
 	// If the wanted token name is empty, we select and appropriate default token for the role.
 	if !IsApproleEmpty && *wantedTokenNamePtr == "" {
-		fmt.Printf("No token name specified.  Selecting appropriate token default\n")
+		fmt.Fprintf(os.Stderr, "No token name specified.  Selecting appropriate token default\n")
 
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)
 		if envErr != nil {
@@ -454,15 +454,15 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
 			if !driverConfig.CoreConfig.IsProd() {
-				fmt.Println("No cert file found, please enter config IDs")
+				fmt.Fprintln(os.Stderr, "No cert file found, please enter config IDs")
 			} else {
-				fmt.Println(driverConfig.CoreConfig, "Please enter config IDs")
+				fmt.Fprintln(os.Stderr, driverConfig.CoreConfig, "Please enter config IDs")
 			}
 			if addrPtr != nil && *addrPtr != "" {
-				fmt.Println("vaultHost: " + *addrPtr)
+				fmt.Fprintln(os.Stderr, "vaultHost: "+*addrPtr)
 				vaultHost = *addrPtr
 			} else {
-				fmt.Print("vaultHost: ")
+				fmt.Fprint(os.Stderr, "vaultHost: ")
 				scanner.Scan()
 				vaultHost = scanner.Text()
 			}
@@ -471,7 +471,7 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 				if len((*appRoleSecret)[1]) > 0 {
 					secretID = (*appRoleSecret)[1]
 				} else {
-					fmt.Print("secretID: ")
+					fmt.Fprint(os.Stderr, "secretID: ")
 					scanner.Scan()
 					secretID = scanner.Text()
 					(*appRoleSecret)[1] = secretID
@@ -480,7 +480,7 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 				if len((*appRoleSecret)[0]) > 0 {
 					secretID = (*appRoleSecret)[1]
 				} else {
-					fmt.Print("approleID: ")
+					fmt.Fprint(os.Stderr, "approleID: ")
 					scanner.Scan()
 					approleID = scanner.Text()
 					(*appRoleSecret)[0] = approleID
@@ -500,7 +500,7 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 			}
 		}
 		if envPtr != nil {
-			fmt.Printf("Auth connecting to vault @ %s\n", *addrPtr)
+			fmt.Fprintf(os.Stderr, "Auth connecting to vault @ %s\n", *addrPtr)
 			*v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 		} else {
 			return nil, false, nil, errors.New("envPtr is nil")

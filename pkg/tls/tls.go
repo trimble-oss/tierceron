@@ -88,7 +88,7 @@ func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
-		fmt.Println("Cert read failure.")
+		fmt.Fprintln(os.Stderr, "Cert read failure.")
 		return
 	}
 
@@ -96,7 +96,7 @@ func initCertificates() {
 
 	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
 	if parseErr != nil {
-		fmt.Println("Cert parse read failure.")
+		fmt.Fprintln(os.Stderr, "Cert parse read failure.")
 		return
 	}
 	MashupCertPool = x509.NewCertPool()

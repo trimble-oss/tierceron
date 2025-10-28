@@ -332,7 +332,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 			return false, desiredPolicy, err
 		}
 		logger.Println("Possible attempted use of expired token")
-		fmt.Println("Possible attempted use of expired token")
+		fmt.Fprintln(os.Stderr, "Possible attempted use of expired token")
 	}
 
 	valid := false

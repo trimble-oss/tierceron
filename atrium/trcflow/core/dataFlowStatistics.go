@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -116,7 +117,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					i := 1
 
 					for rows.Next() {
-						fmt.Printf("%d\n", i)
+						fmt.Fprintf(os.Stderr, "%d\n", i)
 						i = i + 1
 						var flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
 						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)

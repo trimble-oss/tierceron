@@ -29,7 +29,7 @@ func UploadTokens(config *coreconfig.CoreConfig, dir string, tokenFileFiltersSet
 		if ext == ".yml" || ext == ".yaml" { // Request token from vault
 			if len(tokenFileFiltersSet) > 0 {
 				found := false
-				for tokenFilter, _ := range tokenFileFiltersSet {
+				for tokenFilter := range tokenFileFiltersSet {
 					if strings.Contains(file.Name(), tokenFilter) {
 						found = true
 						break
@@ -44,7 +44,7 @@ func UploadTokens(config *coreconfig.CoreConfig, dir string, tokenFileFiltersSet
 			eUtils.LogErrorObject(config, err, true)
 
 			if err == nil {
-				fmt.Printf("Created token %-30s %s\n", filename+":", tokenName)
+				fmt.Fprintf(os.Stderr, "Created token %-30s %s\n", filename+":", tokenName)
 				tokens = append(tokens, &pb.InitResp_Token{
 					Name:  filename,
 					Value: tokenName,

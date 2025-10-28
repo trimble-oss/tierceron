@@ -75,7 +75,7 @@ func InitCommon() error {
 
 	// f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 	// if err != nil {
-	// 	fmt.Println("Log setup failure.")
+	// 	fmt.Fprintln(os.Stderr, "Log setup failure.")
 	// }
 	// logger := log.New(f, "[etlninja]", log.LstdFlags)
 

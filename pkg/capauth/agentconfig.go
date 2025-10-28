@@ -46,6 +46,7 @@ type AgentConfigs struct {
 
 type TrcshDriverConfig struct {
 	DriverConfig *config.DriverConfig
+	PluginName   string
 	FeatherCtx   *cap.FeatherContext
 	FeatherCtlCb func(*cap.FeatherContext, string) error
 }
@@ -129,8 +130,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort b
 		if len(ips) == 0 && strings.Contains(hostname, ".test") {
 			ip = "127.0.0.1"
 		} else {
-			fmt.Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, "Error looking up host ip address, please confirm current tierceron vault host name and ip.")
+			fmt.Fprintln(os.Stderr, err)
 			if len(logger) > 0 {
 				logger[0].Println("Error looking up host ip address, please confirm current tierceron vault host name and ip.")
 				logger[0].Println(err)
@@ -156,19 +157,19 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort b
 					return nil
 				}
 			} else {
-				fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
-				fmt.Println("Please confirm current tierceron vault host name and ip.")
+				fmt.Fprintf(os.Stderr, "Invalid IP address of supported domain: %s \n", ip)
+				fmt.Fprintln(os.Stderr, "Please confirm current tierceron vault host name and ip.")
 				if len(logger) > 0 {
 					logger[0].Printf("Invalid IP address of supported domain: %s Please confirm current tierceron vault host name and ip.\n", ip)
 				}
 				return errors.New("Bad host: " + host)
 			}
 		} else {
-			var protocolHost = host
+			protocolHost := host
 			if !strings.HasPrefix(host, "https://") {
 				protocolHost = fmt.Sprintf("https://%s", host)
 			}
-			var protocolEndpoint = endpoint[0]
+			protocolEndpoint := endpoint[0]
 			if !strings.HasPrefix(endpoint[0], "https://") {
 				protocolEndpoint = fmt.Sprintf("https://%s", endpoint[0])
 			}
@@ -176,8 +177,8 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort b
 				if endpoint[1] == "n/a" || endpoint[1] == ip {
 					return nil
 				} else {
-					fmt.Printf("Invalid IP address of supported domain: %s \n", ip)
-					fmt.Println("Please confirm current tierceron vault host name and ip.")
+					fmt.Fprintf(os.Stderr, "Invalid IP address of supported domain: %s \n", ip)
+					fmt.Fprintln(os.Stderr, "Please confirm current tierceron vault host name and ip.")
 					if len(logger) > 0 {
 						logger[0].Printf("Invalid IP address of supported domain: %s \n", ip)
 						logger[0].Println("Please confirm current tierceron vault host name and ip.")
@@ -290,8 +291,8 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 	initNewTrcsh bool,
 	isShellRunner bool,
 	logger *log.Logger,
-	drone ...*bool) (*AgentConfigs, *TrcShConfig, error) {
-
+	drone ...*bool,
+) (*AgentConfigs, *TrcShConfig, error) {
 	if isShellRunner {
 		tokenCache.SetVaultAddress(tokenCache.VaultAddressPtr)
 		return &AgentConfigs{Env: &env}, &TrcShConfig{
@@ -309,7 +310,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 	if logger != nil {
 		logger.Printf(".")
 	} else {
-		fmt.Printf(".")
+		fmt.Fprintf(os.Stderr, ".")
 	}
 
 	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, tokenCache.VaultAddressPtr, env, nil, true, nil)
@@ -324,7 +325,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 	if logger != nil {
 		logger.Printf(".")
 	} else {
-		fmt.Printf(".")
+		fmt.Fprintf(os.Stderr, ".")
 	}
 
 	data, readErr := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
@@ -335,7 +336,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 	if logger != nil {
 		logger.Printf(".")
 	} else {
-		fmt.Printf(".")
+		fmt.Fprintf(os.Stderr, ".")
 	}
 
 	if readErr != nil {
@@ -344,7 +345,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 		if logger != nil {
 			logger.Printf(".")
 		} else {
-			fmt.Printf(".")
+			fmt.Fprintf(os.Stderr, ".")
 		}
 		if data["trcHatEncryptPass"] == nil ||
 			data["trcHatEncryptSalt"] == nil ||
@@ -375,7 +376,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 		if logger != nil {
 			logger.Printf(".")
 		} else {
-			fmt.Printf(".")
+			fmt.Fprintf(os.Stderr, ".")
 		}
 
 		deployments := "bootstrap"
@@ -405,7 +406,8 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 			return agentconfig, nil, nil
 		}
 
-		trcshConfig := &TrcShConfig{Env: trcHatEnv,
+		trcshConfig := &TrcShConfig{
+			Env:           trcHatEnv,
 			IsShellRunner: isShellRunner,
 			EnvContext:    trcHatEnv,
 		}
@@ -432,7 +434,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 			if logger != nil {
 				logger.Printf(".")
 			} else {
-				fmt.Printf(".")
+				fmt.Fprintf(os.Stderr, ".")
 			}
 		}
 		tokenCache.AddRoleStr("bamboo", bambooRolePtr)
@@ -445,7 +447,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 			if logger != nil {
 				logger.Printf(".")
 			} else {
-				fmt.Printf(".")
+				fmt.Fprintf(os.Stderr, ".")
 			}
 		}
 		tokenCache.SetVaultAddress(vaultAddressPtr)
@@ -460,7 +462,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 				if logger != nil {
 					logger.Printf(".")
 				} else {
-					fmt.Printf(".")
+					fmt.Fprintf(os.Stderr, ".")
 				}
 			}
 		}
@@ -491,7 +493,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 	}
 
 	if capWriteErr != nil || gTrcHatSecretsPort == "" {
-		fmt.Println("Code 54 failure...  Possible deploy components mismatch..")
+		fmt.Fprintln(os.Stderr, "Code 54 failure...  Possible deploy components mismatch..")
 		return new(string), errors.New("tap writer error")
 	}
 
@@ -505,7 +507,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 	if wantsFeathering {
 		capHatIpAddr, err = TrcNetAddr()
 		if err != nil {
-			fmt.Println("Code 55 failure...  Possible deploy components mismatch..")
+			fmt.Fprintln(os.Stderr, "Code 55 failure...  Possible deploy components mismatch..")
 			return new(string), errors.New("tap writer error")
 		}
 	}
