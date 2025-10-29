@@ -305,6 +305,9 @@ func CommonMain(envPtr *string,
 	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr || *pluginservicestopPtr || *pluginservicestartPtr {
 		*pluginTypePtr = "trcshservice"
 	}
+	if *certifyInfoImagePtr {
+		*pluginTypePtr = "trcshpluginservice"
+	}
 
 	if !*updateAPIMPtr && len(*buildImagePtr) == 0 && !*pushImagePtr && !isGetCommand {
 		switch *pluginTypePtr {
