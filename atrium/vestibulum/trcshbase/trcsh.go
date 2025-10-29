@@ -346,6 +346,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	var regionPtr, trcPathPtr, projectServicePtr *string
 	var dronePtr *bool
 	var projectServiceFlagPtr *string
+	var pluginNamePtr *string
 	var droneFlagPtr *bool
 	// Initiate signal handling.
 	var ic chan os.Signal = make(chan os.Signal, 5)
@@ -353,6 +354,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	regionPtr = flagset.String("region", "", "Region to be processed")  // If this is blank -> use context otherwise override context.
 	trcPathPtr = flagset.String("c", "", "Optional script to execute.") // If this is blank -> use context otherwise override context.
 	projectServiceFlagPtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
+	pluginNamePtr = flagset.String("pluginName", "", "Plugin name (optional for some operations)")
 	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	isShellRunner := (configMap != nil)
@@ -426,6 +428,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			fmt.Fprintf(os.Stderr, "trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
 		}
+		trcshDriverConfig.PluginName = *pluginNamePtr
 
 		// Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, "", *trcPathPtr, *projectServicePtr, dronePtr)
