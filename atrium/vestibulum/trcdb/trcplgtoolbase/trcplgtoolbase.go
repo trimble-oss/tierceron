@@ -677,9 +677,10 @@ func CommonMain(envPtr *string,
 			if strings.HasPrefix(*pluginNamePtr, pluginNameVersion) {
 				pluginNameVersion = *pluginNamePtr
 			}
-			if len(strings.Split(pluginNameVersion, ":")) > 1 {
-				pluginName = strings.Split(pluginNameVersion, ":")[0]
-				releaseTag = strings.Split(pluginNameVersion, ":")[1]
+			splitPluginNameVersion := strings.Split(pluginNameVersion, ":")
+			if len(splitPluginNameVersion) > 1 {
+				pluginName = splitPluginNameVersion[0]
+				releaseTag = splitPluginNameVersion[1]
 				pluginToolConfig["trcplugin"] = pluginName
 			}
 
@@ -694,7 +695,7 @@ func CommonMain(envPtr *string,
 			}
 			writeMap["trcrelease"] = releaseTag // Already validated by pushImage process.
 			writeMap["trcplugin"] = pluginName
-			writeMap["trctype"] = *pluginTypePtr
+			*pluginTypePtr = "trcshpluginservice"
 			_, err = mod.Write(pluginVaultPath, certify.WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Failed to write staging Certify entry: %v", err)
