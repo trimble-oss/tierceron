@@ -671,16 +671,16 @@ func CommonMain(envPtr *string,
 		} else {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Image successfully pushed")
 			// Read from Certify
-			pluginNameVersion := pluginToolConfig["trcplugin"].(string)
 			var pluginName string
 			var releaseTag string
-			if strings.HasPrefix(*pluginNamePtr, pluginNameVersion) {
-				pluginNameVersion = *pluginNamePtr
-			}
-			if len(strings.Split(pluginNameVersion, ":")) > 1 {
-				pluginName = strings.Split(pluginNameVersion, ":")[0]
-				releaseTag = strings.Split(pluginNameVersion, ":")[1]
-				pluginToolConfig["trcplugin"] = pluginName
+
+			if pluginNameAliasPtr != nil {
+				splitPluginAliasVersion := strings.Split(*pluginNameAliasPtr, ":")
+				if len(splitPluginAliasVersion) > 1 {
+					pluginName = splitPluginAliasVersion[0]
+					releaseTag = splitPluginAliasVersion[1]
+					pluginToolConfig["trcplugin"] = pluginName
+				}
 			}
 
 			if !trcshDriverConfigBase.DriverConfig.IsShellSubProcess {
@@ -692,9 +692,14 @@ func CommonMain(envPtr *string,
 			if readErr != nil || len(writeMap) == 0 {
 				writeMap = make(map[string]any)
 			}
-			writeMap["trcrelease"] = releaseTag // Already validated by pushImage process.
-			writeMap["trcplugin"] = pluginName
-			writeMap["trctype"] = *pluginTypePtr
+			if releaseTag != "" {
+				writeMap["trcrelease"] = releaseTag // Already validated by pushImage process.
+				writeMap["trcplugin"] = pluginName
+				if _, ok := writeMap["trctype"]; !ok {
+					*pluginTypePtr = "trcshpluginservice"
+				}
+			}
+
 			_, err = mod.Write(pluginVaultPath, certify.WriteMapUpdate(writeMap, pluginToolConfig, *defineServicePtr, *pluginTypePtr, *pathParamPtr), trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
 			if err != nil {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Failed to write staging Certify entry: %v", err)
