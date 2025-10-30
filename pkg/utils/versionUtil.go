@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -59,7 +60,7 @@ func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modi
 			secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "values", driverConfig.CoreConfig.Log)
 		}
 	} else {
-		//Certs are in values, not super secrets
+		// Certs are in values, not super secrets
 		secretMetadataMap, err = mod.GetVersionValues(mod, driverConfig.CoreConfig.WantCerts, "values", driverConfig.CoreConfig.Log)
 	}
 	var foundKey string
@@ -83,11 +84,11 @@ func GetProjectVersionInfo(driverConfig *config.DriverConfig, mod *helperkv.Modi
 	}
 
 	if err != nil {
-		fmt.Println("No version data available for this env")
+		fmt.Fprintln(os.Stderr, "No version data available for this env")
 		LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 	if len(versionMetadataMap) == 0 {
-		fmt.Println("No version data available for this env")
+		fmt.Fprintln(os.Stderr, "No version data available for this env")
 		LogErrorObject(driverConfig.CoreConfig, err, false)
 	}
 
@@ -115,7 +116,7 @@ func GetProjectVersions(driverConfig *config.DriverConfig, versionMetadataMap ma
 				for key := range data {
 					versionNo, err := strconv.Atoi(key)
 					if err != nil {
-						fmt.Printf("Could not convert %s into a int", key)
+						fmt.Fprintf(os.Stderr, "Could not convert %s into a int", key)
 					}
 					versionNumbers = append(versionNumbers, versionNo)
 				}
@@ -194,7 +195,7 @@ func GetTemplateFileName(templateFile string, service string) string {
 }
 
 func RemoveDuplicates(versionFilter []string) []string {
-	keys := make(map[string]bool) //Removes any duplicates
+	keys := make(map[string]bool) // Removes any duplicates
 	cleanedFilter := []string{}
 	for _, entry := range versionFilter {
 		if _, value := keys[entry]; !value {

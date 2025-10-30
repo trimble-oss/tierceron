@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 
@@ -25,11 +26,13 @@ type server struct {
 	pb.UnimplementedGreeterServer
 }
 
-var configContextMap map[string]*tccore.ConfigContext
-var grpcServer *grpc.Server
-var sender chan error
-var serverAddr *string //another way to do this...
-var dfstat *tccore.TTDINode
+var (
+	configContextMap map[string]*tccore.ConfigContext
+	grpcServer       *grpc.Server
+	sender           chan error
+	serverAddr       *string // another way to do this...
+	dfstat           *tccore.TTDINode
+)
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
 	log.Printf("Received: %v", in.GetName())
@@ -47,9 +50,9 @@ func receiverMutabile(configContext *tccore.ConfigContext, receive_chan *chan co
 			sender <- errors.New("mutabilis shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -65,7 +68,7 @@ func InitServer(pluginName string, port int, certBytes []byte, keyBytes []byte) 
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fmt.Println("Failed to listen:", err)
+		fmt.Fprintln(os.Stderr, "Failed to listen:", err)
 		return nil, nil, err
 	}
 
@@ -77,7 +80,7 @@ func InitServer(pluginName string, port int, certBytes []byte, keyBytes []byte) 
 func send_dfstat(pluginName string) {
 	if configContext, ok := configContextMap[pluginName]; ok {
 		if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-			fmt.Println("Dataflow Statistic channel not initialized properly for healthcheck.")
+			fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for healthcheck.")
 			return
 		}
 		dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -93,7 +96,7 @@ func send_dfstat(pluginName string) {
 func send_err(pluginName string, err error) {
 	if configContext, ok := configContextMap[pluginName]; ok {
 		if configContext == nil || configContext.ErrorChan == nil || err == nil {
-			fmt.Println("Failure to send error message, error channel not initialized properly for healthcheck.")
+			fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for healthcheck.")
 			return
 		}
 		if dfstat != nil {
@@ -118,7 +121,7 @@ func send_err(pluginName string, err error) {
 
 func start(pluginName string) {
 	if configContextMap == nil {
-		fmt.Println("no config context initialized for mutabilis")
+		fmt.Fprintln(os.Stderr, "no config context initialized for mutabilis")
 		return
 	}
 
@@ -140,7 +143,7 @@ func start(pluginName string) {
 				}
 			}
 
-			fmt.Printf("Server listening on :%d\n", helloPort)
+			fmt.Fprintf(os.Stderr, "Server listening on :%d\n", helloPort)
 			lis, gServer, err := InitServer(pluginName, helloPort,
 				(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
 				(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
@@ -199,7 +202,7 @@ func stop(pluginName string) {
 	if grpcServer != nil {
 		grpcServer.Stop()
 	} else {
-		fmt.Println("no server initialized for mutabilis")
+		fmt.Fprintln(os.Stderr, "no server initialized for mutabilis")
 	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped server")
@@ -264,7 +267,7 @@ func Init(pluginName string, properties *map[string]any) {
 	}
 
 	// Convert all properties to mem files....
-	for propKey, _ := range *properties {
+	for propKey := range *properties {
 		trcshzig.LinkMemFile(configContextMap[pluginName], *properties, propKey, pluginName, mntDir)
 	}
 	pluginDir := fmt.Sprintf("/usr/local/trcshk/plugins/%s", pluginName)

@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja
 
-go 1.25.1
+go 1.25.3
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -9,7 +9,7 @@ require (
 	github.com/linkedin/goavro/v2 v2.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/segmentio/kafka-go v0.4.49
-	github.com/trimble-oss/tierceron-core/v2 v2.8.8
+	github.com/trimble-oss/tierceron-core/v2 v2.9.0
 	github.com/vbauerster/mpb/v8 v8.10.2
 	github.com/wildbeavers/schema-registry v0.3.0
 	github.com/xo/dburl v0.9.0
@@ -38,13 +38,3 @@ require (
 	google.golang.org/grpc v1.72.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
-
-exclude (
-	gopkg.in/square/go-jose.v2 v2.3.1
-	gopkg.in/square/go-jose.v2 v2.4.0
-	gopkg.in/square/go-jose.v2 v2.4.1
-	gopkg.in/square/go-jose.v2 v2.5.1
-	gopkg.in/square/go-jose.v2 v2.6.0
-)
-
-replace gopkg.in/square/go-jose.v2 => github.com/go-jose/go-jose/v3 v3.0.4

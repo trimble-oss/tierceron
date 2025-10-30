@@ -130,7 +130,8 @@ func (s *Server) GetTemplate(ctx context.Context, req *pb.TemplateReq) (*pb.Temp
 	// Return retrieved data in response
 	return &pb.TemplateResp{
 		Data: data["data"].(string),
-		Ext:  data["ext"].(string)}, nil
+		Ext:  data["ext"].(string),
+	}, nil
 }
 
 // Validate checks the vault to see if the requested credentials are validated
@@ -169,7 +170,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 	}
 	environments := []*pb.ValuesRes_Env{}
 	envStrings := SelectedEnvironment
-	//Only display staging in prod mode
+	// Only display staging in prod mode
 	for i, other := range envStrings {
 		if other == "prod" {
 			envStrings = append(envStrings[:i], envStrings[i+1:]...)
@@ -199,7 +200,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		}
 		mod.Env = environment
 		projects := []*pb.ValuesRes_Env_Project{}
-		//get a list of projects under values
+		// get a list of projects under values
 		projectPaths, err := s.getPaths(config, mod, "values/")
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
@@ -208,10 +209,10 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 
 		for _, projectPath := range projectPaths {
 			services := []*pb.ValuesRes_Env_Project_Service{}
-			//get a list of files under project
+			// get a list of files under project
 			servicePaths, err := s.getPaths(config, mod, projectPath)
-			//fmt.Println("servicePaths")
-			//fmt.Println(servicePaths)
+			// fmt.Fprintln(os.Stderr, "servicePaths")
+			// fmt.Fprintln(os.Stderr, servicePaths)
 			if err != nil {
 				eUtils.LogErrorObject(config, err, false)
 				return nil, err
@@ -219,7 +220,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 
 			for _, servicePath := range servicePaths {
 				files := []*pb.ValuesRes_Env_Project_Service_File{}
-				//get a list of files under project
+				// get a list of files under project
 				filePaths, err := s.getPaths(config, mod, servicePath)
 				if err != nil {
 					eUtils.LogErrorObject(config, err, false)
@@ -228,7 +229,7 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 
 				for _, filePath := range filePaths {
 					vals := []*pb.ValuesRes_Env_Project_Service_File_Value{}
-					//get a list of values
+					// get a list of values
 					valueMap, err := mod.ReadData(filePath)
 					if err != nil {
 						err := fmt.Errorf("unable to fetch data from %s", filePath)
@@ -238,8 +239,8 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 					for key, value := range valueMap {
 						kv := &pb.ValuesRes_Env_Project_Service_File_Value{Key: key, Value: value.(string), Source: "value"}
 						vals = append(vals, kv)
-						//data = append(data, value.(string))
-						//fmt.Println(value)
+						// data = append(data, value.(string))
+						// fmt.Fprintln(os.Stderr, value)
 					}
 					if len(vals) > 0 {
 						file := &pb.ValuesRes_Env_Project_Service_File{Name: getPathEnd(filePath), Values: vals}
@@ -265,33 +266,35 @@ func (s *Server) GetValues(ctx context.Context, req *pb.GetValuesReq) (*pb.Value
 		Envs: environments,
 	}, nil
 }
+
 func (s *Server) getPaths(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName, s.Log)
-	//fmt.Println("secrets " + pathName)
-	//fmt.Println(secrets)
+	// fmt.Fprintln(os.Stderr, "secrets " + pathName)
+	// fmt.Fprintln(os.Stderr, secrets)
 	pathList := []string{}
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
-		//add paths
+		// add paths
 		slicey := secrets.Data["keys"].([]any)
-		//fmt.Println("secrets are")
-		//fmt.Println(slicey)
+		// fmt.Fprintln(os.Stderr, "secrets are")
+		// fmt.Fprintln(os.Stderr, slicey)
 		for _, pathEnd := range slicey {
 			// skip local path if environment is not local
 			if pathEnd != "local/" {
-				//List is returning both pathEnd and pathEnd/
+				// List is returning both pathEnd and pathEnd/
 				path := pathName + pathEnd.(string)
 				pathList = append(pathList, path)
 			}
 		}
-		//fmt.Println("pathList")
-		//fmt.Println(pathList)
+		// fmt.Fprintln(os.Stderr, "pathList")
+		// fmt.Fprintln(os.Stderr, pathList)
 		return pathList, nil
 	}
 	return pathList, nil
 }
+
 func (s *Server) getTemplateFilePaths(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	secrets, err := mod.List(pathName, s.Log)
 	pathList := []string{}
@@ -299,11 +302,11 @@ func (s *Server) getTemplateFilePaths(config *coreconfig.CoreConfig, mod *helper
 		eUtils.LogErrorObject(config, err, false)
 		return nil, fmt.Errorf("unable to list paths under %s in %s", pathName, mod.Env)
 	} else if secrets != nil {
-		//add paths
+		// add paths
 		slicey := secrets.Data["keys"].([]any)
 
 		for _, pathEnd := range slicey {
-			//List is returning both pathEnd and pathEnd/
+			// List is returning both pathEnd and pathEnd/
 			path := pathName + pathEnd.(string)
 			pathList = append(pathList, path)
 		}
@@ -311,7 +314,7 @@ func (s *Server) getTemplateFilePaths(config *coreconfig.CoreConfig, mod *helper
 		subPathList := []string{}
 		for _, path := range pathList {
 			subsubList, _ := s.templateFileRecurse(config, mod, path)
-			//List is returning both pathEnd and pathEnd/
+			// List is returning both pathEnd and pathEnd/
 			subPathList = append(subPathList, subsubList...)
 		}
 		if len(subPathList) != 0 {
@@ -320,6 +323,7 @@ func (s *Server) getTemplateFilePaths(config *coreconfig.CoreConfig, mod *helper
 	}
 	return pathList, nil
 }
+
 func (s *Server) templateFileRecurse(config *coreconfig.CoreConfig, mod *helperkv.Modifier, pathName string) ([]string, error) {
 	subPathList := []string{}
 	subsecrets, err := mod.List(pathName, s.Log)
@@ -330,11 +334,11 @@ func (s *Server) templateFileRecurse(config *coreconfig.CoreConfig, mod *helperk
 		subslice := subsecrets.Data["keys"].([]any)
 		if subslice[0] != "template-file" {
 			for _, pathEnd := range subslice {
-				//List is returning both pathEnd and pathEnd/
+				// List is returning both pathEnd and pathEnd/
 				subpath := pathName + pathEnd.(string)
 				subsubList, _ := s.templateFileRecurse(config, mod, subpath)
 				if len(subsubList) != 0 {
-					//List is returning both pathEnd and pathEnd/
+					// List is returning both pathEnd and pathEnd/
 					subPathList = append(subPathList, subsubList...)
 				}
 				subPathList = append(subPathList, subpath)
@@ -357,9 +361,9 @@ func getPathEnd(path string) string {
 // UpdateAPI takes the passed URL and downloads the given build of the UI
 func (s *Server) UpdateAPI(ctx context.Context, req *pb.UpdateAPIReq) (*pb.NoParams, error) {
 	scriptPath := "./getArtifacts.sh"
-	//buildNum := strconv.FormatInt(int64(req.Build), 10)
+	// buildNum := strconv.FormatInt(int64(req.Build), 10)
 	buildNum := req.Build
-	//fmt.Println(buildNum)
+	// fmt.Fprintln(os.Stderr, buildNum)
 	for len(buildNum) < 5 {
 		buildNum = "0" + buildNum
 	}
@@ -413,5 +417,4 @@ func (s *Server) Environments(ctx context.Context, req *pb.NoParams) (*pb.EnvRes
 	return &pb.EnvResp{
 		Env: SelectedEnvironment,
 	}, nil
-
 }

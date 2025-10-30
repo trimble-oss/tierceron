@@ -27,7 +27,8 @@ func CommonMain(envPtr *string,
 	regionPtr *string,
 	startDirPtr *string,
 	driverConfig *config.DriverConfig,
-	mod *kv.Modifier) error {
+	mod *kv.Modifier,
+) error {
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
@@ -85,7 +86,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	//ApiManagementCreateApiUsingSwaggerImport
+	// ApiManagementCreateApiUsingSwaggerImport
 	svc, err := azidentity.NewClientSecretCredential(
 		apimConfigMap["azureTenantId"],
 		apimConfigMap["azureClientId"],
@@ -111,13 +112,13 @@ func CommonMain(envPtr *string,
 
 	t := time.Now().UTC().Format("Monday, 02-Jan-06 15:04:05 MST")
 
-	etag := "*" //Wildcard match on eTag, otherwise it doesn't match from command above.
+	etag := "*" // Wildcard match on eTag, otherwise it doesn't match from command above.
 	poller, err := clientFactory.NewAPIClient().BeginCreateOrUpdate(ctx, apimConfigMap["RESOURCE_GROUP_NAME"], apimConfigMap["SERVICE_NAME"], apimConfigMap["API_NAME"], armapimanagement.APICreateOrUpdateParameter{
 		Properties: &armapimanagement.APICreateOrUpdateProperties{
-			Path:                   to.Ptr(apimConfigMap["API_PATH"]), //API URL Suffix in portal
+			Path:                   to.Ptr(apimConfigMap["API_PATH"]), // API URL Suffix in portal
 			Format:                 to.Ptr(armapimanagement.ContentFormatOpenapiJSON),
 			Value:                  to.Ptr(openApiString),
-			APIRevisionDescription: to.Ptr(t), //This updates the revision description with current time.
+			APIRevisionDescription: to.Ptr(t), // This updates the revision description with current time.
 		},
 	}, &armapimanagement.APIClientBeginCreateOrUpdateOptions{IfMatch: &etag})
 	if err != nil {
@@ -125,7 +126,7 @@ func CommonMain(envPtr *string,
 		return err
 	}
 
-	//Adding a 2 minute timeout on APIM Update.
+	// Adding a 2 minute timeout on APIM Update.
 	go func(ctxC context.CancelFunc) {
 		time.Sleep(time.Second * 120)
 		ctxC()
@@ -137,7 +138,7 @@ func CommonMain(envPtr *string,
 		return err
 	}
 
-	fmt.Println("Success!")
+	fmt.Fprintln(os.Stderr, "Success!")
 	_ = resp
 	return nil
 }

@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/core"
 )
@@ -30,7 +31,7 @@ func LogError(err_msg string) {
 		configContext.Log.Println(err_msg)
 		return
 	}
-	fmt.Println(err_msg)
+	fmt.Fprintln(os.Stderr, err_msg)
 }
 
 func SetLogger(logger *log.Logger) {
