@@ -671,16 +671,16 @@ func CommonMain(envPtr *string,
 		} else {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Image successfully pushed")
 			// Read from Certify
-			pluginNameVersion := pluginToolConfig["trcplugin"].(string)
+			if pluginNameAliasPtr == nil {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Failed to write staging Certify entry, no plugin name alias found")
+			}
 			var pluginName string
 			var releaseTag string
-			if strings.HasPrefix(*pluginNamePtr, pluginNameVersion) {
-				pluginNameVersion = *pluginNamePtr
-			}
-			splitPluginNameVersion := strings.Split(pluginNameVersion, ":")
-			if len(splitPluginNameVersion) > 1 {
-				pluginName = splitPluginNameVersion[0]
-				releaseTag = splitPluginNameVersion[1]
+
+			splitPluginAliasVersion := strings.Split(*pluginNameAliasPtr, ":")
+			if len(splitPluginAliasVersion) > 1 {
+				pluginName = splitPluginAliasVersion[0]
+				releaseTag = splitPluginAliasVersion[1]
 				pluginToolConfig["trcplugin"] = pluginName
 			}
 
