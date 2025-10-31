@@ -602,10 +602,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		if pluginHandler.PluginMod != nil {
-			set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
-			if err == nil && set_prod != nil {
+			setProdFunc, err := pluginHandler.PluginMod.Lookup("SetProd")
+			if err == nil && setProdFunc != nil {
 				driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
-				setProd := set_prod.(func(bool))
+				setProd := setProdFunc.(func(bool))
 				setProd(prod.IsProd())
 			} else {
 				driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)

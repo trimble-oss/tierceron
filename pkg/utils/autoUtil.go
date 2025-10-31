@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -453,7 +454,7 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 		if !override && !exists {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			if !driverConfig.CoreConfig.IsProd() {
+			if !prod.IsProd() {
 				fmt.Fprintln(os.Stderr, "No cert file found, please enter config IDs")
 			} else {
 				fmt.Fprintln(os.Stderr, driverConfig.CoreConfig, "Please enter config IDs")
@@ -544,7 +545,7 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 			}
 
 			// Do not save IDs if overriding and no approle file exists
-			if !driverConfig.CoreConfig.IsProd() &&
+			if !prod.IsProd() &&
 				(!override || exists) {
 				// Get current user's home directory
 				userHome, err := userHome(driverConfig.CoreConfig.Log)
@@ -585,7 +586,7 @@ func ReadAuthParts(driverConfig *config.DriverConfig,
 ) (bool, string, error) {
 	exists := false
 	var c cert
-	if !driverConfig.CoreConfig.IsProd() {
+	if !prod.IsProd() {
 		// Get current user's home directory
 		userHome, err := userHome(driverConfig.CoreConfig.Log)
 		roleFile := "config.yml"
