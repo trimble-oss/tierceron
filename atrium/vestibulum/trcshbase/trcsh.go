@@ -100,9 +100,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 
 	regions := []string{}
 	if (kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernel()) || strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
-		if strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") {
-			prod.SetProd(true)
-		}
+		prod.SetProdByEnv(env)
 
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if region != "" {
@@ -354,6 +352,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	trcPathPtr = flagset.String("c", "", "Optional script to execute.") // If this is blank -> use context otherwise override context.
 	projectServiceFlagPtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
 	pluginNamePtr = flagset.String("pluginName", "", "Plugin name (optional for some operations)")
+	tracelessPtr := flagset.Bool("traceless", false, "Trace less")
 	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	isShellRunner := (configMap != nil)
@@ -405,10 +404,10 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 	if !*dronePtr && !isShellRunner {
 		if driverConfigPtr.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
-			deploy_role := os.Getenv("DEPLOY_ROLE")
-			deploy_secret := os.Getenv("DEPLOY_SECRET")
-			if len(deploy_role) > 0 && len(deploy_secret) > 0 {
-				azureDeployRole := []string{deploy_role, deploy_secret}
+			deployRole := os.Getenv("DEPLOY_ROLE")
+			deploySecret := os.Getenv("DEPLOY_SECRET")
+			if len(deployRole) > 0 && len(deploySecret) > 0 {
+				azureDeployRole := []string{deployRole, deploySecret}
 				driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 				driverConfigPtr.CoreConfig.TokenCache.AddRole("deployauth", &azureDeployRole)
 			}
@@ -426,6 +425,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "trcsh config setup failure: %s\n", err.Error())
 			os.Exit(124)
+		}
+		if *tracelessPtr && *envPtr == "staging" {
+			// Dev environments have a 'staging' launch area.
+			// traceless mode allows this special staging environment to work in dev environment.
+			prod.SetProd(false)
 		}
 		trcshDriverConfig.PluginName = *pluginNamePtr
 
@@ -1085,8 +1089,8 @@ func roleBasedRunner(
 		*roleEntityPtr = "configrole"
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentRoleEntityPtr = roleEntityPtr
 
-		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) ||
-			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env) {
+		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" || (prod.IsProd() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)) ||
+			trcshDriverConfig.DriverConfig.CoreConfig.Env == "itdev" || (prod.IsProd() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.Env)) {
 			if !kernelopts.BuildOptions.IsKernel() {
 				trcshDriverConfig.DriverConfig.OutputMemCache = false
 			}
@@ -1565,7 +1569,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 
 		if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" ||
-			(!kernelopts.BuildOptions.IsKernel() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)) {
+			(!kernelopts.BuildOptions.IsKernel() && (prod.IsProd() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis))) {
 			trcshDriverConfig.DriverConfig.OutputMemCache = false
 			trcshDriverConfig.DriverConfig.ReadMemCache = false
 			trcshDriverConfig.DriverConfig.SubOutputMemCache = false

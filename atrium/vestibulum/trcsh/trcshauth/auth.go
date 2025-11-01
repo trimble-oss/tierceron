@@ -18,8 +18,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron-hat/cap"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -171,7 +171,7 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	if !kernelopts.BuildOptions.IsKernel() {
 		if eUtils.RefLength(kubeConfigPtr) == 0 {
-			if prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+			if (prod.IsProd() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
 				dir, err := os.UserHomeDir()
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "No homedir for current user")

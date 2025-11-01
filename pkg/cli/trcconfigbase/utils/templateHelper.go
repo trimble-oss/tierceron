@@ -10,7 +10,7 @@ import (
 	"text/template"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"

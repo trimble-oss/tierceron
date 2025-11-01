@@ -19,7 +19,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/segmentio/kafka-go v0.4.49 // indirect
-	github.com/trimble-oss/tierceron-core/v2 v2.9.0 // indirect
+	github.com/trimble-oss/tierceron-core/v2 v2.9.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
 	github.com/wildbeavers/schema-registry v0.3.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
