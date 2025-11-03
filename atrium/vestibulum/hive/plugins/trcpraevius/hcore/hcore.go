@@ -83,7 +83,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/praevius.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Praevius unable to sha256 plugin")
 		return
 	}
 

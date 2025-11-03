@@ -45,7 +45,7 @@ const (
 func init() {
 	peerExe, err := os.Open("/usr/local/trcshk/plugins/healthcheck.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Healthcheck unable to sha256 plugin")
 		return
 	}
 

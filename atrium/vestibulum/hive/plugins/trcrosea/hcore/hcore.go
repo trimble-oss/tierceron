@@ -55,7 +55,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/rosea.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Rosea unable to sha256 plugin")
 		return
 	}
 

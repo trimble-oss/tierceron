@@ -50,7 +50,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/trcsh.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Trcsh unable to sha256 plugin")
 		return
 	}
 
