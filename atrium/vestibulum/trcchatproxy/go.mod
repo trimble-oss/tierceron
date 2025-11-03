@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	github.com/trimble-oss/tierceron v1.48.3
+	github.com/trimble-oss/tierceron v1.49.11
 	github.com/trimble-oss/tierceron-core/v2 v2.9.1
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
