@@ -39,7 +39,7 @@ require (
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron v1.48.4
+	github.com/trimble-oss/tierceron v1.48.3
 	github.com/trimble-oss/tierceron-core/v2 v2.9.1
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
@@ -299,7 +299,7 @@ require (
 
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.48.4
+//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.48.3
 
 replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4
 
@@ -335,7 +335,8 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hc
 
 //replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
 
-replace github.com/trimble-oss/tierceron => ../
+//replace github.com/trimble-oss/tierceron => ../
+replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.48.3
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20230107141038-8bd28c2897c4
 
