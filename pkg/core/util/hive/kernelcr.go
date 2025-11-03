@@ -124,9 +124,10 @@ var pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid b
 func safeChannelSend[T any](ch *chan T, value T, logPrefix string, log *log.Logger) (success bool) {
 	if ch == nil || *ch == nil {
 		if log != nil {
-			log.Printf("TrcshKernelChanCritical %s: attempted to send to nil channel\n", logPrefix)
+			log.Printf("safeChannelSend panic %s: attempted to send to nil channel\n", logPrefix)
 		}
-		return false
+		success = false
+		return
 	}
 
 	success = true
@@ -134,7 +135,7 @@ func safeChannelSend[T any](ch *chan T, value T, logPrefix string, log *log.Logg
 		if r := recover(); r != nil {
 			success = false
 			if log != nil {
-				log.Printf("TrcshKernelChanPanic: %s: sending to channel (likely closed): %v\n", logPrefix, r)
+				log.Printf("safeChannelSend panic %s: sending to channel (likely closed): %v\n", logPrefix, r)
 			}
 		}
 	}()
