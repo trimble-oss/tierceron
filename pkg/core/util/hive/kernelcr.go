@@ -241,12 +241,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							// 0. Reload certificates
 							// 1. Recall Init function for each plugin
 							// 2. Start each plugin
-							driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
-							if logWriter, ok := driverConfig.CoreConfig.Log.Writer().(interface{ Sync() error }); ok {
-								logWriter.Sync()
-							}
-							time.Sleep(100 * time.Millisecond)
-							os.Exit(0)
+							eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 						} else {
 							continue
 						}
@@ -381,12 +376,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 								}
 							}
 						}
-						driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
-						if logWriter, ok := driverConfig.CoreConfig.Log.Writer().(interface{ Sync() error }); ok {
-							logWriter.Sync()
-						}
-						time.Sleep(100 * time.Millisecond)
-						os.Exit(0)
+						eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Non kube shutting down kernel...", 0)
 					}
 				}
 			}
