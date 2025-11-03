@@ -1386,7 +1386,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 					go safeChannelSend(p.ConfigContext.ChatSenderChan, &core.ChatMsg{
 						Name:     msg.Name,
 						KernelId: &pluginHandler.Id,
-					}, "SHUTDOWN chat sender", driverConfig.CoreConfig.Log)
+					}, "SHUTDOWN plugin chat receiver", driverConfig.CoreConfig.Log)
 				}
 			}
 			return
