@@ -4,7 +4,7 @@ go 1.25.3
 
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron v1.49.10
+	github.com/trimble-oss/tierceron v1.48.3
 	github.com/trimble-oss/tierceron-core/v2 v2.9.1
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 	google.golang.org/api v0.207.0
@@ -41,7 +41,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20250609162306-04fdcac49140 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.60.0 // indirect
@@ -54,6 +53,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250528174236-200df99c418a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
 
