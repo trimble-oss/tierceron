@@ -604,8 +604,7 @@ func CommonMain(envPtr *string,
 			!*certifyImagePtr {
 
 			if trcshDriverConfigBase.DriverConfig.CoreConfig.IsShell {
-				fmt.Fprintln(os.Stderr, "Service definition not supported in trcsh.")
-				os.Exit(-1)
+				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Service definition not supported in trcsh.", -1)
 			}
 			if _, ok := pluginToolConfig["deployrootPtr"].(string); ok {
 				pluginToolConfig["trcdeployroot"] = pluginToolConfig["deployrootPtr"].(string)

@@ -129,8 +129,7 @@ func CommonMain(envPtr *string,
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
-				fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)
-				os.Exit(1)
+				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Wrong flag syntax: %s", s), 1)
 			}
 		}
 		eUtils.CheckInitFlags(flagset, argLines[1:])
@@ -173,8 +172,7 @@ func CommonMain(envPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s_unrestricted", envBasis)
 			tokenNamePtr = &tokenName
 			if strings.ContainsAny(*tokenPtr, " \t\n\r") {
-				fmt.Fprintln(os.Stderr, "Invalid -token contains whitespace")
-				os.Exit(1)
+				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Invalid -token contains whitespace", 1)
 			}
 
 			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
@@ -183,8 +181,7 @@ func CommonMain(envPtr *string,
 		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {
 			if driverConfigBase != nil && driverConfigBase.CoreConfig != nil && driverConfigBase.CoreConfig.TokenCache != nil {
 				if driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr) == nil {
-					fmt.Fprintln(os.Stderr, "-token cannot be empty.")
-					os.Exit(1)
+					eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "-token cannot be empty.", 1)
 				}
 			}
 		}
@@ -198,25 +195,21 @@ func CommonMain(envPtr *string,
 	allowNonLocal := false
 
 	if *namespaceVariable == "" && *newPtr {
-		fmt.Fprintln(os.Stderr, "Namespace (-namespace) required to initialize a new vault.")
-		os.Exit(1)
+		eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Namespace (-namespace) required to initialize a new vault.", 1)
 	}
 
 	if *newPtr {
 		currentDir, dirErr := os.Getwd()
 		if dirErr != nil {
-			fmt.Fprintln(os.Stderr, "Couldn not retrieve current working directory")
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Couldn not retrieve current working directory", 1)
 		}
 
 		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/token_files"); err != nil {
-			fmt.Fprintln(os.Stderr, "Could not locate token files required to initialize a new vault.")
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Could not locate token files required to initialize a new vault.", 1)
 		}
 
 		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/policy_files"); err != nil {
-			fmt.Fprintln(os.Stderr, "Could not locate policy files  required to initialize a new vault.")
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Could not locate policy files  required to initialize a new vault.", 1)
 		}
 	}
 
@@ -247,12 +240,12 @@ func CommonMain(envPtr *string,
 		fmt.Fprintf(os.Stderr, "Are you sure you want to seed nested files? [y|n]: ")
 		_, err := fmt.Scanln(&input)
 		if err != nil {
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Failed to read input", 1)
 		}
 		input = strings.ToLower(input)
 
 		if input != "y" && input != "yes" {
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Seeding nested files aborted", 1)
 		}
 	}
 

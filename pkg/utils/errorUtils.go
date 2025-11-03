@@ -243,6 +243,18 @@ func LogErrorAndSafeExit(config *coreconfig.CoreConfig, err error, code int) err
 	return err
 }
 
+// syncAndExit synchronizes logger output and exits with the specified exit code
+func LogSyncAndExit(logger *log.Logger, message string, exitCode int) {
+	fmt.Fprintln(os.Stderr, message)
+	if logger != nil {
+		logger.Printf("Exit(%d): %s", exitCode, message)
+		if logWriter, ok := logger.Writer().(interface{ Sync() error }); ok {
+			logWriter.Sync()
+		}
+	}
+	os.Exit(exitCode)
+}
+
 func SanitizeForLogging(errMsg string) string {
 	errMsgSanitized := strings.ReplaceAll(errMsg, "\n", "")
 	errMsgSanitized = strings.ReplaceAll(errMsgSanitized, "\r", "")
