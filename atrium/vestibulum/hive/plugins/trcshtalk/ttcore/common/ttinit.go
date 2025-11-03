@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -155,6 +156,9 @@ func ChatReceiver(rec_chan chan *tccore.ChatMsg) {}
 
 // LogPluginVersion computes and prints a sha256 of the plugin binary if present.
 func LogPluginVersion(path string) {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open(path)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Trcshtalk unable to sha256 plugin")
