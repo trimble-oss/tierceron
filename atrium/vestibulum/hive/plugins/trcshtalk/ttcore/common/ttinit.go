@@ -157,7 +157,7 @@ func ChatReceiver(rec_chan chan *tccore.ChatMsg) {}
 func LogPluginVersion(path string) {
 	peerExe, err := os.Open(path)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Trcshtalk unable to sha256 plugin")
 		return
 	}
 	defer peerExe.Close()

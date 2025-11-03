@@ -55,7 +55,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/descartes.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Descartes unable to sha256 plugin")
 		return
 	}
 
