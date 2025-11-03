@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenest
 go 1.25.3
 
 require (
-	github.com/trimble-oss/tierceron v1.49.10
+	github.com/trimble-oss/tierceron v1.48.4
 	github.com/trimble-oss/tierceron-core/v2 v2.9.1
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
