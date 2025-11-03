@@ -82,8 +82,7 @@ func CommonMain(envPtr *string,
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	} else {
 		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
-			fmt.Fprintf(os.Stderr, "Please set the addr flag\n")
-			os.Exit(-1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Please set the addr flag", 1)
 		}
 	}
 	if envPtr == nil {
@@ -158,7 +157,7 @@ func CommonMain(envPtr *string,
 	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
-			os.Exit(-1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Template upload failure %s", err.Error()), -1)
 		}
 	}
 
