@@ -204,8 +204,8 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
 		fmt.Fprintf(os.Stderr, "%s\n", msg)
 	}
-	deployerId, _ := deployopts.BuildOptions.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
-	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerId, ctlFlapMode, strings.Trim(msg, "\n"))
+	deployerID, _ := deployopts.BuildOptions.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
+	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerID, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		eUtils.LogSyncAndExit(featherCtx.Log, "Deployment encountered errors - exiting with code 0", 0)
@@ -245,7 +245,7 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 
 var gTokenCache *cache.TokenCache
 
-// EnableDeploy - initializes and starts running deployer for provided deployment and environment.
+// EnableDeployer initializes and starts running deployer for the provided deployment and environment.
 func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	env string, region string,
 	token string,
@@ -279,9 +279,9 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	// Each deployer needs it's own context.
 	//
 	localHostAddr := ""
-	var sessionIdentifier string
-	if sessionId, ok := deployopts.BuildOptions.GetEncodedDeployerId(deployment, *gAgentConfig.Env); ok {
-		sessionIdentifier = sessionId
+	var sessionIDentifier string
+	if sessionID, ok := deployopts.BuildOptions.GetEncodedDeployerId(deployment, *gAgentConfig.Env); ok {
+		sessionIDentifier = sessionID
 	} else {
 		eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Unsupported deployer: %s\n", deployment), 0)
 	}
@@ -292,7 +292,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 			gAgentConfig.EncryptSalt,
 			gAgentConfig.HostAddr,
 			gAgentConfig.HandshakeCode,
-			&sessionIdentifier, /*Session identifier */
+			&sessionIDentifier, /*Session identifier */
 			&env,
 			deployerAcceptRemoteNoTimeout,
 			deployerInterrupted)
@@ -466,12 +466,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 			// Unmarshal the YAML data into the map
 			if role, ok := (*configMap)["agent_role"].(string); ok {
-				app_sec := strings.Split(role, ":")
-				if len(app_sec) != 2 {
+				appSec := strings.Split(role, ":")
+				if len(appSec) != 2 {
 					eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, "invalid agent role used for drone trcsh agent", 124)
 				}
-				if len(app_sec[0]) > 0 && len(app_sec[1]) > 0 {
-					azureDeployRole := []string{app_sec[0], app_sec[1]}
+				if len(appSec[0]) > 0 && len(appSec[1]) > 0 {
+					azureDeployRole := []string{appSec[0], appSec[1]}
 					driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 				}
 			} else {
@@ -593,7 +593,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if err := capauth.ValidateVhost(*driverConfigPtr.CoreConfig.TokenCache.VaultAddressPtr, "https://", false, driverConfigPtr.CoreConfig.Log); err != nil {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires supported VAULT_ADDR address: %s\n", err.Error()), 124)
 		}
-		var kernelId int
+		var kernelID int
 		var kernelName string = "trcshk"
 		if kernelopts.BuildOptions.IsKernel() && !driverConfigPtr.CoreConfig.IsEditor {
 			hostname := os.Getenv("HOSTNAME")
@@ -629,7 +629,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				if err != nil {
 					id = 0
 				}
-				kernelId = id
+				kernelID = id
 				kernelName = hostParts[0]
 				driverConfigPtr.CoreConfig.Log.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
 			} else {
@@ -809,7 +809,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler == nil {
-			kernelPluginHandler = hive.InitKernel(fmt.Sprintf("%s-%d", kernelName, kernelId))
+			kernelPluginHandler = hive.InitKernel(fmt.Sprintf("%s-%d", kernelName, kernelID))
 			kernelPluginHandler.ConfigContext.Log = driverConfigPtr.CoreConfig.Log
 			go kernelPluginHandler.DynamicReloader(trcshDriverConfig.DriverConfig)
 		}
@@ -861,6 +861,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				kpH.Handle_Chat(dc)
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
+		// If there's  a healthcheck plugin, start that one first...  sleep maybe 10 seconds.
+		// then continue with the others.
 
 		for _, deployment := range deployments {
 			if kernelopts.BuildOptions.IsKernel() {
@@ -989,9 +991,9 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 	// Initialize supoorted deployers.
 	deployopts.BuildOptions.InitSupportedDeployers([]string{agentName})
 
-	if sessionIdentifier, ok := deployopts.BuildOptions.GetEncodedDeployerId(agentName, *featherCtx.Env); ok {
-		featherCtx.SessionIdentifier = &sessionIdentifier
-		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIdentifier)
+	if sessionIDentifier, ok := deployopts.BuildOptions.GetEncodedDeployerId(agentName, *featherCtx.Env); ok {
+		featherCtx.SessionIdentifier = &sessionIDentifier
+		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIDentifier)
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
 	} else {
 		eUtils.LogSyncAndExit(featherCtx.Log, fmt.Sprintf("Unsupported agent: %s\n", agentName), 123)
@@ -1249,21 +1251,16 @@ func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
 	return err
 }
 
-// ProcessDeploy
+// ProcessDeploy executes the deployment process for the given environment, region, deployment name, script path, project service, and drone flag.
 //
 // Parameters:
 //
-//   - env: Current environment context
-//   - region: a region
-//   - token: An environment token
-//   - deployment: name of deployment
-//   - trcPath: Path to the current deployment script...
-//   - secretId: trcsh secret.
-//   - approleId: trcsh app role.
-//
-// Returns:
-//
-//	Nothing.
+//	featherCtx: Current FeatherContext.
+//	trcshDriverConfig: Driver configuration for trcsh.
+//	deployment: Name of deployment.
+//	trcPath: Path to the current deployment script.
+//	projectService: Project service name.
+//	dronePtr: Pointer to drone flag.
 func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	deployment string,
@@ -1443,7 +1440,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		deployerDriverConfig.FileFilter = []string{trcPathParts[len(trcPathParts)-1]}
 
 		if projectService != "" {
-			deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
+			deployerDriverConfig.CoreConfig.Log.Println("Trcsh - Attempting to fetch templates from provided projectServicePtr: " + projectService)
 			err := deployutil.MountPluginFileSystem(&deployerDriverConfig, trcPath, projectService)
 			if err != nil {
 				deployerDriverConfig.CoreConfig.Log.Printf("Trcsh - Failed to fetch template using projectServicePtr: %s", err.Error())
