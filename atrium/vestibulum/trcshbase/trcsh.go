@@ -867,31 +867,27 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		for i, deployment := range deployments {
 			if deployment == "healthcheck" {
 				healthcheckIdx = i
-				if kernelopts.BuildOptions.IsKernel() {
-					go EnableDeployer(driverConfigPtr,
-						*gAgentConfig.Env,
-						*regionPtr,
-						deployment,
-						*trcPathPtr,
-						true,
-						kernelopts.BuildOptions.IsKernel(),
-						deployment,
-						dronePtr,
-						projectServicePtr)
-				} else {
-					EnableDeployer(driverConfigPtr,
-						*gAgentConfig.Env,
-						*regionPtr,
-						deployment,
-						*trcPathPtr,
-						true,
-						kernelopts.BuildOptions.IsKernel(),
-						deployment,
-						dronePtr,
-						projectServicePtr)
-				}
+				EnableDeployer(driverConfigPtr,
+					*gAgentConfig.Env,
+					*regionPtr,
+					deployment,
+					*trcPathPtr,
+					true,
+					kernelopts.BuildOptions.IsKernel(),
+					deployment,
+					dronePtr,
+					projectServicePtr)
 				driverConfigPtr.CoreConfig.Log.Println("Healthcheck deployer started, waiting 5 seconds before starting other deployers...")
-				time.Sleep(5 * time.Second)
+				for {
+					if kernelPluginHandler != nil && kernelPluginHandler.Services != nil {
+						if healthcheckService, ok := (*kernelPluginHandler.Services)["healthcheck"]; ok {
+							if healthcheckService.State == 1 {
+								break
+							}
+						}
+					}
+					time.Sleep(1 * time.Second)
+				}
 				break
 			}
 		}
