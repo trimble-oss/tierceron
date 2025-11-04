@@ -861,8 +861,41 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				kpH.Handle_Chat(dc)
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
-		// If there's  a healthcheck plugin, start that one first...  sleep maybe 10 seconds.
-		// then continue with the others.
+
+		// Prioritize healthcheck deployment - start it first
+		healthcheckIdx := -1
+		for i, deployment := range deployments {
+			if deployment == "healthcheck" {
+				healthcheckIdx = i
+				EnableDeployer(driverConfigPtr,
+					*gAgentConfig.Env,
+					*regionPtr,
+					deployment,
+					*trcPathPtr,
+					true,
+					kernelopts.BuildOptions.IsKernel(),
+					deployment,
+					dronePtr,
+					projectServicePtr)
+				driverConfigPtr.CoreConfig.Log.Println("Healthcheck deployer started, waiting 5 seconds before starting other deployers...")
+				for {
+					if kernelPluginHandler != nil && kernelPluginHandler.Services != nil {
+						if healthcheckService, ok := (*kernelPluginHandler.Services)["healthcheck"]; ok {
+							if healthcheckService.State == 1 {
+								break
+							}
+						}
+					}
+					time.Sleep(1 * time.Second)
+				}
+				break
+			}
+		}
+
+		// Remove healthcheck from deployments list if it was found
+		if healthcheckIdx >= 0 {
+			deployments = append(deployments[:healthcheckIdx], deployments[healthcheckIdx+1:]...)
+		}
 
 		for _, deployment := range deployments {
 			if kernelopts.BuildOptions.IsKernel() {
