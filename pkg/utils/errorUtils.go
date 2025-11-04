@@ -43,7 +43,7 @@ func CheckErrorNoStack(config *coreconfig.CoreConfig, err error, exit bool) {
 	}
 }
 
-// CheckWarnings Checks warnings returned from various vault relation operations
+// CheckWarning Checks warnings returned from various vault relation operations
 func CheckWarning(config *coreconfig.CoreConfig, warning string, exit bool) {
 	if len(warning) > 0 {
 		if !headlessService {
@@ -114,22 +114,22 @@ func LogWarnings(config *coreconfig.CoreConfig, warnings []string, f *os.File, e
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
-func LogWarningMessage(config *coreconfig.CoreConfig, errorMessage string, exit bool) {
+// LogWarningMessage writes warnings to the passed logger object and exits
+func LogWarningMessage(config *coreconfig.CoreConfig, warningMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[WARN]")
 	if exit && config.ExitOnFailure {
 		if !headlessService {
 			fmt.Fprintf(os.Stderr, "Errors encountered, exiting and writing to log file\n")
 		}
-		config.Log.Fatal(errorMessage)
+		config.Log.Fatal(warningMessage)
 	} else {
-		config.Log.Println(errorMessage)
+		config.Log.Println(warningMessage)
 		config.Log.SetPrefix(_prefix)
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
+// LogMessageErrorObject writes errors to the passed logger object and exits
 func LogMessageErrorObject(config *coreconfig.CoreConfig, errorMessage string, err error, exit bool) {
 	if err != nil {
 		_prefix := config.Log.Prefix()
@@ -149,7 +149,7 @@ func LogMessageErrorObject(config *coreconfig.CoreConfig, errorMessage string, e
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
+// LogErrorMessage writes errors to the passed logger object and exits
 func LogErrorMessage(config *coreconfig.CoreConfig, errorMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[ERROR]")
@@ -185,7 +185,7 @@ func LogErrorObject(config *coreconfig.CoreConfig, err error, exit bool) {
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
+// LogInfo writes informational messages to the passed logger object
 func LogInfo(config *coreconfig.CoreConfig, msg string) {
 	if !headlessService && !config.IsEditor {
 		fmt.Fprintln(os.Stderr, SanitizeForLogging(msg))
@@ -243,7 +243,7 @@ func LogErrorAndSafeExit(config *coreconfig.CoreConfig, err error, code int) err
 	return err
 }
 
-// syncAndExit synchronizes logger output and exits with the specified exit code
+// LogSyncAndExit synchronizes logger output and exits with the specified exit code
 func LogSyncAndExit(logger *log.Logger, message string, exitCode int) {
 	fmt.Fprintln(os.Stderr, message)
 	if logger != nil {
