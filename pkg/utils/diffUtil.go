@@ -30,11 +30,11 @@ func GetStringInBetween(str string, start string, end string) (result string) {
 }
 
 func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip bool) string {
-	//Colors used for output
-	var Reset = "\033[0m"
-	var Red = "\033[31m"
-	var Green = "\033[32m"
-	var Cyan = "\033[36m"
+	// Colors used for output
+	Reset := "\033[0m"
+	Red := "\033[31m"
+	Green := "\033[32m"
+	Cyan := "\033[36m"
 	var result string
 
 	if IsWindows() {
@@ -53,19 +53,19 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	var patchOutput string
 	if patchData {
 		var patchText string
-		//Patch Calculation - Catches patch slice out of bounds
+		// Patch Calculation - Catches patch slice out of bounds
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
 					patchText = ""
 				}
 			}()
-			patches := dmp.PatchMake(*stringA, *stringB) //This throws out of index slice error rarely
+			patches := dmp.PatchMake(*stringA, *stringB) // This throws out of index slice error rarely
 			patchText = dmp.PatchToText(patches)
 		}()
 
 		if patchText != "" {
-			//Converts escaped chars in patches
+			// Converts escaped chars in patches
 			unescapedPatchText, err2 := url.PathUnescape(patchText)
 			if err2 != nil {
 				log.Fatalf("Unable to decode percent-encoding: %v", err2)
@@ -73,7 +73,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 
 			parsedPatchText := strings.Split(unescapedPatchText, "\n")
 
-			//Fixes char offset due to common preString
+			// Fixes char offset due to common preString
 			for i, string := range parsedPatchText {
 				if strings.Contains(string, "@@") {
 					charOffset := string[strings.Index(parsedPatchText[i], "-")+1 : strings.Index(parsedPatchText[i], ",")]
@@ -83,7 +83,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 				}
 			}
 
-			//Grabs only patch data from PatchMake
+			// Grabs only patch data from PatchMake
 			onlyPatchedText := []string{}
 			for _, stringLine := range parsedPatchText {
 				if strings.Contains(stringLine, "@@") {
@@ -91,14 +91,14 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 				}
 			}
 
-			//Patch Data Output
+			// Patch Data Output
 			patchOutput = Cyan + strings.Join(onlyPatchedText, " ") + Reset + "\n"
 		} else {
 			patchOutput = Cyan + "@@ Patch Data Unavailable @@" + Reset + "\n"
 		}
 	}
 
-	//Diff Calculation
+	// Diff Calculation
 	diffTimeout := false
 	timeOut := time.Now().Add(time.Minute * 1)
 	if stringA == nil || stringB == nil {
@@ -113,7 +113,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		diffs = diffs[:0]
 	}
 
-	//Separates diff into red and green lines
+	// Separates diff into red and green lines
 	var redBuffer bytes.Buffer
 	var greenBuffer bytes.Buffer
 	for _, diff := range diffs {
@@ -136,21 +136,21 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	greenLineSplit := strings.Split(greenBuffer.String(), "\n")
 	redLineSplit := strings.Split(redBuffer.String(), "\n")
 
-	//Adds + for each green line
+	// Adds + for each green line
 	for greenIndex, greenLine := range greenLineSplit {
 		if strings.Contains(greenLine, Green) {
 			greenLineSplit[greenIndex] = "+" + greenLine
 		}
 	}
 
-	//Adds - for each red line
+	// Adds - for each red line
 	for redIndex, redLine := range redLineSplit {
 		if strings.Contains(redLine, Red) {
 			redLineSplit[redIndex] = "-" + redLine
 		}
 	}
 
-	//Red vs Green length
+	// Red vs Green length
 	lengthDiff := 0
 	sameLength := 0
 	var redSwitch bool
@@ -158,13 +158,13 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		redSwitch = true
 		lengthDiff = len(redLineSplit) - len(greenLineSplit)
 		sameLength = len(greenLineSplit)
-	} else { //Green > Red
+	} else { // Green > Red
 		redSwitch = false
 		lengthDiff = len(greenLineSplit) - len(redLineSplit)
 		sameLength = len(redLineSplit)
 	}
 
-	//Prints line-by-line until shorter length
+	// Prints line-by-line until shorter length
 	currentIndex := 0
 	for currentIndex != sameLength {
 		redLine := redLineSplit[currentIndex]
@@ -178,7 +178,7 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		currentIndex++
 	}
 
-	//Prints rest of longer length
+	// Prints rest of longer length
 	for currentIndex != lengthDiff+sameLength {
 		if redSwitch {
 			redLine := redLineSplit[currentIndex]
@@ -194,19 +194,19 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 		currentIndex++
 	}
 
-	//Colors first line "+" & "-"
+	// Colors first line "+" & "-"
 	if len(result) > 0 && string(result[0]) == "+" {
 		result = strings.Replace(result, "+", Green+"+"+Reset, 1)
 	} else if len(result) > 0 && string(result[0]) == "-" {
 		result = strings.Replace(result, "-", Red+"-"+Reset, 1)
 	}
 
-	//Colors all "+" & "-" using previous newline
+	// Colors all "+" & "-" using previous newline
 	result = strings.ReplaceAll(result, "\n", Reset+"\n")
 	result = strings.ReplaceAll(result, "\n+", "\n"+Green+"+"+Reset)
 	result = strings.ReplaceAll(result, "\n-", "\n"+Red+"-"+Reset)
 
-	//Diff vs no Diff output
+	// Diff vs no Diff output
 	if len(strings.TrimSpace(result)) == 0 && patchData {
 		if diffTimeout {
 			if IsWindows() {
@@ -251,7 +251,7 @@ func VersionHelper(versionData map[string]any, templateOrValues bool, valuePath 
 		return
 	}
 
-	//template == true
+	// template == true
 	if templateOrValues {
 		for _, versionMap := range versionData {
 			for _, versionMetadata := range versionMap.(map[string]any) {
@@ -289,7 +289,7 @@ func VersionHelper(versionData map[string]any, templateOrValues bool, valuePath 
 				}
 				sort.Strings(fields)
 				for _, field := range fields {
-					fmt.Printf(field + ": ")
+					fmt.Print(field + ": ")
 					fmt.Println(versionMetadata.(map[string]any)[field])
 				}
 				if i != len(keys)-1 {
@@ -341,7 +341,7 @@ func VersionHelper(versionData map[string]any, templateOrValues bool, valuePath 
 			sort.Strings(fields)
 			fmt.Println("Version " + fmt.Sprint(versionNumber) + " Metadata:")
 			for _, field := range fields {
-				fmt.Printf(field + ": ")
+				fmt.Print(field + ": ")
 				fmt.Println(fieldData[field])
 			}
 			if keys[len(keys)-1] != versionNumber {
@@ -379,11 +379,11 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 	if len(configCtx.EnvSlice) > 0 {
 		baseEnv = SplitEnv(configCtx.EnvSlice[0])
 	}
-	//Sort Diff Slice if env are the same
-	for i, env := range configCtx.EnvSlice { //Arranges keys for ordered output
+	// Sort Diff Slice if env are the same
+	for i, env := range configCtx.EnvSlice { // Arranges keys for ordered output
 		var base []string = SplitEnv(env)
 
-		if base[1] == "0" { //Special case for latest, so sort adds latest to the back of ordered slice
+		if base[1] == "0" { // Special case for latest, so sort adds latest to the back of ordered slice
 			base[1] = "_999999"
 			configCtx.EnvSlice[i] = base[0] + base[1]
 		}
@@ -397,7 +397,7 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 		sort.Strings(configCtx.EnvSlice)
 	}
 
-	for i, env := range configCtx.EnvSlice { //Changes latest back - special case
+	for i, env := range configCtx.EnvSlice { // Changes latest back - special case
 		var base []string = SplitEnv(env)
 		if base[1] == "999999" {
 			base[1] = "_0"
@@ -423,7 +423,7 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 	}
 
 	if config {
-		//Make fileList
+		// Make fileList
 		for key := range configCtx.ResultMap {
 			found := false
 			keySplit := strings.Split(key, "||")
@@ -440,7 +440,7 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 			}
 		}
 	} else {
-		for _, env := range configCtx.EnvSlice { //Arranges keys for ordered output
+		for _, env := range configCtx.EnvSlice { // Arranges keys for ordered output
 			keys = append(keys, env+"||"+env+"_seed.yml")
 		}
 		if len(fileList) > 0 {
@@ -450,10 +450,10 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 		}
 	}
 
-	//Diff resultMap using fileList
+	// Diff resultMap using fileList
 	for _, fileName := range fileList {
 		if config {
-			//Arranges keys for ordered output
+			// Arranges keys for ordered output
 			for _, env := range configCtx.EnvSlice {
 				keys = append(keys, env+"||"+fileName)
 			}
@@ -581,12 +581,12 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 		}
 
-		//Seperator
+		// Seperator
 		if IsWindows() {
 			fmt.Printf("======================================================================================\n")
 		} else {
 			fmt.Printf("\033[1;35m======================================================================================\033[0m\n")
 		}
-		keys = keys[:0] //Cleans keys for next file
+		keys = keys[:0] // Cleans keys for next file
 	}
 }

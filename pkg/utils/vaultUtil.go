@@ -40,7 +40,7 @@ func isTimeout(err error) bool {
 		strings.Contains(errStr, "deadline exceeded")
 }
 
-// Helper to easiliy intialize a vault and a mod all at once.
+// InitVaultMod helps to easily initialize a vault and a modifier all at once.
 func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	if driverConfig == nil {
 		fmt.Fprintln(os.Stderr, "InitVaultMod failure.  driverConfig provided is nil")
@@ -219,7 +219,7 @@ func InitPluginLogs(pluginConfig map[string]any, logger *log.Logger) *log.Logger
 	return trcdbEnvLogger
 }
 
-// Helper to easiliy intialize a vault and a mod all at once.
+// InitVaultModForPlugin Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenCache, currentTokenName string, logger *log.Logger) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	trcdbEnvLogger := InitPluginLogs(pluginConfig, logger)
 	exitOnFailure := false
@@ -325,7 +325,7 @@ func InitDriverConfigForPlugin(pluginConfig map[string]any, tokenCache *cache.To
 	}, nil
 }
 
-// Helper to easiliy intialize a vault and a mod all at once.
+// InitVaultModForTool Helper to easiliy intialize a vault and a mod all at once.
 func InitVaultModForTool(pluginConfig map[string]any, driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	exitOnFailure := false
 
