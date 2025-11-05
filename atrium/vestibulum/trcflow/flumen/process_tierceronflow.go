@@ -114,10 +114,10 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 				flowAliasMsg = ""
 			}
 			if tfmContext.FlowControllerInit || stateChanged || syncModeChanged || syncFilterChanged {
-				go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
+				go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fID string, flowAlias string) {
 					// If a flow is changed the fields are checked here for actual changes.
 					// If there are any we trigger a flow state change.
-					tfmContext.Log("Queuing state change: "+flowID, nil)
+					tfmContext.Log("Queuing state change: "+fID, nil)
 					sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
 				}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowID, flowAliasMsg)
 			}

@@ -650,7 +650,7 @@ func KafkaTestInit(argosID string,
 	}
 
 	// 0. Setup connections to database and kafka.
-	etlcore.LogError("KafkaTestInit obtaining db connections...\n")
+	etlcore.LogError("KafkaTestInit obtaining db connections...")
 
 	if IndirectDBFunc != nil {
 		argosIDIndirect, region, dbConn, err := IndirectDBFunc(configContext, argosID)
