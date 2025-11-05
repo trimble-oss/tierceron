@@ -465,7 +465,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				}
 			}
 		} else {
-			initReceiverErr := errors.New("Failed to retrieve channel alert for controller init")
+			initReceiverErr := errors.New("failed to retrieve channel alert for controller init")
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, initReceiverErr.Error(), false)
 			return nil, initReceiverErr
 		}
@@ -633,7 +633,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 	if flow := tfmContext.GetFlowContext(flowcore.ArgosSociiFlow.Name); flow != nil {
 		if flow.GetFlowLibraryContext() != nil && flow.GetFlowLibraryContext().GetTableConfigurationInsert != nil {
 			pluginNameValues, err := goMod.List("super-secrets/Index/TrcVault/trcplugin", driverConfig.CoreConfig.Log)
-			argosId := 0
+			argosID := 0
 
 			if err == nil && pluginNameValues != nil {
 				retrictedMappingsMap := coreopts.BuildOptions.GetPluginRestrictedMappings()
@@ -649,9 +649,9 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 						if err == nil {
 							if projectService, ok := pluginMap["trcprojectservice"].(string); ok && len(projectService) > 0 {
 								projectServiceSlice := strings.Split(projectService, "/")
-								argosId = argosId + 1
+								argosID = argosID + 1
 								data := make(map[string]any)
-								data["argosId"] = fmt.Sprintf("%d", argosId)
+								data["argosId"] = fmt.Sprintf("%d", argosID)
 								data["argosIdentitasNomen"] = pluginName
 								data["argosProiectum"] = projectServiceSlice[0]
 								data["argosServitium"] = projectServiceSlice[1]

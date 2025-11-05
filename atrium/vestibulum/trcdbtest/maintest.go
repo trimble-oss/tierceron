@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	core "github.com/trimble-oss/tierceron-core/v2/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
@@ -68,7 +68,7 @@ func main() {
 			}
 		}
 	}
-	ttdi_receiver := make(chan *core.TTDINode)
+	ttdi_receiver := make(chan *tccore.TTDINode)
 	flowMachineInitContext := flowcore.FlowMachineInitContext{
 		FlowMachineInterfaceConfigs: map[string]any{},
 		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,

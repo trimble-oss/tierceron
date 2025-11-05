@@ -858,7 +858,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		if kernelopts.BuildOptions.IsKernel() && kernelPluginHandler != nil {
 			go func(kpH *hive.PluginHandler, dc *config.DriverConfig) {
-				kpH.Handle_Chat(dc)
+				kpH.HandleChat(dc)
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
