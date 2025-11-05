@@ -24,9 +24,9 @@ func main() {
 	flag.Parse()
 	config := make(map[string]any)
 
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
-		fmt.Printf("Error opening log file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
 		os.Exit(-1)
 	}
 	logger := log.New(f, "[trcdescartes]", log.LstdFlags)

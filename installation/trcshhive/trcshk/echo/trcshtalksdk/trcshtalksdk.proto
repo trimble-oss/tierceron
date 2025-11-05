@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/trcshtalk/trcshtalksdk";
+option go_package = "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk";
 
 package trcshtalksdk;
 
@@ -11,7 +11,7 @@ service TrcshTalkService {
 message DiagnosticRequest {
     string message_id = 1;
     repeated Diagnostics diagnostics = 2;
-    string tenant_id = 3;
+    string query_id = 3;
     repeated string data = 4;
     repeated PluginQuery queries = 5;
 }
@@ -26,6 +26,7 @@ enum Diagnostics {
     // if adding a diagnostic, append to the end incrementing integer
     ALL = 0; // Default
     HEALTH_CHECK = 1;
+    TRCDB = 2;
     // future plugins
 }
 

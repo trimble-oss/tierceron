@@ -4,6 +4,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 )
 
 type BusinessObject struct {
@@ -57,7 +58,7 @@ func (businessObject *BusinessObject) Insert(ctx context.Context, db DB) error {
 	if err := rows.Err(); err != nil {
 		return logerror(err)
 	} // set primary key
-	businessObject.Field1 = string(id)
+	businessObject.Field1 = fmt.Sprint(id)
 	// set exists
 	businessObject._exists = true
 	return nil
@@ -156,7 +157,6 @@ func BusinessObjectByField1Field2(ctx context.Context, db DB, field1, field2 str
 		if err := rows.Scan(&businessObject.Description, &businessObject.Field1, &businessObject.Field2, &businessObject.Field3); err != nil {
 			return nil, logerror(err)
 		}
-		break
 	}
 	if err := rows.Err(); err != nil {
 		return nil, logerror(err)

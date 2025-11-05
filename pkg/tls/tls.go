@@ -44,7 +44,7 @@ func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 		if _, err = os.Stat(ServCert); err == nil {
 			return os.ReadFile(ServCert)
 		}
-	} else if _, err = os.Stat(ServCertPrefixPath + certName); err == nil { //To support &certName=??
+	} else if _, err = os.Stat(ServCertPrefixPath + certName); err == nil { // To support &certName=??
 		return os.ReadFile(ServCertPrefixPath + certName)
 	} else {
 		if utils.IsWindows() || (len(drone) > 0 && *drone[0]) {
@@ -55,7 +55,10 @@ func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 }
 
 func GetTlsConfigFromCertBytes(certBytes []byte) (*tls.Config, error) {
-	rootCertPool := x509.NewCertPool()
+	rootCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, err
+	}
 	if ok := rootCertPool.AppendCertsFromPEM(certBytes); !ok {
 		return nil, errors.New("couldn't append certs to root")
 	}
@@ -85,7 +88,7 @@ func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
-		fmt.Println("Cert read failure.")
+		fmt.Fprintln(os.Stderr, "Cert read failure.")
 		return
 	}
 
@@ -93,7 +96,7 @@ func initCertificates() {
 
 	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
 	if parseErr != nil {
-		fmt.Println("Cert parse read failure.")
+		fmt.Fprintln(os.Stderr, "Cert parse read failure.")
 		return
 	}
 	MashupCertPool = x509.NewCertPool()
@@ -117,13 +120,15 @@ func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, 
 			Certificates: []tls.Certificate{
 				*cert,
 			},
-			InsecureSkipVerify: insecureSkipVerify}), nil
+			InsecureSkipVerify: insecureSkipVerify,
+		}), nil
 	} else {
 		return credentials.NewTLS(&tls.Config{
 			Certificates: []tls.Certificate{
 				*cert,
 			},
-			InsecureSkipVerify: insecureSkipVerify}), nil
+			InsecureSkipVerify: insecureSkipVerify,
+		}), nil
 	}
 }
 

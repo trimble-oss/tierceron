@@ -68,22 +68,22 @@ func loadSecretFromSecretStore(mod *helperkv.Modifier) (map[string]any, error) {
 }
 
 func SetEncryptionSecret(driverConfig *config.DriverConfig) error {
-	var encryptionSecretField = "encryptionSecret"
+	encryptionSecretField := "encryptionSecret"
 
 	if slices.ContainsFunc(driverConfig.Trcxe,
 		func(s string) bool {
 			return driverConfig.NoVault || strings.Contains(s, encryptionSecretField) // Novault requires manual entry of encryptionSecret
 		}) {
 		var input, validateInput string
-		fmt.Printf("Enter desired value for '%s': \n", encryptionSecretField)
+		fmt.Fprintf(os.Stderr, "Enter desired value for '%s': \n", encryptionSecretField)
 		fmt.Scanln(&input)
-		fmt.Printf("Re-enter desired value for '%s': \n", encryptionSecretField)
+		fmt.Fprintf(os.Stderr, "Re-enter desired value for '%s': \n", encryptionSecretField)
 		fmt.Scanln(&validateInput)
 		if validateInput != input {
 			return errors.New("Entered values for '" + encryptionSecretField + "' do not match, exiting...")
 		}
 		if setEncryptErr := xencryptopts.BuildOptions.SetEncryptionSecret(input); setEncryptErr != nil {
-			fmt.Printf("Entering encryptionSecret directly not supported\n")
+			fmt.Fprintf(os.Stderr, "Entering encryptionSecret directly not supported\n")
 			return setEncryptErr
 		}
 	} else {
@@ -145,8 +145,8 @@ func FieldReader(encryptedMap map[string]any, secSection map[string]map[string]m
 				if decryptErr != nil {
 					return decryptErr
 				}
-				fmt.Printf("field: %s value: %s \n", field, decryptedVal)
-				//secSection["super-secrets"][secretSectionMap][field] = Decrypt(secretVal, decryption)
+				fmt.Fprintf(os.Stderr, "field: %s value: %s \n", field, decryptedVal)
+				// secSection["super-secrets"][secretSectionMap][field] = Decrypt(secretVal, decryption)
 				found = true
 				continue
 			}
@@ -161,8 +161,8 @@ func FieldReader(encryptedMap map[string]any, secSection map[string]map[string]m
 				if decryptErr != nil {
 					return decryptErr
 				}
-				fmt.Printf("field: %s value: %s \n", field, decryptedVal)
-				//valSection["values"][valueSectionMap][field] = Decrypt(valueVal, decryption)
+				fmt.Fprintf(os.Stderr, "field: %s value: %s \n", field, decryptedVal)
+				// valSection["values"][valueSectionMap][field] = Decrypt(valueVal, decryption)
 				found = true
 				continue
 			}
@@ -177,8 +177,8 @@ func FieldReader(encryptedMap map[string]any, secSection map[string]map[string]m
 func PromptUserForFields(fields string, encrypted string, encryption map[string]any) (map[string]any, map[string]any, error) {
 	fieldMap := map[string]any{}
 	encryptedMap := map[string]any{}
-	//Prompt user for desired value for fields
-	//Prompt user for encrypted value 2x and validate they match.
+	// Prompt user for desired value for fields
+	// Prompt user for encrypted value 2x and validate they match.
 
 	fieldSplit := strings.Split(fields, ",")
 	encryptedSplit := strings.Split(encrypted, ",")
@@ -186,7 +186,7 @@ func PromptUserForFields(fields string, encrypted string, encryption map[string]
 	for _, field := range fieldSplit {
 		if !strings.Contains(encrypted, field) {
 			var input string
-			fmt.Printf("Enter desired value for '%s': \n", field)
+			fmt.Fprintf(os.Stderr, "Enter desired value for '%s': \n", field)
 			fmt.Scanln(&input)
 			fieldMap[field] = input
 		}
@@ -203,11 +203,11 @@ func PromptUserForFields(fields string, encrypted string, encryption map[string]
 	for _, encryptedField := range encryptedSplit {
 		var input string
 		var validateInput string
-		fmt.Printf("Enter desired value for '%s': \n", encryptedField)
+		fmt.Fprintf(os.Stderr, "Enter desired value for '%s': \n", encryptedField)
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
 		input = scanner.Text()
-		fmt.Printf("Re-enter desired value for '%s': \n", encryptedField)
+		fmt.Fprintf(os.Stderr, "Re-enter desired value for '%s': \n", encryptedField)
 		scanner.Scan()
 		validateInput = scanner.Text()
 		if validateInput != input {

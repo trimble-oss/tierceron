@@ -27,12 +27,12 @@ func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloRe
 
 func main() {
 	logFilePtr := flag.String("log", "./trchelloworld.log", "Output path for log file")
-	//tokenPtr := flag.String("token", "", "Vault access Token")
+	// tokenPtr := flag.String("token", "", "Vault access Token")
 	flag.Parse()
 
-	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
-		fmt.Printf("Error opening log file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
 		os.Exit(-1)
 	}
 	logger := log.New(f, "[trchelloworld]", log.LstdFlags)

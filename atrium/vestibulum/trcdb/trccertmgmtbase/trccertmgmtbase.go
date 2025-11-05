@@ -82,13 +82,12 @@ func CommonMain(certPathPtr *string, driverConfig *config.DriverConfig, mod *kv.
 					Password: to.Ptr(apimConfigMap["CERTIFICATE_PASSWORD"]),
 				},
 			}, &armapimanagement.CertificateClientCreateOrUpdateOptions{IfMatch: &etag})
-
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("failed to finish certificate request")
 				return err
 			}
 
-			fmt.Printf("Certificate %v successfully deployed\n", certificateId)
+			fmt.Fprintf(os.Stderr, "Certificate %v successfully deployed\n", certificateId)
 		} else {
 			return errors.New("SERVICE_NAME is not populated in apimConfigMap")
 		}

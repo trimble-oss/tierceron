@@ -35,18 +35,20 @@ func WriteMapUpdate(writeMap map[string]any, pluginToolConfig map[string]any, de
 	if _, imgShaOk := pluginToolConfig["imagesha256"].(string); imgShaOk {
 		writeMap["trcsha256"] = pluginToolConfig["imagesha256"].(string) // Pull image sha from registry...
 	} else {
-		writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
+		if _, pluginShaOk := pluginToolConfig["trcsha256"].(string); pluginShaOk {
+			writeMap["trcsha256"] = pluginToolConfig["trcsha256"].(string) // Pull image sha from registry...
+		}
 	}
-	if pathParamPtr != "" { //optional if not found.
+	if pathParamPtr != "" { // optional if not found.
 		writeMap["trcpathparam"] = pathParamPtr
 	} else if pathParam, pathOK := writeMap["trcpathparam"].(string); pathOK {
 		writeMap["trcpathparam"] = pathParam
 	}
 
-	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK && pluginTypePtr == "vault" { //optional if not found.
+	if newRelicAppName, nameOK := pluginToolConfig["newrelicAppName"].(string); newRelicAppName != "" && nameOK && pluginTypePtr == "vault" { // optional if not found.
 		writeMap["newrelic_app_name"] = newRelicAppName
 	}
-	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK && pluginTypePtr == "vault" { //optional if not found.
+	if newRelicLicenseKey, keyOK := pluginToolConfig["newrelicLicenseKey"].(string); newRelicLicenseKey != "" && keyOK && pluginTypePtr == "vault" { // optional if not found.
 		writeMap["newrelic_license_key"] = newRelicLicenseKey
 	}
 
@@ -133,7 +135,7 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 				}
 
 				if hostRegion != "" {
-					pluginData["deployed"] = true //Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
+					pluginData["deployed"] = true // Update deploy status if region exist otherwise this will block regionless deploys if set for regionless status
 				}
 				statusUpdateErr := properties.WritePluginData(pluginData, replacedFields, mod, driverConfig.CoreConfig.Log, hostRegion, pluginName)
 				if statusUpdateErr != nil {

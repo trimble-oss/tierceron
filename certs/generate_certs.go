@@ -19,15 +19,15 @@ const CertPath = "./certs/cert_files/"
 
 // GenerateCerts generates a root cert, a root key, a child cert, and a child key. It then validates the root cert and returns the http client
 func main() {
-	//generate private key and write to .pem file
+	// generate private key and write to .pem file
 	privateKey, err := CreatePrivateKey("root_key.pem")
 	if err != nil {
 		panic(err)
 	}
-	//get public key
+	// get public key
 	publicKey := privateKey.Public()
 
-	//create cert template
+	// create cert template
 	rootCertTmpl, err := CertTemplate()
 	if err != nil {
 		panic(err)
@@ -37,7 +37,7 @@ func main() {
 	rootCertTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 	rootCertTmpl.IPAddresses = []net.IP{net.ParseIP("127.0.0.1")}
 
-	//create cert and write to .pem file
+	// create cert and write to .pem file
 	rootCert, err := CreateCert(rootCertTmpl, rootCertTmpl, publicKey, privateKey, "root_cert.pem")
 	if err != nil {
 		panic(err)
@@ -47,7 +47,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	//get public key
+	// get public key
 	servPublicKey := servPrivateKey.Public()
 
 	servCertTmpl, err := CertTemplate()
@@ -58,7 +58,7 @@ func main() {
 	servCertTmpl.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 	servCertTmpl.IPAddresses = []net.IP{net.ParseIP("127.0.0.1")}
 
-	//create cert and write to .pem file
+	// create cert and write to .pem file
 	_, err = CreateCert(servCertTmpl, rootCert, servPublicKey, privateKey, "serv_cert.pem")
 	if err != nil {
 		panic(err)
@@ -94,30 +94,30 @@ func CreatePrivateKey(fileName string) (privKey *rsa.PrivateKey, err error) {
 		return nil, err
 	}
 
-	//encode private key
+	// encode private key
 	pemPrivateBlock := &pem.Block{
 		Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	}
 
 	path := CertPath + fileName
-	//create new file for private key
+	// create new file for private key
 	pemPrivateFile, err := os.Create(path)
 	if err != nil {
 		return privateKey, err
 	}
 	defer pemPrivateFile.Close()
-	//write to file and close it
+	// write to file and close it
 	err = pem.Encode(pemPrivateFile, pemPrivateBlock)
 	if err != nil {
 		return privateKey, err
 	}
-	fmt.Println("private key generated and written to", path)
+	fmt.Fprintln(os.Stderr, "private key generated and written to", path)
 	return privateKey, nil
 }
 
 // CreateCert creates a cert and saves it to a .pem file
 func CreateCert(template, parent *x509.Certificate, pub any, parentPriv any, fileName string) (cert *x509.Certificate, err error) {
-	//cert *x509.Certificate,
+	// cert *x509.Certificate,
 	certDER, err := x509.CreateCertificate(rand.Reader, template, parent, pub, parentPriv)
 	if err != nil {
 		return nil, err
@@ -131,17 +131,17 @@ func CreateCert(template, parent *x509.Certificate, pub any, parentPriv any, fil
 	pemCertBlock := &pem.Block{Type: "CERTIFICATE", Bytes: certDER}
 
 	path := CertPath + fileName
-	//create new file for private key
+	// create new file for private key
 	pemCertFile, err := os.Create(path)
 	if err != nil {
 		return cert, err
 	}
 	defer pemCertFile.Close()
-	//write to file and close it
+	// write to file and close it
 	err = pem.Encode(pemCertFile, pemCertBlock)
 	if err != nil {
 		return cert, err
 	}
-	fmt.Println("certificate generated and written to", path)
+	fmt.Fprintln(os.Stderr, "certificate generated and written to", path)
 	return cert, nil
 }

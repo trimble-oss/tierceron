@@ -60,7 +60,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/trcdb.so")
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Trcdb unable to sha256 plugin")
 		return
 	}
 
@@ -68,16 +68,16 @@ func init() {
 
 	h := sha256.New()
 	if _, err := io.Copy(h, peerExe); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("trcdb Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "trcdb Version: %s\n", sha)
 }
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for trcdb.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for trcdb.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -99,7 +99,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for trcdb.")
+		fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for trcdb.")
 		return
 	}
 	configContext.Log.Println("trcdb sending error message to kernel: ", err)
@@ -332,6 +332,23 @@ func chat_receiver(chat_receive_chan chan *core.ChatMsg) {
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
 			configContext.Log.Println("Received trcdb request.")
+			if event.Name != nil && strings.Contains(*event.Name, ":") {
+				pluginFlow := strings.Split(*event.Name, ":")
+				if len(pluginFlow) > 1 {
+					for i, flow := range pluginFlow {
+						if i == 0 {
+							continue
+						}
+						tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(flow))
+						tfCtxChatReceiverChan := tfCtx.GetFlowChatMsgReceiverChan()
+						go func(tfCtxChatReceiverChan *chan *core.ChatMsg, msg *core.ChatMsg) {
+							*tfCtxChatReceiverChan <- msg
+							configContext.Log.Printf("Sent request to flow %s\n", flow)
+						}(tfCtxChatReceiverChan, event)
+					}
+					continue
+				}
+			}
 			ProcessTrcdb((*event).TrcdbExchange)
 			handledResponse := "Handled Trcdb request successfully"
 			(*event).Response = &handledResponse
@@ -392,7 +409,7 @@ func ProcessTrcdb(trcdbExchange *core.TrcdbExchange) {
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for trcdb")
+		fmt.Fprintln(os.Stderr, "no config context initialized for trcdb")
 		return
 	}
 
@@ -406,6 +423,7 @@ func start(pluginName string) {
 			configContext.Log.Println(msg, err)
 		})
 	send_dfstat()
+	start_flow_machine_listener()
 	if configContext.CmdSenderChan != nil {
 		*configContext.CmdSenderChan <- core.KernelCmd{
 			Command: core.PLUGIN_EVENT_START,
@@ -414,6 +432,24 @@ func start(pluginName string) {
 	} else {
 		configContext.Log.Println("No command sender channel available, trcdb cannot send start event.")
 	}
+}
+
+func start_flow_machine_listener() {
+	if tfmContext == nil || tfmContext.GetFlowChatMsgSenderChan() == nil {
+		configContext.Log.Println("No flow machine context available for trcdb plugin.")
+		return
+	}
+	go func() {
+		for {
+			event := <-*tfmContext.GetFlowChatMsgSenderChan()
+			if event == nil {
+				continue
+			}
+			if event.TrcdbExchange != nil && len(event.TrcdbExchange.Request.Rows) != 0 {
+				// TODO: Process message from flow
+			}
+		}
+	}()
 }
 
 func stop(pluginName string) {
@@ -587,6 +623,7 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 		isSupportedFlow = IsHiveSupportedFlow
 	}
 	flowMachineTemplates := flowMachineTemplatesFunc()
+	flowChatMsgSenderChan := make(chan *core.ChatMsg)
 
 	return &flowcore.FlowMachineInitContext{
 		GetFlowMachineTemplates:     flowMachineTemplatesFunc,
@@ -617,10 +654,11 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 			}
 			return tableFlows
 		},
-		GetBusinessFlows:    GetBusinessFlows,
-		GetTestFlows:        GetTestFlows,
-		GetTestFlowsByState: GetTestFlowsByState,
-		FlowController:      ProcessFlowController,
-		TestFlowController:  TestFlowController,
+		GetBusinessFlows:      GetBusinessFlows,
+		GetTestFlows:          GetTestFlows,
+		GetTestFlowsByState:   GetTestFlowsByState,
+		FlowController:        ProcessFlowController,
+		TestFlowController:    TestFlowController,
+		FlowChatMsgSenderChan: &flowChatMsgSenderChan,
 	}
 }

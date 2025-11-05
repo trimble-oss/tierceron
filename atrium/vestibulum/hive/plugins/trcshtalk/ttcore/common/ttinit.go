@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -76,7 +77,7 @@ func AttachMashupCert(ctx *tccore.ConfigContext, properties *map[string]interfac
 // SendDFStat finalizes and sends the provided dataflow stat copy.
 func SendDFStat(ctx *tccore.ConfigContext, dfstat *tccore.TTDINode) {
 	if ctx == nil || ctx.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for trcshtalk.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for trcshtalk.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -155,19 +156,22 @@ func ChatReceiver(rec_chan chan *tccore.ChatMsg) {}
 
 // LogPluginVersion computes and prints a sha256 of the plugin binary if present.
 func LogPluginVersion(path string) {
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		return
+	}
 	peerExe, err := os.Open(path)
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Trcshtalk unable to sha256 plugin")
 		return
 	}
 	defer peerExe.Close()
 	h := sha256.New()
 	if _, err := io.Copy(h, peerExe); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("TrcshTalk Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "TrcshTalk Version: %s\n", sha)
 }
 
 // ReceiverLoop processes kernel commands and delegates to provided start/stop functions.
