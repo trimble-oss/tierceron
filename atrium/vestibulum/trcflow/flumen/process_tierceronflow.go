@@ -3,11 +3,10 @@ package flumen
 import (
 	"errors"
 	"strings"
+	"time"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-
-	"time"
 
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 
@@ -33,7 +32,7 @@ func GetTierceronFlowConfigurationIndexedPathExt(engine any, rowDataMap map[stri
 		}
 		return "/" + indexName + "/" + idValue, nil
 	}
-	return "", errors.New("Too many columnIDs for incoming TierceronFlow change")
+	return "", errors.New("too many columnIDs for incoming TierceronFlow change")
 }
 
 func GetTierceronTableNames() []string {
@@ -55,8 +54,7 @@ func getTierceronFlowSchema(tableName string) sqle.PrimaryKeySchema {
 	})
 }
 
-//cancel contex through all the flows to cancel and stop all the sync cycles.
-
+// cancel contex through all the flows to cancel and stop all the sync cycles.
 func arrayToTierceronFlow(arr []any) map[string]any {
 	tfFlow := make(map[string]any)
 	if len(arr) == 6 {
@@ -79,11 +77,11 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 	}
 	for _, value := range rows {
 		tfFlow := arrayToTierceronFlow(value)
-		if flowId, ok := tfFlow[tierceronFlowIdColumnName].(string); ok {
+		if flowID, ok := tfFlow[tierceronFlowIdColumnName].(string); ok {
 			tfmContext.FlowControllerUpdateLock.Lock()
-			stateChannel := flowControllerMap[flowId]
+			stateChannel := flowControllerMap[flowID]
 			tfmContext.FlowControllerUpdateLock.Unlock()
-			theFlow := tfmContext.GetFlowContext(flowcore.FlowNameType(flowId))
+			theFlow := tfmContext.GetFlowContext(flowcore.FlowNameType(flowID))
 			if stateChannel == nil {
 				continue
 			}
@@ -119,9 +117,9 @@ func sendUpdates(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcfl
 				go func(sc chan flowcore.CurrentFlowState, stateMessage int64, syncModeMessage string, syncFilterMessage string, fId string, flowAlias string) {
 					// If a flow is changed the fields are checked here for actual changes.
 					// If there are any we trigger a flow state change.
-					tfmContext.Log("Queuing state change: "+fId, nil)
+					tfmContext.Log("Queuing state change: "+flowID, nil)
 					sc <- flowcorehelper.CurrentFlowState{State: stateMessage, SyncMode: syncModeMessage, SyncFilter: syncFilterMessage, FlowAlias: flowAlias}
-				}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowId, flowAliasMsg)
+				}(stateChannel, stateMsg, syncModeMsg, syncFilterMsg, flowID, flowAliasMsg)
 			}
 		}
 	}
@@ -143,7 +141,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 
 		sendUpdates(tfmContext, tfContext, flowControllerMap, "")
 
-		if tfmContext.FlowControllerInit { //Sending off listener for state updates
+		if tfmContext.FlowControllerInit { // Sending off listener for state updates
 			go func(tfmc *trcflowcore.TrcFlowMachineContext, tfc *trcflowcore.TrcFlowContext, fcmap map[string]chan flowcore.CurrentFlowState) {
 				for tierceronFlowName := range tfmc.FlowControllerUpdateAlert {
 					// Every time a message is sent, this triggers...
@@ -155,7 +153,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 		return nil, errors.New("flow controller map is the wrong type")
 	}
 
-	if tfmContext.FlowControllerInit { //Used to signal other flows to begin, now that states have been loaded on init
+	if tfmContext.FlowControllerInit { // Used to signal other flows to begin, now that states have been loaded on init
 		if initAlertChan, ok := tfContext.RemoteDataSource["flowStateInitAlert"].(chan bool); ok {
 			if initAlertChan == nil {
 				return nil, errors.New("alert channel for flow controller was nil")
@@ -173,7 +171,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 			if flowStateReceiverMap == nil {
 				return nil, errors.New("receiver map channel for flow controller was nil")
 			}
-			for _, receiver := range flowStateReceiverMap { //Receiver is used to update the flow state for shutdowns & inits from other flows
+			for _, receiver := range flowStateReceiverMap { // Receiver is used to update the flow state for shutdowns & inits from other flows
 				go func(currentReceiver chan flowcore.FlowStateUpdate, tfmc *trcflowcore.TrcFlowMachineContext) {
 					for xi := range currentReceiver {
 						// Controller receives updates from queries here...

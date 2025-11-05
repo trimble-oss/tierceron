@@ -26,12 +26,12 @@ func GetConfigContext(pluginName string) *core.ConfigContext {
 	return configContext
 }
 
-func LogError(err_msg string) {
+func LogError(errMsg string) {
 	if configContext != nil && configContext.Log != nil {
-		configContext.Log.Println(err_msg)
+		configContext.Log.Println(errMsg)
 		return
 	}
-	fmt.Fprintln(os.Stderr, err_msg)
+	fmt.Fprintln(os.Stderr, errMsg)
 }
 
 func SetLogger(logger *log.Logger) {

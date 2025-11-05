@@ -95,7 +95,7 @@ var (
 
 type IndirectDBConnectionFunc func(configContex *core.ConfigContext, argosId string) (string, string, *sql.DB, error)
 
-var IndirectDbFunc IndirectDBConnectionFunc
+var IndirectDBFunc IndirectDBConnectionFunc
 
 var (
 	plugin = false
@@ -518,9 +518,9 @@ func (r *SeededKafkaReader) Close() {
 	r.kafkaReader.Close()
 }
 
-func TestSequenceExpected(sociiId string, readerSequence []*SeededKafkaReader, kafkaTestSequence []*KafkaTestBundle) {
+func TestSequenceExpected(sociiID string, readerSequence []*SeededKafkaReader, kafkaTestSequence []*KafkaTestBundle) {
 	if !plugin {
-		etlcore.LogError(fmt.Sprintf("%s Going to kafka.", sociiId))
+		etlcore.LogError(fmt.Sprintf("%s Going to kafka.", sociiID))
 	}
 	for i, reader := range readerSequence {
 		testExpected(reader, kafkaTestSequence[i])
@@ -589,7 +589,7 @@ var chatMsgHookCtx *cmap.ConcurrentMap[string, tccore.ChatHookFunc]
 func GetChatMsgHookCtx() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] { return chatMsgHookCtx }
 
 // KafkaTestInit - obtains mpb, kafka reader, and connection for use in kafka testing.
-func KafkaTestInit(argosId string,
+func KafkaTestInit(argosID string,
 	readerGroupPrefix string,
 	configContext *core.ConfigContext,
 	currentState *atomic.Value,
@@ -651,10 +651,10 @@ func KafkaTestInit(argosId string,
 	}
 
 	// 0. Setup connections to database and kafka.
-	etlcore.LogError(fmt.Sprintf("KafkaTestInit obtaining db connections...\n"))
+	etlcore.LogError("KafkaTestInit obtaining db connections...\n")
 
-	if IndirectDbFunc != nil {
-		argosId, region, dbConn, err := IndirectDbFunc(configContext, argosId)
+	if IndirectDBFunc != nil {
+		argosIDIndirect, region, dbConn, err := IndirectDBFunc(configContext, argosID)
 		if err != nil {
 			(*currentState).Store(STATE_FAILED_DB_CONN)
 			stateMap[currentState.Load().(string)] = time.Since(start)
@@ -664,7 +664,7 @@ func KafkaTestInit(argosId string,
 		etlcore.LogError("KafkaTestInit indirect db conn obtained.  Obtaining direct connection.")
 
 		bar.IncrBy(25)
-		return readerSequence, bar, argosId, region, dbConn, nil
+		return readerSequence, bar, argosIDIndirect, region, dbConn, nil
 	}
 	error := errors.New("sqlType must be either direct or indirect")
 	etlcore.LogError("KafkaTestInit complete")
