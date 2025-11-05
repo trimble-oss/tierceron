@@ -64,7 +64,7 @@ func KernelShutdownWatcher(logger *log.Logger) {
 	keepAliveChan <- true
 }
 
-// Loads a plugin's deploy.trc script directly from vault.
+// LoadPluginDeploymentScript - Loads a plugin's deploy.trc script directly from vault.
 func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
 	if strings.Contains(pwd, "TrcDeploy") && len(trcshDriverConfig.DriverConfig.DeploymentConfig) > 0 {
 		if deployment, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"]; ok {
@@ -256,15 +256,15 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 						}
 						splitIds := strings.Split(ids, ",")
 						for _, id := range splitIds {
-							splitId := strings.Split(id, ":")
+							splitID := strings.Split(id, ":")
 							splitEnv := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
-							if len(splitId) == 1 && len(splitEnv) == 1 && len(splitId[0]) > 0 && len(splitEnv[0]) > 0 {
-								valid_id = splitId[0]
+							if len(splitID) == 1 && len(splitEnv) == 1 && len(splitID[0]) > 0 && len(splitEnv[0]) > 0 {
+								valid_id = splitID[0]
 								break
-							} else if len(splitId) != 2 && len(splitEnv) != 2 && len(splitId[1]) > 0 && len(splitEnv[1]) > 0 {
+							} else if len(splitID) != 2 && len(splitEnv) != 2 && len(splitID[1]) > 0 && len(splitEnv[1]) > 0 {
 								return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
-							} else if len(splitEnv) > 1 && splitEnv[1] == splitId[0] {
-								valid_id = splitId[1]
+							} else if len(splitEnv) > 1 && splitEnv[1] == splitID[0] {
+								valid_id = splitID[1]
 								break
 							}
 						}
@@ -278,7 +278,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 				}
 				isValidInstance := false
 				if validEnv, ok := deploymentConfig["instances"]; ok && kernelopts.BuildOptions.IsKernel() {
-					kernelId := kernelPluginHandler.GetKernelId()
+					kernelID := kernelPluginHandler.GetKernelID()
 					if instances, ok := validEnv.(string); ok {
 						if len(instances) > 0 {
 							instancesList := strings.Split(instances, ",")
@@ -292,7 +292,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 										instanceKernelId, _ = strconv.Atoi(instance)
 									}
 
-									if kernelId >= 0 && instanceKernelId >= 0 && instanceKernelId == kernelId {
+									if kernelID >= 0 && instanceKernelId >= 0 && instanceKernelId == kernelID {
 										isValidInstance = true
 										break
 									}

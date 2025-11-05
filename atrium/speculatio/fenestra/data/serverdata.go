@@ -28,8 +28,8 @@ var count int
 // Collects time data from DataFlowStatistics layer and adds data to DataFlow object
 // Returns updated DetailedElements array and an array of time data from DataFlowStatistics
 func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement, node *tccore.TTDINode, testTimes []float64, depth int) ([]*mashupsdk.MashupDetailedElement, []float64) {
-	for _, child_node := range node.ChildNodes {
-		if child_node.MashupDetailedElement.Genre == "DataFlowStatistic" {
+	for _, childNode := range node.ChildNodes {
+		if childNode.MashupDetailedElement.Genre == "DataFlowStatistic" {
 			node.MashupDetailedElement.Genre = "DataFlow"
 			for i := 0; i < len(node.ChildNodes)-1; i++ {
 				stat := node.ChildNodes[i].MashupDetailedElement

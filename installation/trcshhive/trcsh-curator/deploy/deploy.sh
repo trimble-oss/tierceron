@@ -90,7 +90,7 @@ if [ "$PRE_CERTIFY" = "Y" ] || [ "$PRE_CERTIFY" = "yes" ] || [ "$PRE_CERTIFY" = 
         certifystatus=$?
         if [ $certifystatus -eq 0 ]; then
            echo "No certification problems encountered."
-            if [[ $TRC_PLUGIN_NAME == *exe ]]; then 
+            if [[ $TRC_PLUGIN_NAME == *exe ]]; then
                 exit $certifystatus
             fi
         else
@@ -219,6 +219,6 @@ vault secrets enable \
 echo "Activating plugin."
 vault write $TRC_PLUGIN_NAME/$VAULT_ENV token=$VAULT_ENV_TOKEN vaddress=$VAULT_ADDR caddress=$SECRET_VAULT_ADDR ctoken=$SECRET_VAULT_PLUGIN_TOKEN
 
-echo "Notifying curator."
+echo "Notifying Curator."
 vault write vaultcurator/$VAULT_ENV plugin=$TRC_PLUGIN_NAME
 echo "Deployment complete."
