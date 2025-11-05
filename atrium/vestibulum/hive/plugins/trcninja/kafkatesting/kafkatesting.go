@@ -17,7 +17,6 @@ import (
 
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/trimble-oss/tierceron-core/v2/core"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/vbauerster/mpb/v8"
@@ -93,7 +92,7 @@ var (
 	IsPlugin               bool = true
 )
 
-type IndirectDBConnectionFunc func(configContex *core.ConfigContext, argosId string) (string, string, *sql.DB, error)
+type IndirectDBConnectionFunc func(configContex tccore.ConfigContext, argosId string) (string, string, *sql.DB, error)
 
 var IndirectDBFunc IndirectDBConnectionFunc
 
@@ -591,7 +590,7 @@ func GetChatMsgHookCtx() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] { retu
 // KafkaTestInit - obtains mpb, kafka reader, and connection for use in kafka testing.
 func KafkaTestInit(argosID string,
 	readerGroupPrefix string,
-	configContext *core.ConfigContext,
+	configContext tccore.ConfigContext,
 	currentState *atomic.Value,
 	kafkaTopicSequence [][]string,
 	currentStateFunc decor.DecorFunc,

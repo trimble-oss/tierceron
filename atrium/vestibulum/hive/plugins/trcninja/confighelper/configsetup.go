@@ -4,7 +4,7 @@ import (
 	"flag"
 	"sync"
 
-	"github.com/trimble-oss/tierceron-core/v2/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkautil"
 )
 
@@ -17,10 +17,10 @@ var KafkaCert []byte
 
 var configInit = false
 
-// var config *core.CoreConfig
+// var config *tccore.CoreConfig
 var configLock sync.Mutex
 
-func InitKafkaPropertiesWithConfig(configContext *core.ConfigContext,
+func InitKafkaPropertiesWithConfig(configContext *tccore.ConfigContext,
 	kafkaClientCertPath string,
 	kafkaShemaClientCertPath string,
 ) error {
@@ -32,7 +32,7 @@ func InitKafkaPropertiesWithConfig(configContext *core.ConfigContext,
 }
 
 // call this from the plugin
-func InitKafkaProperties(configContext *core.ConfigContext,
+func InitKafkaProperties(configContext *tccore.ConfigContext,
 	kafkaClientCertPath string,
 	kafkaShemaClientCertPath string,
 ) error {

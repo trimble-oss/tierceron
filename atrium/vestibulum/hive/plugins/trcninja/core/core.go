@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/trimble-oss/tierceron-core/v2/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 // SociiKeyField is the key field name used for enterprise/socii identification
@@ -16,13 +16,13 @@ func SetSociiKey(keyName string) {
 	SociiKeyField = keyName
 }
 
-var configContext *core.ConfigContext
+var configContext *tccore.ConfigContext
 
-func SetConfigContext(cc *core.ConfigContext) {
+func SetConfigContext(cc *tccore.ConfigContext) {
 	configContext = cc
 }
 
-func GetConfigContext(pluginName string) *core.ConfigContext {
+func GetConfigContext(pluginName string) *tccore.ConfigContext {
 	return configContext
 }
 
@@ -38,7 +38,7 @@ func SetLogger(logger *log.Logger) {
 	if configContext != nil {
 		configContext.Log = logger
 	} else {
-		configContext = &core.ConfigContext{
+		configContext = &tccore.ConfigContext{
 			Log: logger,
 		}
 	}
