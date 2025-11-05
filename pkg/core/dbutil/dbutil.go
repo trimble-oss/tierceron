@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
+	"github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"

@@ -13,7 +13,7 @@ import (
 	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/trimble-oss/tierceron-core/v2/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/xo/dburl"
 )
 
@@ -35,7 +35,7 @@ func ParseURL(url string) (string, string, string, string, string, error) {
 }
 
 // OpenDirectConnection opens connection to a database using various sql urls
-func OpenDirectConnection(configContext *core.ConfigContext) (*sql.DB, error) {
+func OpenDirectConnection(configContext *tccore.ConfigContext) (*sql.DB, error) {
 	if configContext.Config == nil {
 		return nil, errors.New("missing required config")
 	}
@@ -60,7 +60,7 @@ func OpenDirectConnection(configContext *core.ConfigContext) (*sql.DB, error) {
 	var conn *sql.DB
 	var tlsConfig *tls.Config
 	var clientCertBytes []byte
-	if certBytes, ok := (*configContext.Config)[core.TRCSHHIVEK_CERT].([]byte); ok {
+	if certBytes, ok := (*configContext.Config)[tccore.TRCSHHIVEK_CERT].([]byte); ok {
 		clientCertBytes = certBytes
 	} else {
 		return nil, errors.New("missing required certificate for ninja direct connection")

@@ -51,7 +51,7 @@ func InitKafka(pool interface{}, readerGroupPrefix string, idbFn kafkatesting.In
 	etlcore.LogError(fmt.Sprintf("args %v", os.Args))
 
 	if idbFn != nil {
-		kafkatesting.IndirectDbFunc = idbFn
+		kafkatesting.IndirectDBFunc = idbFn
 	}
 
 	filteredArgs := filterEmptyElements(os.Args)[1:]

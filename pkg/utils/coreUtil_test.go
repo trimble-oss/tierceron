@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"testing"
 )
 
@@ -11,27 +12,27 @@ func TestRefMap(t *testing.T) {
 	valRef := RefMap(pluginParams, "testkey")
 	if *valRef != "test" {
 		if valRef != nil {
-			fmt.Printf("Expected 'test' value but got: %s\n", *valRef)
+			fmt.Fprintf(os.Stderr, "Expected 'test' value but got: %s\n", *valRef)
 			t.Fatalf("Expected 'test' value but got: %s\n", *valRef)
 		} else {
-			fmt.Printf("Expected 'test' value but got: nil\n")
+			fmt.Fprintf(os.Stderr, "Expected 'test' value but got: nil\n")
 			t.Fatalf("Expected 'test' value but got: nil\n")
 		}
 	} else {
-		fmt.Printf("Ref test 1 pass\n")
+		fmt.Fprintf(os.Stderr, "Ref test 1 pass\n")
 	}
 	testVal := "testValRef"
 	pluginParams["testkeyref"] = &testVal
 	valRefRef := RefMap(pluginParams, "testkeyref")
 	if *valRefRef != "testValRef" {
 		if valRefRef != nil {
-			fmt.Printf("Expected 'testValRef' value but got: %s\n", *valRefRef)
+			fmt.Fprintf(os.Stderr, "Expected 'testValRef' value but got: %s\n", *valRefRef)
 			t.Fatalf("Expected 'testValRef' value but got: %s\n", *valRefRef)
 		} else {
-			fmt.Printf("Expected 'testValRef' value but got: nil\n")
+			fmt.Fprintf(os.Stderr, "Expected 'testValRef' value but got: nil\n")
 			t.Fatalf("Expected 'testValRef' value but got: nil\n")
 		}
 	} else {
-		fmt.Printf("Ref test 2 pass\n")
+		fmt.Fprintf(os.Stderr, "Ref test 2 pass\n")
 	}
 }

@@ -191,7 +191,7 @@ func Authorize(db *sql.DB, userIdentifier string, userPassword string) (bool, st
 }
 
 // CheckMemLock - override to provide a custom mem lock check function.
-// Utilizing the bucket (ex: super-secrets/Index/FlumeDatabase) and key (ex: tenantId), decides whether or not to
+// Utilizing the bucket (ex: super-secrets/Index/FlumeDatabase) and key (ex: tenantID), decides whether or not to
 // memlock the indicated value retrieved from vault.  Returns true if the value should be memlocked, false if not.
 func CheckMemLock(bucket string, key string) bool {
 	return true

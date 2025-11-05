@@ -30,7 +30,7 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 		noMatch := false
 
 		r.kafkaTestBundleLock.RLock()
-		kafkaTestBundle, _ := r.kafkaTestBundle[testKey]
+		kafkaTestBundle := r.kafkaTestBundle[testKey]
 
 		r.kafkaTestBundleLock.RUnlock()
 
@@ -71,8 +71,8 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 	return false
 }
 
-// FindByKeyIndex -- finds matching test by index.
-func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey map[string]interface{}, kafkaLogicalKey map[string]interface{}) *KafkaTestBundle {
+// FindByJSONKeyIndex -- finds matching test by index.
+func (r *SeededKafkaReader) FindByJSONKeyIndex(messageTime time.Time, kafkaKey map[string]interface{}, kafkaLogicalKey map[string]interface{}) *KafkaTestBundle {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
 	for k := range r.kafkaTestBundle {
@@ -85,7 +85,7 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 		noMatch := false
 
 		r.kafkaTestBundleLock.RLock()
-		kafkaTestBundle, _ := r.kafkaTestBundle[testKey]
+		kafkaTestBundle := r.kafkaTestBundle[testKey]
 
 		r.kafkaTestBundleLock.RUnlock()
 
@@ -216,7 +216,7 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kafka.Message) {
 	var kafkaValue map[string]interface{}
 	json.Unmarshal(m.Value, &kafkaValue)
 
-	kafkaTestBundle := r.FindByJsonKeyIndex(m.Time, kafkaKey, kafkaValue)
+	kafkaTestBundle := r.FindByJSONKeyIndex(m.Time, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
 		// sociiId mismatch for tests we are running.
 		if !plugin {
@@ -233,33 +233,33 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kafka.Message) {
 		if av, aoki := kafkaValue[evk]; aoki {
 			if actualDecimal, decimalOk := av.(*big.Rat); decimalOk {
 				if evv.(*big.Rat).Cmp(actualDecimal) != 0 {
-					etlcore.LogError(fmt.Sprintf("Failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal))
-					err = fmt.Errorf("Failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal)
+					etlcore.LogError(fmt.Sprintf("failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal))
+					err = fmt.Errorf("failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal)
 					break
 				}
 			} else if actualString, stringOk := av.(string); stringOk {
 				if evvString, evvStrOk := evv.(string); evvStrOk {
 					if evvString != actualString {
-						etlcore.LogError(fmt.Sprintf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString))
-						err = fmt.Errorf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
+						etlcore.LogError(fmt.Sprintf("failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString))
+						err = fmt.Errorf("failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
 						break
 					}
 				} else {
-					etlcore.LogError(fmt.Sprintf("Failure to parse string value Key: %s Value: %v", evk, evv))
-					err = fmt.Errorf("Failure to parse string value Key: %s Value: %v", evk, evv)
+					etlcore.LogError(fmt.Sprintf("failure to parse string value Key: %s Value: %v", evk, evv))
+					err = fmt.Errorf("failure to parse string value Key: %s Value: %v", evk, evv)
 					break
 				}
 			} else if actualTime, timeOk := av.(time.Time); timeOk {
 				if evvTime, evvTimeOk := evv.(time.Time); evvTimeOk {
 					utcTime := evvTime.UTC()
 					if utcTime != actualTime {
-						etlcore.LogError(fmt.Sprintf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
-						err = fmt.Errorf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
+						etlcore.LogError(fmt.Sprintf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
+						err = fmt.Errorf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
 						break
 					}
 				} else {
-					etlcore.LogError(fmt.Sprintf("Failure to parse Time value Key: %s Value: %v", evk, evv))
-					err = fmt.Errorf("Failure to parse Time value Key: %s Value: %v", evk, evv)
+					etlcore.LogError(fmt.Sprintf("failure to parse Time value Key: %s Value: %v", evk, evv))
+					err = fmt.Errorf("failure to parse Time value Key: %s Value: %v", evk, evv)
 					break
 				}
 			}
@@ -272,7 +272,7 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kafka.Message) {
 	// etlcore.LogError(fmt.Sprintf("%d %s", kafkaKey[etlcore.SociiKeyField].(int32), m.Time.UTC().Format(time.UnixDate)))
 
 	if err != nil {
-		etlcore.LogError(fmt.Sprintf("Failure to parse kafka item.  Ending error: %v", err))
+		etlcore.LogError(fmt.Sprintf("failure to parse kafka item.  Ending error: %v", err))
 		r.kafkaTestBundleLock.Lock()
 		kafkaTestBundle.SuccessFun(err)
 		r.kafkaTestBundleLock.Unlock()

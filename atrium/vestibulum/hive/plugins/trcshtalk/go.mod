@@ -1,9 +1,9 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk
 
-go 1.25.1
+go 1.25.3
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.8.8
+	github.com/trimble-oss/tierceron-core/v2 v2.9.1
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6

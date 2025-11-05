@@ -332,7 +332,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 			return false, desiredPolicy, err
 		}
 		logger.Println("Possible attempted use of expired token")
-		fmt.Println("Possible attempted use of expired token")
+		fmt.Fprintln(os.Stderr, "Possible attempted use of expired token")
 	}
 
 	valid := false
@@ -355,7 +355,7 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 	return valid, desiredPolicy, nil
 }
 
-// Writes the key,value pairs in data to the vault
+// Write - writes the key,value pairs in data to the vault
 //
 // @param   data A set of key,value pairs to be written
 //
@@ -568,7 +568,7 @@ processResult:
 		}
 		// TODO: Bad data cleanup.
 		if strings.Contains(fullPath, "argosId") {
-			if _, argosIdOk := data["argosId"]; !argosIdOk {
+			if _, argosIDOk := data["argosId"]; !argosIDOk {
 				pathParts := strings.Split(fullPath, "/")
 				for i := 0; i < len(pathParts); i++ {
 					if pathParts[i] == "argosId" {
@@ -780,7 +780,7 @@ retryQuery:
 	return result, err
 }
 
-// List lists the paths underneath this one
+// ListEnv - List lists the paths underneath this one
 func (m *Modifier) ListEnv(path string, logger *log.Logger) (*api.Secret, error) {
 	pathBlocks := strings.SplitAfterN(path, "/", 2)
 	var fullPath string
@@ -842,7 +842,7 @@ func (m *Modifier) AdjustValue(path string, data map[string]any, n int, logger *
 	return m.Write(path, oldData, logger)
 }
 
-// Proper shutdown of modifier.
+// Close - proper shutdown of modifier.
 func (m *Modifier) Close() {
 	m.httpClient.CloseIdleConnections()
 }
@@ -1146,7 +1146,7 @@ func (m *Modifier) ListSubsection(sectionKey string, project string, indexName s
 	return nil, errors.New("no regions were found")
 }
 
-// Given Project and Service, looks for a key index and returns it.
+// FindIndexForService - given Project and Service, looks for a key index and returns it.
 func (m *Modifier) FindIndexForService(project string, service string, logger *log.Logger) (string, error) {
 	index := ""
 

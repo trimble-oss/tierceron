@@ -35,7 +35,7 @@ func CheckError(config *coreconfig.CoreConfig, err error, exit bool) {
 func CheckErrorNoStack(config *coreconfig.CoreConfig, err error, exit bool) {
 	if err != nil {
 		if !headlessService {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 		}
 		if exit && config.ExitOnFailure {
 			os.Exit(1)
@@ -43,11 +43,11 @@ func CheckErrorNoStack(config *coreconfig.CoreConfig, err error, exit bool) {
 	}
 }
 
-// CheckWarnings Checks warnings returned from various vault relation operations
+// CheckWarning Checks warnings returned from various vault relation operations
 func CheckWarning(config *coreconfig.CoreConfig, warning string, exit bool) {
 	if len(warning) > 0 {
 		if !headlessService {
-			fmt.Println(warning)
+			fmt.Fprintln(os.Stderr, warning)
 		}
 		if exit && config.ExitOnFailure {
 			config.Log.Println(warning)
@@ -61,7 +61,7 @@ func CheckWarnings(config *coreconfig.CoreConfig, warnings []string, exit bool) 
 	if len(warnings) > 0 {
 		if !headlessService {
 			for _, w := range warnings {
-				fmt.Println(w)
+				fmt.Fprintln(os.Stderr, w)
 			}
 		}
 		if exit && config.ExitOnFailure {
@@ -78,7 +78,7 @@ func LogError(config *coreconfig.CoreConfig, err error, f *os.File, exit bool) {
 		log.SetPrefix("[ERROR]")
 		if exit && config.ExitOnFailure {
 			if !headlessService {
-				fmt.Printf("Errors encountered, exiting and writing to log file: %s\n", f.Name())
+				fmt.Fprintf(os.Stderr, "Errors encountered, exiting and writing to log file: %s\n", f.Name())
 				log.Fatal(err)
 			} else {
 				os.Exit(-1)
@@ -105,7 +105,7 @@ func LogWarnings(config *coreconfig.CoreConfig, warnings []string, f *os.File, e
 		}
 		if exit && config.ExitOnFailure {
 			if !headlessService {
-				fmt.Printf("Warnings encountered, exiting and writing to log file: %s\n", f.Name())
+				fmt.Fprintf(os.Stderr, "Warnings encountered, exiting and writing to log file: %s\n", f.Name())
 			}
 			os.Exit(1)
 		} else {
@@ -114,29 +114,29 @@ func LogWarnings(config *coreconfig.CoreConfig, warnings []string, f *os.File, e
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
-func LogWarningMessage(config *coreconfig.CoreConfig, errorMessage string, exit bool) {
+// LogWarningMessage writes warnings to the passed logger object and exits
+func LogWarningMessage(config *coreconfig.CoreConfig, warningMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[WARN]")
 	if exit && config.ExitOnFailure {
 		if !headlessService {
-			fmt.Printf("Errors encountered, exiting and writing to log file\n")
+			fmt.Fprintf(os.Stderr, "Errors encountered, exiting and writing to log file\n")
 		}
-		config.Log.Fatal(errorMessage)
+		config.Log.Fatal(warningMessage)
 	} else {
-		config.Log.Println(errorMessage)
+		config.Log.Println(warningMessage)
 		config.Log.SetPrefix(_prefix)
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
+// LogMessageErrorObject writes errors to the passed logger object and exits
 func LogMessageErrorObject(config *coreconfig.CoreConfig, errorMessage string, err error, exit bool) {
 	if err != nil {
 		_prefix := config.Log.Prefix()
 		config.Log.SetPrefix("[ERROR]")
 		if exit && config.ExitOnFailure {
 			if !headlessService {
-				fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Errors encountered, exiting and writing to log file: %v\n", err)
 			}
 			config.Log.Fatal(err)
 		} else {
@@ -149,16 +149,16 @@ func LogMessageErrorObject(config *coreconfig.CoreConfig, errorMessage string, e
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
+// LogErrorMessage writes errors to the passed logger object and exits
 func LogErrorMessage(config *coreconfig.CoreConfig, errorMessage string, exit bool) {
 	_prefix := config.Log.Prefix()
 	config.Log.SetPrefix("[ERROR]")
 	if exit && config.ExitOnFailure {
 		if !headlessService {
-			fmt.Printf("Errors encountered, exiting and writing to log file\n")
+			fmt.Fprintf(os.Stderr, "Errors encountered, exiting and writing to log file\n")
 		}
 		if config.IsEditor {
-			fmt.Print("\033c")
+			fmt.Fprint(os.Stderr, "\033c")
 			exec.Command("stty", "sane").Run()
 		}
 		config.Log.Fatal(errorMessage)
@@ -175,7 +175,7 @@ func LogErrorObject(config *coreconfig.CoreConfig, err error, exit bool) {
 		config.Log.SetPrefix("[ERROR]")
 		if exit && config.ExitOnFailure {
 			if !headlessService {
-				fmt.Printf("Errors encountered, exiting and writing to log file: %v\n", err)
+				fmt.Fprintf(os.Stderr, "Errors encountered, exiting and writing to log file: %v\n", err)
 			}
 			config.Log.Fatal(SanitizeForLogging(err.Error()))
 		} else {
@@ -185,10 +185,10 @@ func LogErrorObject(config *coreconfig.CoreConfig, err error, exit bool) {
 	}
 }
 
-// LogErrorObject writes errors to the passed logger object and exits
+// LogInfo writes informational messages to the passed logger object
 func LogInfo(config *coreconfig.CoreConfig, msg string) {
 	if !headlessService && !config.IsEditor {
-		fmt.Println(SanitizeForLogging(msg))
+		fmt.Fprintln(os.Stderr, SanitizeForLogging(msg))
 	}
 	if config != nil && config.Log != nil {
 		_prefix := config.Log.Prefix()
@@ -208,7 +208,7 @@ func LogWarningsObject(config *coreconfig.CoreConfig, warnings []string, exit bo
 		}
 		if exit && config.ExitOnFailure {
 			if !headlessService {
-				fmt.Println("Warnings encountered, exiting and writing to log file")
+				fmt.Fprintln(os.Stderr, "Warnings encountered, exiting and writing to log file")
 			}
 			os.Exit(1)
 		} else {
@@ -241,6 +241,18 @@ func LogErrorAndSafeExit(config *coreconfig.CoreConfig, err error, code int) err
 	}
 
 	return err
+}
+
+// LogSyncAndExit synchronizes logger output and exits with the specified exit code
+func LogSyncAndExit(logger *log.Logger, message string, exitCode int) {
+	fmt.Fprintln(os.Stderr, message)
+	if logger != nil {
+		logger.Printf("Exit(%d): %s", exitCode, message)
+		if logWriter, ok := logger.Writer().(interface{ Sync() error }); ok {
+			logWriter.Sync()
+		}
+	}
+	os.Exit(exitCode)
 }
 
 func SanitizeForLogging(errMsg string) string {
