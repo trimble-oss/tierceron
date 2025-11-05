@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -11,7 +12,7 @@ import (
 func TestGeneratePaths_nil(t *testing.T) {
 	_, _, err := generatePaths(nil)
 	if err == nil {
-		fmt.Printf("Expected nil config error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected nil config error, got %s\n", err)
 		t.Fatalf("Expected nil config error, got %v", err)
 	}
 }
@@ -32,9 +33,8 @@ func TestGeneratePaths_BaseCase(t *testing.T) {
 	}
 
 	_, _, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 }
@@ -55,21 +55,20 @@ func TestGeneratePaths_BaseCaseWin(t *testing.T) {
 	}
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "foo\\bar\\fake path.\\ to _see if it Panics....\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "." {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -92,24 +91,23 @@ func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
 		}
 
 		templatePaths, endPaths, err := generatePaths(driverConfig)
-
 		if err != nil {
-			fmt.Printf("Expected no error, instead got %s\n", err)
+			fmt.Fprintf(os.Stderr, "Expected no error, instead got %s\n", err)
 			t.Errorf("Expected no error, instead got %v\n", err)
 		}
 		if len(templatePaths) != 5 || len(endPaths) != 5 {
-			fmt.Println("Expected different amount of paths returned")
+			fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 			t.Fatal("Expected different amount of paths returned\n")
 		}
 		for _, path := range templatePaths {
 			if path != "hello/" {
-				fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+				fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 				t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 			}
 		}
 		for _, ePath := range endPaths {
 			if ePath != "." {
-				fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+				fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 				t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 			}
 		}
@@ -139,7 +137,7 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 
 	_, _, err := generatePaths(driverConfig)
 	if err == nil {
-		fmt.Printf("Expected invalid starting directory error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected invalid starting directory error, got %s\n", err)
 		t.Fatalf("Expected invalid starting directory error, got %v", err)
 	}
 }
@@ -167,7 +165,7 @@ func TestGeneratePaths_BadProjServ(t *testing.T) {
 
 	_, _, err := generatePaths(driverConfig)
 	if err == nil {
-		fmt.Printf("Expected Project/Service formatting error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected Project/Service formatting error, got %s\n", err)
 		t.Fatalf("Expected Project/Service formatting error, got %v", err)
 	}
 }
@@ -191,22 +189,21 @@ func TestGeneratePaths_CaseTwo(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 2 || len(endPaths) != 2 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "~/bar/Project/" && templatePaths[1] != "~/hello.world/Project/" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 
 	if endPaths[0] != "~/checking...if\\other characters _/will_cause_panic-!" && endPaths[1] != "~/checking...if\\other characters _/will_cause_panic-!" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -230,22 +227,21 @@ func TestGeneratePaths_CaseTwoWin(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 2 || len(endPaths) != 2 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "~\\bar\\Project\\" && templatePaths[1] != "~\\hello.world\\Project\\" {
-		fmt.Printf("Expected different template path, instead got: %s and %s\n", templatePaths[0], templatePaths[1])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s and %s\n", templatePaths[0], templatePaths[1])
 		t.Fatalf("Expected different template path, instead got: %sand %s\n", templatePaths[0], templatePaths[1])
 	}
 
 	if endPaths[0] != "~/checking...if\\other characters _/will_cause_panic-!" && endPaths[1] != "~/checking...if\\other characters _/will_cause_panic-!" {
-		fmt.Printf("Expected different end path, instead got: %s and %s\n", endPaths[0], endPaths[1])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s and %s\n", endPaths[0], endPaths[1])
 		t.Fatalf("Expected different end path, instead got: %s and %s\n", endPaths[0], endPaths[1])
 	}
 }
@@ -268,7 +264,7 @@ func TestGeneratePaths_CaseThree(t *testing.T) {
 
 	_, _, err := generatePaths(driverConfig)
 	if err == nil {
-		fmt.Printf("Expected error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected error, got %s\n", err)
 		t.Fatalf("Expected error, got %v", err)
 	}
 }
@@ -291,7 +287,7 @@ func TestGeneratePaths_CaseThreeWin(t *testing.T) {
 
 	_, _, err := generatePaths(driverConfig)
 	if err == nil {
-		fmt.Printf("Expected error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected error, got %s\n", err)
 		t.Fatalf("Expected error, got %v", err)
 	}
 }
@@ -313,22 +309,21 @@ func TestGeneratePaths_CaseFour(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "hello/bonjour/Project/" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "hello/bonjour" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -350,22 +345,21 @@ func TestGeneratePaths_CaseFourWin(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "hello\\bonjour\\Project\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "hello/bonjour" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -387,7 +381,7 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 	_, _, err := generatePaths(driverConfig)
 
 	if err == nil {
-		fmt.Printf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrecly error, instead got %s\n", err)
 		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
 	}
 }
@@ -409,7 +403,7 @@ func TestGeneratePaths_CaseFiveWin(t *testing.T) {
 	_, _, err := generatePaths(driverConfig)
 
 	if err == nil {
-		fmt.Printf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrecly error, instead got %s\n", err)
 		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
 	}
 }
@@ -433,30 +427,29 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 3 || len(endPaths) != 3 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "hello/bonjour/Project/" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if templatePaths[1] != "~./Project/" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[1])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[1])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[1])
 	}
 	if templatePaths[2] != "~/hello//Project/" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[2])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[2])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[2])
 	}
 	for i := 0; i < 3; i++ {
 		if endPaths[i] != "hello/world/bonjour/monde" {
-			fmt.Printf("Expected different end path, instead got: %s\n", endPaths[i])
+			fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[i])
 			t.Fatalf("Expected different end path, instead got: %s\n", endPaths[i])
 		}
 	}
@@ -481,25 +474,24 @@ func TestGeneratePaths_CaseSixWin(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 3 || len(endPaths) != 3 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "hello\\bonjour\\Project\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if templatePaths[1] != "~.\\Project\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[1])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[1])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[1])
 	}
 	if templatePaths[2] != "~\\hello\\\\Project\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[2])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[2])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[2])
 	}
 }
@@ -521,21 +513,20 @@ func TestGeneratePaths_CaseSeven(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "hello/bonjour/" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -557,21 +548,20 @@ func TestGeneratePaths_CaseSevenWin(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "C:\\hello\\bonjour\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -593,21 +583,20 @@ func TestGeneratePaths_CaseEightWin(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "D:\\hello\\bonjour\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }
@@ -630,21 +619,20 @@ func TestGeneratePaths_CaseNineWin(t *testing.T) {
 	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
-
 	if err != nil {
-		fmt.Printf("Expected no error, got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected no error, got %s\n", err)
 		t.Fatalf("Expected no error, got %v", err)
 	}
 	if len(templatePaths) != 1 || len(endPaths) != 1 {
-		fmt.Println("Expected different amount of paths returned")
+		fmt.Fprintln(os.Stderr, "Expected different amount of paths returned")
 		t.Fatal("Expected different amount of paths returned\n")
 	}
 	if templatePaths[0] != "C:\\hello\\Project\\" {
-		fmt.Printf("Expected different template path, instead got: %s\n", templatePaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[0])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[0])
 	}
 	if endPaths[0] != "hello/world/Project/Service/bonjour/monde" {
-		fmt.Printf("Expected different end path, instead got: %s\n", endPaths[0])
+		fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[0])
 		t.Fatalf("Expected different end path, instead got: %s\n", endPaths[0])
 	}
 }

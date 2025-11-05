@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -253,13 +254,13 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
-		log.Printf("Couldn't construct key pair: %v\n", err) //Should this just return instead?? - no panic
+		log.Printf("Couldn't construct key pair: %v\n", err) // Should this just return instead?? - no panic
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		fmt.Println("Failed to listen:", err)
+		fmt.Fprintln(os.Stderr, "Failed to listen:", err)
 		return nil, nil, err
 	}
 
@@ -273,7 +274,7 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 	var vault *sys.Vault
 	var err error
 
-	//Grabbing configs
+	// Grabbing configs
 	tempAddr := pluginConfig["vaddress"]
 	tempTokenPtr := pluginConfig["tokenptr"]
 	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
@@ -334,11 +335,10 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 				return err
 			}
 		}
-		fmt.Printf("Server listening on :%d\n", trcstatsport)
+		fmt.Fprintf(os.Stderr, "Server listening on :%d\n", trcstatsport)
 		statCert, err := certutil.LoadCertComponent(trcshDriverConfig.DriverConfig,
 			goMod,
 			tccore.TRCSHHIVEK_CERT)
-
 		if err != nil {
 			log.Printf("Couldn't load cert: %v", err)
 			return err
@@ -346,7 +346,6 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 		statKey, err := certutil.LoadCertComponent(trcshDriverConfig.DriverConfig,
 			goMod,
 			tccore.TRCSHHIVEK_KEY)
-
 		if err != nil {
 			log.Printf("Couldn't load key: %v", err)
 			return err

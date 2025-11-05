@@ -39,7 +39,7 @@ func main() {
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 
-	fmt.Println("Version: " + "1.05")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.06")
 
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
@@ -47,7 +47,7 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "dev", "Environment to configure")
-	regionPtr := flagset.String("region", "", "Region to be processed") //If this is blank -> use context otherwise override context.
+	regionPtr := flagset.String("region", "", "Region to be processed") // If this is blank -> use context otherwise override context.
 	tokenNamePtr := flagset.String("tokenName", "", "Token name used by this"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config to access the vault")
 
 	trcshDriveConfigPtr := &capauth.TrcshDriverConfig{
@@ -67,5 +67,4 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-
 }

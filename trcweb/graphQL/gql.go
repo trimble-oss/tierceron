@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -48,7 +49,6 @@ type Value struct {
 }
 
 func main() {
-
 	addrPtr := flag.String("addr", "http://127.0.0.1:8008", "API endpoint for the vault")
 	apiClient := pb.NewEnterpriseServiceBrokerProtobufClient(*addrPtr, &http.Client{})
 
@@ -86,7 +86,7 @@ func main() {
 	}
 
 	vaultQL := VaultVals{envs: envList}
-	var ValueObject = graphql.NewObject(
+	ValueObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Value",
 			Fields: graphql.Fields{
@@ -115,7 +115,6 @@ func main() {
 				"value": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (any, error) {
-
 						val := params.Source.(Value).ID
 						file := params.Source.(Value).fileID
 						serv := params.Source.(Value).servID
@@ -125,7 +124,7 @@ func main() {
 				},
 			},
 		})
-	var FileObject = graphql.NewObject(
+	FileObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "File",
 			Fields: graphql.Fields{
@@ -158,7 +157,7 @@ func main() {
 						// },
 					},
 					Resolve: func(params graphql.ResolveParams) (any, error) {
-						//get list of values and return
+						// get list of values and return
 						keyStr, keyOK := params.Args["keyName"].(string)
 						// valStr, valOK := params.Args["valName"].(string)
 
@@ -172,7 +171,7 @@ func main() {
 								}
 							}
 							return []Value{}, errors.New("keyName not found")
-						} //else if valOK {
+						} // else if valOK {
 						// 	for i, v := range vaultQL.envs[env].services[serv].files[file].values {
 						// 		if v.value == valStr {
 						// 			return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
@@ -181,12 +180,12 @@ func main() {
 						// 	return vaultQL.envs[env].services[serv].files[file].values, errors.New("valName not found")
 						// }
 						return vaultQL.envs[env].services[serv].files[file].values, nil
-						//return nil, nil
+						// return nil, nil
 					},
 				},
 			},
 		})
-	var ServiceObject = graphql.NewObject(
+	ServiceObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Service",
 			Fields: graphql.Fields{
@@ -228,7 +227,7 @@ func main() {
 				},
 			},
 		})
-	var EnvObject = graphql.NewObject(
+	EnvObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Env",
 			Fields: graphql.Fields{
@@ -251,7 +250,6 @@ func main() {
 					},
 
 					Resolve: func(params graphql.ResolveParams) (any, error) {
-
 						servStr, isOK := params.Args["servName"].(string)
 						env := params.Source.(Env).ID
 						if isOK {
@@ -263,12 +261,11 @@ func main() {
 							return []Service{}, errors.New("servName not found")
 						}
 						return vaultQL.envs[env].services, nil
-
 					},
 				},
 			},
 		})
-	var VaultValObject = graphql.NewObject(
+	VaultValObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "VaultVals",
 
@@ -291,7 +288,6 @@ func main() {
 							return []Env{}, errors.New("envName not found")
 						}
 						return vaultQL.envs, nil
-
 					},
 				},
 			},
@@ -311,7 +307,7 @@ func main() {
 		json.NewEncoder(w).Encode(result)
 	})
 
-	fmt.Println("Server is running on port 8090")
-	fmt.Println("Test with: curl -g 'http://localhost:8090/graphql?query={envs{services{files{values{key,value}}}}}'")
+	fmt.Fprintln(os.Stderr, "Server is running on port 8090")
+	fmt.Fprintln(os.Stderr, "Test with: curl -g 'http://localhost:8090/graphql?query={envs{services{files{values{key,value}}}}}'")
 	http.ListenAndServe(":8090", nil)
 }

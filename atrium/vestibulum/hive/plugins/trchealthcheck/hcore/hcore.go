@@ -26,10 +26,12 @@ type server struct {
 	pb.UnimplementedGreeterServer
 }
 
-var configContext *tccore.ConfigContext
-var grpcServer *grpc.Server
-var serverAddr *string //another way to do this...
-var dfstat *tccore.TTDINode
+var (
+	configContext *tccore.ConfigContext
+	grpcServer    *grpc.Server
+	serverAddr    *string // another way to do this...
+	dfstat        *tccore.TTDINode
+)
 
 func (s *server) SayHello(ctx context.Context, in *pb.HelloRequest) (*pb.HelloReply, error) {
 	configContext.Log.Printf("Received: %v", in.GetName())
@@ -43,7 +45,7 @@ const (
 func init() {
 	peerExe, err := os.Open("/usr/local/trcshk/plugins/healthcheck.so")
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Healthcheck unable to sha256 plugin")
 		return
 	}
 
@@ -51,16 +53,16 @@ func init() {
 
 	h := sha256.New()
 	if _, err := io.Copy(h, peerExe); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("HealthCheck Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "HealthCheck Version: %s\n", sha)
 }
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for healthcheck.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for healthcheck.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -82,7 +84,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for healthcheck.")
+		fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for healthcheck.")
 		return
 	}
 	if dfstat != nil {
@@ -175,9 +177,9 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 			go stop(event.PluginName)
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -187,7 +189,7 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
-		configContext.Log.Printf("Couldn't construct key pair: %v\n", err) //Should this just return instead?? - no panic
+		configContext.Log.Printf("Couldn't construct key pair: %v\n", err) // Should this just return instead?? - no panic
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 
@@ -204,7 +206,7 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for healthcheck")
+		fmt.Fprintln(os.Stderr, "no config context initialized for healthcheck")
 		return
 	}
 
@@ -274,7 +276,7 @@ func stop(pluginName string) {
 	if grpcServer != nil {
 		grpcServer.Stop()
 	} else {
-		fmt.Println("no server initialized for healthcheck")
+		fmt.Fprintln(os.Stderr, "no server initialized for healthcheck")
 	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped server")
@@ -313,9 +315,9 @@ func Init(pluginName string, properties *map[string]any) {
 	if err != nil {
 		if configContext != nil {
 			configContext.Log.Println("Successfully initialized healthcheck.")
-			fmt.Println(err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 		} else {
-			fmt.Println(err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 			return
 		}
 	}

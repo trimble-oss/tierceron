@@ -23,10 +23,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var configContext *tccore.ConfigContext
-var sender chan error
-var serverAddr *string //another way to do this...
-var dfstat *tccore.TTDINode
+var (
+	configContext *tccore.ConfigContext
+	sender        chan error
+	serverAddr    *string // another way to do this...
+	dfstat        *tccore.TTDINode
+)
 
 var DetailedElements []*mashupsdk.MashupDetailedElement
 
@@ -61,11 +63,11 @@ func receiver(receive_chan *chan core.KernelCmd) {
 			sender <- errors.New("hello shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
-			//TODO
+			// TODO
 		case event.Command == FENESTRA_QUERY:
 
 		default:
-			//TODO
+			// TODO
 		}
 	}
 }
@@ -76,7 +78,7 @@ func init() {
 	}
 	peerLib, err := os.Open("plugins/fenestra.so")
 	if err != nil {
-		fmt.Println("Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Fenestra unable to sha256 plugin")
 		return
 	}
 
@@ -84,17 +86,17 @@ func init() {
 
 	h := sha256.New()
 	if _, err := io.Copy(h, peerLib); err != nil {
-		fmt.Printf("Unable to copy file for sha256 of plugin: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to copy file for sha256 of plugin: %s\n", err)
 		return
 	}
 	sha := hex.EncodeToString(h.Sum(nil))
 
-	fmt.Printf("Fenestra Version: %s\n", sha)
+	fmt.Fprintf(os.Stderr, "Fenestra Version: %s\n", sha)
 }
 
 func send_dfstat() {
 	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Println("Dataflow Statistic channel not initialized properly for fenestra.")
+		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for fenestra.")
 		return
 	}
 	dfsctx, _, err := dfstat.GetDeliverStatCtx()
@@ -108,7 +110,7 @@ func send_dfstat() {
 
 func send_err(err error) {
 	if configContext == nil || configContext.ErrorChan == nil || err == nil {
-		fmt.Println("Failure to send error message, error channel not initialized properly for fenestra.")
+		fmt.Fprintln(os.Stderr, "Failure to send error message, error channel not initialized properly for fenestra.")
 		return
 	}
 	if dfstat != nil {
@@ -132,7 +134,7 @@ func send_err(err error) {
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for fenestra")
+		fmt.Fprintln(os.Stderr, "no config context initialized for fenestra")
 		return
 	}
 	var config *map[string]any
@@ -221,7 +223,6 @@ func start(pluginName string) {
 		send_err(errors.New("missing common configs"))
 		return
 	}
-
 }
 
 func stop(pluginName string) {
@@ -260,7 +261,6 @@ func SetConfigContext(cc *tccore.ConfigContext) {
 	} else {
 		DetailedElements = data.GetData(&insecure, configContext.Log, &configContext.Env)
 	}
-
 }
 
 func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
@@ -298,7 +298,7 @@ func Init(pluginName string, properties *map[string]any) {
 		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
 	}
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
-		fmt.Println("Missing common config components")
+		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
 	}
 }

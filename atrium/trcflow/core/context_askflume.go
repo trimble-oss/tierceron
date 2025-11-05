@@ -8,7 +8,7 @@ import (
 )
 
 type AskFlumeMessage struct {
-	Id      int64
+	ID      int64
 	Message string
 	Type    string
 }
@@ -27,9 +27,9 @@ type AskFlumeContext struct {
 
 var id int64
 
-// Keeps track of ID value for number of queries processed
+// GetID - keeps track of ID value for number of queries processed
 // Should match up with ID for Flumeworld.MashupDetailedElementLibrary
-func GetId() int64 {
+func GetID() int64 {
 	id += 1
 	return id - 1
 }
@@ -37,26 +37,26 @@ func GetId() int64 {
 // Initializes the AskFlumeContext and returns the
 // initialized context
 func InitAskFlume() (*AskFlumeContext, error) {
-	gchat_queries := make(chan *AskFlumeContext)
-	df_queries := make(chan *AskFlumeContext)
-	df_ans := make(chan *AskFlumeContext)
-	gchat_ans := make(chan *AskFlumeContext)
+	gchatQueries := make(chan *AskFlumeContext)
+	dfQueries := make(chan *AskFlumeContext)
+	dfAnswers := make(chan *AskFlumeContext)
+	gchatAnswers := make(chan *AskFlumeContext)
 	upsert := make(chan *mashupsdk.MashupDetailedElementBundle)
-	empty_query := &AskFlumeMessage{
-		Id:      0,
+	emptyQuery := &AskFlumeMessage{
+		ID:      0,
 		Message: "",
 	}
 
 	id = 0
 	cxt := &AskFlumeContext{
-		GchatQueries: gchat_queries,
-		DFQueries:    df_queries,
-		DFAnswers:    df_ans,
-		GchatAnswers: gchat_ans,
+		GchatQueries: gchatQueries,
+		DFQueries:    dfQueries,
+		DFAnswers:    dfAnswers,
+		GchatAnswers: gchatAnswers,
 		Upsert:       upsert,
 		Close:        false,
 		FlowCase:     "",
-		Query:        empty_query,
+		Query:        emptyQuery,
 	}
 	return cxt, nil
 }

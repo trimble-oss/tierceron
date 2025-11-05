@@ -16,8 +16,10 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
 )
 
-var gchatApp GChatApp
-var id int64
+var (
+	gchatApp GChatApp
+	id       int64
+)
 
 //go:embed tls/mashup.crt
 var mashupCert embed.FS
@@ -51,7 +53,7 @@ func CommonInit(authToken string, callerToken string) {
 	}
 	configPort, err := strconv.ParseInt(port, 10, 64)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 
 	configs := mashupsdk.MashupConnectionConfigs{
@@ -62,14 +64,13 @@ func CommonInit(authToken string, callerToken string) {
 	}
 	encoding, err := json.Marshal(&configs)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 
 	callerCreds := flag.String("CREDS", string(encoding), "Credentials of caller")
 	flag.Parse()
 	id = 0
 	server.RemoteInitServer(*callerCreds, true, -2, gchatworld.MashupSdkApiHandler, gchatworld.WClientInitHandler)
-
 }
 
 // Processes upserted query from client
@@ -96,7 +97,7 @@ func ProcessQuery(msg *mashupsdk.MashupDetailedElement) {
 					Genre: messageId,
 				})
 			} else {
-				fmt.Println("An error occurred with reading the input. Please input your question in the command line and press enter!")
+				fmt.Fprintln(os.Stderr, "An error occurred with reading the input. Please input your question in the command line and press enter!")
 			}
 		}
 	default:
@@ -112,7 +113,7 @@ func getUserInput() (string, string) {
 	var input string
 	var err error
 	if pubsub.IsManualInteractionEnabled() {
-		fmt.Println("This is a simulation of the Flume Chat App. Please type your question below and press enter: ")
+		fmt.Fprintln(os.Stderr, "This is a simulation of the Flume Chat App. Please type your question below and press enter: ")
 		reader := bufio.NewReader(os.Stdin)
 		input, err = reader.ReadString('\n')
 		messageId = fmt.Sprintf("%x", sha256.Sum256([]byte(input))) // Hacky alias...

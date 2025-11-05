@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 
@@ -21,9 +22,11 @@ import (
 	"github.com/g3n/engine/geometry"
 )
 
-var sqrtfive float64 = float64(math.Sqrt(float64(5.0)))
-var goldenRatio float64 = (float64(1.0) + sqrtfive) / (float64(2.0))
-var ctrlel *g3nmash.G3nDetailedElement
+var (
+	sqrtfive    float64 = float64(math.Sqrt(float64(5.0)))
+	goldenRatio float64 = (float64(1.0) + sqrtfive) / (float64(2.0))
+	ctrlel      *g3nmash.G3nDetailedElement
+)
 
 type CurveRenderer struct {
 	g3nrender.GenericRenderer
@@ -104,7 +107,7 @@ func (cr *CurveRenderer) NewSolidAtPosition(g3n *g3nmash.G3nDetailedElement, vpo
 	mat := material.NewStandard(color.Set(float32(148)/255.0, float32(120)/255.0, float32(42)/255.0))
 	mat.SetOpacity(0.25)
 	tubeMesh := graphic.NewMesh(tubeGeometry, mat)
-	fmt.Printf("LoaderID: %s\n", g3n.GetDisplayName())
+	fmt.Fprintf(os.Stderr, "LoaderID: %s\n", g3n.GetDisplayName())
 	tubeMesh.SetLoaderID(g3n.GetDisplayName())
 	tubeMesh.SetPositionVec(vpos)
 	return tubeMesh
@@ -121,7 +124,8 @@ func (cr *CurveRenderer) NextCoordinate(g3n *g3nmash.G3nDetailedElement, totalEl
 
 // Calls LayoutBase to render elements in a particular order and location
 func (cr *CurveRenderer) Layout(worldApp *g3nworld.WorldApp,
-	g3nRenderableElements []*g3nmash.G3nDetailedElement) {
+	g3nRenderableElements []*g3nmash.G3nDetailedElement,
+) {
 	cr.GenericRenderer.LayoutBase(worldApp, cr, g3nRenderableElements)
 }
 
@@ -280,7 +284,7 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 			for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 				if len(timeSplits) > int(j+1) {
 					diff = math.Abs(timeSplits[int(j+1)] - timeSplits[int(j)])
-					section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
+					section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation // total --> maxTotalTime
 				}
 				if section != 0 && section-lastLocation != 0 {
 					for i := section; i < lastLocation; i = i + math.Abs((section-lastLocation)/((section-lastLocation)*100)) {
@@ -332,7 +336,7 @@ func (cr *CurveRenderer) ctrlRenderElement(worldApp *g3nworld.WorldApp, g3nDetai
 					locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 					locn.X = locn.X - 0.005
 					locn.Y = locn.Y + 0.0999
-					locn.Z = locn.Z - 0.001 //Need to find correct z-component so centered properly
+					locn.Z = locn.Z - 0.001 // Need to find correct z-component so centered properly
 					tubeMesh.SetPositionVec(&locn)
 					cr.push(tubeMesh, clickedElement)
 					worldApp.UpsertToScene(tubeMesh)
@@ -430,7 +434,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 				for j := 0.0; j < float64(len(timeSplits)); j = j + 1.0 {
 					if len(timeSplits) > int(j+1) {
 						diff = math.Abs(timeSplits[int(j+1)] - timeSplits[int(j)])
-						section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation //total --> maxTotalTime
+						section = ((math.Abs(timeSplits[int(j+1)]-timeSplits[int(j)]) / maxTotalTime) * -2) + lastLocation // total --> maxTotalTime
 					}
 					if section != 0 && section-lastLocation != 0 {
 						for i := section; i < lastLocation; i = i + math.Abs((section-lastLocation)/((section-lastLocation)*100)) {
@@ -479,7 +483,7 @@ func (cr *CurveRenderer) RenderElement(worldApp *g3nworld.WorldApp, g3nDetailedE
 						locn := clickedElement.GetNamedMesh(clickedElement.GetDisplayName()).Position()
 						locn.X = locn.X - 0.005
 						locn.Y = locn.Y + 0.0999
-						locn.Z = locn.Z - 0.001 //Still need to find correct z-component so centered properly
+						locn.Z = locn.Z - 0.001 // Still need to find correct z-component so centered properly
 						tubeMesh.SetPositionVec(&locn)
 						cr.push(tubeMesh, clickedElement)
 						worldApp.UpsertToScene(tubeMesh)
