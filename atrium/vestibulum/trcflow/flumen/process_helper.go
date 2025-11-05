@@ -15,9 +15,7 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
-var (
-	TierceronControllerFlow flowcore.FlowDefinition = flowcore.FlowDefinition{FlowHeader: flowcore.TierceronControllerFlow}
-)
+var TierceronControllerFlow flowcore.FlowDefinition = flowcore.FlowDefinition{FlowHeader: flowcore.TierceronControllerFlow}
 
 var changesLock sync.Mutex
 
@@ -42,7 +40,7 @@ func FlumenProcessFlowController(tfmContext flowcore.FlowMachineContext, tfConte
 		return ProcessTierceronFlows(trcTfmContext, trcFlowContext)
 	}
 
-	return errors.New("Table not implemented.")
+	return errors.New("table not implemented")
 }
 
 func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
@@ -52,8 +50,8 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 	vaultIndexColumnName string,
 	isInit bool,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, vaultIndexColumnName string, databaseName string, tableName string, dbCallBack func(any, string) (string, []string, [][]any, error)) (string, error),
-	flowPushRemote func(map[string]any, map[string]any) error) error {
-
+	flowPushRemote func(map[string]any, map[string]any) error,
+) error {
 	var matrixChangedEntries [][]any
 	var changedEntriesQuery string
 
@@ -70,8 +68,8 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 		eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 	for _, changedEntry := range matrixChangedEntries {
-		changedId := changedEntry[0]
-		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.QueryLock)
+		changedID := changedEntry[0]
+		_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getDeleteChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedID.(string)), tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 		}
@@ -79,9 +77,9 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 	changesLock.Unlock()
 
 	for _, changedEntry := range matrixChangedEntries {
-		changedId := changedEntry[0]
+		changedID := changedEntry[0]
 
-		changedTableQuery := `SELECT * FROM ` + tfContext.FlowHeader.SourceAlias + `.` + tfContext.FlowHeader.TableName() + ` WHERE ` + identityColumnName + `='` + changedId.(string) + `'` // TODO: Implement query using changedId
+		changedTableQuery := `SELECT * FROM ` + tfContext.FlowHeader.SourceAlias + `.` + tfContext.FlowHeader.TableName() + ` WHERE ` + identityColumnName + `='` + changedID.(string) + `'` // TODO: Implement query using changedID
 
 		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery, tfContext.QueryLock)
 		if err != nil {
@@ -96,7 +94,7 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 		// Convert matrix/slice to table map
 		// Columns are keys, values in tenantData
 
-		//Use trigger to make another table
+		// Use trigger to make another table
 
 		indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName(), func(engine any, query string) (string, []string, [][]any, error) {
 			return trcdb.Query(engine.(*trcengine.TierceronEngine), query, tfContext.QueryLock)
@@ -104,7 +102,7 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 		if indexPathErr != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, indexPathErr, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.QueryLock)
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedID.(string)), tfContext.QueryLock)
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			}
@@ -123,7 +121,7 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 		if seedError != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, seedError, false)
 			// Re-inject into changes because it might not be here yet...
-			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedId.(string)), tfContext.QueryLock)
+			_, _, _, err = trcdb.Query(tfmContext.TierceronEngine, getInsertChangeQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, changedID.(string)), tfContext.QueryLock)
 			if err != nil {
 				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
 			}

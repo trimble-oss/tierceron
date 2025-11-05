@@ -24,16 +24,16 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 		if strings.Contains(path, "Common") {
 			if !strings.Contains(path, ".") {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Expecting file extension with filepath", false)
-				fmt.Println("Expecting file extension with filepath: " + path)
+				fmt.Fprintln(os.Stderr, "Expecting file extension with filepath: "+path)
 				if eUtils.IsWindows() {
-					fmt.Println("Make sure filepath is in quotes.")
+					fmt.Fprintln(os.Stderr, "Make sure filepath is in quotes.")
 				}
 			}
 		}
 		if !strings.HasSuffix(filterTemplatePath, "/") {
 			path = filterTemplatePath + "/"
 		}
-		tfMap, err := mod.ReadData(fmt.Sprintf("templates/%stemplate-file", path)) //Grab extension of file
+		tfMap, err := mod.ReadData(fmt.Sprintf("templates/%stemplate-file", path)) // Grab extension of file
 		if err != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Skipping template: "+path+" Error: "+err.Error(), false)
 			continue
@@ -56,7 +56,7 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't decode data for: "+path+"template-file", false)
 			continue
 		}
-		//Ensure directory has been created
+		// Ensure directory has been created
 		filePath := strings.Trim(path, "/")
 		templateAndFilePath := fmt.Sprintf("%s/%s", dirName, filePath)
 		dirPath := filepath.Dir(templateAndFilePath)
@@ -125,7 +125,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				lookupPath = lookupPath + "template-file"
 			}
 			ext := ""
-			tfMap, err := mod.ReadData(lookupPath) //Grab extension of file
+			tfMap, err := mod.ReadData(lookupPath) // Grab extension of file
 			if err != nil {
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Skipping template: "+path+" Error: "+err.Error(), false)
 				continue
@@ -148,7 +148,7 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't decode data for: "+path+"template-file", false)
 				continue
 			}
-			//Ensure directory has been created
+			// Ensure directory has been created
 			filePath := strings.TrimSuffix(path, "/")
 			filePath = filePath[strings.Index(filePath, "/"):]
 			file := filePath[strings.LastIndex(filePath, "/"):]
@@ -172,15 +172,14 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't make directory components: "+dirPath, false)
 					continue
 				}
-				//create new file
+				// create new file
 				newFile, err := os.Create(templateFile)
-
 				if err != nil {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't create file: "+dirPath+file+ext+".tmpl", false)
 					continue
 				}
 				defer newFile.Close()
-				//write to file
+				// write to file
 				_, err = newFile.Write(templateBytes)
 				if err != nil {
 					eUtils.LogErrorMessage(driverConfig.CoreConfig, "Couldn't write file: "+dirPath+file+ext+".tmpl", false)

@@ -64,7 +64,7 @@ func KernelShutdownWatcher(logger *log.Logger) {
 	keepAliveChan <- true
 }
 
-// Loads a plugin's deploy.trc script directly from vault.
+// LoadPluginDeploymentScript - Loads a plugin's deploy.trc script directly from vault.
 func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
 	if strings.Contains(pwd, "TrcDeploy") && len(trcshDriverConfig.DriverConfig.DeploymentConfig) > 0 {
 		if deployment, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"]; ok {
@@ -77,7 +77,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			approle := "bamboo"
 			autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &tokenName, nil, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &approle, false)
 			if autoErr != nil {
-				fmt.Println("Missing auth components.")
+				fmt.Fprintln(os.Stderr, "Missing auth components.")
 				return nil, autoErr
 			}
 
@@ -90,11 +90,11 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				true,
 				trcshDriverConfig.DriverConfig.CoreConfig.Log)
 			if err != nil {
-				fmt.Println("Unable to obtain resources for deployment")
+				fmt.Fprintln(os.Stderr, "Unable to obtain resources for deployment")
 				return nil, err
 			}
 			mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-			fmt.Printf("Loading deployer details for %s and env %s\n", deployment, mod.EnvBasis)
+			fmt.Fprintf(os.Stderr, "Loading deployer details for %s and env %s\n", deployment, mod.EnvBasis)
 			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
 			if _, ok := deploymentConfig["trcdeploybasis"]; !ok {
 				// Whether to load agent deployment script from env basis instead of provided env.
@@ -103,7 +103,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.Env
 			}
 			if err != nil {
-				fmt.Println("Unable to obtain config for deployment")
+				fmt.Fprintln(os.Stderr, "Unable to obtain config for deployment")
 				return nil, err
 			}
 			deploymentConfig["trcpluginalias"] = deployment
@@ -116,7 +116,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 			if trcProjectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
-				fmt.Printf("Loading deployment script for %s and env %s\n", deployment, mod.Env)
+				fmt.Fprintf(os.Stderr, "Loading deployment script for %s and env %s\n", deployment, mod.Env)
 				deployScriptPath := fmt.Sprintf("./trc_templates/%s/deploy/deploy.trc.tmpl", trcProjectService.(string))
 				subErr := MountPluginFileSystem(trcshDriverConfig.DriverConfig,
 					deployScriptPath,
@@ -133,7 +133,7 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				content = []byte(contentArray)
 				return content, nil
 			} else {
-				fmt.Println("Project not configured and ready for deployment.  Missing projectservice")
+				fmt.Fprintln(os.Stderr, "Project not configured and ready for deployment.  Missing projectservice")
 				return nil, errors.New("project not configured and ready for deployment.  missing projectservice")
 			}
 		}
@@ -148,7 +148,7 @@ func MountPluginFileSystem(
 	projectService string,
 ) error {
 	if !strings.Contains(trcPath, "/deploy/") {
-		fmt.Println("Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
+		fmt.Fprintln(os.Stderr, "Trcsh - Failed to fetch template using projectServicePtr.  Path is missing /deploy/")
 		return errors.New("trcsh - Failed to fetch template using projectServicePtr.  path is missing /deploy/")
 	}
 	mergedEnvBasis := trcshDriverConfig.CoreConfig.EnvBasis
@@ -187,7 +187,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 		roleEntity := "bamboo"
 		autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, tokenNamePtr, &tokenPtr, &trcshDriverConfig.DriverConfig.CoreConfig.Env, &mergedEnvBasis, &roleEntity, false)
 		if autoErr != nil {
-			fmt.Println("Missing auth components.")
+			fmt.Fprintln(os.Stderr, "Missing auth components.")
 			return nil, autoErr
 		}
 	} else {
@@ -202,7 +202,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 		defer mod.Release()
 	}
 	if err != nil {
-		fmt.Println("Failure to init to vault")
+		fmt.Fprintln(os.Stderr, "Failure to init to vault")
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Failure to init to vault")
 		return nil, err
 	}
@@ -256,15 +256,15 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 						}
 						splitIds := strings.Split(ids, ",")
 						for _, id := range splitIds {
-							splitId := strings.Split(id, ":")
+							splitID := strings.Split(id, ":")
 							splitEnv := strings.Split(trcshDriverConfig.DriverConfig.CoreConfig.Env, "-")
-							if len(splitId) == 1 && len(splitEnv) == 1 && len(splitId[0]) > 0 && len(splitEnv[0]) > 0 {
-								valid_id = splitId[0]
+							if len(splitID) == 1 && len(splitEnv) == 1 && len(splitID[0]) > 0 && len(splitEnv[0]) > 0 {
+								valid_id = splitID[0]
 								break
-							} else if len(splitId) != 2 && len(splitEnv) != 2 && len(splitId[1]) > 0 && len(splitEnv[1]) > 0 {
+							} else if len(splitID) != 2 && len(splitEnv) != 2 && len(splitID[1]) > 0 && len(splitEnv[1]) > 0 {
 								return nil, errors.New("unexpected type of deployer ids returned from vault for " + deployment)
-							} else if len(splitEnv) > 1 && splitEnv[1] == splitId[0] {
-								valid_id = splitId[1]
+							} else if len(splitEnv) > 1 && splitEnv[1] == splitID[0] {
+								valid_id = splitID[1]
 								break
 							}
 						}
@@ -278,7 +278,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 				}
 				isValidInstance := false
 				if validEnv, ok := deploymentConfig["instances"]; ok && kernelopts.BuildOptions.IsKernel() {
-					kernelId := kernelPluginHandler.GetKernelId()
+					kernelID := kernelPluginHandler.GetKernelID()
 					if instances, ok := validEnv.(string); ok {
 						if len(instances) > 0 {
 							instancesList := strings.Split(instances, ",")
@@ -292,7 +292,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 										instanceKernelId, _ = strconv.Atoi(instance)
 									}
 
-									if kernelId >= 0 && instanceKernelId >= 0 && instanceKernelId == kernelId {
+									if kernelID >= 0 && instanceKernelId >= 0 && instanceKernelId == kernelID {
 										isValidInstance = true
 										break
 									}

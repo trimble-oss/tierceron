@@ -109,7 +109,6 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.showAuthPopup {
-
 			switch m.popupMode {
 			case "token":
 				switch msg.Type {
@@ -167,7 +166,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							// Chewbacca: If errors, maybe post an error message to popup?
 						}
 						m.historyIndex = 0
-						//m.cursor = 0
+						// m.cursor = 0
 						m.draft = ""
 						m.showAuthPopup = false
 						m.authError = ""
@@ -458,7 +457,7 @@ func (m *RoseaEditorModel) View() string {
 
 // func main() {
 // 	if err := tea.NewProgram(initialModel(nil)).Start(); err != nil {
-// 		fmt.Println("Error:", err)
+// 		fmt.Fprintln(os.Stderr, "Error:", err)
 // 		os.Exit(1)
 // 	}
 // }

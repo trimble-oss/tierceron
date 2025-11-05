@@ -18,8 +18,8 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron-hat/cap"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/opts/prod"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -36,8 +36,10 @@ func randomString(n int) string {
 	return string(b)
 }
 
-const configDir = "/.tierceron/config.yml"
-const envContextPrefix = "envContext: "
+const (
+	configDir        = "/.tierceron/config.yml"
+	envContextPrefix = "envContext: "
+)
 
 func GetSetEnvAddrContext(env string, envContext string, addrPort string) (string, string, string, error) {
 	dirname, err := os.UserHomeDir()
@@ -45,11 +47,11 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 		return "", "", "", err
 	}
 
-	//This will use env by default, if blank it will use context. If context is defined, it will replace context.
+	// This will use env by default, if blank it will use context. If context is defined, it will replace context.
 	if env == "" {
 		file, err := os.ReadFile(dirname + configDir)
 		if err != nil {
-			fmt.Printf("Could not read the context file due to this %s error \n", err)
+			fmt.Fprintf(os.Stderr, "Could not read the context file due to this %s error \n", err)
 			return "", "", "", err
 		}
 		fileContent := string(file)
@@ -64,10 +66,10 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 				output = fileContent + envContextPrefix + envContext + "\n"
 			}
 
-			if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+			if err = os.WriteFile(dirname+configDir, []byte(output), 0o600); err != nil {
 				return "", "", "", err
 			}
-			fmt.Println("Context flag has been written out.")
+			fmt.Fprintln(os.Stderr, "Context flag has been written out.")
 			env = envContext
 		} else {
 			re := regexp.MustCompile(`[-]?\d[\d,]*[\.]?[\d{2}]*`)
@@ -80,10 +82,10 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 			currentEnvContext := strings.TrimSpace(fileContent[strings.Index(fileContent, envContextPrefix)+len(envContextPrefix):])
 			if envContext != "" {
 				output := strings.Replace(fileContent, envContextPrefix+currentEnvContext, envContextPrefix+envContext, -1)
-				if err = os.WriteFile(dirname+configDir, []byte(output), 0600); err != nil {
+				if err = os.WriteFile(dirname+configDir, []byte(output), 0o600); err != nil {
 					return "", "", "", err
 				}
-				fmt.Println("Context flag has been written out.")
+				fmt.Fprintln(os.Stderr, "Context flag has been written out.")
 				env = envContext
 			} else if env == "" {
 				env = currentEnvContext
@@ -92,7 +94,7 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 		}
 	} else {
 		envContext = env
-		fmt.Println("Context flag will be ignored as env is defined.")
+		fmt.Fprintln(os.Stderr, "Context flag will be ignored as env is defined.")
 	}
 	return env, envContext, addrPort, nil
 }
@@ -169,15 +171,15 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 
 	if !kernelopts.BuildOptions.IsKernel() {
 		if eUtils.RefLength(kubeConfigPtr) == 0 {
-			if prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
+			if (prod.IsProd() && prod.IsStagingProd(trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)) || len(trcshDriverConfig.DriverConfig.TrcShellRaw) > 0 {
 				dir, err := os.UserHomeDir()
 				if err != nil {
-					fmt.Println("No homedir for current user")
+					fmt.Fprintln(os.Stderr, "No homedir for current user")
 					os.Exit(1)
 				}
 				fileBytes, err := os.ReadFile(dir + "/.kube/config")
 				if err != nil {
-					fmt.Println("No local kube config found...")
+					fmt.Fprintln(os.Stderr, "No local kube config found...")
 					os.Exit(1)
 				}
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth phase 1")
@@ -217,11 +219,11 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			var addrPort string
 			var env, envContext string
 
-			fmt.Println(err)
-			//Env should come from command line - not context here. but addr port is needed.
+			fmt.Fprintln(os.Stderr, err)
+			// Env should come from command line - not context here. but addr port is needed.
 			trcshConfig.Env, trcshConfig.EnvContext, addrPort, err = GetSetEnvAddrContext(env, envContext, addrPort)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Fprintln(os.Stderr, err)
 				return trcshConfig, err
 			}
 			vAddr := fmt.Sprintf("https://127.0.0.1:%s", addrPort)
@@ -301,14 +303,14 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 	}
 	certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName))
 	if err != nil {
-		fmt.Printf("Error reading data from vault: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Error reading data from vault: %s\n", err)
 		logger.Printf("Error reading data from vault: %s\n", err)
 		return false, err
 	}
 
 	ex, err := os.Executable()
 	if err != nil {
-		fmt.Printf("Unable to access executable: %s\n", err)
+		fmt.Fprintf(os.Stderr, "Unable to access executable: %s\n", err)
 		logger.Printf("Unable to access executable: %s\n", err)
 		return false, err
 	}
@@ -319,7 +321,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 	if _, ok := certifyMap["trcsha256"]; ok {
 		peerExe, err := os.Open(trcshaPath)
 		if err != nil {
-			fmt.Printf("Unable to open executable: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Unable to open executable: %s\n", err)
 			logger.Printf("Unable to open executable: %s\n", err)
 			return false, err
 		}
@@ -328,7 +330,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 
 		h := sha256.New()
 		if _, err := io.Copy(h, peerExe); err != nil {
-			fmt.Printf("Unable to copy file: %s\n", err)
+			fmt.Fprintf(os.Stderr, "Unable to copy file: %s\n", err)
 			logger.Printf("Unable to copy file: %s\n", err)
 			return false, err
 		}

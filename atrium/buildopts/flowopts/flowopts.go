@@ -39,7 +39,7 @@ func GetAdditionalFlowsByState(teststate string) []flowcore.FlowDefinition {
 	return []flowcore.FlowDefinition{}
 }
 
-// Process a test flow.
+// ProcessTestFlowController - Process a test flow.
 func ProcessTestFlowController(tfmContext flowcore.FlowMachineContext, trcFlowContext flowcore.FlowContext) error {
 	return errors.New("flow not implemented")
 }
@@ -72,7 +72,7 @@ func GetFlowMachineTemplates() map[string]any {
 	return pluginConfig
 }
 
-// Placeholder
+// AskFlumeResponse - response structure for AskFlume
 type AskFlumeResponse struct {
 	Message string
 	Type    string
@@ -83,34 +83,34 @@ type AskFlumeResponse struct {
 func ProcessAskFlumeEventMapper(askFlumeContext *trcflowcore.AskFlumeContext, query *trcflowcore.AskFlumeMessage, tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) *trcflowcore.AskFlumeMessage {
 	var msg *trcflowcore.AskFlumeMessage
 
-	sql_query := make(map[string]any)
+	sqlQuery := make(map[string]any)
 
 	switch {
 	case query.Message == "DataFlowState":
-		sql_query["TrcQuery"] = "select distinct argosId, flowName, stateCode, stateName, lastTestedDate from DataflowStatistics where stateName like '%Failed%'"
+		sqlQuery["TrcQuery"] = "select distinct argosId, flowName, stateCode, stateName, lastTestedDate from DataflowStatistics where stateName like '%Failed%'"
 	default:
 		return nil
 	}
 
 	// Not enough time to check how to implement above queries, so only runs the query below
 	for {
-		rows, _ := tfmContext.CallDBQuery(tfContext, sql_query, nil, false, "SELECT", nil, "")
-		encoded_rows, err := json.Marshal(rows)
+		rows, _ := tfmContext.CallDBQuery(tfContext, sqlQuery, nil, false, "SELECT", nil, "")
+		encodedRows, err := json.Marshal(rows)
 		if err != nil {
 			log.Printf("error encoding result from trcdb: %v", err)
 		}
 		if len(rows) > 0 {
 			msg = &trcflowcore.AskFlumeMessage{
-				Id:      query.Id,
+				ID:      query.ID,
 				Type:    query.Message,
-				Message: string(encoded_rows),
+				Message: string(encodedRows),
 			}
 			break
 		} else {
 			msg = &trcflowcore.AskFlumeMessage{
-				Id:      query.Id,
+				ID:      query.ID,
 				Type:    "No results",
-				Message: string(encoded_rows),
+				Message: string(encodedRows),
 			}
 			break
 

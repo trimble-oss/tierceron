@@ -33,7 +33,7 @@ func defaultEmpty() *string {
 }
 
 func PrintVersion() {
-	fmt.Println("trcshinit Version: " + "1.38")
+	fmt.Fprintln(os.Stderr, "trcshinit Version: "+"1.39")
 }
 
 // This assumes that the vault is completely new, and should only be run for the purpose
@@ -45,8 +45,8 @@ func CommonMain(envPtr *string,
 	uploadCertPtr *bool,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *config.DriverConfig) {
-
+	driverConfig *config.DriverConfig,
+) {
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
@@ -129,8 +129,7 @@ func CommonMain(envPtr *string,
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
-				fmt.Println("Wrong flag syntax: ", s)
-				os.Exit(1)
+				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Wrong flag syntax: %s", s), 1)
 			}
 		}
 		eUtils.CheckInitFlags(flagset, argLines[1:])
@@ -158,7 +157,7 @@ func CommonMain(envPtr *string,
 		}
 
 		// Initialize logging
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		if f != nil {
 			defer f.Close()
 		}
@@ -173,8 +172,7 @@ func CommonMain(envPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s_unrestricted", envBasis)
 			tokenNamePtr = &tokenName
 			if strings.ContainsAny(*tokenPtr, " \t\n\r") {
-				fmt.Println("Invalid -token contains whitespace")
-				os.Exit(1)
+				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Invalid -token contains whitespace", 1)
 			}
 
 			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
@@ -183,8 +181,7 @@ func CommonMain(envPtr *string,
 		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {
 			if driverConfigBase != nil && driverConfigBase.CoreConfig != nil && driverConfigBase.CoreConfig.TokenCache != nil {
 				if driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr) == nil {
-					fmt.Println("-token cannot be empty.")
-					os.Exit(1)
+					eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "-token cannot be empty.", 1)
 				}
 			}
 		}
@@ -198,25 +195,21 @@ func CommonMain(envPtr *string,
 	allowNonLocal := false
 
 	if *namespaceVariable == "" && *newPtr {
-		fmt.Println("Namespace (-namespace) required to initialize a new vault.")
-		os.Exit(1)
+		eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Namespace (-namespace) required to initialize a new vault.", 1)
 	}
 
 	if *newPtr {
 		currentDir, dirErr := os.Getwd()
 		if dirErr != nil {
-			fmt.Println("Couldn not retrieve current working directory")
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Couldn not retrieve current working directory", 1)
 		}
 
 		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/token_files"); err != nil {
-			fmt.Println("Could not locate token files required to initialize a new vault.")
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Could not locate token files required to initialize a new vault.", 1)
 		}
 
 		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/policy_files"); err != nil {
-			fmt.Println("Could not locate policy files  required to initialize a new vault.")
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Could not locate policy files  required to initialize a new vault.", 1)
 		}
 	}
 
@@ -224,18 +217,18 @@ func CommonMain(envPtr *string,
 	if *insecurePtr {
 		if isLocal, lookupErr := helperkv.IsUrlIp(*driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr); isLocal && lookupErr == nil {
 			// This is fine...
-			fmt.Println("Initialize local vault.")
+			fmt.Fprintln(os.Stderr, "Initialize local vault.")
 		} else {
 			scanner := bufio.NewScanner(os.Stdin)
 			// Enter ID tokens
-			fmt.Println("Are you sure you want to connect to non local server with self signed cert(Y): ")
+			fmt.Fprintln(os.Stderr, "Are you sure you want to connect to non local server with self signed cert(Y): ")
 			scanner.Scan()
 			skipVerify := scanner.Text()
 			if skipVerify == "Y" || skipVerify == "y" {
 				// Good to go.
 				allowNonLocal = true
 			} else {
-				fmt.Println("This is a remote host and you did not confirm allow non local.  If this is a remote host with a self signed cert, init will fail.")
+				fmt.Fprintln(os.Stderr, "This is a remote host and you did not confirm allow non local.  If this is a remote host with a self signed cert, init will fail.")
 				*insecurePtr = false
 			}
 		}
@@ -244,15 +237,15 @@ func CommonMain(envPtr *string,
 	if *nestPtr {
 		var input string
 
-		fmt.Printf("Are you sure you want to seed nested files? [y|n]: ")
+		fmt.Fprintf(os.Stderr, "Are you sure you want to seed nested files? [y|n]: ")
 		_, err := fmt.Scanln(&input)
 		if err != nil {
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Failed to read input", 1)
 		}
 		input = strings.ToLower(input)
 
 		if input != "y" && input != "yes" {
-			os.Exit(1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Seeding nested files aborted", 1)
 		}
 	}
 
@@ -260,12 +253,12 @@ func CommonMain(envPtr *string,
 		eUtils.IndexNameFilterPtr = eUtils.ServiceFilterPtr
 	}
 
-	var indexSlice = make([]string, 0) //Checks for indexed projects
+	indexSlice := make([]string, 0) // Checks for indexed projects
 	if eUtils.IndexedPtr != nil && len(*eUtils.IndexedPtr) > 0 {
 		indexSlice = append(indexSlice, strings.Split(*eUtils.IndexedPtr, ",")...)
 	}
 
-	var restrictedSlice = make([]string, 0) //Checks for restricted projects
+	restrictedSlice := make([]string, 0) // Checks for restricted projects
 	if eUtils.RestrictedPtr != nil && len(*eUtils.RestrictedPtr) > 0 {
 		restrictedSlice = append(restrictedSlice, strings.Split(*eUtils.RestrictedPtr, ",")...)
 	}
@@ -289,7 +282,7 @@ func CommonMain(envPtr *string,
 	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
 		if !driverConfigBase.CoreConfig.IsEditor {
 			if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
-				fmt.Println("Missing required seed folder: " + *seedPtr)
+				fmt.Fprintln(os.Stderr, "Missing required seed folder: "+*seedPtr)
 				os.Exit(1)
 			}
 		}
@@ -297,13 +290,13 @@ func CommonMain(envPtr *string,
 
 	if *prodPtr {
 		if !strings.HasPrefix(*envPtr, "staging") && !strings.HasPrefix(*envPtr, "prod") {
-			fmt.Println("The prod flag can only be used with the staging or prod env.")
+			fmt.Fprintln(os.Stderr, "The prod flag can only be used with the staging or prod env.")
 			flag.Usage()
 			os.Exit(1)
 		}
 	} else {
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
-			fmt.Println("The prod flag should be used with the staging or prod env.")
+			fmt.Fprintln(os.Stderr, "The prod flag should be used with the staging or prod env.")
 			flag.Usage()
 			os.Exit(1)
 		}
@@ -326,18 +319,18 @@ func CommonMain(envPtr *string,
 	v, err := sys.NewVaultWithNonlocal(*insecurePtr, driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, *envPtr, *newPtr, *pingPtr, false, allowNonLocal, driverConfigBase.CoreConfig.Log)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate signed by unknown authority") {
-			fmt.Printf("Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
+			fmt.Fprintf(os.Stderr, "Attempting to connect to insecure vault or vault with self signed certificate.  If you really wish to continue, you may add -insecure as on option.\n")
 		} else if strings.Contains(err.Error(), "no such host") {
-			fmt.Printf("failed to connect to vault - missing host")
+			fmt.Fprintf(os.Stderr, "failed to connect to vault - missing host")
 		} else {
-			fmt.Println(err.Error())
+			fmt.Fprintln(os.Stderr, err.Error())
 		}
 
 		os.Exit(0)
 	}
 	if *pingPtr {
 		if err != nil {
-			fmt.Printf("Ping failure: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Ping failure: %v\n", err)
 		}
 		os.Exit(0)
 	}
@@ -365,19 +358,19 @@ func CommonMain(envPtr *string,
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
 		if err != nil || totalKeyShard > math.MaxInt {
-			fmt.Println("Unable to parse totalKeyShard into int")
+			fmt.Fprintln(os.Stderr, "Unable to parse totalKeyShard into int")
 			os.Exit(-1)
 		}
 		keyThreshold, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
 		if err != nil || keyThreshold > math.MaxInt {
-			fmt.Println("Unable to parse keyThreshold into int")
+			fmt.Fprintln(os.Stderr, "Unable to parse keyThreshold into int")
 			os.Exit(-1)
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
 		eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, true)
 		v.SetToken(keyToken.TokenPtr)
 		v.SetShards(keyToken.Keys)
-		//check error returned by unseal
+		// check error returned by unseal
 		_, _, _, err = v.Unseal()
 		eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, true)
 	}
@@ -385,27 +378,27 @@ func CommonMain(envPtr *string,
 
 	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
 		if *initNamespace {
-			fmt.Println("Creating tokens, roles, and policies.")
+			fmt.Fprintln(os.Stderr, "Creating tokens, roles, and policies.")
 			policyExists, policyErr := il.GetExistsPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v)
 			if policyErr != nil {
 				eUtils.LogErrorObject(driverConfigBase.CoreConfig, policyErr, false)
-				fmt.Println("Cannot safely determine policy.")
+				fmt.Fprintln(os.Stderr, "Cannot safely determine policy.")
 				os.Exit(-1)
 			}
 
 			if policyExists {
-				fmt.Printf("Policy exists for policy configurations in directory: %s.  Refusing to continue.\n", namespacePolicyConfigs)
+				fmt.Fprintf(os.Stderr, "Policy exists for policy configurations in directory: %s.  Refusing to continue.\n", namespacePolicyConfigs)
 				os.Exit(-1)
 			}
 
 			roleExists, roleErr := il.GetExistsRoles(driverConfigBase.CoreConfig, namespaceRoleConfigs, v)
 			if roleErr != nil {
 				eUtils.CheckError(driverConfigBase.CoreConfig, roleErr, false)
-				fmt.Println("Cannot safely determine role.")
+				fmt.Fprintln(os.Stderr, "Cannot safely determine role.")
 			}
 
 			if roleExists {
-				fmt.Printf("Role exists for role configurations in directory: %s.  Refusing to continue.\n", namespaceRoleConfigs)
+				fmt.Fprintf(os.Stderr, "Role exists for role configurations in directory: %s.  Refusing to continue.\n", namespaceRoleConfigs)
 				os.Exit(-1)
 			}
 
@@ -414,15 +407,15 @@ func CommonMain(envPtr *string,
 			//
 
 			// Upload Create/Update new cidr roles.
-			fmt.Println("Creating role")
+			fmt.Fprintln(os.Stderr, "Creating role")
 			il.UploadTokenCidrRoles(driverConfigBase.CoreConfig, namespaceRoleConfigs, v)
 			// Upload Create/Update policies from the given policy directory
 
-			fmt.Println("Creating policy")
+			fmt.Fprintln(os.Stderr, "Creating policy")
 			il.UploadPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v, false)
 
 			// Upload tokens from the given token directory
-			fmt.Println("Creating tokens")
+			fmt.Fprintln(os.Stderr, "Creating tokens")
 			tokens := il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 			if len(tokens) > 0 {
 				driverConfigBase.CoreConfig.Log.Println(*namespaceVariable + " tokens successfully created.")
@@ -431,32 +424,32 @@ func CommonMain(envPtr *string,
 			}
 			os.Exit(0)
 		} else {
-			fmt.Println("initns or rotateTokens required with the namespace paramater.")
+			fmt.Fprintln(os.Stderr, "initns or rotateTokens required with the namespace paramater.")
 			os.Exit(0)
 		}
 	}
 
 	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole) {
 		if *tokenExpiration {
-			fmt.Println("Checking token expiration.")
+			fmt.Fprintln(os.Stderr, "Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
 			eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
-			fmt.Println("AppRole id: " + roleId + " expiration is set to (zero means never expire): " + lease)
+			fmt.Fprintln(os.Stderr, "AppRole id: "+roleId+" expiration is set to (zero means never expire): "+lease)
 		} else {
 			if *rotateTokens {
 				if len(tokenFileFiltersSet) == 0 {
-					fmt.Println("Rotating tokens.")
+					fmt.Fprintln(os.Stderr, "Rotating tokens.")
 				} else {
-					fmt.Print("Adding tokens: ")
+					fmt.Fprint(os.Stderr, "Adding tokens: ")
 					first := true
-					for tokenFilter, _ := range tokenFileFiltersSet {
+					for tokenFilter := range tokenFileFiltersSet {
 						if !first {
-							fmt.Print(", ")
+							fmt.Fprint(os.Stderr, ", ")
 							first = false
 						}
-						fmt.Print(tokenFilter)
+						fmt.Fprint(os.Stderr, tokenFilter)
 					}
-					fmt.Println()
+					fmt.Fprintln(os.Stderr)
 				}
 			}
 		}
@@ -468,43 +461,43 @@ func CommonMain(envPtr *string,
 				*doTidyPtr,
 				driverConfigBase.CoreConfig.Log)
 			if getOrRevokeError != nil {
-				fmt.Println("Token revocation or access failure.  Cannot continue.")
+				fmt.Fprintln(os.Stderr, "Token revocation or access failure.  Cannot continue.")
 				os.Exit(-1)
 			}
 		}
 
 		if *updateRole {
 			// Upload Create/Update new cidr roles.
-			fmt.Println("Updating role")
+			fmt.Fprintln(os.Stderr, "Updating role")
 			errTokenCidr := il.UploadTokenCidrRoles(driverConfigBase.CoreConfig, namespaceRoleConfigs, v)
 			if errTokenCidr != nil {
-				if *roleFileFilterPtr != "" { //If old way didn't work -> try new way.
+				if *roleFileFilterPtr != "" { // If old way didn't work -> try new way.
 					*rotateTokens = true
 				} else {
-					fmt.Println("Role update failed.  Cannot continue.")
+					fmt.Fprintln(os.Stderr, "Role update failed.  Cannot continue.")
 					os.Exit(-1)
 				}
 			} else {
-				fmt.Println("Role updated")
+				fmt.Fprintln(os.Stderr, "Role updated")
 			}
 		}
 
 		if *updatePolicy {
 			// Upload Create/Update policies from the given policy directory
-			fmt.Println("Updating policies")
+			fmt.Fprintln(os.Stderr, "Updating policies")
 			errTokenPolicy := il.UploadPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v, false)
 			if errTokenPolicy != nil {
-				fmt.Println("Policy update failed.  Cannot continue.")
+				fmt.Fprintln(os.Stderr, "Policy update failed.  Cannot continue.")
 				os.Exit(-1)
 			} else {
-				fmt.Println("Policies updated")
+				fmt.Fprintln(os.Stderr, "Policies updated")
 			}
 		}
 
 		if *rotateTokens && !*tokenExpiration {
 			var tokens []*apinator.InitResp_Token
 			// Create new tokens.
-			fmt.Println("Creating new tokens")
+			fmt.Fprintln(os.Stderr, "Creating new tokens")
 			tokens = il.UploadTokens(driverConfigBase.CoreConfig, namespaceTokenConfigs, tokenFileFiltersSet, v)
 
 			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
@@ -513,7 +506,7 @@ func CommonMain(envPtr *string,
 			}
 
 			if err != nil {
-				fmt.Println("Error creating modifer.")
+				fmt.Fprintln(os.Stderr, "Error creating modifer.")
 				eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
 				os.Exit(-1)
 			}
@@ -530,7 +523,7 @@ func CommonMain(envPtr *string,
 			// Process existing approles for provided namespace
 			approleFiles := il.GetApproleFileNames(driverConfigBase.CoreConfig, *namespaceVariable)
 			if len(approleFiles) == 0 {
-				fmt.Println("No approles found for namespace: " + *namespaceVariable)
+				fmt.Fprintln(os.Stderr, "No approles found for namespace: "+*namespaceVariable)
 			} else {
 				for _, approleFile := range approleFiles {
 					if len(approleFilters) > 0 {
@@ -548,7 +541,7 @@ func CommonMain(envPtr *string,
 					tokenMap := map[string]any{}
 					fileYAML, parseErr := il.ParseApproleYaml(approleFile, *namespaceVariable)
 					if parseErr != nil {
-						fmt.Println("Read parsing approle yaml file, continuing to next file.")
+						fmt.Fprintln(os.Stderr, "Read parsing approle yaml file, continuing to next file.")
 						eUtils.LogErrorObject(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
@@ -556,7 +549,7 @@ func CommonMain(envPtr *string,
 						mod.EnvBasis = approleName
 						mod.Env = approleName
 					} else {
-						fmt.Println("Read parsing approle name from file, continuing to next file.")
+						fmt.Fprintln(os.Stderr, "Read parsing approle name from file, continuing to next file.")
 						eUtils.LogErrorObject(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
@@ -565,21 +558,21 @@ func CommonMain(envPtr *string,
 					if permMap, okPerms := fileYAML["Token_Permissions"].(map[any]any); okPerms {
 						tokenPerms = permMap
 					} else {
-						fmt.Println("Read parsing approle token permissions from file, continuing to next file.")
+						fmt.Fprintln(os.Stderr, "Read parsing approle token permissions from file, continuing to next file.")
 						eUtils.LogErrorObject(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
 
 					if len(tokenPerms) == 0 {
-						fmt.Println("Completely skipping " + mod.EnvBasis + " as there is no token permission for this approle.")
+						fmt.Fprintln(os.Stderr, "Completely skipping "+mod.EnvBasis+" as there is no token permission for this approle.")
 						continue
 					}
 
 					if len(tokenFileFiltersSet) > 0 && tokenFileFiltersSet["*"] == false {
 						// Filter out tokens that
-						for tokenFilter, _ := range tokenFileFiltersSet {
+						for tokenFilter := range tokenFileFiltersSet {
 							if found, ok := tokenPerms[tokenFilter].(bool); !ok && !found {
-								fmt.Println("Skipping " + mod.EnvBasis + " as there is no token permission for this approle.")
+								fmt.Fprintln(os.Stderr, "Skipping "+mod.EnvBasis+" as there is no token permission for this approle.")
 								continue
 							}
 						}
@@ -591,7 +584,7 @@ func CommonMain(envPtr *string,
 						// TODO: consider scenarios...
 					} else {
 						// Check the filtering...
-						for tokenFilter, _ := range tokenFileFiltersSet {
+						for tokenFilter := range tokenFileFiltersSet {
 							if _, ok := existingTokens[tokenFilter].(string); !ok {
 								hasAllFilteredTokens = false
 								break
@@ -615,7 +608,7 @@ func CommonMain(envPtr *string,
 						}
 					}
 
-					//Overwrite with new tokens.
+					// Overwrite with new tokens.
 					for _, token := range tokens {
 						// Everything but webapp give access by app role and secret.
 						if found, ok := tokenPerms[token.Name].(bool); ok && found && token.Name != "admin" && token.Name != "webapp" {
@@ -649,13 +642,13 @@ func CommonMain(envPtr *string,
 						secretID, err := v.GetSecretID(mod.EnvBasis)
 						eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 
-						fmt.Printf("Rotated role id and secret id for %s.\n", mod.EnvBasis)
-						fmt.Printf("Role ID: %s\n", roleID)
-						fmt.Printf("Secret ID: %s\n", secretID)
+						fmt.Fprintf(os.Stderr, "Rotated role id and secret id for %s.\n", mod.EnvBasis)
+						fmt.Fprintf(os.Stderr, "Role ID: %s\n", roleID)
+						fmt.Fprintf(os.Stderr, "Secret ID: %s\n", secretID)
 					} else {
-						fmt.Printf("Existing role token count: %d.\n", len(existingTokens))
-						fmt.Printf("Adding token to role: %s.\n", mod.EnvBasis)
-						fmt.Printf("Post add role token count: %d.\n", len(tokenMap))
+						fmt.Fprintf(os.Stderr, "Existing role token count: %d.\n", len(existingTokens))
+						fmt.Fprintf(os.Stderr, "Adding token to role: %s.\n", mod.EnvBasis)
+						fmt.Fprintf(os.Stderr, "Post add role token count: %d.\n", len(tokenMap))
 					}
 
 					// Just update tokens in approle.
@@ -664,7 +657,7 @@ func CommonMain(envPtr *string,
 						warn, err := mod.Write("super-secrets/tokens", tokenMap, driverConfigBase.CoreConfig.Log)
 						eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 						eUtils.LogWarningsObject(driverConfigBase.CoreConfig, warn, true)
-						fmt.Println("Approle tokens refreshed/updated.")
+						fmt.Fprintln(os.Stderr, "Approle tokens refreshed/updated.")
 					}
 				}
 			}
@@ -685,7 +678,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	//TODO: Figure out raft storage initialization for -new flag
+	// TODO: Figure out raft storage initialization for -new flag
 	if *newPtr {
 		mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log) // Connect to vault
 		if mod != nil {
@@ -696,13 +689,13 @@ func CommonMain(envPtr *string,
 		mod.Env = "bamboo"
 
 		if mod.Exists("values/metadata") || mod.Exists("templates/metadata") || mod.Exists("super-secrets/metadata") {
-			fmt.Println("Vault has been initialized already...")
+			fmt.Fprintln(os.Stderr, "Vault has been initialized already...")
 			os.Exit(1)
 		}
 
 		policyExists, err := il.GetExistsPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v)
 		if policyExists || err != nil {
-			fmt.Printf("Vault may be initialized already - Policies exists.\n")
+			fmt.Fprintf(os.Stderr, "Vault may be initialized already - Policies exists.\n")
 			os.Exit(1)
 		}
 
@@ -734,9 +727,9 @@ func CommonMain(envPtr *string,
 			secretID, err := v.GetSecretID("bamboo")
 			eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 
-			fmt.Printf("Created new role id and secret id for bamboo.\n")
-			fmt.Printf("Role ID: %s\n", roleID)
-			fmt.Printf("Secret ID: %s\n", secretID)
+			fmt.Fprintf(os.Stderr, "Created new role id and secret id for bamboo.\n")
+			fmt.Fprintf(os.Stderr, "Role ID: %s\n", roleID)
+			fmt.Fprintf(os.Stderr, "Secret ID: %s\n", secretID)
 
 			files, err := os.ReadDir(namespaceAppRolePolicies)
 			appRolePolicies := []string{}
@@ -750,14 +743,14 @@ func CommonMain(envPtr *string,
 					fileYAML, parseErr := il.ParseApproleYaml(filename, *namespaceVariable)
 					if parseErr != nil {
 						isPolicy = false
-						fmt.Println("Unable to parse approle yaml file, continuing to next file.")
+						fmt.Fprintln(os.Stderr, "Unable to parse approle yaml file, continuing to next file.")
 						eUtils.CheckError(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
 					_, okPerms := fileYAML["Token_Permissions"].(map[any]any)
 					if !okPerms {
 						isPolicy = false
-						fmt.Println("Read incorrect approle token permissions from file, continuing to next file.")
+						fmt.Fprintln(os.Stderr, "Read incorrect approle token permissions from file, continuing to next file.")
 						eUtils.CheckError(driverConfigBase.CoreConfig, parseErr, false)
 						continue
 					}
@@ -798,9 +791,9 @@ func CommonMain(envPtr *string,
 				appRoleSecretID, err := v.GetSecretID(appRolePolicy)
 				eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 
-				fmt.Printf("Created new role id and secret id for " + appRolePolicy + ".\n")
-				fmt.Printf("Role ID: %s\n", appRoleID)
-				fmt.Printf("Secret ID: %s\n", appRoleSecretID)
+				fmt.Fprintf(os.Stderr, "Created new role id and secret id for "+appRolePolicy+".\n")
+				fmt.Fprintf(os.Stderr, "Role ID: %s\n", appRoleID)
+				fmt.Fprintf(os.Stderr, "Secret ID: %s\n", appRoleSecretID)
 			}
 
 			// Store all new tokens to new appRole.
@@ -837,7 +830,7 @@ func CommonMain(envPtr *string,
 		var filteredSectionSlice []string
 		var serviceFilterSlice []string
 		var fileFilter []string
-		var subSectionSlice = []string{} //Assign slice with the appriopiate slice
+		subSectionSlice := []string{} // Assign slice with the appriopiate slice
 
 		if !*uploadCertPtr {
 			if len(restrictedSlice) > 0 {
@@ -867,7 +860,7 @@ func CommonMain(envPtr *string,
 				}
 				serviceFilterSlice = strings.Split(*eUtils.ServiceFilterPtr, ",")
 				if len(*eUtils.ServiceNameFilterPtr) > 0 {
-					*eUtils.ServiceNameFilterPtr = "/" + *eUtils.ServiceNameFilterPtr //added "/" - used path later
+					*eUtils.ServiceNameFilterPtr = "/" + *eUtils.ServiceNameFilterPtr // added "/" - used path later
 				}
 			}
 			if len(serviceFilterSlice) > 0 {

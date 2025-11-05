@@ -70,7 +70,6 @@ func sendResults(credentials string, chatSpace string, diagRes *ttsdk.Diagnostic
 }
 
 func getTalkBackReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
-
 	env, err := echocore.GetEnvByMessageId(diagReq.MessageId)
 	if err != nil {
 		log.Printf("getTalkBackReport: message targeting un-authorized bus: %s", diagReq.MessageId)
@@ -102,7 +101,7 @@ func getReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, err
 		return nil, err
 	}
 	certPool.AppendCertsFromPEM(cert)
-	var tlsConfig = &tls.Config{RootCAs: certPool}
+	tlsConfig := &tls.Config{RootCAs: certPool}
 
 	tlsOpt := grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 	opts = append(opts, tlsOpt)
@@ -265,7 +264,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		diagnosticRequest := &ttsdk.DiagnosticRequest{
 			MessageId:   util.GenMsgId(env),
 			Diagnostics: util.ParseDiagnostics(receivedChat.Message.Text),
-			TenantId:    util.ParseTenantID(receivedChat.Message.Text),
+			QueryId:     util.ParseTenantID(receivedChat.Message.Text),
 			Data:        util.ParseData(receivedChat.Message.Text),
 		}
 
@@ -324,7 +323,7 @@ func (h *routeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		messageHandler(w, r)
 	default:
 		http.NotFound(w, r)
-		//messageHandler(w, r)
+		// messageHandler(w, r)
 	}
 }
 
@@ -341,7 +340,6 @@ func StopHttpServer() {
 }
 
 func InitHttpServer(configContext *tccore.ConfigContext, send_err func(error)) {
-
 	if portInterface, ok := (*configContext.Config)["http_server_port"]; ok {
 		var echoPort int
 		if port, ok := portInterface.(int); ok {
@@ -356,7 +354,7 @@ func InitHttpServer(configContext *tccore.ConfigContext, send_err func(error)) {
 			}
 		}
 		httpServerMux := http.NewServeMux()
-		//httpServer.IdleTimeout = 30 * time.Second
+		// httpServer.IdleTimeout = 30 * time.Second
 		httpServerMux.HandleFunc("/", (&routeHandler{}).ServeHTTP)
 		var err error
 
@@ -406,7 +404,6 @@ func InitHttpServer(configContext *tccore.ConfigContext, send_err func(error)) {
 		httpServer = &http.Server{Handler: httpServerMux}
 		go func(hs *http.Server, l *net.Listener) {
 			err = hs.Serve(*l)
-
 			if err != nil {
 				log.Fatal(err)
 			}

@@ -113,7 +113,7 @@ func LoadFromKube(kubeConfigBytes []byte, config *coreconfig.CoreConfig) (*TrcKu
 func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfigPtr)
 	if decodeErr != nil {
-		fmt.Println("Decoding error")
+		fmt.Fprintln(os.Stderr, "Decoding error")
 		eUtils.LogErrorObject(config, decodeErr, false)
 	}
 
@@ -141,7 +141,6 @@ func ParseTrcKubeContext(trcKubeContext *TrcKubeContext, deployArgs []string) *T
 				trcKubeContext.Namespace = argsSlice[1]
 			}
 		}
-
 	}
 
 	return trcKubeContext
@@ -171,7 +170,7 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 				} else if deployArgs[i] == "configmap" {
 					trcKubeDirective.Name = deployArgs[i+1]
 				} else {
-					fmt.Println("Unsupported element: " + deployArgs[i])
+					fmt.Fprintln(os.Stderr, "Unsupported element: "+deployArgs[i])
 				}
 			}
 		} else {
@@ -281,7 +280,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 	}
 
 	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
-		fmt.Printf("ConfigMap file sources: %v\n", fileSources)
+		fmt.Fprintf(os.Stderr, "ConfigMap file sources: %v\n", fileSources)
 		for _, fileSource := range fileSources {
 			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
 			if err != nil {
