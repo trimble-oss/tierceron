@@ -14,7 +14,7 @@ import (
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
 )
 
-// FilterByAvroKey -- Ensure we only look at messages for a specific key.  Returns true if a test is found, false otherwise.
+// FilterByAvroKeyMap -- Ensure we only look at messages for a specific key.  Returns true if a test is found, false otherwise.
 // Presently only matches on integer index keys.  So, in this case allows
 // rejection of further processing of messages based on for instance sociiId.
 func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) bool {
@@ -34,7 +34,7 @@ func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) 
 		noMatch := false
 
 		r.kafkaTestBundleLock.RLock()
-		kafkaTestBundle, _ := r.kafkaTestBundle[testKey]
+		kafkaTestBundle := r.kafkaTestBundle[testKey]
 
 		r.kafkaTestBundleLock.RUnlock()
 
@@ -71,7 +71,7 @@ func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) 
 	return false
 }
 
-// FindByKeyIndex -- finds matching test by index.
+// FindByAvroKeyIndex -- finds matching test by index.
 func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey map[string]interface{}, kafkaLogicalKey map[string]interface{}) *KafkaTestBundle {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
@@ -85,7 +85,7 @@ func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey m
 		noMatch := false
 
 		r.kafkaTestBundleLock.RLock()
-		kafkaTestBundle, _ := r.kafkaTestBundle[testKey]
+		kafkaTestBundle := r.kafkaTestBundle[testKey]
 
 		r.kafkaTestBundleLock.RUnlock()
 
@@ -237,38 +237,38 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kafka.Message) {
 				if actualDecimal, decimalOk := avMap["bytes.decimal"].(*big.Rat); decimalOk {
 					if evv.(*big.Rat).Cmp(actualDecimal) != 0 {
 						etlcore.LogError(fmt.Sprintf("Failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal))
-						err = fmt.Errorf("Failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal)
+						err = fmt.Errorf("failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal)
 						break
 					}
 				} else if actualString, stringOk := avMap["string"].(string); stringOk {
 					if evvString, evvStrOk := evv.(string); evvStrOk {
 						if evvString != actualString {
 							etlcore.LogError(fmt.Sprintf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString))
-							err = fmt.Errorf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
+							err = fmt.Errorf("failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
 							break
 						}
 					} else {
 						etlcore.LogError(fmt.Sprintf("Failure to parse string value Key: %s Value: %v", evk, evv))
-						err = fmt.Errorf("Failure to parse string value Key: %s Value: %v", evk, evv)
+						err = fmt.Errorf("failure to parse string value Key: %s Value: %v", evk, evv)
 						break
 					}
 				} else if actualTime, timeOk := avMap["int.date"].(time.Time); timeOk {
 					if evvTime, evvTimeOk := evv.(time.Time); evvTimeOk {
 						utcTime := evvTime.UTC()
 						if utcTime != actualTime {
-							etlcore.LogError(fmt.Sprintf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
-							err = fmt.Errorf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
+							etlcore.LogError(fmt.Sprintf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
+							err = fmt.Errorf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
 							break
 						}
 					} else {
-						etlcore.LogError(fmt.Sprintf("Failure to parse Time value Key: %s Value: %v", evk, evv))
-						err = fmt.Errorf("Failure to parse Time value Key: %s Value: %v", evk, evv)
+						etlcore.LogError(fmt.Sprintf("failure to parse Time value Key: %s Value: %v", evk, evv))
+						err = fmt.Errorf("failure to parse Time value Key: %s Value: %v", evk, evv)
 						break
 					}
 				}
 			}
 		} else {
-			err = fmt.Errorf("Skipping event for topic: %s.  Avro package missing expected value key %v", r.TopicName, evk)
+			err = fmt.Errorf("skipping event for topic: %s.  Avro package missing expected value key %v", r.TopicName, evk)
 			break
 		}
 	}

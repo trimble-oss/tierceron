@@ -45,7 +45,7 @@ func (tl *TrcDBServerEventListener) QueryStarted(query string) {
 				//					sync.Release()
 				//				}
 
-				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %s %v\n", flowName)
+				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %s\n", flowName)
 				// Query with bindings may not be deadlock safe.
 				// Disable this for now and hope the triggers work.
 				// if sqlValues, sqlValuesOk := sqlInsert.Rows.(sqlparser.Values); sqlValuesOk {
