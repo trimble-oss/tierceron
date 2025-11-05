@@ -49,7 +49,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/viride.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Viride unable to sha256 plugin")
 		return
 	}
 

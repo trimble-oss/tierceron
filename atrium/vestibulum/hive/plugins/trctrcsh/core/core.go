@@ -13,7 +13,6 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
-	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	"google.golang.org/grpc"
@@ -26,7 +25,7 @@ var (
 	dfstat        *tccore.TTDINode
 )
 
-func receiver(receive_chan *chan core.KernelCmd) {
+func receiver(receive_chan *chan tccore.KernelCmd) {
 	for {
 		event := <-*receive_chan
 		switch {
@@ -50,7 +49,7 @@ func init() {
 	}
 	peerExe, err := os.Open("plugins/trcsh.so")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Unable to sha256 plugin")
+		fmt.Fprintln(os.Stderr, "Trcsh unable to sha256 plugin")
 		return
 	}
 

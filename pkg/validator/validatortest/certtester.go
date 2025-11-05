@@ -15,10 +15,32 @@ import (
 func main() {
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 
-	if len(os.Args) != 4 {
+	clientOnly := len(os.Args) > 1 && os.Args[1] == "-client"
+	if clientOnly && len(os.Args) != 4 {
+		fmt.Fprintf(os.Stderr, "Usage: %s -client <cert.pem> <host:port>\n", os.Args[0])
+		os.Exit(1)
+	} else if !clientOnly && len(os.Args) != 4 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <cert.pem> <key.pem> <domain>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "   or: %s -client <cert.pem> <host:port>\n", os.Args[0])
 		os.Exit(1)
 	}
+
+	if clientOnly {
+		certBytes, _ := ioutil.ReadFile(os.Args[2])
+		block, _ := pem.Decode(certBytes)
+		cert, _ := x509.ParseCertificate(block.Bytes)
+		certPool := x509.NewCertPool()
+		certPool.AddCert(cert)
+		conn, err := tls.Dial("tcp", os.Args[3], &tls.Config{RootCAs: certPool})
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Connection failed: %v\n", err)
+			os.Exit(1)
+		}
+		conn.Close()
+		fmt.Fprintln(os.Stderr, "Connection successful!")
+		return
+	}
+
 	certPath := os.Args[1]
 	keyPath := os.Args[2]
 	domain := os.Args[3]

@@ -34,7 +34,7 @@ var (
 	HIVE_STAT_CODE_PATH     string = fmt.Sprintf("%s%s", HIVE_STAT_PATH, "/%s")
 )
 
-// New API -> Argosy, return dataFlowGroups populated
+// InitArgosyFleet - New API -> Argosy, return dataFlowGroups populated
 func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tccore.TTDINode, error) {
 	var aFleet tccore.TTDINode
 	aFleet.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
@@ -57,7 +57,7 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 			}
 
 			if idListData == nil {
-				return &aFleet, errors.New("no argosId were found for argosyFleet")
+				return &aFleet, errors.New("no argosID were found for argosyFleet")
 			}
 			idName = strings.Trim(idName.(string), "/")
 
@@ -106,12 +106,12 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 
 					for _, idList := range idListData.Data {
 						for _, id := range idList.([]any) {
-							argosId := strings.Trim(id.(string), "/")
+							argosID := strings.Trim(id.(string), "/")
 							argosNode := &tccore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							argosNode.MashupDetailedElement = &mashupsdk.MashupDetailedElement{}
-							argosNode.MashupDetailedElement.Name = argosId
+							argosNode.MashupDetailedElement.Name = argosID
 							argosNode.ChildNodes = make([]*tccore.TTDINode, 0)
-							argosyMap[argosId] = argosNode
+							argosyMap[argosID] = argosNode
 						}
 					}
 					i := 1
@@ -119,8 +119,8 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 					for rows.Next() {
 						fmt.Fprintf(os.Stderr, "%d\n", i)
 						i = i + 1
-						var flowName, argosId, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
-						rows.Scan(&flowName, &argosId, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
+						var flowName, argosID, flowGroup, mode, stateCode, stateName, timeSplit, lastTestedDate string
+						rows.Scan(&flowName, &argosID, &flowGroup, &mode, &stateCode, &stateName, &timeSplit, &lastTestedDate)
 
 						data := make(map[string]any)
 						data["flowGroup"] = flowGroup
@@ -131,12 +131,12 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						data["timeSplit"] = timeSplit
 						data["lastTestedDate"] = lastTestedDate
 
-						argosNode := argosyMap[argosId]
+						argosNode := argosyMap[argosID]
 						if argosNode == nil {
 							newArgosNode := tccore.TTDINode{MashupDetailedElement: &mashupsdk.MashupDetailedElement{}}
 							argosNode = &newArgosNode
-							newArgosNode.MashupDetailedElement.Name = argosId
-							argosyMap[argosId] = argosNode
+							newArgosNode.MashupDetailedElement.Name = argosID
+							argosyMap[argosID] = argosNode
 						}
 
 						var argosDfGroup *tccore.TTDINode
@@ -334,7 +334,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 		mod.SectionPath = ""
 		region := getDfsRegion(tfmContext)
 		statMap["argosId"] = id
-		statMap["flowGroup"] = fmt.Sprintf("%s-%s-%s", dfStatDeliveryCtx.FlowGroup, region, tfmContext.KernelId)
+		statMap["flowGroup"] = fmt.Sprintf("%s-%s-%d", dfStatDeliveryCtx.FlowGroup, region, tfmContext.KernelId)
 		statPath := fmt.Sprintf(
 			HIVE_STAT_CODE_PATH,
 			indexPath,
@@ -374,7 +374,7 @@ func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *
 	flowG = strings.TrimSuffix(flowG, "/")
 	region := getDfsRegion(tfmContext)
 	regionless := false
-	suffix := fmt.Sprintf("-%s-%s", region, tfmContext.KernelId)
+	suffix := fmt.Sprintf("-%s-%d", region, tfmContext.KernelId)
 	trimmedFlowG := strings.TrimSuffix(flowG, suffix)
 	if len(flowG) != len(trimmedFlowG) {
 		// If flowG ends with region, remove it to prevent a broken path
@@ -394,7 +394,7 @@ func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *
 		flowN)
 	if regionless {
 		// Strip region from path...
-		statPath = strings.Replace(statPath, fmt.Sprintf("/%s-%s-%s/dataFlowName", flowG, region, tfmContext.KernelId), fmt.Sprintf("/%s/dataFlowName", flowG), 1)
+		statPath = strings.Replace(statPath, fmt.Sprintf("/%s-%s-%d/dataFlowName", flowG, region, tfmContext.KernelId), fmt.Sprintf("/%s/dataFlowName", flowG), 1)
 	}
 	return RetrieveStatistic(tfContext.GoMod, statPath, dfs, id, indexPath, idName, flowG, flowN, logger)
 }

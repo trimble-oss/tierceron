@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"plugin"
 	"reflect"
@@ -16,7 +17,7 @@ import (
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
-	"github.com/trimble-oss/tierceron-core/v2/core"
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
@@ -43,7 +44,7 @@ import (
 )
 
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
-var dfstat *core.TTDINode
+var dfstat *tccore.TTDINode
 
 var m sync.Mutex
 
@@ -64,7 +65,7 @@ type PluginHandler struct {
 	Id              string
 	KernelId        int
 	Signature       string // sha256 of plugin
-	ConfigContext   *core.ConfigContext
+	ConfigContext   *tccore.ConfigContext
 	Services        *map[string]*PluginHandler
 	PluginMod       *plugin.Plugin
 	KernelCtx       *KernelCtx
@@ -73,7 +74,7 @@ type PluginHandler struct {
 
 type KernelCtx struct {
 	DeployRestartChan *chan string
-	PluginRestartChan *chan core.KernelCmd
+	PluginRestartChan *chan tccore.KernelCmd
 }
 
 func InitKernel(id string) *PluginHandler {
@@ -81,8 +82,8 @@ func InitKernel(id string) *PluginHandler {
 	certCache := cmap.New[*certValue]()
 	globalCertCache = &certCache
 	deployRestart := make(chan string)
-	pluginRestart := make(chan core.KernelCmd)
-	chatReceiverChan := make(chan *core.ChatMsg)
+	pluginRestart := make(chan tccore.KernelCmd)
+	chatReceiverChan := make(chan *tccore.ChatMsg)
 
 	return &PluginHandler{
 		Name:     "Kernel",
@@ -90,7 +91,7 @@ func InitKernel(id string) *PluginHandler {
 		KernelId: -1,
 		State:    0,
 		Services: &pluginMap,
-		ConfigContext: &core.ConfigContext{
+		ConfigContext: &tccore.ConfigContext{
 			ChatReceiverChan: &chatReceiverChan,
 		},
 		KernelCtx: &KernelCtx{
@@ -100,7 +101,7 @@ func InitKernel(id string) *PluginHandler {
 	}
 }
 
-func (ph *PluginHandler) GetKernelId() int {
+func (ph *PluginHandler) GetKernelID() int {
 	if ph == nil {
 		return 0
 	}
@@ -119,14 +120,49 @@ func (ph *PluginHandler) GetKernelId() int {
 
 var pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid blocking
 
-func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
-	if pH == nil || pH.Name != "Kernel" {
+// safeChannelSend safely sends to a channel with nil checks and closed channel protection
+func safeChannelSend[T any](ch *chan T, value T, logPrefix string, log *log.Logger) (success bool) {
+	if ch == nil || *ch == nil {
+		if log != nil {
+			log.Printf("safeChannelSend panic %s: attempted to send to nil channel\n", logPrefix)
+		}
+		success = false
+		return
+	}
+
+	success = true
+	defer func() {
+		if r := recover(); r != nil {
+			success = false
+			if log != nil {
+				log.Printf("safeChannelSend panic %s: sending to channel (likely closed): %v\n", logPrefix, r)
+			}
+		}
+	}()
+
+	*ch <- value
+	return
+}
+
+func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.Log == nil {
+		fmt.Fprintln(os.Stderr, "DriverConfig not properly initialized while attempting to start dynamic reloading.")
+		return
+	}
+	if pluginHandler == nil || pluginHandler.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to start dynamic reloading.")
 		return
 	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			driverConfig.CoreConfig.Log.Printf("DynamicReloader panic recovered: %v\n%s", r, debug.Stack())
+		}
+	}()
+
 	var mod *kv.Modifier
 	pHID := 0
-	pHIDs := strings.Split(pH.Id, "-")
+	pHIDs := strings.Split(pluginHandler.Id, "-")
 	if len(pHIDs) > 0 {
 		id, err := strconv.Atoi(pHIDs[len(pHIDs)-1])
 		if err != nil {
@@ -176,7 +212,7 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							continue
 						}
 
-						var valid bool = false
+						valid := false
 
 						if strings.HasSuffix(k, ".crt.mf.tmpl") {
 							valid, _, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
@@ -187,24 +223,26 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 							valid = true
 						}
 						if valid {
-							for s, sPh := range *pH.Services {
-								if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
-									*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-										PluginName: sPh.Name,
-										Command:    core.PLUGIN_EVENT_STOP,
-									}
-									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
-								} else {
+							if pluginHandler.Services == nil {
+								driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
+								goto waitToReload
+							}
+							for s, sPluginHandler := range *pluginHandler.Services {
+								if sPluginHandler == nil || sPluginHandler.ConfigContext == nil || sPluginHandler.ConfigContext.CmdSenderChan == nil {
 									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", s)
-									goto waitToReload
+									continue
 								}
+								safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+									PluginName: sPluginHandler.Name,
+									Command:    tccore.PLUGIN_EVENT_STOP,
+								}, fmt.Sprintf("cert reload shutdown %s", s), driverConfig.CoreConfig.Log)
+								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 							}
 							// TODO: Get rid of os.Exit
 							// 0. Reload certificates
 							// 1. Recall Init function for each plugin
 							// 2. Start each plugin
-							driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
-							os.Exit(0)
+							eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 						} else {
 							continue
 						}
@@ -213,110 +251,133 @@ func (pH *PluginHandler) DynamicReloader(driverConfig *config.DriverConfig) {
 					timeDiff := (*v.NotAfter).Sub(time.Now())
 					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
-						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
-							Name:        &pH.Name,
+						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
+							Name:        &pluginHandler.Name,
 							Query:       &[]string{"trcshtalk"},
 							IsBroadcast: true,
 							Response:    &response,
-						}
+						}, "expired cert notification", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
 						v.lastUpdate = &tiNow
-						for s, sPh := range *pH.Services {
-							if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
-								if sPh.Name != "healthcheck" {
-									*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-										PluginName: sPh.Name,
-										Command:    core.PLUGIN_EVENT_STOP,
+						if pluginHandler.Services != nil {
+							for s, sPluginHandler := range *pluginHandler.Services {
+								if sPluginHandler != nil && sPluginHandler.ConfigContext != nil && (*sPluginHandler.ConfigContext).CmdSenderChan != nil {
+									if sPluginHandler.Name != "healthcheck" {
+										safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+											PluginName: sPluginHandler.Name,
+											Command:    tccore.PLUGIN_EVENT_STOP,
+										}, fmt.Sprintf("cert expiration shutdown %s", s), driverConfig.CoreConfig.Log)
+										driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 									}
-									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+								} else {
+									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert expiration: %s\n", s)
 								}
-							} else {
-								driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert expiration: %s\n", s)
 							}
 						}
 					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) && pHID == 0 {
 						response := fmt.Sprintf("Cert %s expiring in %.2f hours.", k, timeDiff.Hours())
-						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
-							Name:        &pH.Name,
+						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
+							Name:        &pluginHandler.Name,
 							Query:       &[]string{"trcshtalk"},
 							IsBroadcast: true,
 							Response:    &response,
-						}
+						}, "cert expiring hours", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
 						v.lastUpdate = &tiNow
 					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour*24) && pHID == 0 {
 						daysLeft := timeDiff.Hours() / 24.0
 						response := fmt.Sprintf("Cert %s expiring in %d days.", k, int(daysLeft))
-						*pH.ConfigContext.ChatReceiverChan <- &core.ChatMsg{
-							Name:        &pH.Name,
+						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
+							Name:        &pluginHandler.Name,
 							Query:       &[]string{"trcshtalk"},
 							IsBroadcast: true,
 							Response:    &response,
-						}
+						}, "cert expiring days", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
 						v.lastUpdate = &tiNow
 					}
 				}
 			}
 		}
-		if pH.KernelCtx != nil &&
-			pH.KernelCtx.DeployRestartChan != nil &&
-			pH.KernelCtx.PluginRestartChan != nil &&
+		if pluginHandler.KernelCtx != nil &&
+			pluginHandler.KernelCtx.DeployRestartChan != nil &&
+			pluginHandler.KernelCtx.PluginRestartChan != nil &&
 			mod != nil &&
 			!plugincoreopts.BuildOptions.IsPluginHardwired() {
-			for service, servPh := range *pH.Services {
+			for service, servPh := range *pluginHandler.Services {
 				certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", service))
 				if err != nil {
-					pH.ConfigContext.Log.Printf("Unable to read certification data for %s %s\n", service, err)
+					pluginHandler.ConfigContext.Log.Printf("Unable to read certification data for %s %s\n", service, err)
 					continue
 				}
 
-				if new_sha, ok := certifyMap["trcsha256"]; ok && new_sha.(string) != servPh.Signature && servPh.Signature != "" {
-					driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
+				if newSha, ok := certifyMap["trcsha256"]; ok {
+					newShaStr, shaOk := newSha.(string)
+					if !shaOk {
+						driverConfig.CoreConfig.Log.Printf("Invalid trcsha256 type for service: %s\n", service)
+						continue
+					}
+					if newShaStr != servPh.Signature && servPh.Signature != "" {
+						driverConfig.CoreConfig.Log.Printf("Kernel shutdown, installing new service: %s\n", service)
 
-					if t, ok := certifyMap["trctype"]; ok && t.(string) == "trcshkubeservice" {
-						if servPh != nil && servPh.ConfigContext == nil || (*servPh.ConfigContext).CmdSenderChan == nil {
-							driverConfig.CoreConfig.Log.Printf("Kube service not properly initialized to shut down: %s\n", service)
-							goto waitToReload
-						}
-						driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
-						*servPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-							PluginName: servPh.Name,
-							Command:    core.PLUGIN_EVENT_STOP,
-						}
-						cmd := <-*pH.KernelCtx.PluginRestartChan
-						if cmd.Command == core.PLUGIN_EVENT_STOP {
-							(*pH.Services)[service] = &PluginHandler{
-								Name: service,
-								ConfigContext: &core.ConfigContext{
-									Log: driverConfig.CoreConfig.Log,
-								},
-								KernelCtx: &KernelCtx{
-									PluginRestartChan: pH.KernelCtx.PluginRestartChan,
-								},
-							}
-							driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
-							*pH.KernelCtx.DeployRestartChan <- service
-						}
-					} else {
-						for s, sPh := range *pH.Services {
-							if sPh != nil && sPh.ConfigContext != nil && (*sPh.ConfigContext).CmdSenderChan != nil {
-								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
-								*sPh.ConfigContext.CmdSenderChan <- core.KernelCmd{
-									PluginName: sPh.Name,
-									Command:    core.PLUGIN_EVENT_STOP,
+						if t, ok := certifyMap["trctype"]; ok {
+							trcTypeStr, typeOk := t.(string)
+							if typeOk && trcTypeStr == "trcshkubeservice" {
+								if servPh == nil || servPh.ConfigContext == nil || servPh.ConfigContext.CmdSenderChan == nil {
+									driverConfig.CoreConfig.Log.Printf("Kube service not properly initialized to shut down: %s\n", service)
+									goto waitToReload
 								}
-								cmd := <-*pH.KernelCtx.PluginRestartChan
-								if cmd.Command == core.PLUGIN_EVENT_STOP {
-									driverConfig.CoreConfig.Log.Printf("Shut down service: %s\n", s)
+								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
+								safeChannelSend(servPh.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+									PluginName: servPh.Name,
+									Command:    tccore.PLUGIN_EVENT_STOP,
+								}, fmt.Sprintf("kube service restart %s", service), driverConfig.CoreConfig.Log)
+
+								if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil && *pluginHandler.KernelCtx.PluginRestartChan != nil {
+									cmd := <-*pluginHandler.KernelCtx.PluginRestartChan
+									if cmd.Command == tccore.PLUGIN_EVENT_STOP {
+										(*pluginHandler.Services)[service] = &PluginHandler{
+											Name: service,
+											ConfigContext: &tccore.ConfigContext{
+												Log: driverConfig.CoreConfig.Log,
+											},
+											KernelCtx: &KernelCtx{
+												PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
+											},
+										}
+										driverConfig.CoreConfig.Log.Printf("Restarting service: %s\n", service)
+										if pluginHandler.KernelCtx.DeployRestartChan != nil && *pluginHandler.KernelCtx.DeployRestartChan != nil {
+											safeChannelSend(pluginHandler.KernelCtx.DeployRestartChan, service, fmt.Sprintf("kube service restart %s", service), driverConfig.CoreConfig.Log)
+										}
+									}
 								}
-							} else {
-								driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down: %s\n", s)
-								goto waitToReload
+								continue
 							}
 						}
-						driverConfig.CoreConfig.Log.Println("Shutting down kernel...")
-						os.Exit(0)
+
+						// Non-kube service shutdown
+						if pluginHandler.Services != nil {
+							for s, sPluginHandler := range *pluginHandler.Services {
+								if sPluginHandler != nil && sPluginHandler.ConfigContext != nil && (*sPluginHandler.ConfigContext).CmdSenderChan != nil {
+									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+									safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+										PluginName: sPluginHandler.Name,
+										Command:    tccore.PLUGIN_EVENT_STOP,
+									}, fmt.Sprintf("service shutdown %s", s), driverConfig.CoreConfig.Log)
+
+									if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil && *pluginHandler.KernelCtx.PluginRestartChan != nil {
+										cmd := <-*pluginHandler.KernelCtx.PluginRestartChan
+										if cmd.Command == tccore.PLUGIN_EVENT_STOP {
+											driverConfig.CoreConfig.Log.Printf("Shut down service: %s\n", s)
+										}
+									}
+								} else {
+									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down: %s\n", s)
+									goto waitToReload
+								}
+							}
+						}
+						eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Non kube shutting down kernel...", 0)
 					}
 				}
 			}
@@ -351,7 +412,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 			return nil, err
 		}
-		var valid bool = false
+		valid := false
 		var cert *x509.Certificate
 		var certNotAfter *time.Time
 		if strings.HasSuffix(path, ".crt.mf.tmpl") {
@@ -387,42 +448,42 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	return nil, errors.New("no created time for cert")
 }
 
-func (pH *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig) {
-	if pH == nil || pH.Name != "Kernel" {
+func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig) {
+	if pluginHandler == nil || pluginHandler.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
 		return
 	}
-	if pH.Services != nil {
+	if pluginHandler.Services != nil {
 		driverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", service)
-		(*pH.Services)[service] = &PluginHandler{
+		(*pluginHandler.Services)[service] = &PluginHandler{
 			Name: service,
-			ConfigContext: &core.ConfigContext{
+			ConfigContext: &tccore.ConfigContext{
 				Log:              driverConfig.CoreConfig.Log,
-				ChatReceiverChan: pH.ConfigContext.ChatReceiverChan,
+				ChatReceiverChan: pluginHandler.ConfigContext.ChatReceiverChan,
 			},
 			KernelCtx: &KernelCtx{
-				PluginRestartChan: pH.KernelCtx.PluginRestartChan,
+				PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
 			},
 		}
 	}
 }
 
-func (pH *PluginHandler) InitPluginStatus(driverConfig *config.DriverConfig) {
-	if pH == nil || pH.Name != "Kernel" {
+func (pluginHandler *PluginHandler) InitPluginStatus(driverConfig *config.DriverConfig) {
+	if pluginHandler == nil || pluginHandler.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
 		return
 	}
-	if pH.Services != nil {
-		globalPluginStatusChan = make(chan string, len(*pH.Services))
-		for k := range *pH.Services {
+	if pluginHandler.Services != nil {
+		globalPluginStatusChan = make(chan string, len(*pluginHandler.Services))
+		for k := range *pluginHandler.Services {
 			globalPluginStatusChan <- k
 		}
 	}
 }
 
-func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.DriverConfig) *PluginHandler {
-	if pH != nil && pH.Services != nil {
-		if plugin, ok := (*pH.Services)[service]; ok {
+func (pluginHandler *PluginHandler) GetPluginHandler(service string, driverConfig *config.DriverConfig) *PluginHandler {
+	if pluginHandler != nil && pluginHandler.Services != nil {
+		if plugin, ok := (*pluginHandler.Services)[service]; ok {
 			return plugin
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", service)
@@ -434,6 +495,18 @@ func (pH *PluginHandler) GetPluginHandler(service string, driverConfig *config.D
 }
 
 func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
+	if pluginHandler == nil || pluginHandler.ConfigContext == nil || pluginHandler.ConfigContext.Log == nil {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			if pluginHandler.ConfigContext != nil && pluginHandler.ConfigContext.Log != nil {
+				pluginHandler.ConfigContext.Log.Printf("Init panic recovered for %s: %v\n%s", pluginHandler.Name, r, debug.Stack())
+			}
+		}
+	}()
+
 	if pluginHandler.Name == "" {
 		pluginHandler.ConfigContext.Log.Println("No plugin name set for initializing plugin service.")
 		return
@@ -447,6 +520,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 		symbol, err := pluginHandler.PluginMod.Lookup("Init")
 		if err != nil {
 			pluginHandler.ConfigContext.Log.Printf("Unable to lookup plugin export: %s\n", err)
+			return
 		}
 		pluginHandler.ConfigContext.Log.Printf("Initializing plugin module for %s\n", pluginHandler.Name)
 		reflect.ValueOf(symbol).Call([]reflect.Value{reflect.ValueOf(pluginHandler.Name), reflect.ValueOf(properties)})
@@ -461,20 +535,20 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	serviceConfig *map[string]any,
 ) {
 	// Initialize channels
-	sender := make(chan core.KernelCmd)
+	sender := make(chan tccore.KernelCmd)
 	pluginHandler.ConfigContext.CmdSenderChan = &sender
-	msg_sender := make(chan *core.ChatMsg)
-	pluginHandler.ConfigContext.ChatSenderChan = &msg_sender
+	msgSender := make(chan *tccore.ChatMsg)
+	pluginHandler.ConfigContext.ChatSenderChan = &msgSender
 
-	broadcastChan := make(chan *core.ChatMsg)
+	broadcastChan := make(chan *tccore.ChatMsg)
 	pluginHandler.ConfigContext.ChatBroadcastChan = &broadcastChan
 
-	err_receiver := make(chan error)
-	pluginHandler.ConfigContext.ErrorChan = &err_receiver
-	ttdi_receiver := make(chan *core.TTDINode)
-	pluginHandler.ConfigContext.DfsChan = &ttdi_receiver
-	status_receiver := make(chan core.KernelCmd)
-	pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
+	errReceiver := make(chan error)
+	pluginHandler.ConfigContext.ErrorChan = &errReceiver
+	ttdiReceiver := make(chan *tccore.TTDINode)
+	pluginHandler.ConfigContext.DfsChan = &ttdiReceiver
+	statusReceiver := make(chan tccore.KernelCmd)
+	pluginHandler.ConfigContext.CmdReceiverChan = &statusReceiver
 
 	if pluginHandler.ConfigContext.ChatReceiverChan == nil {
 		driverConfig.CoreConfig.Log.Printf("Unable to access chat configuration data for %s\n", service)
@@ -483,22 +557,22 @@ func (pluginHandler *PluginHandler) RunPlugin(
 
 	chan_map := make(map[string]any)
 
-	chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]any)
-	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]any)
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[tccore.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[tccore.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
 
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]any)
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-	chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]any)
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
+	chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
-	chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
+	chan_map[tccore.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
-	(*serviceConfig)[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
+	(*serviceConfig)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
-	go pluginHandler.handle_errors(driverConfig)
+	go pluginHandler.handleErrors(driverConfig)
 	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
 	_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
@@ -523,29 +597,39 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	go pluginHandler.receiver(driverConfig)
 	pluginHandler.Init(serviceConfig)
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-	*pluginHandler.ConfigContext.CmdSenderChan <- core.KernelCmd{
+	safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 		PluginName: pluginHandler.Name,
-		Command:    core.PLUGIN_EVENT_START,
-	}
+		Command:    tccore.PLUGIN_EVENT_START,
+	}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
 	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 }
 
 func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.DriverConfig, pluginToolConfig map[string]any) {
-	if driverConfig.CoreConfig.Log != nil {
-		if pluginHandler.ConfigContext.Log == nil {
-			pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
-		}
-	} else {
-		fmt.Fprintln(os.Stderr, "No logger passed in to plugin service")
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.Log == nil {
+		fmt.Fprintln(os.Stderr, "No logger or config passed in to plugin service")
 		return
 	}
-	if kernelopts.BuildOptions.IsKernel() {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "Recovered with stack trace of"+string(debug.Stack())+"\n")
-			}
-		}()
+
+	if pluginHandler == nil || pluginHandler.ConfigContext == nil {
+		driverConfig.CoreConfig.Log.Println("Invalid plugin handler state")
+		return
 	}
+
+	if pluginHandler.ConfigContext.Log == nil {
+		pluginHandler.ConfigContext.Log = driverConfig.CoreConfig.Log
+	}
+
+	// Always add panic recovery, not just in kernel mode
+	defer func() {
+		if r := recover(); r != nil {
+			if pluginHandler.ConfigContext != nil && pluginHandler.ConfigContext.Log != nil {
+				pluginHandler.ConfigContext.Log.Printf("PluginserviceStart panic recovered for %s: %v\n%s", pluginHandler.Name, r, debug.Stack())
+			} else {
+				fmt.Fprintf(os.Stderr, "PluginserviceStart panic: %v\n%s", r, debug.Stack())
+			}
+		}
+	}()
+
 	if pluginHandler.Name == "" {
 		driverConfig.CoreConfig.Log.Println("No plugin name specified to start plugin service.")
 		return
@@ -573,10 +657,14 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext not set up for %s\n", service)
 				driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 				return
-			} else {
-				getFlowMachineInitContextFunc := getFlowMachineInitContext.(func(*coreconfig.CoreConfig, string) *flow.FlowMachineInitContext)
-				flowMachineInitContext = getFlowMachineInitContextFunc(driverConfig.CoreConfig, pluginHandler.Name)
 			}
+
+			getFlowMachineInitContextFunc, ok := getFlowMachineInitContext.(func(*coreconfig.CoreConfig, string) *flow.FlowMachineInitContext)
+			if !ok {
+				driverConfig.CoreConfig.Log.Printf("GetFlowMachineInitContext has wrong type for %s\n", service)
+				return
+			}
+			flowMachineInitContext = getFlowMachineInitContextFunc(driverConfig.CoreConfig, pluginHandler.Name)
 		} else if plugincoreopts.BuildOptions.IsPluginHardwired() {
 			flowMachineInitContext = pluginopts.BuildOptions.GetFlowMachineInitContext(driverConfig.CoreConfig, pluginHandler.Name)
 		} else {
@@ -584,7 +672,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			return
 		}
 		if flowMachineInitContext != nil {
-			pluginConfig = flowMachineInitContext.(*flow.FlowMachineInitContext).GetFlowMachineTemplates()
+			if fmCtx, ok := flowMachineInitContext.(*flow.FlowMachineInitContext); ok {
+				pluginConfig = fmCtx.GetFlowMachineTemplates()
+			} else {
+				driverConfig.CoreConfig.Log.Printf("Flow machine context has wrong type for %s\n", service)
+				return
+			}
 		} else {
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
 			return
@@ -602,11 +695,14 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		if pluginHandler.PluginMod != nil {
-			set_prod, err := pluginHandler.PluginMod.Lookup("SetProd")
-			if err == nil && set_prod != nil {
-				driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
-				setProd := set_prod.(func(bool))
-				setProd(prod.IsProd())
+			setProdFuncHandle, err := pluginHandler.PluginMod.Lookup("SetProd")
+			if err == nil && setProdFuncHandle != nil {
+				if setProdFunc, ok := setProdFuncHandle.(func(bool)); ok {
+					driverConfig.CoreConfig.Log.Printf("Setting production environment for %s\n", service)
+					setProdFunc(prod.IsProd())
+				} else {
+					driverConfig.CoreConfig.Log.Printf("SetProd has wrong type for %s\n", service)
+				}
 			} else {
 				driverConfig.CoreConfig.Log.Printf("Setting production environment is not implemented for %s\n", service)
 			}
@@ -649,8 +745,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 					return
 				}
-				pluginConfigPaths := getConfigPaths.(func(string) []string)
-				paths = pluginConfigPaths(pluginHandler.Name)
+
+				if pluginConfigPaths, ok := getConfigPaths.(func(string) []string); ok {
+					paths = pluginConfigPaths(pluginHandler.Name)
+				} else {
+					driverConfig.CoreConfig.Log.Printf("GetConfigPaths has wrong type for %s\n", service)
+					return
+				}
 			} else {
 				if s, ok := pluginToolConfig["trctype"].(string); plugincoreopts.BuildOptions.IsPluginHardwired() || (ok && (s == "trcshkubeservice") || (s == "trcshcmdtoolplugin")) {
 					paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
@@ -672,24 +773,21 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						if err != nil {
 							driverConfig.CoreConfig.Log.Printf("Unable to load cert: %v for plugin: %s\n", err, service)
 							if pluginHandler.ConfigContext.ChatReceiverChan != nil {
-								reportMsg := fmt.Sprintf("🚨Critical failure loading plugin: %s. Unable to load cert: %s\n", service, path)
-								msg := &core.ChatMsg{
-									Name:        &service,
-									Query:       &[]string{"trcshtalk"},
-									IsBroadcast: true,
-									Response:    &reportMsg,
-								}
-								go func(recChan *chan *core.ChatMsg, m *core.ChatMsg) {
+								go func(recChan *chan *tccore.ChatMsg, log *log.Logger) {
 									for {
 										if len(globalPluginStatusChan) == 0 {
 											break
 										}
 										time.Sleep(5 * time.Second)
 									}
-									if recChan != nil {
-										*recChan <- m
-									}
-								}(pluginHandler.ConfigContext.ChatReceiverChan, msg)
+									reportMsg := fmt.Sprintf("🚨Critical failure loading plugin: %s. Unable to load cert: %s\n", service, path)
+									safeChannelSend(recChan, &tccore.ChatMsg{
+										Name:        &service,
+										Query:       &[]string{"trcshtalk"},
+										IsBroadcast: true,
+										Response:    &reportMsg,
+									}, fmt.Sprintf("critical cert failure %s", service), log)
+								}(pluginHandler.ConfigContext.ChatReceiverChan, driverConfig.CoreConfig.Log)
 							} else {
 								driverConfig.CoreConfig.Log.Printf("Unable to broadcast invalid cert: %s loading for plugin: %s\n", path, service)
 							}
@@ -737,7 +835,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							driverConfig)
 
 						if configErr != nil {
-							driverConfig.CoreConfig.Log.Printf("Could not prepare certificates for plugin: %s using token named: %s\n", pluginHandler.Name, wantedTokenName)
+							driverConfig.CoreConfig.Log.Printf("Could not prepare certificates for plugin: %s using token named: %s\n", pluginHandler.Name, *wantedTokenName)
 							return
 						}
 
@@ -765,7 +863,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							driverConfig)
 
 						if configErr != nil {
-							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s using token named: %s\n", pluginHandler.Name, wantedTokenName)
+							driverConfig.CoreConfig.Log.Printf("Could not generate configs for plugin: %s using token named: %s\n", pluginHandler.Name, *wantedTokenName)
 							return
 						}
 
@@ -823,20 +921,20 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 			}
 			// Initialize channels
-			sender := make(chan core.KernelCmd)
+			sender := make(chan tccore.KernelCmd)
 			pluginHandler.ConfigContext.CmdSenderChan = &sender
-			msg_sender := make(chan *core.ChatMsg)
-			pluginHandler.ConfigContext.ChatSenderChan = &msg_sender
+			msgSender := make(chan *tccore.ChatMsg)
+			pluginHandler.ConfigContext.ChatSenderChan = &msgSender
 
-			broadcastChan := make(chan *core.ChatMsg)
+			broadcastChan := make(chan *tccore.ChatMsg)
 			pluginHandler.ConfigContext.ChatBroadcastChan = &broadcastChan
 
-			err_receiver := make(chan error)
-			pluginHandler.ConfigContext.ErrorChan = &err_receiver
-			ttdi_receiver := make(chan *core.TTDINode)
-			pluginHandler.ConfigContext.DfsChan = &ttdi_receiver
-			status_receiver := make(chan core.KernelCmd)
-			pluginHandler.ConfigContext.CmdReceiverChan = &status_receiver
+			errReceiver := make(chan error)
+			pluginHandler.ConfigContext.ErrorChan = &errReceiver
+			ttdiReceiver := make(chan *tccore.TTDINode)
+			pluginHandler.ConfigContext.DfsChan = &ttdiReceiver
+			statusReceiver := make(chan tccore.KernelCmd)
+			pluginHandler.ConfigContext.CmdReceiverChan = &statusReceiver
 
 			if pluginHandler.ConfigContext.ChatReceiverChan == nil {
 				driverConfig.CoreConfig.Log.Printf("Unable to access chat configuration data for %s\n", service)
@@ -845,22 +943,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			chan_map := make(map[string]any)
 
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]any)
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_IN] = make(map[string]any)
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[tccore.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdSenderChan
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_IN].(map[string]any)[tccore.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatSenderChan
 
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]any)
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
-			chan_map[core.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[core.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT] = make(map[string]any)
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.ERROR_CHANNEL] = pluginHandler.ConfigContext.ErrorChan
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.DATA_FLOW_STAT_CHANNEL] = pluginHandler.ConfigContext.DfsChan
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.CMD_CHANNEL] = pluginHandler.ConfigContext.CmdReceiverChan
+			chan_map[tccore.PLUGIN_CHANNEL_EVENT_OUT].(map[string]any)[tccore.CHAT_CHANNEL] = pluginHandler.ConfigContext.ChatReceiverChan
 
-			chan_map[core.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
+			chan_map[tccore.CHAT_BROADCAST_CHANNEL] = pluginHandler.ConfigContext.ChatBroadcastChan
 
-			serviceConfig[core.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
+			serviceConfig[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
-			go pluginHandler.handle_errors(driverConfig)
+			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 			_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
 			if err != nil {
@@ -907,7 +1005,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				}
 
-				pluginConfig["kernelId"] = pluginHandler.GetKernelId()
+				pluginConfig["kernelId"] = pluginHandler.GetKernelID()
 
 				// Grab app role and secret and addr and env from service config and call auto auth
 				// auto auth will return token
@@ -997,7 +1095,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							continue
 						}
 
-						go handler.handle_dataflowstat(bootDriverConfig, statMod, nil)
+						go handler.handleDataflowStat(bootDriverConfig, statMod, nil)
 						go handler.receiver(bootDriverConfig)
 					}
 				}()
@@ -1019,9 +1117,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				tfmContext.(flow.FlowMachineContext).SetFlowIDs()
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
 
-				serviceConfig[core.TRCDB_RESOURCE] = tfmContext
+				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
 			} else {
-				go pluginHandler.handle_dataflowstat(driverConfig, kernelmod, nil)
+				go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				go pluginHandler.receiver(driverConfig)
 			}
 
@@ -1031,12 +1129,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 			pluginHandler.Init(&serviceConfig)
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-			go func(senderChan chan core.KernelCmd, pluginName string) {
-				senderChan <- core.KernelCmd{
-					PluginName: pluginName,
-					Command:    core.PLUGIN_EVENT_START,
-				}
-			}(*pluginHandler.ConfigContext.CmdSenderChan, pluginHandler.Name)
+			go safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+				PluginName: pluginHandler.Name,
+				Command:    tccore.PLUGIN_EVENT_START,
+			}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 		}
 	}
@@ -1046,25 +1142,29 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) 
 	for {
 		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
 		switch {
-		case event.Command == core.PLUGIN_EVENT_START:
+		case event.Command == tccore.PLUGIN_EVENT_START:
 			pluginHandler.State = 1
 			if globalPluginStatusChan != nil {
 				<-globalPluginStatusChan
 			}
 			driverConfig.CoreConfig.Log.Printf("Kernel finished starting plugin: %s\n", pluginHandler.Name)
-		case event.Command == core.PLUGIN_EVENT_STOP:
+		case event.Command == tccore.PLUGIN_EVENT_STOP:
 			driverConfig.CoreConfig.Log.Printf("Kernel finished stopping plugin: %s\n", pluginHandler.Name)
 			pluginHandler.State = 0
-			*pluginHandler.ConfigContext.ErrorChan <- errors.New(pluginHandler.Name + " shutting down")
-			*pluginHandler.ConfigContext.DfsChan <- nil
+			safeChannelSend(pluginHandler.ConfigContext.ErrorChan,
+				errors.New(pluginHandler.Name+" shutting down"),
+				pluginHandler.Name+" shutting down", driverConfig.CoreConfig.Log)
+			safeChannelSend(pluginHandler.ConfigContext.DfsChan,
+				nil,
+				pluginHandler.Name+" dfs shutting down", driverConfig.CoreConfig.Log)
 			pluginHandler.PluginMod = nil
 			if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil {
-				go func(e core.KernelCmd) {
-					*pluginHandler.KernelCtx.PluginRestartChan <- e
+				go func(e tccore.KernelCmd) {
+					safeChannelSend(pluginHandler.KernelCtx.PluginRestartChan, e, "plugin restart message", driverConfig.CoreConfig.Log)
 				}(event)
 			}
 			return
-		case event.Command == core.PLUGIN_EVENT_STATUS:
+		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			// TODO
 		default:
 			// TODO
@@ -1072,7 +1172,7 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) 
 	}
 }
 
-func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverConfig) {
+func (pluginHandler *PluginHandler) handleErrors(driverConfig *config.DriverConfig) {
 	for {
 		result := <-*pluginHandler.ConfigContext.ErrorChan
 		switch {
@@ -1089,13 +1189,13 @@ func (pluginHandler *PluginHandler) handle_errors(driverConfig *config.DriverCon
 	}
 }
 
-func (pluginHandler *PluginHandler) handle_dataflowstat(driverConfig *config.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
-	// tfmContext := &flowcore.TrcFlowMachineContext{
+func (pluginHandler *PluginHandler) handleDataflowStat(driverConfig *config.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
+	// tfmContext := &flowtccore.TrcFlowMachineContext{
 	// 	Env:                       driverConfig.CoreConfig.Env,
 	// 	GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,
-	// 	FlowMap:                   map[flowcore.FlowDefinitionType]*flowcore.TrcFlowContext{},
+	// 	FlowMap:                   map[flowtccore.FlowDefinitionType]*flowtccore.TrcFlowContext{},
 	// }
-	// tfContext := &flowcore.TrcFlowContext{
+	// tfContext := &flowtccore.TrcFlowContext{
 	// 	GoMod:    mod,
 	// 	Vault:    vault,
 	// 	FlowLock: &sync.Mutex{},
@@ -1128,7 +1228,7 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 	if kernelopts.BuildOptions.IsKernel() {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Fprintf(os.Stderr, "Recovered with stack trace of"+string(debug.Stack())+"\n")
+				fmt.Fprintln(os.Stderr, "Recovered with stack trace of"+string(debug.Stack())+"\n")
 			}
 		}()
 	}
@@ -1142,10 +1242,10 @@ func (pluginHandler *PluginHandler) PluginserviceStop(driverConfig *config.Drive
 		return
 	}
 	driverConfig.CoreConfig.Log.Printf("Sending stop message to plugin: %s\n", pluginName)
-	*pluginHandler.ConfigContext.CmdSenderChan <- core.KernelCmd{
+	safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 		PluginName: pluginName,
-		Command:    core.PLUGIN_EVENT_STOP,
-	}
+		Command:    tccore.PLUGIN_EVENT_STOP,
+	}, fmt.Sprintf("stop message to %s", pluginName), driverConfig.CoreConfig.Log)
 	driverConfig.CoreConfig.Log.Printf("Stop message successfully sent to plugin: %s\n", pluginName)
 }
 
@@ -1248,25 +1348,23 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 			v.lastUpdate = &tiNow
 		}
 	}
-	msg := &core.ChatMsg{
-		Name:        &pluginHandler.Name,
-		Query:       &[]string{"trcshtalk"},
-		IsBroadcast: true,
-		Response:    &response,
-	}
-	go func(recChan chan *core.ChatMsg, m *core.ChatMsg) {
-		recChan <- m
-	}(*pluginHandler.ConfigContext.ChatReceiverChan, msg)
+	go safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan,
+		&tccore.ChatMsg{
+			Name:        &pluginHandler.Name,
+			Query:       &[]string{"trcshtalk"},
+			IsBroadcast: true,
+			Response:    &response,
+		}, "init broadcast sender", driverConfig.CoreConfig.Log)
 }
 
-func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfig) {
+func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig) {
 	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Chat handling not supported for plugin: %s\n", pluginHandler.Name)
 		return
 	}
 	if pluginHandler.ConfigContext.ChatReceiverChan == nil {
-		msg_receiver := make(chan *core.ChatMsg)
-		pluginHandler.ConfigContext.ChatReceiverChan = &msg_receiver
+		msgReceiver := make(chan *tccore.ChatMsg)
+		pluginHandler.ConfigContext.ChatReceiverChan = &msgReceiver
 		pluginHandler.State = 1
 	}
 
@@ -1284,13 +1382,11 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 		if eUtils.RefEquals(msg.Name, "SHUTDOWN") {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			for _, p := range *pluginHandler.Services {
-				if p.ConfigContext.ChatSenderChan != nil && *msg.Query != nil && len(*msg.Query) > 0 && (*msg.Query)[0] == p.Name {
-					go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
-						sender <- message
-					}(*p.ConfigContext.ChatSenderChan, &core.ChatMsg{
+				if p != nil && p.ConfigContext != nil && p.ConfigContext.ChatSenderChan != nil && *msg.Query != nil && len(*msg.Query) > 0 && (*msg.Query)[0] == p.Name {
+					go safeChannelSend(p.ConfigContext.ChatSenderChan, &tccore.ChatMsg{
 						Name:     msg.Name,
 						KernelId: &pluginHandler.Id,
-					})
+					}, "SHUTDOWN plugin chat receiver", driverConfig.CoreConfig.Log)
 				}
 			}
 			return
@@ -1305,7 +1401,7 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 			}
 			if plugin, ok := (*pluginHandler.Services)[queryPlugin[0]]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
-				new_msg := &core.ChatMsg{
+				newMsg := &tccore.ChatMsg{
 					Name:          &q,
 					KernelId:      &pluginHandler.Id,
 					Query:         &[]string{},
@@ -1313,28 +1409,28 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 					StatisticsDoc: msg.StatisticsDoc,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
-					*new_msg.Query = append(*new_msg.Query, *msg.Name)
+					*newMsg.Query = append(*newMsg.Query, *msg.Name)
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Warning, self identification through Name is required for all messages. Dropping query...\n")
 					continue
 				}
 				if eUtils.RefLength(msg.Response) > 0 && eUtils.RefLength((*msg).Response) > 0 {
-					new_msg.Response = (*msg).Response
+					newMsg.Response = (*msg).Response
 				}
 				if eUtils.RefLength(msg.ChatId) > 0 && eUtils.RefLength((*msg).ChatId) > 0 {
-					new_msg.ChatId = (*msg).ChatId
+					newMsg.ChatId = (*msg).ChatId
 				}
 				if eUtils.RefLength(msg.RoutingId) > 0 && eUtils.RefLength((*msg).RoutingId) > 0 {
-					new_msg.RoutingId = (*msg).RoutingId
+					newMsg.RoutingId = (*msg).RoutingId
 				}
 				if eUtils.RefLength(msg.RoutingId) == 0 {
 					// If only ChatId is provided, use that for routing.
-					new_msg.RoutingId = (*msg).ChatId
+					newMsg.RoutingId = (*msg).ChatId
 				}
-				var chatSenderChan chan *core.ChatMsg
+				var chatSenderChan chan *tccore.ChatMsg
 				if (*msg).IsBroadcast {
 					if (*plugin.ConfigContext).ChatBroadcastChan != nil {
-						new_msg.IsBroadcast = true
+						newMsg.IsBroadcast = true
 						chatSenderChan = *plugin.ConfigContext.ChatBroadcastChan
 					} else {
 						driverConfig.CoreConfig.Log.Printf("Service unavailable to broadcast query from %s\n", *msg.Name)
@@ -1346,18 +1442,14 @@ func (pluginHandler *PluginHandler) Handle_Chat(driverConfig *config.DriverConfi
 					driverConfig.CoreConfig.Log.Printf("Unable to send query from %s\n", *msg.Name)
 					continue
 				}
-				go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
-					sender <- message
-				}(chatSenderChan, new_msg)
+				go safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
 			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
 				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
-				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok {
+				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
 					responseError := "Service unavailable"
 					time.Sleep(2 * time.Second) // Give time for the plugin to start
 					msg.Response = &responseError
-					go func(sender chan *core.ChatMsg, message *core.ChatMsg) {
-						sender <- message
-					}(*plugin.ConfigContext.ChatSenderChan, msg)
+					go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
 				}
 				continue
 			} else {
