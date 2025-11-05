@@ -48,7 +48,7 @@ func PoolCleanup() {
 		etlcore.LogError(fmt.Sprintf("Failed to parse package: %v", err))
 		f, err := os.OpenFile("./etlninja.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
-			fmt.Println("Log setup failure.")
+			fmt.Fprintln(os.Stderr, "Log setup failure.")
 		}
 		etlcore.SetLogger(log.New(f, "[etlninja]", log.LstdFlags))
 		// eUtils.CheckError(&eUtils.DriverConfig{Insecure: insecure.IsInsecure(), Log: logger}, err, false)

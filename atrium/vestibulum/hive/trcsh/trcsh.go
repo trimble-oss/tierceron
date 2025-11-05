@@ -51,13 +51,13 @@ func main() {
 
 	tiercerontls.InitRoot()
 
-	fmt.Println("trcsh Version: " + "1.25")
+	fmt.Fprintln(os.Stderr, "trcsh Version: "+"1.26")
 	flagset := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	flagset.Usage = func() {
 		fmt.Fprintf(flagset.Output(), "Usage of %s:\n", os.Args[0])
 		flagset.PrintDefaults()
 	}
-	envPtr := flagset.String("env", "", "Environment to be processed") //If this is blank -> use context otherwise override context.
+	envPtr := flagset.String("env", "", "Environment to be processed") // If this is blank -> use context otherwise override context.
 
 	logger, logErr := trcshbase.CreateLogFile()
 	if logErr != nil {

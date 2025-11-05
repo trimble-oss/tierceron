@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/pubsub"
@@ -53,7 +54,7 @@ func ProcessGChatAnswer(msg *mashupsdk.MashupDetailedElement) {
 
 		}
 		if pubsub.IsManualInteractionEnabled() {
-			fmt.Println(msg.Data)
+			fmt.Fprintln(os.Stderr, msg.Data)
 		} else {
 			go pubsub.PubChatAnswerEvent(&chat.DeprecatedEvent{Message: &chat.Message{ClientAssignedMessageId: msg.Genre, Text: msg.Data}})
 			log.Printf("Message published to answer channel for delivery to Google Chat user")

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -26,15 +27,15 @@ func main() {
 	vault, err := apiClient.GetValues(context.Background(), makeVaultReq)
 	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 
-	fmt.Printf("Vault: \n")
+	fmt.Fprintf(os.Stderr, "Vault: \n")
 	for _, env := range vault.Envs {
-		fmt.Printf("Env: %s\n", env.Name)
+		fmt.Fprintf(os.Stderr, "Env: %s\n", env.Name)
 		for _, service := range env.Services {
-			fmt.Printf("\tService: %s\n", service.Name)
+			fmt.Fprintf(os.Stderr, "\tService: %s\n", service.Name)
 			for _, file := range service.Files {
-				fmt.Printf("\t\tFile: %s\n", file.Name)
+				fmt.Fprintf(os.Stderr, "\t\tFile: %s\n", file.Name)
 				for _, val := range file.Values {
-					fmt.Printf("\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
+					fmt.Fprintf(os.Stderr, "\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
 				}
 			}
 		}

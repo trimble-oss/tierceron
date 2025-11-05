@@ -41,7 +41,7 @@ func main() {
 	if memonly.IsMemonly() {
 		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
 		if mLockErr != nil {
-			fmt.Println(mLockErr)
+			fmt.Fprintln(os.Stderr, mLockErr)
 			os.Exit(-1)
 		}
 	}
@@ -58,7 +58,7 @@ func main() {
 	tiercerontls.InitRoot()
 
 	logFile := "/var/log/trcplugindb.log"
-	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+	f, logErr := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	logger := log.New(f, "[trcplugindb]", log.LstdFlags)
 	eUtils.CheckError(&coreconfig.CoreConfig{
 		ExitOnFailure: true,
@@ -151,5 +151,4 @@ func main() {
 	if err != nil {
 		logger.Fatal("Plugin shutting down")
 	}
-
 }

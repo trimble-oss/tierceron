@@ -10,7 +10,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
-	//pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
+	// pb "github.com/trimble-oss/tierceron/trcweb/rpc/apinator"
 
 	tm "golang.org/x/term"
 )
@@ -24,12 +24,12 @@ func LoginToLocal() (string, error) {
 		return "", err
 	}
 
-	//client := pb.NewEnterpriseServiceBrokerProtobufClient(coreopts.BuildOptions.GetVaultHost(), httpsClient)
+	// client := pb.NewEnterpriseServiceBrokerProtobufClient(coreopts.BuildOptions.GetVaultHost(), httpsClient)
 	console := bufio.NewReader(os.Stdin)
-	fmt.Println("Login needed to use a local environment")
+	fmt.Fprintln(os.Stderr, "Login needed to use a local environment")
 	for {
 		// Get Sign in environment
-		fmt.Print("Sign In Environment: ")
+		fmt.Fprint(os.Stderr, "Sign In Environment: ")
 		environment, err = console.ReadString('\n')
 		if err != nil {
 			return "", err
@@ -37,7 +37,7 @@ func LoginToLocal() (string, error) {
 		environment = strings.TrimSpace(environment)
 
 		// Get Username
-		fmt.Print("Username: ")
+		fmt.Fprint(os.Stderr, "Username: ")
 		username, err = console.ReadString('\n')
 		if err != nil {
 			return "", err
@@ -45,9 +45,9 @@ func LoginToLocal() (string, error) {
 		username = strings.TrimSpace(username)
 
 		// Get Password
-		fmt.Print("Password: ")
+		fmt.Fprint(os.Stderr, "Password: ")
 		password, err := tm.ReadPassword(int(syscall.Stdin))
-		fmt.Println()
+		fmt.Fprintln(os.Stderr)
 		if err != nil {
 			return "", err
 		}
@@ -69,7 +69,7 @@ func LoginToLocal() (string, error) {
 		if false /* resp.Success */ {
 			break
 		} else {
-			fmt.Printf("Could not login for user %s in %s\n", username, environment)
+			fmt.Fprintf(os.Stderr, "Could not login for user %s in %s\n", username, environment)
 		}
 	}
 	return "local/" + environment + "/" + username, nil

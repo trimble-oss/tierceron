@@ -19,7 +19,7 @@ import (
 )
 
 func PrintVersion() {
-	fmt.Println("Version: " + "1.28")
+	fmt.Fprintln(os.Stderr, "Version: "+"1.29")
 }
 
 // Reads in template files in specified directory
@@ -33,8 +33,8 @@ func CommonMain(envPtr *string,
 	tokenNamePtr *string,
 	flagset *flag.FlagSet,
 	argLines []string,
-	driverConfig *config.DriverConfig) {
-
+	driverConfig *config.DriverConfig,
+) {
 	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
 		driverConfig = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
@@ -82,8 +82,7 @@ func CommonMain(envPtr *string,
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	} else {
 		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
-			fmt.Printf("Please set the addr flag\n")
-			os.Exit(-1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Please set the addr flag", 1)
 		}
 	}
 	if envPtr == nil {
@@ -105,7 +104,7 @@ func CommonMain(envPtr *string,
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"pub.log" {
 			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "pub.log"
 		}
-		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		logger := log.New(f, "[INIT]", log.LstdFlags)
 		driverConfigBase = driverConfig
 		driverConfigBase.CoreConfig.Insecure = false
@@ -133,7 +132,7 @@ func CommonMain(envPtr *string,
 	if envPtr != nil && len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
-		fmt.Println(*envPtr)
+		fmt.Fprintln(os.Stderr, *envPtr)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
@@ -141,8 +140,8 @@ func CommonMain(envPtr *string,
 		driverConfig.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 		driverConfig.CoreConfig.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	} else {
-		fmt.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
-		fmt.Printf("Uploading templates in %s to vault\n", *dirPtr)
+		fmt.Fprintf(os.Stderr, "Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+		fmt.Fprintf(os.Stderr, "Uploading templates in %s to vault\n", *dirPtr)
 	}
 
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
@@ -158,7 +157,7 @@ func CommonMain(envPtr *string,
 	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
-			os.Exit(-1)
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Template upload failure %s", err.Error()), -1)
 		}
 	}
 

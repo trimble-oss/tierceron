@@ -3,6 +3,7 @@ package rosea
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -59,8 +60,10 @@ func (rid roseaItemDelegate) Render(w io.Writer, m list.Model, index int, listIt
 	}
 }
 
-const defaultListWidth = 20
-const defaultListHeight = 10
+const (
+	defaultListWidth  = 20
+	defaultListHeight = 10
+)
 
 type roseaItem struct {
 	title, desc string
@@ -80,7 +83,7 @@ func (m *RoseaModel) updateListItems() {
 }
 
 func (rm *RoseaModel) Init() tea.Cmd {
-	fmt.Print("\033[H\033[2J")
+	fmt.Fprint(os.Stderr, "\033[H\033[2J")
 	if roseaMemFs == nil {
 		roseaMemFs = trcshMemFs.NewTrcshMemFs()
 	}
@@ -155,12 +158,12 @@ func (rm *RoseaModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							if len(roseaSeedFile) > 0 {
 								entrySeedFileRWC, err := entrySeedFs.Open(roseaSeedFile)
 								if err != nil {
-									fmt.Printf("Error opening seed file: %v\n", err)
+									fmt.Fprintf(os.Stderr, "Error opening seed file: %v\n", err)
 									return rm, nil
 								}
 								defer entrySeedFileRWC.Close()
 								roseacore.SetRoseaMemFs(roseaSeedFile, entrySeedFs)
-								//rm.choice.title = selectedItem.title
+								// rm.choice.title = selectedItem.title
 								fileData, _ := io.ReadAll(entrySeedFileRWC)
 								return editor.InitRoseaEditor(rm.choice.title, &fileData), nil
 							}
@@ -194,8 +197,10 @@ func (rm *RoseaModel) View() string {
 	return s
 }
 
-var roseaProgramCtx *tea.Program
-var roseaNavigationCtx *RoseaModel
+var (
+	roseaProgramCtx    *tea.Program
+	roseaNavigationCtx *RoseaModel
+)
 
 func GetRoseaNavigationCtx() *RoseaModel {
 	if roseaNavigationCtx == nil {
