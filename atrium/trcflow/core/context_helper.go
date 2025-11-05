@@ -363,7 +363,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 				// Writeback to mysql to delete that
 				rowDataMap := map[string]any{}
 				rowDataMap["Deleted"] = "true"
-				rowDataMap["changedID"] = changedID
+				rowDataMap["changedId"] = changedID
 				for _, column := range changedTableColumns {
 					rowDataMap[column] = ""
 				}
