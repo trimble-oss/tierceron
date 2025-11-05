@@ -92,7 +92,7 @@ var (
 	IsPlugin               bool = true
 )
 
-type IndirectDBConnectionFunc func(configContex tccore.ConfigContext, argosId string) (string, string, *sql.DB, error)
+type IndirectDBConnectionFunc func(configContex *tccore.ConfigContext, argosId string) (string, string, *sql.DB, error)
 
 var IndirectDBFunc IndirectDBConnectionFunc
 
@@ -590,7 +590,7 @@ func GetChatMsgHookCtx() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] { retu
 // KafkaTestInit - obtains mpb, kafka reader, and connection for use in kafka testing.
 func KafkaTestInit(argosID string,
 	readerGroupPrefix string,
-	configContext tccore.ConfigContext,
+	configContext *tccore.ConfigContext,
 	currentState *atomic.Value,
 	kafkaTopicSequence [][]string,
 	currentStateFunc decor.DecorFunc,
