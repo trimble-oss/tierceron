@@ -409,7 +409,9 @@ func CommonMain(envPtr *string,
 		pluginConfig["regions"] = []string{*regionPtr}
 	}
 	driverConfig, mod, vault, err := eUtils.InitVaultModForTool(pluginConfig, trcshDriverConfigBase.DriverConfig)
-	trcshConfig := &capauth.TrcshDriverConfig{}
+	trcshConfig := &capauth.TrcshDriverConfig{
+		DriverConfig: driverConfig,
+	}
 	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
 	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
 	if trcshConfig.FeatherCtx != nil && flagEnvPtr != nil && trcshConfig.FeatherCtx.Env != nil && strings.HasPrefix(*flagEnvPtr, *trcshConfig.FeatherCtx.Env) {
