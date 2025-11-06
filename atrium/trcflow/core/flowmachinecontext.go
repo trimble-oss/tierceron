@@ -607,10 +607,10 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 
 // Seeds TrcDb from vault...  useful during init.
 func (tfmContext *TrcFlowMachineContext) seedTrcDBCycle(tfContext *TrcFlowContext,
-	identityColumnName []string,
-	indexColumnNames any,
-	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
-	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
+	_ []string,
+	_ any,
+	_ func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
+	_ func(flowcore.FlowContext, map[string]any) error,
 	bootStrap bool,
 	seedInitCompleteChan chan bool,
 ) {
@@ -1430,7 +1430,7 @@ func (tfmContext *TrcFlowMachineContext) ProcessFlow(
 				retryConnectionAccess:
 					dbsourceConn, err := trcdbutil.OpenDirectConnection(tfmContext.DriverConfig, tfContext.GoMod, sDC["dbsourceurl"].(string), sDC["dbsourceuser"].(string), func() (string, error) { return url.QueryEscape(sDC["dbsourcepassword"].(string)), nil })
 					if err != nil && err.Error() != "incorrect URL format" {
-						if retryCount < 3 && err != nil && dbsourceConn == nil {
+						if retryCount < 3 && dbsourceConn == nil {
 							retryCount = retryCount + 1
 							goto retryConnectionAccess
 						}
