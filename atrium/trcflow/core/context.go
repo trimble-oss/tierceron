@@ -145,7 +145,7 @@ type FakeDFStat struct {
 
 var tableModifierLock sync.Mutex
 
-// True if a time was most recent, false if b time was most recent.
+// WhichLastModified - true if a time was most recent, false if b time was most recent.
 func WhichLastModified(a any, b any) bool {
 	// Check if a & b are time.time
 	// Check if they match.

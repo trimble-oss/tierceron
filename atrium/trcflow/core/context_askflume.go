@@ -34,7 +34,7 @@ func GetID() int64 {
 	return id - 1
 }
 
-// Initializes the AskFlumeContext and returns the
+// InitAskFlume - initializes the AskFlumeContext and returns the
 // initialized context
 func InitAskFlume() (*AskFlumeContext, error) {
 	gchatQueries := make(chan *AskFlumeContext)

@@ -69,8 +69,7 @@ var (
 	modifierCachLock sync.Mutex
 )
 
-// PreCheckEnvironment
-// Returns: env, parts, true if parts is path, false if part of file name, error
+// PreCheckEnvironment - returns: env, parts, true if parts is path, false if part of file name, error
 func PreCheckEnvironment(environment string) (string, string, bool, error) {
 	envParts := strings.Split(environment, ".")
 	if len(envParts) == 2 {
@@ -506,11 +505,17 @@ retryVaultAccess:
 			// Got a result, process it
 			secret = result.s
 			err = result.e
+			if cancel != nil {
+				cancel()
+			}
 			goto processResult
 
 		case <-ctx.Done():
 			// Timeout occurred
 			timeoutRetry++
+			if cancel != nil {
+				cancel()
+			}
 			if timeoutRetry >= maxTimeoutRetries {
 				// Max retries exceeded, mark as stale and return error
 				m.Stale = true
@@ -518,10 +523,7 @@ retryVaultAccess:
 				err = fmt.Errorf("vault operation timed out after %d retries: %s", maxTimeoutRetries, fullPath)
 				goto processResult
 			}
-
-			// Create new context for retry
 			ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
 
 			// Launch a new attempt
 			go func() {
@@ -629,7 +631,7 @@ processResult:
 		return data, err
 	}
 
-	if err == nil && secret != nil {
+	if err == nil {
 		return nil, nil // Handle deleted, but not destroyed data from vault.
 	}
 	return nil, errors.New("could not get data from vault response")
@@ -860,7 +862,7 @@ func (m *Modifier) Exists(path string) bool {
 	}
 }
 
-// GetProjectServiceMap - returns a map of all projects with list of their available services.
+// GetProjectServicesMap - returns a map of all projects with list of their available services.
 func (m *Modifier) GetProjectServicesMap(logger *log.Logger) (map[string][]string, error) {
 	projectServiceMap := map[string][]string{}
 	projectData, err := m.List("templates", logger)
@@ -1007,39 +1009,39 @@ func (m *Modifier) GetVersionValues(mod *Modifier, wantCerts bool, enginePath st
 	return versionDataMap, nil
 }
 
-func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[string]map[string]any, logger *log.Logger) {
-	for _, filePath := range filePaths {
-		foundService := false
-		for _, service := range m.VersionFilter {
-			if strings.Contains(filePath, service) && !foundService {
-				foundService = true
-			}
-		}
+// func (m *Modifier) recursivePathFinder(filePaths []string, versionDataMap map[string]map[string]any, logger *log.Logger) {
+// 	for _, filePath := range filePaths {
+// 		foundService := false
+// 		for _, service := range m.VersionFilter {
+// 			if strings.Contains(filePath, service) && !foundService {
+// 				foundService = true
+// 			}
+// 		}
 
-		if !foundService {
-			continue
-		}
+// 		if !foundService {
+// 			continue
+// 		}
 
-		subFilePaths, err := m.getPaths(filePath, logger)
+// 		subFilePaths, err := m.getPaths(filePath, logger)
 
-		if len(subFilePaths) > 0 {
-			m.recursivePathFinder(subFilePaths, versionDataMap, logger)
-		}
+// 		if len(subFilePaths) > 0 {
+// 			m.recursivePathFinder(subFilePaths, versionDataMap, logger)
+// 		}
 
-		if err != nil {
-			logger.Println(err.Error())
-		}
+// 		if err != nil {
+// 			logger.Println(err.Error())
+// 		}
 
-		metadataValue, err := m.ReadVersionMetadata(filePath, logger)
-		if err != nil {
-			logger.Println(err.Error())
-		}
-		if len(metadataValue) == 0 {
-			continue
-		}
-		versionDataMap[filePath] = metadataValue
-	}
-}
+// 		metadataValue, err := m.ReadVersionMetadata(filePath, logger)
+// 		if err != nil {
+// 			logger.Println(err.Error())
+// 		}
+// 		if len(metadataValue) == 0 {
+// 			continue
+// 		}
+// 		versionDataMap[filePath] = metadataValue
+// 	}
+// }
 
 func (m *Modifier) getPaths(pathName string, logger *log.Logger) ([]string, error) {
 	secrets, err := m.List(pathName, logger)
@@ -1124,13 +1126,13 @@ func (m *Modifier) templateFileRecurse(pathName string, logger *log.Logger) ([]s
 	return subPathList, nil
 }
 
-func getPathEnd(path string) string {
-	strs := strings.Split(path, "/")
-	for strs[len(strs)-1] == "" {
-		strs = strs[:len(strs)-1]
-	}
-	return strs[len(strs)-1]
-}
+// func getPathEnd(path string) string {
+// 	strs := strings.Split(path, "/")
+// 	for strs[len(strs)-1] == "" {
+// 		strs = strs[:len(strs)-1]
+// 	}
+// 	return strs[len(strs)-1]
+// }
 
 func (m *Modifier) ListSubsection(sectionKey string, project string, indexName string, logger *log.Logger) ([]string, error) {
 	var indexes []string

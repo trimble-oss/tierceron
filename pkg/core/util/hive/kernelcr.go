@@ -101,21 +101,21 @@ func InitKernel(id string) *PluginHandler {
 	}
 }
 
-func (ph *PluginHandler) GetKernelID() int {
-	if ph == nil {
+func (pluginHandler *PluginHandler) GetKernelID() int {
+	if pluginHandler == nil {
 		return 0
 	}
-	if ph.KernelId == -1 && len(ph.Id) > 0 {
-		idParts := strings.Split(ph.Id, "-")
+	if pluginHandler.KernelId == -1 && len(pluginHandler.Id) > 0 {
+		idParts := strings.Split(pluginHandler.Id, "-")
 		if len(idParts) > 1 {
 			var kernParseErr error
-			ph.KernelId, kernParseErr = strconv.Atoi(idParts[1])
+			pluginHandler.KernelId, kernParseErr = strconv.Atoi(idParts[1])
 			if kernParseErr != nil {
-				ph.KernelId = 0
+				pluginHandler.KernelId = 0
 			}
 		}
 	}
-	return ph.KernelId
+	return pluginHandler.KernelId
 }
 
 var pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid blocking
@@ -248,8 +248,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 						}
 					}
 				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalPluginStatusChan != nil && len(globalPluginStatusChan) == 0 {
-					timeDiff := (*v.NotAfter).Sub(time.Now())
-					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) {
+					timeDiff := time.Until((*v.NotAfter))
+					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Since(*v.lastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
 						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
 							Name:        &pluginHandler.Name,
@@ -274,7 +274,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								}
 							}
 						}
-					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour) && pHID == 0 {
+					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Since(*v.lastUpdate) < time.Hour) && pHID == 0 {
 						response := fmt.Sprintf("Cert %s expiring in %.2f hours.", k, timeDiff.Hours())
 						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
 							Name:        &pluginHandler.Name,
@@ -284,7 +284,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 						}, "cert expiring hours", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
 						v.lastUpdate = &tiNow
-					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Now().Sub(*v.lastUpdate) < time.Hour*24) && pHID == 0 {
+					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Since(*v.lastUpdate) < time.Hour*24) && pHID == 0 {
 						daysLeft := timeDiff.Hours() / 24.0
 						response := fmt.Sprintf("Cert %s expiring in %d days.", k, int(daysLeft))
 						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
@@ -1100,7 +1100,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				}()
 
-				if bootDriverConfig == nil && driverConfig != nil && driverConfig.CoreConfig.IsEditor {
+				if bootDriverConfig == nil && driverConfig.CoreConfig.IsEditor {
 					bootDriverConfig = driverConfig
 				}
 				// Use the plugin dfs channel
@@ -1189,7 +1189,7 @@ func (pluginHandler *PluginHandler) handleErrors(driverConfig *config.DriverConf
 	}
 }
 
-func (pluginHandler *PluginHandler) handleDataflowStat(driverConfig *config.DriverConfig, mod *kv.Modifier, vault *system.Vault) {
+func (pluginHandler *PluginHandler) handleDataflowStat(driverConfig *config.DriverConfig, mod *kv.Modifier, _ *system.Vault) {
 	// tfmContext := &flowtccore.TrcFlowMachineContext{
 	// 	Env:                       driverConfig.CoreConfig.Env,
 	// 	GetAdditionalFlowsByState: flowopts.BuildOptions.GetAdditionalFlowsByState,

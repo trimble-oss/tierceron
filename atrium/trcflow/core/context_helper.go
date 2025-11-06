@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	tcflow "github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
@@ -26,13 +25,13 @@ func getChangeIDQuery(databaseName string, changeTable string) string {
 	return fmt.Sprintf("SELECT id FROM %s.%s", databaseName, changeTable)
 }
 
-func getChangedByIDQuery(databaseName string, changeTable string, identityColumnName string, id any) string {
-	if _, iOk := id.(int64); iOk {
-		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, identityColumnName, id)
-	} else {
-		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, identityColumnName, id)
-	}
-}
+// func getChangedByIDQuery(databaseName string, changeTable string, identityColumnName string, id any) string {
+// 	if _, iOk := id.(int64); iOk {
+// 		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%d'", databaseName, changeTable, identityColumnName, id)
+// 	} else {
+// 		return fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, identityColumnName, id)
+// 	}
+// }
 
 func getDeleteChangeQuery(databaseName string, changeTable string, id any) string {
 	if _, iOk := id.(int64); iOk {
@@ -77,7 +76,7 @@ func (tfmContext *TrcFlowMachineContext) NotifyFlowComponentLoaded(tableName str
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, idCols []string, indexColumnNames any) ([][]any, error) {
+func (tfmContext *TrcFlowMachineContext) removeCompositeKeyChangedTableEntries(tfContext *TrcFlowContext, _ []string, indexColumnNames any) ([][]any, error) {
 	var changedEntriesQuery string
 
 	changesLock.Lock()
@@ -196,7 +195,7 @@ func getStatisticChangedByIDQuery(databaseName string, changeTable string, idCol
 		if indexColumnValuesSlice, iOk := indexColumnValues.([]any); iOk {
 			var query string
 			var removedVal any
-			var removedValName string
+			//			var removedValName string
 			if valueSliceStr, sOk := indexColumnValuesSlice[0].([]string); sOk {
 				if len(idColumns) == 1 {
 					query = fmt.Sprintf("SELECT * FROM %s.%s WHERE %s='%s'", databaseName, changeTable, idColumns[0], valueSliceStr[0])
@@ -208,7 +207,7 @@ func getStatisticChangedByIDQuery(databaseName string, changeTable string, idCol
 				}
 				if indexColumnValuesSlice, removedVal = removeElementFromSliceInterface(indexColumnValuesSlice, valueSliceStr); removedVal != nil { // this logic is for dfs...names & values appear out of order in slices at this point but is needed for previous step.
 
-					indexColumnNamesSlice, removedValName = removeElementFromSlice(indexColumnNamesSlice, idColumns) //							 may need to revist if a table has 3 identifiying column names (none currently).
+					indexColumnNamesSlice, _ = removeElementFromSlice(indexColumnNamesSlice, idColumns) //							 may need to revist if a table has 3 identifiying column names (none currently).
 				}
 			} else if valueInt, viOK := indexColumnValuesSlice[0].(int64); viOK {
 				if len(idColumns) == 1 {
@@ -244,10 +243,10 @@ func getStatisticChangedByIDQuery(databaseName string, changeTable string, idCol
 				}
 			}
 
-			if removedValName != "" { // Adding back in ordered name & val for dfs for next steps...
-				indexColumnValuesSlice = append(indexColumnValuesSlice, removedVal)
-				indexColumnNamesSlice = append(indexColumnNamesSlice, removedValName)
-			}
+			// if removedValName != "" { // Adding back in ordered name & val for dfs for next steps...
+			//   indexColumnValuesSlice = append(indexColumnValuesSlice, removedVal)
+			//   indexColumnNamesSlice = append(indexColumnNamesSlice, removedValName)
+			// }
 
 			return query, nil
 		} else {
@@ -266,7 +265,7 @@ func getStatisticInsertChangeQuery(databaseName string, changeTable string, idCo
 }
 
 // removeChangedTableEntries -- gets and removes any changed table entries.
-func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext tcflow.FlowContext, idCols []string, indexColumnNames any) ([][]any, error) {
+func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcflowContext flowcore.FlowContext, idCols []string, indexColumnNames any) ([][]any, error) {
 	var changedEntriesQuery string
 	tfContext := tcflowContext.(*TrcFlowContext)
 
@@ -295,12 +294,12 @@ func (tfmContext *TrcFlowMachineContext) removeStatisticChangedTableEntries(tcfl
 
 // vaultPersistPushRemoteChanges - Persists any local mysql changes to vault and pushed any changes to a remote data source.
 func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
-	tcflowContext tcflow.FlowContext,
+	tcflowContext flowcore.FlowContext,
 	identityColumnNames []string,
 	indexColumnNames any,
 	mysqlPushEnabled bool,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
-	flowPushRemote func(tcflow.FlowContext, map[string]any) error,
+	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
 ) error {
 	tfContext := tcflowContext.(*TrcFlowContext)
 
@@ -346,7 +345,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
-		if len(changedTableRowData) == 0 && err == nil && len(changedEntry) != 3 { // This change was a delete
+		if len(changedTableRowData) == 0 && len(changedEntry) != 3 { // This change was a delete
 			syncDelete := false
 			for _, syncedTable := range coreopts.BuildOptions.GetSyncedTables() {
 				if tfContext.FlowHeader.TableName() == syncedTable {
@@ -503,7 +502,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
-		if indexPath == "" && indexPathErr == nil {
+		if indexPath == "" {
 			continue // This case is for when SEC row can't find a matching tenant
 		}
 

@@ -22,10 +22,10 @@ import (
 var pluginLog = false
 
 const (
-	boTopic    = "bu_topic"
-	boPrefix   = ""
-	boRangeMin = 1
-	boRangeMax = 9999
+// boTopic    = "bu_topic"
+// boPrefix   = ""
+// boRangeMin = 1
+// boRangeMax = 9999
 )
 
 // BuildBusinessObject - Builds a BusinessObject object
