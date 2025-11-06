@@ -87,7 +87,7 @@ func CertsCert_filesDcipublicPem() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../../certs/cert_files/dcipublic.pem", size: 2206, mode: os.FileMode(420), modTime: time.Unix(1605581277, 0)}
+	info := bindataFileInfo{name: "../../certs/cert_files/dcipublic.pem", size: 2206, mode: os.FileMode(0o644), modTime: time.Unix(1605581277, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -107,7 +107,7 @@ func CertsCert_filesDcidevpublicPem() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "../../certs/cert_files/dcidevpublic.pem", size: 2620, mode: os.FileMode(420), modTime: time.Unix(1605579396, 0)}
+	info := bindataFileInfo{name: "../../certs/cert_files/dcidevpublic.pem", size: 2620, mode: os.FileMode(0o644), modTime: time.Unix(1605579396, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
