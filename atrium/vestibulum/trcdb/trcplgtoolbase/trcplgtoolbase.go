@@ -414,8 +414,9 @@ func CommonMain(envPtr *string,
 	}
 	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
 	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
-	if trcshConfig.FeatherCtx != nil && flagEnvPtr != nil && strings.HasPrefix(*flagEnvPtr, *trcshConfig.FeatherCtx.Env) {
+	if trcshConfig.FeatherCtx != nil && flagEnvPtr != nil && trcshConfig.FeatherCtx.Env != nil && strings.HasPrefix(*flagEnvPtr, *trcshConfig.FeatherCtx.Env) {
 		// take on the environment context of the provided flag... like dev-1
+		// Note: This updates the FeatherCtx.Env which is used later in FeatherCtlCb at line ~1250
 		trcshConfig.FeatherCtx.Env = flagEnvPtr
 	}
 
