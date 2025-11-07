@@ -43,7 +43,7 @@ func CreateHTTPClient(insecure bool, address string, env string, scan bool) (cli
 	return CreateHTTPClientAllowNonLocal(insecure, address, env, scan, false)
 }
 
-// CreateHTTPClient reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
+// CreateHTTPClientAllowNonLocal reads from several .pem files to get the necessary keys and certs to configure the http client and returns the client.
 func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, scan bool, allowNonLocal bool) (client *http.Client, err error) {
 	// // create a pool of trusted certs
 	certPath := "../../certs/cert_files/dcidevpublic.pem"
@@ -52,8 +52,8 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 	}
 
 	cert, err := Asset(certPath)
-	//servCertPEM, err := os.ReadFile(certPath)
-	//servCertPEM := []byte(cert)
+	// servCertPEM, err := os.ReadFile(certPath)
+	// servCertPEM := []byte(cert)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 
 	certPool.AppendCertsFromPEM(cert)
 
-	var tlsConfig = &tls.Config{RootCAs: certPool}
+	tlsConfig := &tls.Config{RootCAs: certPool}
 	if insecure {
 		if isLocal, lookupErr := IsUrlIp(address); isLocal {
 			if lookupErr != nil {

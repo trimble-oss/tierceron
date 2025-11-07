@@ -189,7 +189,7 @@ func tierceronFlowImport(tfmContext *trcflowcore.TrcFlowMachineContext, tfContex
 	return nil, nil
 }
 
-// Only pull from vault on init
+// ProcessTierceronFlows - Only pull from vault on init
 // Listen to a change channel ->
 func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfContext *trcflowcore.TrcFlowContext) error {
 	tfmContext.AddTableSchema(getTierceronFlowSchema(tfContext.FlowHeader.TableName()), tfContext)

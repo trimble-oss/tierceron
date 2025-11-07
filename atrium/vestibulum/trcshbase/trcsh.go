@@ -946,13 +946,13 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 }
 
 var (
-	interruptChan                  chan os.Signal = make(chan os.Signal, 5)
-	twoHundredMilliInterruptTicker *time.Ticker   = time.NewTicker(200 * time.Millisecond)
-	secondInterruptTicker          *time.Ticker   = time.NewTicker(time.Second)
-	multiSecondInterruptTicker     *time.Ticker   = time.NewTicker(time.Second * 3)
-	fiveSecondInterruptTicker      *time.Ticker   = time.NewTicker(time.Second * 5)
-	fifteenSecondInterruptTicker   *time.Ticker   = time.NewTicker(time.Second * 5)
-	thirtySecondInterruptTicker    *time.Ticker   = time.NewTicker(time.Second * 5)
+	interruptChan chan os.Signal = make(chan os.Signal, 5)
+	//	twoHundredMilliInterruptTicker *time.Ticker   = time.NewTicker(200 * time.Millisecond)
+	//	secondInterruptTicker          *time.Ticker   = time.NewTicker(time.Second)
+	multiSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 3)
+	//	fiveSecondInterruptTicker      *time.Ticker   = time.NewTicker(time.Second * 5)
+	fifteenSecondInterruptTicker *time.Ticker = time.NewTicker(time.Second * 5)
+	thirtySecondInterruptTicker  *time.Ticker = time.NewTicker(time.Second * 5)
 )
 
 func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker, tickerBreak *time.Ticker, tickerInterrupt *time.Ticker) (bool, error) {
@@ -982,12 +982,10 @@ func acceptInterruptFun(featherCtx *cap.FeatherContext, tickerContinue *time.Tic
 func acceptInterruptNoTimeoutFun(featherCtx *cap.FeatherContext, tickerContinue *time.Ticker) (bool, error) {
 	result := false
 	var resultError error = nil
-	select {
-	case <-tickerContinue.C:
-		// don't break... continue...
-		result = false
-		resultError = nil
-	}
+	<-tickerContinue.C
+	// don't break... continue...
+	result = false
+	resultError = nil
 	if len(featherCtx.InterruptChan) > 0 {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		eUtils.LogSyncAndExit(featherCtx.Log, "Accept Interrupted No timeout", 128)
@@ -995,18 +993,16 @@ func acceptInterruptNoTimeoutFun(featherCtx *cap.FeatherContext, tickerContinue 
 	return result, resultError
 }
 
-func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
-	select {
-	case <-tickerInterrupt.C:
-		if len(featherCtx.InterruptChan) > 0 {
-			cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-			eUtils.LogSyncAndExit(featherCtx.Log, "Interrupt Interrupted", 128)
-		}
-	}
-}
+// func interruptFun(featherCtx *cap.FeatherContext, tickerInterrupt *time.Ticker) {
+// 	<-tickerInterrupt.C
+// 	if len(featherCtx.InterruptChan) > 0 {
+// 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+// 		eUtils.LogSyncAndExit(featherCtx.Log, "Interrupt Interrupted", 128)
+// 	}
+// }
 
 // acceptRemote - hook for instrumenting
-func acceptRemote(featherCtx *cap.FeatherContext, mode int, remote string) (bool, error) {
+func acceptRemote(featherCtx *cap.FeatherContext, mode int, _ string) (bool, error) {
 	if mode == cap.FEATHER_CTL {
 		return acceptInterruptFun(featherCtx, multiSecondInterruptTicker, fifteenSecondInterruptTicker, thirtySecondInterruptTicker)
 	}
@@ -1040,7 +1036,7 @@ func roleBasedRunner(
 	region string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,
-	argsOrig []string,
+	_ []string,
 	deployArgLines []string,
 	configCount *int,
 ) error {
@@ -1271,9 +1267,9 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 	}
 }
 
-func processDroneCmds(trcKubeDeploymentConfig *kube.TrcKubeConfig,
-	onceKubeInit *sync.Once,
-	PipeOS trcshio.TrcshReadWriteCloser,
+func processDroneCmds(_ *kube.TrcKubeConfig,
+	_ *sync.Once,
+	_ trcshio.TrcshReadWriteCloser,
 	region string,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	control string,

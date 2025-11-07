@@ -30,7 +30,6 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/core/util/repository"
-	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
 	trcapimgmtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcapimgmtbase"
@@ -221,7 +220,7 @@ func CommonMain(envPtr *string,
 	}
 
 	if !kernelopts.BuildOptions.IsKernel() {
-		if utils.RefLength(addrPtr) == 0 {
+		if eUtils.RefLength(addrPtr) == 0 {
 			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
 		} else {
 			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
@@ -415,8 +414,9 @@ func CommonMain(envPtr *string,
 	}
 	trcshConfig.FeatherCtlCb = trcshDriverConfigBase.FeatherCtlCb
 	trcshConfig.FeatherCtx = trcshDriverConfigBase.FeatherCtx
-	if trcshConfig.FeatherCtx != nil && flagEnvPtr != nil && strings.HasPrefix(*flagEnvPtr, *trcshConfig.FeatherCtx.Env) {
+	if trcshConfig.FeatherCtx != nil && flagEnvPtr != nil && trcshConfig.FeatherCtx.Env != nil && strings.HasPrefix(*flagEnvPtr, *trcshConfig.FeatherCtx.Env) {
 		// take on the environment context of the provided flag... like dev-1
+		// Note: This updates the FeatherCtx.Env which is used later in FeatherCtlCb at line ~1250
 		trcshConfig.FeatherCtx.Env = flagEnvPtr
 	}
 
@@ -430,8 +430,8 @@ func CommonMain(envPtr *string,
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else if *pluginNamePtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
-	} else if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
-		if subsv, k := deploy_plugin.(string); k {
+	} else if deployPlugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+		if subsv, k := deployPlugin.(string); k {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
 			*pluginNamePtr = subsv
 		}
@@ -440,8 +440,8 @@ func CommonMain(envPtr *string,
 	var pluginHandler *hive.PluginHandler = nil
 	var kernelPluginHandler *hive.PluginHandler = nil
 	if *pluginNamePtr == "" {
-		if deploy_plugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
-			if dep, k := deploy_plugin.(string); k {
+		if deployPlugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+			if dep, k := deployPlugin.(string); k {
 				*pluginNamePtr = dep
 			} else {
 				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
@@ -844,7 +844,7 @@ func CommonMain(envPtr *string,
 					}
 					deployRoot = strings.Replace(deployRoot, "{{.trcpathparam}}", pathParam, -1)
 				} else {
-					return errors.New("Unable to replace path placeholder with pathParam.")
+					return errors.New("unable to replace path placeholder with pathParam")
 				}
 			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))

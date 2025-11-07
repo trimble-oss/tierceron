@@ -42,10 +42,6 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 	aFleet.ChildNodes = make([]*tccore.TTDINode, 0)
 	idNameListData, serviceListErr := mod.List(fmt.Sprintf(PUBLIC_INDEX_BASIS_PATH, project), logger)
 	if serviceListErr != nil || idNameListData == nil {
-		return &aFleet, serviceListErr
-	}
-
-	if serviceListErr != nil || idNameListData == nil {
 		return &aFleet, errors.New("no project was found for argosyFleet")
 	}
 
@@ -53,12 +49,12 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 		for _, idName := range idNameList.([]any) {
 			idListData, idListErr := mod.List(fmt.Sprintf("super-secrets/Index/%s/tenantId", project), logger)
 			if idListErr != nil || idListData == nil {
+				if idListData == nil {
+					return &aFleet, errors.New("no argosID were found for argosyFleet")
+				}
 				return &aFleet, idListErr
 			}
 
-			if idListData == nil {
-				return &aFleet, errors.New("no argosID were found for argosyFleet")
-			}
 			idName = strings.Trim(idName.(string), "/")
 
 			if mod.Direct {
