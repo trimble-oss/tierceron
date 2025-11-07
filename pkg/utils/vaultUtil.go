@@ -19,7 +19,43 @@ import (
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 )
 
+// isRetryable detects if the err is retryable (timeout or connection issue).
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for timeout errors
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+
+	errStr := err.Error()
+	// Timeout-related errors
+	if strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "timed out") ||
+		strings.Contains(errStr, "deadline exceeded") {
+		return true
+	}
+
+	// Connection-related errors that should be retried
+	// These are typically transient network issues
+	if strings.Contains(errStr, "EOF") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "broken pipe") {
+		return true
+	}
+
+	return false
+}
+
 // isTimout detects if the err is a timeout.
+// Deprecated: Use isRetryable instead for more comprehensive error handling.
 func isTimeout(err error) bool {
 	if err == nil {
 		return false
@@ -61,9 +97,9 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 			break
 		}
 
-		if isTimeout(err) {
-			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Timeout connecting to vault (attempt %d/%d), retrying in %v...",
-				attempt+1, maxRetries, retryDelay))
+		if isRetryable(err) {
+			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Retryable error connecting to vault (attempt %d/%d): %v, retrying in %v...",
+				attempt+1, maxRetries, err, retryDelay))
 
 			if attempt < maxRetries-1 {
 				time.Sleep(retryDelay)
