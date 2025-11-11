@@ -280,7 +280,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 
 	// if using appRole
 	// If the wanted token name is empty, we select and appropriate default token for the role.
-	if !IsApproleEmpty && *wantedTokenNamePtr == "" {
+	if !IsApproleEmpty && RefLength(wantedTokenNamePtr) == 0 {
 		fmt.Fprintf(os.Stderr, "No token name specified.  Selecting appropriate token default\n")
 
 		env, _, _, envErr := helperkv.PreCheckEnvironment(*envPtr)

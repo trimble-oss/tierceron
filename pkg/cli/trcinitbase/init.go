@@ -145,6 +145,11 @@ func CommonMain(envPtr *string,
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
+	if eUtils.RefLength(tokenPtr) < 5 {
+		fmt.Fprintf(os.Stderr, "-token is a required parameter for trcinit\n")
+		flagset.Usage()
+		os.Exit(1)
+	}
 
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
