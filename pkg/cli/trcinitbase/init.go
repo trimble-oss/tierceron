@@ -145,17 +145,17 @@ func CommonMain(envPtr *string,
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
-	if eUtils.RefLength(tokenPtr) < 5 {
-		fmt.Fprintf(os.Stderr, "-token is a required parameter for trcinit\n")
-		flagset.Usage()
-		os.Exit(1)
-	}
 
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 	} else {
+		if eUtils.RefLength(tokenPtr) < 5 {
+			fmt.Fprintf(os.Stderr, "-token is a required parameter for trcinit\n")
+			flagset.Usage()
+			os.Exit(1)
+		}
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
 			*logFilePtr = "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "init.log"
