@@ -423,7 +423,6 @@ func start(pluginName string) {
 			configContext.Log.Println(msg, err)
 		})
 	send_dfstat()
-	start_flow_machine_listener()
 	if configContext.CmdSenderChan != nil {
 		*configContext.CmdSenderChan <- core.KernelCmd{
 			Command: core.PLUGIN_EVENT_START,
@@ -434,7 +433,7 @@ func start(pluginName string) {
 	}
 }
 
-func start_flow_machine_listener() {
+func startFlowMachineListener() {
 	if tfmContext == nil || tfmContext.GetFlowChatMsgSenderChan() == nil {
 		configContext.Log.Println("No flow machine context available for trcdb plugin.")
 		return
@@ -445,8 +444,12 @@ func start_flow_machine_listener() {
 			if event == nil {
 				continue
 			}
-			if event.TrcdbExchange != nil && len(event.TrcdbExchange.Request.Rows) != 0 {
-				// TODO: Process message from flow
+			if event.TrcdbExchange != nil && len(event.TrcdbExchange.Flows) > 0 {
+				configContext := GetConfigContext("trcdb")
+				go func(csc *chan *core.ChatMsg) {
+					*csc <- event
+				}(configContext.ChatSenderChan)
+				configContext.Log.Printf("trcdb received message for flows: %v\n", event.TrcdbExchange.Flows)
 			}
 		}
 	}()
@@ -515,6 +518,7 @@ func Init(pluginName string, properties *map[string]any) {
 		configContext.Log.Println("No flow context available for trcdb plugin.")
 		return
 	}
+	startFlowMachineListener()
 }
 
 func GetPluginMessages(pluginName string) []string {
