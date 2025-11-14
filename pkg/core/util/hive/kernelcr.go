@@ -1,7 +1,9 @@
 package hive
 
 import (
+	"crypto/sha256"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -57,6 +59,7 @@ type certValue struct {
 	CreatedTime any
 	NotAfter    *time.Time
 	lastUpdate  *time.Time
+	sha256      string
 }
 
 type PluginHandler struct {
@@ -223,26 +226,37 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							valid = true
 						}
 						if valid {
-							if pluginHandler.Services == nil {
-								driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
-								goto waitToReload
+							certSha256 := ""
+							if len(configuredCert) > 0 {
+								certHash := sha256.Sum256(configuredCert)
+								certSha256 = hex.EncodeToString(certHash[:])
+							} else {
+								driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for cert reload check")
 							}
-							for s, sPluginHandler := range *pluginHandler.Services {
-								if sPluginHandler == nil || sPluginHandler.ConfigContext == nil || sPluginHandler.ConfigContext.CmdSenderChan == nil {
-									driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", s)
-									continue
+							if certSha256 != v.sha256 {
+								if pluginHandler.Services == nil {
+									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
+									goto waitToReload
 								}
-								safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
-									PluginName: sPluginHandler.Name,
-									Command:    tccore.PLUGIN_EVENT_STOP,
-								}, fmt.Sprintf("cert reload shutdown %s", s), driverConfig.CoreConfig.Log)
-								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+								for s, sPluginHandler := range *pluginHandler.Services {
+									if sPluginHandler == nil || sPluginHandler.ConfigContext == nil || sPluginHandler.ConfigContext.CmdSenderChan == nil {
+										driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", s)
+										continue
+									}
+									safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+										PluginName: sPluginHandler.Name,
+										Command:    tccore.PLUGIN_EVENT_STOP,
+									}, fmt.Sprintf("cert reload shutdown %s", s), driverConfig.CoreConfig.Log)
+									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
+								}
+								// TODO: Get rid of os.Exit
+								// 0. Reload certificates
+								// 1. Recall Init function for each plugin
+								// 2. Start each plugin
+								eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
+							} else {
+								continue
 							}
-							// TODO: Get rid of os.Exit
-							// 0. Reload certificates
-							// 1. Recall Init function for each plugin
-							// 2. Start each plugin
-							eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 						} else {
 							continue
 						}
@@ -429,11 +443,19 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 
 		if valid {
 			var zeroTime time.Time
+			certSha256 := ""
+			if len(configuredCert) > 0 {
+				certHash := sha256.Sum256(configuredCert)
+				certSha256 = hex.EncodeToString(certHash[:])
+			} else {
+				driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for adding to cert cache")
+			}
 			globalCertCache.Set(path, &certValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
 				NotAfter:    certNotAfter,
 				lastUpdate:  &zeroTime,
+				sha256:      certSha256,
 			})
 
 			driverConfig.CoreConfig.WantCerts = false
