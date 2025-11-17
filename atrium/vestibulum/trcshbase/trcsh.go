@@ -630,6 +630,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				if err != nil {
 					id = 0
 				}
+				id = 0
 				kernelID = id
 				kernelName = hostParts[0]
 				driverConfigPtr.CoreConfig.Log.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
