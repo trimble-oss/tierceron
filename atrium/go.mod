@@ -14,8 +14,8 @@ require (
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/twitchtv/twirp v5.12.1+incompatible // indirect
 	github.com/xo/dburl v0.9.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/sys v0.33.0
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/sys v0.38.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -33,7 +33,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
 	github.com/danieljoos/wincred v1.2.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
-	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/google/go-github/v61 v61.0.0
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/newrelic/go-agent/v3 v3.35.0
@@ -71,6 +70,7 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/ftbe/dawg v0.0.0-20131228112149-aadae8139481 // indirect
+	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -98,6 +98,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
+	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
 )
 
 require (
@@ -283,13 +284,13 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	golang.org/x/mod v0.24.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
-	golang.org/x/term v0.32.0 // indirect
-	golang.org/x/text v0.25.0
+	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/term v0.37.0 // indirect
+	golang.org/x/text v0.31.0
 	golang.org/x/time v0.11.0 // indirect
-	golang.org/x/tools v0.32.0 // indirect
+	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
