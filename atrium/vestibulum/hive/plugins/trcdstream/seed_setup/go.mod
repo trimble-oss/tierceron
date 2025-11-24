@@ -1,10 +1,10 @@
-module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/seed_setup
+module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdstream/seed_setup
 
 go 1.25.4
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja v0.0.0-00010101000000-000000000000
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdstream v0.0.0-00010101000000-000000000000
 	github.com/vbauerster/mpb/v8 v8.10.2
 )
 
@@ -32,4 +32,4 @@ require (
 
 replace github.com/linkedin/goavro => ../goavro
 
-replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja => ../
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdstream => ../
