@@ -439,11 +439,13 @@ func startFlowMachineListener() {
 		return
 	}
 	go func() {
+		configContext.Log.Println("Starting trcdb flow machine listener.")
 		for {
 			event := <-*tfmContext.GetFlowChatMsgSenderChan()
 			if event == nil {
 				continue
 			}
+			configContext.Log.Println("trcdb flow machine listener received message.")
 			if event.TrcdbExchange != nil && len(event.TrcdbExchange.Flows) > 0 {
 				configContext := GetConfigContext("trcdb")
 				go func(csc *chan *core.ChatMsg) {
