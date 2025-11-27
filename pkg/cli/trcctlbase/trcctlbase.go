@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
@@ -431,7 +432,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				filter := restrictedMapping[0][strings.Index(restrictedMapping[0], "=")+1:]
 				filterParts := strings.Split(filter, ",")
 				for _, filterPart := range filterParts {
-					if !strings.HasPrefix(filterPart, "Common") {
+					if !strings.HasPrefix(filterPart, "Common") && !strings.HasSuffix(filterPart, "Build") {
 						restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
 						projServ = strings.Split(filterPart, "/")
 						break
@@ -455,7 +456,8 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			serviceConfig := map[string]any{}
 			driverConfig.MemFs.SerializeToMap(".", serviceConfig)
 
-			path := "kafkatableconfiguration.properties"
+			paths := pluginopts.BuildOptions.GetConfigPaths(*pluginNamePtr)
+			path := paths[0]
 			pluginConfig := make(map[string]any)
 			pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 			currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
