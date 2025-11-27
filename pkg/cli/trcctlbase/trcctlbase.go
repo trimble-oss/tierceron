@@ -23,6 +23,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	"github.com/trimble-oss/tierceron/pkg/utils"
@@ -221,6 +222,7 @@ func CommonMain(envDefaultPtr *string,
 		driverConfig := config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
 				IsShell:             true, // Pretent to be shell to keep things in memory
+				IsEditor:            true, // Pretend to be editor.
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
@@ -423,6 +425,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				flagset,
 				restrictedMappingConfig,
 				driverConfig)
+			var projServ []string
 
 			if strings.HasPrefix(restrictedMapping[0], "-templateFilter=") {
 				filter := restrictedMapping[0][strings.Index(restrictedMapping[0], "=")+1:]
@@ -430,6 +433,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				for _, filterPart := range filterParts {
 					if !strings.HasPrefix(filterPart, "Common") {
 						restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
+						projServ = strings.Split(filterPart, "/")
 						break
 					}
 				}
@@ -450,6 +454,34 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 			driverConfig.MemFs.ClearCache("./deploy")
 			serviceConfig := map[string]any{}
 			driverConfig.MemFs.SerializeToMap(".", serviceConfig)
+
+			path := "kafkatableconfiguration.properties"
+			pluginConfig := make(map[string]any)
+			pluginConfig["vaddress"] = *driverConfig.CoreConfig.TokenCache.VaultAddressPtr
+			currentTokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
+			pluginConfig["tokenptr"] = driverConfig.CoreConfig.TokenCache.GetToken(currentTokenName)
+			pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
+
+			_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig,
+				driverConfig.CoreConfig.TokenCache,
+				wantedTokenName,
+				driverConfig.CoreConfig.Log)
+			if err != nil {
+				driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+				return
+			}
+			properties, err := trcvutils.NewProperties(driverConfig.CoreConfig, vault, mod, mod.Env, projServ[0], projServ[1])
+			if err != nil && !strings.Contains(err.Error(), "no data paths found when initing CDS") {
+				driverConfig.CoreConfig.Log.Println("Couldn't create properties for regioned certify:" + err.Error())
+				return
+			}
+			sc, ok := properties.GetRegionConfigValues(projServ[1], path)
+        	if !ok {
+				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", *pluginNamePtr)
+				return
+			}
+			serviceConfig[path] = &sc
+
 			pluginRestart := make(chan tccore.KernelCmd)
 			chatReceiverChan := make(chan *tccore.ChatMsg)
 			pluginHandler := &hive.PluginHandler{
