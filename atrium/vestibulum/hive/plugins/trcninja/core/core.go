@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 // SociiKeyField is the key field name used for enterprise/socii identification
@@ -16,29 +16,38 @@ func SetSociiKey(keyName string) {
 	SociiKeyField = keyName
 }
 
-var configContext *tccore.ConfigContext
+var configContext *core.ConfigContext
 
-func SetConfigContext(cc *tccore.ConfigContext) {
+func SetConfigContext(cc *core.ConfigContext) {
 	configContext = cc
 }
 
-func GetConfigContext(pluginName string) *tccore.ConfigContext {
+func GetConfigContext() *core.ConfigContext {
 	return configContext
 }
 
-func LogError(errMsg string) {
-	if configContext != nil && configContext.Log != nil {
-		configContext.Log.Println(errMsg)
-		return
+func LogError(err_msg string) {
+	if configContext != nil {
+		if configContext.Log != nil {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						fmt.Fprintf(os.Stderr, "Panic in logger: %v, original message: %s\n", r, err_msg)
+					}
+				}()
+				configContext.Log.Println(err_msg)
+			}()
+			return
+		}
 	}
-	fmt.Fprintln(os.Stderr, errMsg)
+	fmt.Fprintln(os.Stderr, err_msg)
 }
 
 func SetLogger(logger *log.Logger) {
 	if configContext != nil {
 		configContext.Log = logger
 	} else {
-		configContext = &tccore.ConfigContext{
+		configContext = &core.ConfigContext{
 			Log: logger,
 		}
 	}
