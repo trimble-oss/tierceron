@@ -2,9 +2,10 @@ package confighelper
 
 import (
 	"flag"
+	"fmt"
 	"sync"
 
-	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkautil"
 )
 
@@ -17,10 +18,10 @@ var KafkaCert []byte
 
 var configInit = false
 
-// var config *tccore.CoreConfig
+// var config *core.CoreConfig
 var configLock sync.Mutex
 
-func InitKafkaPropertiesWithConfig(configContext *tccore.ConfigContext,
+func InitKafkaPropertiesWithConfig(configContext *core.ConfigContext,
 	kafkaClientCertPath string,
 	kafkaShemaClientCertPath string,
 ) error {
@@ -32,22 +33,70 @@ func InitKafkaPropertiesWithConfig(configContext *tccore.ConfigContext,
 }
 
 // call this from the plugin
-func InitKafkaProperties(configContext *tccore.ConfigContext,
+func InitKafkaProperties(configContext *core.ConfigContext,
 	kafkaClientCertPath string,
 	kafkaShemaClientCertPath string,
 ) error {
+	if configContext == nil {
+		return fmt.Errorf("configContext is nil")
+	}
+
+	if configContext.Config == nil {
+		return fmt.Errorf("configContext.Config is nil")
+	}
+
+	if configContext.ConfigCerts == nil {
+		return fmt.Errorf("configContext.ConfigCerts is nil")
+	}
+
 	// var envContext string
 	properties = configContext.Config
 
-	configContext.Log.Printf("Running on environment %s\n", (*configContext.Config)["env"].(string))
+	// Defensive: Check environment value exists and is a string
+	envVal, ok := (*configContext.Config)["env"]
+	if !ok {
+		return fmt.Errorf("env not found in config")
+	}
+	envStr, ok := envVal.(string)
+	if !ok {
+		return fmt.Errorf("env is not a string, got %T", envVal)
+	}
 
-	KafkaCert = (*configContext.ConfigCerts)[kafkaClientCertPath]
+	if configContext.Log != nil {
+		configContext.Log.Printf("Running on environment %s\n", envStr)
+	}
 
-	KafkaManager = kafkautil.InitKafkaManager(
-		(*configContext.ConfigCerts)[kafkaShemaClientCertPath],
-		(*configContext.Config)["schemaRegistryUrl"].(string),
-		(*configContext.Config)["schemaRegistryUsername"].(string),
-		(*configContext.Config)["schemaRegistryPassword"].(string))
+	// Defensive: Check cert exists
+	kafkaCert, ok := (*configContext.ConfigCerts)[kafkaClientCertPath]
+	if !ok {
+		return fmt.Errorf("kafka cert not found at path: %s", kafkaClientCertPath)
+	}
+	KafkaCert = kafkaCert
+
+	// Defensive: Check schema cert exists
+	schemaCert, ok := (*configContext.ConfigCerts)[kafkaShemaClientCertPath]
+	if !ok {
+		return fmt.Errorf("schema cert not found at path: %s", kafkaShemaClientCertPath)
+	}
+
+	// Defensive: Extract and validate config values
+	schemaURL, ok := (*configContext.Config)["schemaRegistryUrl"].(string)
+	if !ok {
+		return fmt.Errorf("schemaRegistryUrl is not a string")
+	}
+	schemaUser, ok := (*configContext.Config)["schemaRegistryUsername"].(string)
+	if !ok {
+		return fmt.Errorf("schemaRegistryUsername is not a string")
+	}
+	schemaPass, ok := (*configContext.Config)["schemaRegistryPassword"].(string)
+	if !ok {
+		return fmt.Errorf("schemaRegistryPassword is not a string")
+	}
+
+	KafkaManager = kafkautil.InitKafkaManager(schemaCert, schemaURL, schemaUser, schemaPass)
+	if KafkaManager == nil {
+		return fmt.Errorf("failed to initialize KafkaManager")
+	}
 
 	return nil
 }
