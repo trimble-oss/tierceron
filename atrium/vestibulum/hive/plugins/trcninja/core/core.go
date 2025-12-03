@@ -5,8 +5,11 @@ import (
 	"log"
 	"os"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 )
+
+var chatMsgHookCtx *cmap.ConcurrentMap[string, core.ChatHookFunc]
 
 // SociiKeyField is the key field name used for enterprise/socii identification
 var SociiKeyField = "sociiId"
@@ -17,6 +20,9 @@ func SetSociiKey(keyName string) {
 }
 
 var configContext *core.ConfigContext
+
+func GetChatMsgHookCtx() *cmap.ConcurrentMap[string, core.ChatHookFunc]    { return chatMsgHookCtx }
+func SetChatMsgHookCtx(ctx *cmap.ConcurrentMap[string, core.ChatHookFunc]) { chatMsgHookCtx = ctx }
 
 func SetConfigContext(cc *core.ConfigContext) {
 	configContext = cc
