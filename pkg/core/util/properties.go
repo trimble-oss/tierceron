@@ -66,7 +66,7 @@ func (p *Properties) GetConfigValues(service string, config string) (map[string]
 }
 
 func (p *Properties) GetRegionConfigValues(service string, config string) (map[string]any, bool) {
-	valueMap, _ := p.GetConfigValues(service, config)
+	valueMap, _ := p.cds.GetConfigValuesByMatch(service, config)
 	if valueMap == nil {
 		valueMap = make(map[string]any)
 	}

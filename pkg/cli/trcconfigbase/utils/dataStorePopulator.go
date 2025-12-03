@@ -389,6 +389,19 @@ func (cds *ConfigDataStore) GetConfigValues(service string, config string) (map[
 	return nil, false
 }
 
+func (cds *ConfigDataStore) GetConfigValuesByMatch(service string, config string) (map[string]any, bool) {
+	if serviceValues, okServiceValues := cds.dataMap[service].(map[string]any); okServiceValues {
+		for key, values := range serviceValues {
+			if strings.Contains(config, key) {
+				if v, ok := values.(map[string]any); ok {
+					return v, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
 // GetConfigValue gets an individual configuration value for a service from the data store.
 func (cds *ConfigDataStore) GetConfigValue(service string, config string, key string) (string, bool) {
 	key = strings.Replace(key, ".", "_", -1)

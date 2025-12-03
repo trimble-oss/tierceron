@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/segmentio/kafka-go"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/confighelper"
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // FilterByAvroKeyMap -- Ensure we only look at messages for a specific key.  Returns true if a test is found, false otherwise.
 // Presently only matches on integer index keys.  So, in this case allows
-// rejection of further processing of messages based on for instance sociiId.
+// rejection of further processing of messages based on for instance EnterpriseId.
 func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) bool {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
@@ -71,7 +71,7 @@ func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) 
 	return false
 }
 
-// FindByAvroKeyIndex -- finds matching test by index.
+// FindByAvroKeyIndex - finds matching test by index.
 func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey map[string]interface{}, kafkaLogicalKey map[string]interface{}) *KafkaTestBundle {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
@@ -191,7 +191,7 @@ func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey m
 	return nil
 }
 
-func (r *SeededKafkaReader) ProcessMessageAvro(m *kafka.Message) {
+func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 	avroKeyData := m.Key[5:]
 	keySchemaID := binary.BigEndian.Uint32(m.Key[1:5])
 
@@ -201,7 +201,18 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kafka.Message) {
 		return
 	}
 	// etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value)))
-
+	if r.HandleEventFunc != nil {
+		// Non-test kafka topic reader for processing avro messages
+		avroData := m.Value[5:]
+		schemaID := binary.BigEndian.Uint32(m.Value[1:5])
+		_, _, kafkaValue, err := confighelper.KafkaManager.DeserializeMessage(schemaID, avroData)
+		if err != nil {
+			etlcore.LogError(fmt.Sprintf("Failure to parse message value, Schema parse error: %v", err))
+			return
+		}
+		r.HandleEventFunc(kafkaKey, kafkaValue)
+		return
+	}
 	if !r.FilterByAvroKeyMap(kafkaKey) {
 		// sociiId mismatch for tests we are running.
 		// This is a common occurrence in a topic with a lot of data from different socii...
@@ -219,9 +230,9 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kafka.Message) {
 		return
 	}
 
-	kafkaTestBundle := r.FindByAvroKeyIndex(m.Time, kafkaKey, kafkaValue)
+	kafkaTestBundle := r.FindByAvroKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
-		// sociiId mismatch for tests we are running.
+		// EnterpriseId mismatch for tests we are running.
 		if !plugin {
 			etlcore.LogError(fmt.Sprintf("Couldn't find bundle for keyset: %v", kafkaKey))
 		}
@@ -256,12 +267,12 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kafka.Message) {
 					if evvTime, evvTimeOk := evv.(time.Time); evvTimeOk {
 						utcTime := evvTime.UTC()
 						if utcTime != actualTime {
-							etlcore.LogError(fmt.Sprintf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
+							etlcore.LogError(fmt.Sprintf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
 							err = fmt.Errorf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
 							break
 						}
 					} else {
-						etlcore.LogError(fmt.Sprintf("failure to parse Time value Key: %s Value: %v", evk, evv))
+						etlcore.LogError(fmt.Sprintf("Failure to parse Time value Key: %s Value: %v", evk, evv))
 						err = fmt.Errorf("failure to parse Time value Key: %s Value: %v", evk, evv)
 						break
 					}

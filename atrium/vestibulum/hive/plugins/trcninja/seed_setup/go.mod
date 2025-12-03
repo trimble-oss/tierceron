@@ -5,22 +5,25 @@ go 1.25.4
 require (
 	github.com/google/uuid v1.6.0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja v0.0.0-00010101000000-000000000000
-	github.com/vbauerster/mpb/v8 v8.10.2
+	github.com/vbauerster/mpb/v8 v8.11.2
 )
 
 require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
+	github.com/clipperhouse/stringish v0.1.1 // indirect
+	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/klauspost/compress v1.15.9 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/linkedin/goavro/v2 v2.14.0 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
-	github.com/pierrec/lz4/v4 v4.1.15 // indirect
+	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/segmentio/kafka-go v0.4.49 // indirect
 	github.com/trimble-oss/tierceron-core/v2 v2.9.2 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
+	github.com/twmb/franz-go v1.20.5 // indirect
+	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	github.com/wildbeavers/schema-registry v0.3.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect

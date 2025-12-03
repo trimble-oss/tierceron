@@ -17,7 +17,7 @@ import (
 )
 
 // InitKafka - initialize Kafka
-func InitKafka(pool interface{}, readerGroupPrefix string, idbFn kafkatesting.IndirectDBConnectionFunc) bool {
+func InitKafka(pool interface{}, idbFn kafkatesting.IndirectDBConnectionFunc) bool {
 	var testRegex string
 	var testTimeout string
 	var testLog string
@@ -51,7 +51,7 @@ func InitKafka(pool interface{}, readerGroupPrefix string, idbFn kafkatesting.In
 	etlcore.LogError(fmt.Sprintf("args %v", os.Args))
 
 	if idbFn != nil {
-		kafkatesting.IndirectDBFunc = idbFn
+		kafkatesting.IndirectDbFunc = idbFn
 	}
 
 	filteredArgs := filterEmptyElements(os.Args)[1:]
@@ -90,18 +90,18 @@ func InitKafka(pool interface{}, readerGroupPrefix string, idbFn kafkatesting.In
 	}
 
 	for _, pack := range packs {
-		processDecls(pool, readerGroupPrefix, *pack, testClean, isBench, compiledTestRegex, compiledPoolRegex)
+		processDecls(pool, *pack, testClean, isBench, compiledTestRegex, compiledPoolRegex)
 	}
 
 	if testClean {
 		os.Exit(0) // This can exit because it is only used from cli
 	}
 
-	kafkatesting.StartAllEngines(nil)
+	kafkatesting.StartAllTestEngines(nil, nil)
 	return false
 }
 
-func processDecls(pool interface{}, readerGroupPrefix string, pack ast.Package, testClean bool, isBench bool, compiledTestRegex, compiledPoolRegex *regexp.Regexp) {
+func processDecls(pool interface{}, pack ast.Package, testClean bool, isBench bool, compiledTestRegex, compiledPoolRegex *regexp.Regexp) {
 	for _, file := range pack.Files {
 		if testClean {
 			handleTestClean(pool, file, compiledPoolRegex)
@@ -112,38 +112,97 @@ func processDecls(pool interface{}, readerGroupPrefix string, pack ast.Package, 
 			if !isFn || !compiledTestRegex.MatchString(fn.Name.Name) {
 				continue
 			}
-			registerTest(pool, readerGroupPrefix, fn, file, isBench)
+			registerTest(pool, fn, file, isBench)
 		}
 	}
 }
 
 func handleTestClean(pool interface{}, file *ast.File, compiledPoolRegex *regexp.Regexp) {
+	if pool == nil {
+		etlcore.LogError("Pool is nil in handleTestClean")
+		return
+	}
+
 	for _, decl := range file.Decls {
 		cfn, isCFn := decl.(*ast.FuncDecl)
 		if !isCFn || !compiledPoolRegex.MatchString(cfn.Name.Name) {
 			continue
 		}
 		etlcore.LogError(fmt.Sprintf("Cleaning: %s\n", cfn.Name.Name))
-		reflect.ValueOf(pool).MethodByName(cfn.Name.Name).Call([]reflect.Value{})
+
+		poolValue := reflect.ValueOf(pool)
+		method := poolValue.MethodByName(cfn.Name.Name)
+		if !method.IsValid() {
+			etlcore.LogError(fmt.Sprintf("Clean method %s not found on pool", cfn.Name.Name))
+			continue
+		}
+
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					etlcore.LogError(fmt.Sprintf("Panic during clean method %s: %v", cfn.Name.Name, r))
+				}
+			}()
+			method.Call([]reflect.Value{})
+		}()
 	}
 }
 
-func registerTest(pool interface{}, readerGroupPrefix string, fn *ast.FuncDecl, file *ast.File, isBench bool) {
+func registerTest(pool interface{}, fn *ast.FuncDecl, _ *ast.File, isBench bool) {
 	testParts := strings.SplitN(fn.Name.Name, "_", 2)
 	if len(testParts) != 2 || prefixMatch(isBench, testParts[0]) {
 		return
 	}
 
-	kafkaTopicsRaw := reflect.ValueOf(pool).MethodByName(testParts[1]).Call([]reflect.Value{})
+	if pool == nil {
+		etlcore.LogError(fmt.Sprintf("Pool is nil for test %s", fn.Name.Name))
+		return
+	}
+
+	poolValue := reflect.ValueOf(pool)
+	method := poolValue.MethodByName(testParts[1])
+	if !method.IsValid() {
+		etlcore.LogError(fmt.Sprintf("Method %s not found on pool for test %s", testParts[1], testParts[0]))
+		return
+	}
+
+	var kafkaTopicsRaw []reflect.Value
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				etlcore.LogError(fmt.Sprintf("Panic during method call %s: %v", testParts[1], r))
+				kafkaTopicsRaw = nil
+			}
+		}()
+		kafkaTopicsRaw = method.Call([]reflect.Value{})
+	}()
+
+	if len(kafkaTopicsRaw) == 0 {
+		etlcore.LogError(fmt.Sprintf("Method %s returned no values", testParts[1]))
+		return
+	}
+
 	testName := strings.TrimPrefix(strings.TrimPrefix(testParts[0], "Test"), "Benchmark")
 
-	kafkaTopics := kafkaTopicsRaw[0].Interface().([][]string)
+	kafkaTopics, ok := kafkaTopicsRaw[0].Interface().([][]string)
+	if !ok {
+		etlcore.LogError(fmt.Sprintf("Method %s did not return [][]string, got %T", testParts[1], kafkaTopicsRaw[0].Interface()))
+		return
+	}
+
 	for _, kafkaTopic := range kafkaTopics {
-		kafkaTestReader, err := kafkatesting.NewKafkaTestReader(kafkaTopic, readerGroupPrefix, true)
+		if len(kafkaTopic) == 0 {
+			etlcore.LogError(fmt.Sprintf("Empty kafka topic in sequence for test %s", testName))
+			continue
+		}
+		kafkaTestReader, err := kafkatesting.NewKafkaTestReader(kafkaTopic, nil, true)
 		if err != nil {
 			etlcore.LogError(fmt.Sprintf("Failed to create KafkaTestReader %v", err))
+			continue
 		}
-		kafkaTestReader.RegisterTest(testName)
+		if kafkaTestReader != nil {
+			kafkaTestReader.RegisterTest(testName)
+		}
 	}
 
 	etlcore.LogError(fmt.Sprintf("Registered test %s for %s", testParts[0], testParts[1]))

@@ -43,6 +43,18 @@ func InitKafkaManager(schemaCert []byte, schemaSource string, schemaUser string,
 
 // LoadAvroCodecByID - loads provided schema codec
 func (kafkaManager *KafkaManager) LoadAvroCodecByID(schemaID uint32) (*schemaregistry.Schema, *goavro.Codec, error) {
+	if kafkaManager == nil {
+		return nil, nil, fmt.Errorf("kafkaManager is nil")
+	}
+
+	if kafkaManager.schemaManager == nil {
+		return nil, nil, fmt.Errorf("schemaManager is nil")
+	}
+
+	if kafkaManager.schemaManager.SchemaClient == nil {
+		return nil, nil, fmt.Errorf("schemaClient is nil")
+	}
+
 	var schemaSubject schemaregistry.Schema
 	var schemaSubjectBody string
 	var err error
@@ -50,12 +62,18 @@ func (kafkaManager *KafkaManager) LoadAvroCodecByID(schemaID uint32) (*schemareg
 		kafkaManager.schemaCacheLock.RLock()
 		if schemaContainer, ok := kafkaManager.schemaCache[schemaID]; ok {
 			kafkaManager.schemaCacheLock.RUnlock()
-			return schemaContainer.schema, schemaContainer.codec, nil
+			// Defensive: validate cached values
+			if schemaContainer != nil && schemaContainer.schema != nil && schemaContainer.codec != nil {
+				return schemaContainer.schema, schemaContainer.codec, nil
+			}
+			// Cache had invalid data, continue to reload
 		} else {
 			kafkaManager.schemaCacheLock.RUnlock()
 		}
 
 		schemaSubjectBody, err = kafkaManager.schemaManager.SchemaClient.GetSchemaByID(int(schemaID))
+	} else {
+		return nil, nil, fmt.Errorf("invalid schemaID: %d", schemaID)
 	}
 
 	schemaSubject = schemaregistry.Schema{
@@ -68,6 +86,10 @@ func (kafkaManager *KafkaManager) LoadAvroCodecByID(schemaID uint32) (*schemareg
 	}
 
 	codec, codecErr := goavro.NewCodec(string(schemaSubject.Schema))
+	if codecErr != nil {
+		return nil, nil, codecErr
+	}
+
 	var schemaContainer SchemaContainer
 	schemaContainer.schema = &schemaSubject
 	schemaContainer.codec = codec
@@ -75,7 +97,7 @@ func (kafkaManager *KafkaManager) LoadAvroCodecByID(schemaID uint32) (*schemareg
 	kafkaManager.schemaCache[schemaID] = &schemaContainer
 	kafkaManager.schemaCacheLock.Unlock()
 
-	return &schemaSubject, codec, codecErr
+	return &schemaSubject, codec, nil
 }
 
 // DeserializeMessage - loads provided schema codec
@@ -85,10 +107,18 @@ func (kafkaManager *KafkaManager) DeserializeMessage(schemaID uint32, avroMessag
 	var valueCodecLoadErr error = nil
 	var valueNative interface{}
 
+	if kafkaManager == nil {
+		return nil, nil, nil, fmt.Errorf("kafkaManager is nil")
+	}
+
 	valueSchema, valueSchemaCodec, valueCodecLoadErr = kafkaManager.LoadAvroCodecByID(schemaID)
 	if valueCodecLoadErr != nil {
 		etlcore.LogError(fmt.Sprintf("Failure %v", valueCodecLoadErr))
 		return nil, nil, nil, valueCodecLoadErr
+	}
+
+	if valueSchemaCodec == nil {
+		return nil, nil, nil, fmt.Errorf("valueSchemaCodec is nil for schema ID %d", schemaID)
 	}
 
 	valueNative, _, valueCodecLoadErr = valueSchemaCodec.NativeFromBinary(avroMessage)
@@ -97,5 +127,15 @@ func (kafkaManager *KafkaManager) DeserializeMessage(schemaID uint32, avroMessag
 		return nil, nil, nil, valueCodecLoadErr
 	}
 
-	return valueSchema, valueSchemaCodec, valueNative.(map[string]interface{}), valueCodecLoadErr
+	if valueNative == nil {
+		return nil, nil, nil, fmt.Errorf("valueNative is nil after deserialization")
+	}
+
+	// Defensive: Use type assertion with ok pattern
+	valueMap, ok := valueNative.(map[string]interface{})
+	if !ok {
+		return nil, nil, nil, fmt.Errorf("valueNative is not map[string]interface{}, got %T", valueNative)
+	}
+
+	return valueSchema, valueSchemaCodec, valueMap, valueCodecLoadErr
 }
