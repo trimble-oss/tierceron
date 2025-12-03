@@ -51,7 +51,7 @@ var BusinessObjectTopicSequence = [][]string{
 type Pool struct{}
 
 // AddBusinessObject -- adds a new business object, then deletes when finished adding.
-func AddBusinessObject(readerGroupPrefix string) error {
+func AddBusinessObject(readerGroupPrefix string, testReadyWG *sync.WaitGroup) error {
 	var currentState atomic.Value
 	argosID := "recordId"
 	start := time.Now()
@@ -59,7 +59,7 @@ func AddBusinessObject(readerGroupPrefix string) error {
 	currentStateFunc := func(s decor.Statistics) string {
 		return currentState.Load().(string)
 	}
-	readerSequence, bar, sociiID, _, dbConn, err := kafkatesting.KafkaTestInit(argosID, readerGroupPrefix, etlcore.GetConfigContext("ninja"), &currentState, BusinessObjectTopicSequence, currentStateFunc, BusinessObjectStateMap, start)
+	readerSequence, bar, sociiID, _, dbConn, err := kafkatesting.KafkaTestInit(argosID, etlcore.GetConfigContext("ninja"), &currentState, BusinessObjectTopicSequence, currentStateFunc, BusinessObjectStateMap, start, testReadyWG)
 	if err != nil {
 		currentState.Store(kafkatesting.STATE_FAILED_SETUP)
 		BusinessObjectStateMapLock.Lock()
@@ -140,7 +140,7 @@ func AddBusinessObject(readerGroupPrefix string) error {
 	}
 
 	// 5. Kick off an asynchronous test.
-	kafkatesting.TestSequenceExpected(sociiID, readerSequence, kafkaTestSequence)
+	kafkatesting.TestSequenceExpected(sociiID, readerSequence, kafkaTestSequence, testReadyWG)
 
 	// 6. Insert existing record and cleanup.
 	if !pluginLog {
@@ -164,7 +164,7 @@ func AddBusinessObject(readerGroupPrefix string) error {
 	bar.IncrBy(25)
 	// Delete added record
 	var p Pool
-	defer p.cleanBusinessObjectHelper(argosID, readerGroupPrefix, &currentState, bar, sociiID, dbConn)
+	defer p.cleanBusinessObjectHelper(argosID, readerGroupPrefix, &currentState, bar, sociiID, dbConn, testReadyWG)
 
 	// 7. Wait for results.
 	kafkatesting.TestWait(&currentState, kafkaTestSequence, bar, resultError, BusinessObjectStateMap, start, &BusinessObjectStateMapLock)
@@ -173,7 +173,7 @@ func AddBusinessObject(readerGroupPrefix string) error {
 }
 
 // UpdateBusinessObject -- updates and reads an BusinessObject.
-func UpdateBusinessObject(readerGroupPrefix string) error {
+func UpdateBusinessObject(readerGroupPrefix string, testReadyWG *sync.WaitGroup) error {
 	argosID := "recordId"
 	var currentState atomic.Value
 	start := time.Now()
@@ -181,7 +181,7 @@ func UpdateBusinessObject(readerGroupPrefix string) error {
 	currentStateFunc := func(s decor.Statistics) string {
 		return currentState.Load().(string)
 	}
-	readerSequence, bar, sociiID, _, dbConn, err := kafkatesting.KafkaTestInit(argosID, readerGroupPrefix, etlcore.GetConfigContext("ninja"), &currentState, BusinessObjectTopicSequence, currentStateFunc, BusinessObjectStateMap, start)
+	readerSequence, bar, sociiID, _, dbConn, err := kafkatesting.KafkaTestInit(argosID, etlcore.GetConfigContext("ninja"), &currentState, BusinessObjectTopicSequence, currentStateFunc, BusinessObjectStateMap, start, testReadyWG)
 	BusinessObjectStateMapLock.Lock()
 	BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
 	BusinessObjectStateMapLock.Unlock()
@@ -251,7 +251,7 @@ func UpdateBusinessObject(readerGroupPrefix string) error {
 	kafkaTestSequence[1].ExpectedValue["Description"] = strings.TrimSpace(businessObject.Description)
 
 	// 5. Kick off an asynchronous test.
-	kafkatesting.TestSequenceExpected(sociiID, readerSequence, kafkaTestSequence)
+	kafkatesting.TestSequenceExpected(sociiID, readerSequence, kafkaTestSequence, testReadyWG)
 
 	// 6. Update existing record and cleanup.
 	if !pluginLog {
@@ -281,12 +281,12 @@ func UpdateBusinessObject(readerGroupPrefix string) error {
 	return resultError
 }
 
-func (p *Pool) CleanBusinessObject(argosID string, readerGroupPrefix string) error {
+func (p *Pool) CleanBusinessObject(argosID string, readerGroupPrefix string, testReadyWG *sync.WaitGroup) error {
 	etlcore.LogError("Clean Business Object proxying...")
-	return p.cleanBusinessObjectHelper(argosID, readerGroupPrefix, nil, nil, "", nil)
+	return p.cleanBusinessObjectHelper(argosID, readerGroupPrefix, nil, nil, "", nil, testReadyWG)
 }
 
-func (p *Pool) cleanBusinessObjectHelper(argosID string, readerGroupPrefix string, currentState *atomic.Value, bar *mpb.Bar, sociiID string, dbConn *sql.DB) error {
+func (p *Pool) cleanBusinessObjectHelper(argosID string, readerGroupPrefix string, currentState *atomic.Value, bar *mpb.Bar, sociiID string, dbConn *sql.DB, testReadyWG *sync.WaitGroup) error {
 	etlcore.LogError("Business Object Clean - starting...")
 	endState := kafkatesting.STATE_COMPLETE_CLEANED
 	start := time.Now()
@@ -299,7 +299,7 @@ func (p *Pool) cleanBusinessObjectHelper(argosID string, readerGroupPrefix strin
 		}
 		var err error
 		// 1. Setup connections to database and kafka.
-		_, bar, sociiID, _, dbConn, err = kafkatesting.KafkaTestInit(argosID, readerGroupPrefix, etlcore.GetConfigContext("ninja"), currentState, [][]string{}, currentStateFunc, nil, start)
+		_, bar, sociiID, _, dbConn, err = kafkatesting.KafkaTestInit(argosID, etlcore.GetConfigContext("ninja"), currentState, [][]string{}, currentStateFunc, nil, start, testReadyWG)
 		if err != nil {
 			currentState.Store(kafkatesting.STATE_CLEAN_SETUP_FAILURE)
 			if bar != nil {

@@ -22,7 +22,7 @@ func SetConfigContext(cc *core.ConfigContext) {
 	configContext = cc
 }
 
-func GetConfigContext() *core.ConfigContext {
+func GetConfigContext(plugin string) *core.ConfigContext {
 	return configContext
 }
 
