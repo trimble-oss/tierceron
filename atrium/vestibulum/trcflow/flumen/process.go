@@ -351,7 +351,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		filteredFlowNames = append(filteredFlowNames, flow.FlowHeader.FlowName())
 	}
 
-	tfmContext.Init(sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelID), flowMachineInitContext.GetFilteredTestFlowNames(kernelID))
+	tfmContext.Init(flowMachineInitContext, sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelID), flowMachineInitContext.GetFilteredTestFlowNames(kernelID))
 
 	// Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
@@ -388,7 +388,12 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
-	tfmFlumeContext.Init(sourceDatabaseConnectionsMap, []string{flowcore.TierceronControllerFlow.FlowName()}, []flowcore.FlowNameType{}, []flowcore.FlowNameType{})
+	tfmFlumeContext.Init(
+		flowMachineInitContext,
+		sourceDatabaseConnectionsMap,
+		[]string{flowcore.TierceronControllerFlow.FlowName()},
+		[]flowcore.FlowNameType{},
+		[]flowcore.FlowNameType{})
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
@@ -624,7 +629,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	go func() {
-		err := BuildFlumeDatabaseInterface(tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
+		err := BuildFlumeDatabaseInterface(flowMachineInitContext, tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
 		if err != nil {
 			tfmContext.DriverConfig.CoreConfig.Log.Println("Error building flume database interface:", err)
 		}
@@ -674,7 +679,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 	}
 }
 
-func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]any, spiralDatabaseConfig map[string]any, flowWG *sync.WaitGroup) error {
+func BuildFlumeDatabaseInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]any, spiralDatabaseConfig map[string]any, flowWG *sync.WaitGroup) error {
 	eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Waiting for controller initialization...")
 	tfmFlumeContext.InitConfigWG.Wait()
 	tfmFlumeContext.FlowControllerLock.Lock()
@@ -706,7 +711,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 	if controllerCheck == 3 {
 		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting controller interface...")
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
-		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmFlumeContext})
+		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(flowMachineInitContext, tfmFlumeContext.DriverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmFlumeContext})
 		if controllerInterfaceErr != nil {
 			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
@@ -717,7 +722,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 				tableName := permUpdate.TableName
 
 				if tableName != flowcore.ArgosSociiFlow.TableName() {
-					harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
+					flowMachineInitContext.TableGrantNotify(tfC, tableName)
 				}
 			}
 		}(tfmFlumeContext)
@@ -737,7 +742,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 			vaultDatabaseConfig["dfsPass"] = dfsPass
 		}
 		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting db interface...")
-		interfaceErr := harbingeropts.BuildOptions.BuildInterface(tfmFlumeContext.DriverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmContext})
+		interfaceErr := harbingeropts.BuildOptions.BuildInterface(flowMachineInitContext, tfmFlumeContext.DriverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmContext})
 		if interfaceErr != nil {
 			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up database interface:"+interfaceErr.Error(), false)
 			return interfaceErr
@@ -748,7 +753,7 @@ func BuildFlumeDatabaseInterface(tfmFlumeContext *trcflowcore.TrcFlowMachineCont
 				tableName := permUpdate.TableName
 
 				if tableName != flowcore.ArgosSociiFlow.TableName() {
-					harbingeropts.BuildOptions.TableGrantNotify(tfC, tableName)
+					flowMachineInitContext.TableGrantNotify(tfC, tableName)
 				}
 			}
 		}(tfmContext)
