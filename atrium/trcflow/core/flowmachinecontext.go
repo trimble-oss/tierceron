@@ -178,6 +178,7 @@ func TableCollationIdGen(tableName string) sqle.CollationID {
 }
 
 func (tfmContext *TrcFlowMachineContext) Init(
+	flowMachineInitContext *flowcore.FlowMachineInitContext,
 	sdbConnMap map[string]map[string]any,
 	tableNames []string,
 	additionalFlowNames []flowcore.FlowNameType,
@@ -200,7 +201,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 			tfmContext.LogInfo("Creating tierceron sql table: " + changeTableName)
 			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
 				sqle.NewPrimaryKeySchema(sqle.Schema{
-					{Name: "id", Type: flowcoreopts.BuildOptions.GetIdColumnType(tableName), Source: changeTableName, PrimaryKey: true},
+					{Name: "id", Type: flowMachineInitContext.GetIdColumnType(tableName).(sqle.Type), Source: changeTableName, PrimaryKey: true},
 					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 				}),
 				TableCollationIdGen(tableName),
