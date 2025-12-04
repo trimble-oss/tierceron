@@ -35,7 +35,7 @@ require (
 	github.com/graphql-go/graphql v0.8.1
 	github.com/trimble-oss/tierceron-core/v2 v2.10.0
 	github.com/trimble-oss/tierceron-hat v1.2.10
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20251103195122-175ade98adff
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20251203005733-eabfeb9de038
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251103195122-175ade98adff
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20251103195122-175ade98adff
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20251103195122-175ade98adff

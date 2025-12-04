@@ -7,6 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/google/uuid v1.6.0
 	github.com/linkedin/goavro/v2 v2.14.0
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron-core/v2 v2.10.0
 	github.com/twmb/franz-go v1.20.5
 	github.com/vbauerster/mpb/v8 v8.10.2
@@ -23,7 +24,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
-	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
