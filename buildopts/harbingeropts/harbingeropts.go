@@ -447,7 +447,7 @@ func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, dri
 					}
 					// Notify that the table grant has been provided.
 					if tablePermsGiven && tableName != "" {
-						BuildOptions.TableGrantNotify(tfmContext, tableName)
+						flowMachineInitContext.TableGrantNotify(tfmContext, tableName)
 					}
 
 					_, _, _, queryErr = engineQuery(engine, ctx, "FLUSH PRIVILEGES")
