@@ -354,8 +354,8 @@ github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/trimble-oss/tierceron v1.50.8 h1:EgrQxiEhHPusoGOi1bkbN+5YoM42jPB352/7pCu0OOE=
 github.com/trimble-oss/tierceron v1.50.8/go.mod h1:irou38804cBbQbde3asQDOzGacpiFntkYWHYc1KPIXs=
-github.com/trimble-oss/tierceron-core/v2 v2.9.2 h1:8k8pXTggqIaXEvKOL5hSLAYs+oesizI43VHE2hjtpZc=
-github.com/trimble-oss/tierceron-core/v2 v2.9.2/go.mod h1:+G2xDhshlyq4yg0DDadw1pEw9o3zQ88aOb0yNwCOQOc=
+github.com/trimble-oss/tierceron-core/v2 v2.10.0 h1:fccOMY5hOycVXfwdmPSPcyvDx0NVjnPwJAbsidf0DpE=
+github.com/trimble-oss/tierceron-core/v2 v2.10.0/go.mod h1:+G2xDhshlyq4yg0DDadw1pEw9o3zQ88aOb0yNwCOQOc=
 github.com/trimble-oss/tierceron-nute v1.0.10 h1:3EXG4dF9631DeEsrcszTaCnwJ9KaTkkRTg8mLkPUCsE=
 github.com/trimble-oss/tierceron-nute v1.0.10/go.mod h1:/UL1iTVd2LfTt5iOJsKIXywM34FdwC4dZTSUMPf6alU=
 github.com/trimble-oss/tierceron-nute-core v1.0.3 h1:wG3bj1MtZk09bPAb0ymOfJL5NlCjxAOUzzJ7Igyid3Y=

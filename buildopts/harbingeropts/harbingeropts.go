@@ -121,7 +121,7 @@ func TableGrantNotify(tfmContext flowcore.FlowMachineContext, tableName string) 
 
 // Used to define a database interface for querying TrcDb.
 // Builds interface for TrcDB
-func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContextInterface any, vaultDatabaseConfig map[string]any, serverListenerInterface any) error {
+func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContextInterface any, vaultDatabaseConfig map[string]any, serverListenerInterface any) error {
 	serverListener := serverListenerInterface.(server.ServerEventListener)
 	tfmContext := tfmContextInterface.(*trcflowcore.TrcFlowMachineContext)
 	interfaceUrl, parseErr := url.Parse(vaultDatabaseConfig["vaddress"].(string))
@@ -410,7 +410,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 										}
 									}
 									if len(grant) == 0 {
-										grant, grantErr = BuildOptions.BuildTableGrant(tableN)
+										grant, grantErr = flowMachineInitContext.BuildTableGrant(tableN)
 									}
 									// Override the default grant when provided.
 									if grantErr == nil {
@@ -447,7 +447,7 @@ func BuildInterface(driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmCo
 					}
 					// Notify that the table grant has been provided.
 					if tablePermsGiven && tableName != "" {
-						BuildOptions.TableGrantNotify(tfmContext, tableName)
+						flowMachineInitContext.TableGrantNotify(tfmContext, tableName)
 					}
 
 					_, _, _, queryErr = engineQuery(engine, ctx, "FLUSH PRIVILEGES")
