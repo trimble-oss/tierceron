@@ -7,7 +7,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.2-0.20231213112541-0004702b931d
 	github.com/google/uuid v1.6.0
 	github.com/linkedin/goavro/v2 v2.14.0
-	github.com/trimble-oss/tierceron-core/v2 v2.9.2
+	github.com/trimble-oss/tierceron-core/v2 v2.10.0
 	github.com/twmb/franz-go v1.20.5
 	github.com/vbauerster/mpb/v8 v8.10.2
 	github.com/wildbeavers/schema-registry v0.3.0
