@@ -1312,6 +1312,7 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 		pM, err := plugin.Open(pluginPath)
 		if err != nil {
 			driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
+			driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
 			pluginHandler.State = 2
 			return
 		}
