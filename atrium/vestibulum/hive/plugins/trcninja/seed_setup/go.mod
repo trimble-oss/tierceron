@@ -19,7 +19,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/trimble-oss/tierceron-core/v2 v2.10.0 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
 	github.com/twmb/franz-go v1.20.5 // indirect
