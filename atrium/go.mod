@@ -353,6 +353,8 @@ replace k8s.io/cli-runtime v0.26.1 => github.com/trimble-oss/cli-runtime v0.0.7
 
 replace k8s.io/kubectl v0.26.1 => github.com/trimble-oss/kubectl v0.0.5
 
+replace github.com/denisenkom/go-mssqldb => github.com/denisenkom/go-mssqldb v0.12.3
+
 //Don't forget to update pipelines with the right version.
 
 //replace k8s.io/client-go v0.26.1 => ../client-go
