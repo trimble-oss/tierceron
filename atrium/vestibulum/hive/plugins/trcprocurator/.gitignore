@@ -1,0 +1,5 @@
+*.so
+*.log
+bin/
+config.yml
+local_config/

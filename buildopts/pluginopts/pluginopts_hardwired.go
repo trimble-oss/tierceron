@@ -9,6 +9,7 @@ import (
 	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
 	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	hccore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck/hcore"
+	pcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator/tcore"
 	rcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore"
 	score "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis/hcore"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -27,6 +28,8 @@ func GetConfigPaths(pluginName string) []string {
 		return rcore.GetConfigPaths(pluginName)
 	case "trcdb":
 		return trcdbcore.GetConfigPaths(pluginName)
+	case "procurator":
+		return pcore.GetConfigPaths(pluginName)
 	}
 	return []string{}
 }
@@ -44,6 +47,8 @@ func Init(pluginName string, properties *map[string]any) {
 		rcore.Init(pluginName, properties)
 	case "trcdb":
 		trcdbcore.Init(pluginName, properties)
+	case "procurator":
+		pcore.Init(pluginName, properties)
 	}
 }
 
@@ -75,6 +80,8 @@ func GetPluginMessages(pluginName string) []string {
 		return rcore.GetPluginMessages(pluginName)
 	case "trcdb":
 		return trcdbcore.GetPluginMessages(pluginName)
+	case "procurator":
+		return pcore.GetPluginMessages(pluginName)
 	}
 	return []string{}
 }
