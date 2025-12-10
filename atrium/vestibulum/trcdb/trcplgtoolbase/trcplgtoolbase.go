@@ -104,6 +104,7 @@ func CommonMain(envPtr *string,
 	codeBundlePtr := flagset.String("codeBundle", "", "Code bundle to deploy.")
 	expandTargetPtr := flagset.Bool("expandTarget", false, "Used to unzip files at deploy path")
 	trcbootstrapPtr := flagset.String("trcbootstrap", "/deploy/deploy.trc", "Used to unzip files at deploy path")
+	instancesPtr := flagset.String("instances", "", "Used to specify pod instances for deployment")
 
 	// Common plugin flags...
 	pluginNamePtr := flagset.String("pluginName", "", "Used to certify vault plugin")
@@ -570,6 +571,7 @@ func CommonMain(envPtr *string,
 	}
 	pluginToolConfig["pluginNamePtr"] = *pluginNamePtr
 	pluginToolConfig["serviceNamePtr"] = *serviceNamePtr
+	pluginToolConfig["instancesPtr"] = *instancesPtr
 	pluginToolConfig["projectservicePtr"] = *projectservicePtr
 	pluginToolConfig["deployrootPtr"] = *deployrootPtr
 	pluginToolConfig["deploysubpathPtr"] = *deploysubpathPtr
@@ -752,6 +754,9 @@ func CommonMain(envPtr *string,
 		}
 		if nrLicenseKey, ok := pluginToolConfig["newrelicLicenseKey"].(string); ok && nrLicenseKey != "" {
 			writeMap["newrelic_license_key"] = pluginToolConfig["newrelicLicenseKey"].(string)
+		}
+		if instances, ok := pluginToolConfig["instancesPtr"].(string); ok && instances != "" {
+			writeMap["instances"] = instances
 		}
 
 		_, err = mod.Write(pluginToolConfig["pluginpath"].(string), writeMap, trcshDriverConfigBase.DriverConfig.CoreConfig.Log)
