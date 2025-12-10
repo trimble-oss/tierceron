@@ -673,11 +673,11 @@ func CommonMain(envPtr *string,
 			var pluginName string
 			var releaseTag string
 
-			if pluginNameAliasPtr != nil {
-				splitPluginAliasVersion := strings.Split(*pluginNameAliasPtr, ":")
-				if len(splitPluginAliasVersion) > 1 {
-					pluginName = splitPluginAliasVersion[0]
-					releaseTag = splitPluginAliasVersion[1]
+			if pluginNamePtr != nil {
+				splitPluginNameVersion := strings.Split(*pluginNamePtr, ":")
+				if len(splitPluginNameVersion) > 1 {
+					pluginName = splitPluginNameVersion[0]
+					releaseTag = splitPluginNameVersion[1]
 					pluginToolConfig["trcplugin"] = pluginName
 				}
 			}

@@ -401,6 +401,10 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	}
 	projectServicePtr = projectServiceFlagPtr
 
+	if isShellRunner && !*dronePtr && (projectServicePtr == nil || len(*projectServicePtr) == 0) {
+		eUtils.LogSyncAndExit(nil, "Script exiting, projectService flag is required", -1)
+	}
+
 	if !*dronePtr && !isShellRunner {
 		if driverConfigPtr.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
 			deployRole := os.Getenv("DEPLOY_ROLE")
