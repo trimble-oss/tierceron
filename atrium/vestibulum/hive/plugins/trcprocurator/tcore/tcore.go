@@ -228,14 +228,16 @@ func start(pluginName string) {
 		return
 	}
 
-	if listenPort < 1 || listenPort > 65535 || targetPort < 1 || targetPort > 65535 {
-		err := errors.New("ports must be between 1 and 65535")
+	// Exclude well-known ports (0-1023) and ephemeral port ranges (49152+).
+	// Safe range: 1024-49151 (registered ports, includes common app ports like 8000s)
+	if listenPort < 1024 || listenPort > 49151 || targetPort < 1024 || targetPort > 49151 {
+		err := errors.New("ports must be between 1024 and 49151 (excludes system and ephemeral ports)")
 		configContext.Log.Println(err.Error())
 		send_err(err)
 		return
 	}
 
-	configContext.Log.Printf("Starting Procurator proxy: HTTPS :%d -> HTTP 127.0.0.1:%d\n", listenPort, targetPort)
+	configContext.Log.Printf("Starting Procurator proxy: HTTPS :%d -> HTTPS 127.0.0.1:%d\n", listenPort, targetPort)
 
 	// Create TLS configuration
 	cert, err := tls.X509KeyPair(
@@ -258,17 +260,23 @@ func start(pluginName string) {
 		},
 	}
 
-	// Create target URL for reverse proxy
-	targetURL, err := url.Parse(fmt.Sprintf("http://127.0.0.1:%d", targetPort))
+	// Create target URL for reverse proxy (HTTPS only)
+	targetURL, err := url.Parse(fmt.Sprintf("https://127.0.0.1:%d", targetPort))
 	if err != nil {
 		configContext.Log.Printf("Failed to parse target URL: %v", err)
 		send_err(err)
 		return
 	}
 
-	// Create reverse proxy
+	// Create reverse proxy with HTTPS transport
+	// Always skip certificate verification for 127.0.0.1 (no valid cert will match localhost IP)
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 	proxy.ErrorLog = configContext.Log
+	proxy.Transport = &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true, // Required for 127.0.0.1 backend
+		},
+	}
 
 	// Wrap with localhost-only middleware
 	handler := &localhostOnlyHandler{
