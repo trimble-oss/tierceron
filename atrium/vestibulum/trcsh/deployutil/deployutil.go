@@ -170,7 +170,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
 	deploymentShardsSet map[string]struct{},
 	exeTypeFlags ...*bool,
-) ([]string, error) {
+) ([]*map[string]interface{}, error) {
 	isDrone := false
 	isShellRunner := false
 	if len(exeTypeFlags) > 0 {
@@ -217,7 +217,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 	if deploymentListData == nil {
 		return nil, errors.New("no plugins available")
 	}
-	deploymentList := []string{}
+	deploymentList := []*map[string]interface{}{}
 	var machineID string
 	if isDrone && !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 		machineID = coreopts.BuildOptions.GetMachineID()
@@ -304,16 +304,16 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 					}
 				}
 				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") {
-					deploymentList = append(deploymentList, deployment)
-				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") && len(valid_id) > 0 && valid_id == machineID {
-					deploymentList = append(deploymentList, deployment)
+					deploymentList = append(deploymentList, &deploymentConfig)
+				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" || deploymentConfig["trctype"].(string) == "trcshpluginservice") && len(valid_id) > 0 && valid_id == machineID {
+					deploymentList = append(deploymentList, &deploymentConfig)
 				}
 			} else {
 				if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
-					deploymentList = append(deploymentList, deployment)
+					deploymentList = append(deploymentList, &deploymentConfig)
 				} else {
 					if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
-						deploymentList = append(deploymentList, deployment)
+						deploymentList = append(deploymentList, &deploymentConfig)
 					}
 				}
 			}

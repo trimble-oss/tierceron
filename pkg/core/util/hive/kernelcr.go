@@ -27,7 +27,6 @@ import (
 
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
@@ -63,16 +62,17 @@ type certValue struct {
 }
 
 type PluginHandler struct {
-	Name            string // service
-	State           int    // 0 - initialized, 1 - running, 2 - failed
-	Id              string
-	KernelId        int
-	Signature       string // sha256 of plugin
-	ConfigContext   *tccore.ConfigContext
-	Services        *map[string]*PluginHandler
-	PluginMod       *plugin.Plugin
-	KernelCtx       *KernelCtx
-	ServiceResource any
+	Name             string // service
+	State            int    // 0 - initialized, 1 - running, 2 - failed
+	Id               string
+	KernelId         int
+	Signature        string // sha256 of plugin
+	ConfigContext    *tccore.ConfigContext
+	Services         *map[string]*PluginHandler
+	PluginMod        *plugin.Plugin
+	KernelCtx        *KernelCtx
+	ServiceResource  any
+	DeploymentConfig map[string]interface{} // Full deployment configuration from Vault Certify
 }
 
 type KernelCtx struct {
@@ -243,10 +243,12 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 										driverConfig.CoreConfig.Log.Printf("Service not properly initialized to shut down for cert reloading: %s\n", s)
 										continue
 									}
-									safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
-										PluginName: sPluginHandler.Name,
-										Command:    tccore.PLUGIN_EVENT_STOP,
-									}, fmt.Sprintf("cert reload shutdown %s", s), driverConfig.CoreConfig.Log)
+									if kernelopts.BuildOptions.IsKernel() {
+										safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+											PluginName: sPluginHandler.Name,
+											Command:    tccore.PLUGIN_EVENT_STOP,
+										}, fmt.Sprintf("cert reload shutdown %s", s), driverConfig.CoreConfig.Log)
+									}
 									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 								}
 								// TODO: Get rid of os.Exit
@@ -470,15 +472,20 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	return nil, errors.New("no created time for cert")
 }
 
-func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig) {
+func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig, deploymentConfig *map[string]interface{}) {
 	if pluginHandler == nil || pluginHandler.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
 		return
 	}
 	if pluginHandler.Services != nil {
 		driverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", service)
+		var deployConfig map[string]interface{}
+		if deploymentConfig != nil {
+			deployConfig = *deploymentConfig
+		}
 		(*pluginHandler.Services)[service] = &PluginHandler{
-			Name: service,
+			Name:             service,
+			DeploymentConfig: deployConfig,
 			ConfigContext: &tccore.ConfigContext{
 				Log:              driverConfig.CoreConfig.Log,
 				ChatReceiverChan: pluginHandler.ConfigContext.ChatReceiverChan,
@@ -597,24 +604,12 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	go pluginHandler.handleErrors(driverConfig)
 	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
-	_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
-	if err != nil {
-		driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
-		return
-	}
-	kernelmod.Env = kernelmod.EnvBasis
-	if kernelvault != nil {
-		defer kernelvault.Close()
-	}
-
-	pluginMap := map[string]any{"pluginName": pluginHandler.Name}
-
-	certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
-	if err != nil {
+	// Use cached DeploymentConfig instead of reading from Vault
+	if pluginHandler.DeploymentConfig == nil {
 		fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
 		return
 	}
-	(*serviceConfig)["certify"] = certifyMap
+	(*serviceConfig)["certify"] = pluginHandler.DeploymentConfig
 
 	go pluginHandler.receiver(driverConfig)
 	pluginHandler.Init(serviceConfig)
@@ -982,24 +977,23 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
+
+			// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
 			_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
 				return
 			}
-			kernelmod.Env = kernelmod.EnvBasis
 			if kernelvault != nil {
 				defer kernelvault.Close()
 			}
 
-			pluginMap := map[string]any{"pluginName": pluginHandler.Name}
-
-			certifyMap, err := pluginutil.GetPluginCertifyMap(kernelmod, pluginMap)
-			if err != nil {
+			// Use cached DeploymentConfig instead of reading from Vault
+			if pluginHandler.DeploymentConfig == nil {
 				fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
 				return
 			}
-			(serviceConfig)["certify"] = certifyMap
+			(serviceConfig)["certify"] = pluginHandler.DeploymentConfig
 
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
 			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
