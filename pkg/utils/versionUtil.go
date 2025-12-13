@@ -176,8 +176,8 @@ func GetProjectService(driverConfig *config.DriverConfig, templateFile string) (
 
 	if driverConfig != nil {
 		startDir = driverConfig.StartDir
-		if len(driverConfig.DeploymentConfig) > 0 {
-			if projectService, ok := driverConfig.DeploymentConfig["trcprojectservice"]; ok {
+		if driverConfig.DeploymentConfig != nil {
+			if projectService, ok := (*driverConfig.DeploymentConfig)["trcprojectservice"]; ok {
 				driverConfigProjectService = projectService.(string)
 			}
 		}

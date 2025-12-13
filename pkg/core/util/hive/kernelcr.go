@@ -658,7 +658,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 	}
 	var service string
-	if s, ok := driverConfig.DeploymentConfig["trcplugin"].(string); ok {
+	if s, ok := (*driverConfig.DeploymentConfig)["trcplugin"].(string); ok {
 		service = s
 	} else {
 		driverConfig.CoreConfig.Log.Println("Unable to process plugin service.")
@@ -978,16 +978,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
-			// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
-			_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
-			if err != nil {
-				driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
-				return
-			}
-			if kernelvault != nil {
-				defer kernelvault.Close()
-			}
-
 			// Use cached DeploymentConfig instead of reading from Vault
 			if pluginHandler.DeploymentConfig == nil {
 				fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
@@ -1135,6 +1125,16 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
 			} else {
+				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
+				_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
+				if err != nil {
+					driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
+					return
+				}
+				if kernelvault != nil {
+					defer kernelvault.Close()
+				}
+
 				go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				go pluginHandler.receiver(driverConfig)
 			}
