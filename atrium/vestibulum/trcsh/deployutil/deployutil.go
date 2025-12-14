@@ -66,7 +66,7 @@ func KernelShutdownWatcher(logger *log.Logger) {
 
 // LoadPluginDeploymentScript - Loads a plugin's deploy.trc script directly from vault.
 func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
-	if strings.Contains(pwd, "TrcDeploy") && trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+	if strings.Contains(pwd, "TrcDeploy") && trcshDriverConfig.DriverConfig.DeploymentConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
 		if deployment, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
 			if deploymentAlias, deployAliasOk := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcpluginalias"]; deployAliasOk {
 				deployment = deploymentAlias
@@ -93,21 +93,13 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				fmt.Fprintln(os.Stderr, "Unable to obtain resources for deployment")
 				return nil, err
 			}
-			mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
-			fmt.Fprintf(os.Stderr, "Loading deployer details for %s and env %s\n", deployment, mod.EnvBasis)
-			deploymentConfig, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
-			if _, ok := deploymentConfig["trcdeploybasis"]; !ok {
-				// Whether to load agent deployment script from env basis instead of provided env.
-				// By default, we always use agent provided env to load the script.
-				// In presence of trcdeploybasis, we'll leave the mod Env as EnvBasis and continue.
+
+			// DeploymentConfig is already initialized by TrcshInitConfig
+			if _, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcdeploybasis"]; !ok {
 				mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.Env
+			} else {
+				mod.Env = trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 			}
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Unable to obtain config for deployment")
-				return nil, err
-			}
-			deploymentConfig["trcpluginalias"] = deployment
-			trcshDriverConfig.DriverConfig.DeploymentConfig = &deploymentConfig
 			if trcDeployRoot, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcdeployroot"]; ok {
 				trcshDriverConfig.DriverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 				trcshDriverConfig.DriverConfig.EndDir = trcDeployRoot.(string)

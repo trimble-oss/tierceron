@@ -2,6 +2,7 @@ package trcshbase
 
 import (
 	"bytes"
+	"encoding/base64"
 	"errors"
 	"flag"
 	"fmt"
@@ -86,6 +87,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	useMemCache bool,
 	outputMemCache bool,
 	isShell bool,
+	deploymentConfig *map[string]any,
 	logger ...*log.Logger,
 ) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
@@ -184,8 +186,13 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 			PathParam:         pathParam, // Make available to trcplgtool
 		},
 	}
-	if driverConfigPtr != nil && driverConfigPtr.CoreConfig != nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = driverConfigPtr.CoreConfig.CurrentTokenNamePtr
+	if driverConfigPtr != nil {
+		if driverConfigPtr.CoreConfig != nil {
+			trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = driverConfigPtr.CoreConfig.CurrentTokenNamePtr
+		}
+	}
+	if deploymentConfig != nil {
+		trcshDriverConfig.DriverConfig.DeploymentConfig = deploymentConfig
 	}
 
 	return trcshDriverConfig, nil
@@ -249,8 +256,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	trcPath string,
 	useMemCache bool,
 	outputMemCache bool,
-	deploymentConfig *map[string]interface{},
 	dronePtr *bool,
+	deploymentConfig *map[string]any,
 	projectService ...*string,
 ) {
 	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
@@ -260,15 +267,15 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 		useMemCache,
 		outputMemCache,
 		false, // isShell
+		deploymentConfig,
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Initialization setup error: %s\n", err.Error())
 	}
-	if deploymentConfig != nil {
-		// Use the provided deployment configuration
-		trcshDriverConfig.DriverConfig.DeploymentConfig = deploymentConfig
+	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+		// DeploymentConfig was copied from driverConfigPtr
 		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 20)
-		if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
+		if trcPlugin, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
 			if deployment, isString := trcPlugin.(string); isString {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Starting deployer: %s\n", deployment)
 			}
@@ -313,7 +320,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 		projServ = *projectService[0]
 	}
 
-	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, deploymentConfig, trcPath, projServ, dronePtr)
+	go ProcessDeploy(trcshDriverConfig.FeatherCtx, trcshDriverConfig, trcPath, projServ, dronePtr)
 }
 
 // This is a controller program that can act as any command line utility.
@@ -430,6 +437,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			true, // useMemCache
 			true, // outputMemCache
 			true, // isShell
+			nil,  // DeploymentConfig
 		)
 		if err != nil {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("ERROR: trcsh config setup failure: %s", err.Error()), 124)
@@ -442,7 +450,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		trcshDriverConfig.PluginName = *pluginNamePtr
 
 		// Open deploy script and parse it.
-		ProcessDeploy(nil, trcshDriverConfig, nil, *trcPathPtr, *projectServicePtr, dronePtr)
+		ProcessDeploy(nil, trcshDriverConfig, *trcPathPtr, *projectServicePtr, dronePtr)
 	} else {
 		if driverConfigPtr != nil && driverConfigPtr.CoreConfig.Log == nil {
 			logger, err := CreateLogFile()
@@ -676,6 +684,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			true,                               // useMemCache
 			kernelopts.BuildOptions.IsKernel(), // outputMemCache
 			false,                              // isShell
+			nil,
 			driverConfigPtr.CoreConfig.Log,
 		)
 		if err != nil {
@@ -902,8 +911,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 						*trcPathPtr,
 						true,
 						kernelopts.BuildOptions.IsKernel(),
-						deploymentConfig,
 						dronePtr,
+						deploymentConfig,
 						projectServicePtr)
 					driverConfigPtr.CoreConfig.Log.Println("Healthcheck deployer started, waiting 5 seconds before starting other deployers...")
 					for {
@@ -958,7 +967,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 								trcPath,
 								true, // useMemCache
 								outputMemCache,
-								deployConfig, dronePtr, projectService)
+								dronePtr,
+								deployConfig,
+								projectService)
 						}
 					}
 				}(driverConfigPtr,
@@ -977,8 +988,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				*trcPathPtr,
 				true,           // useMemCache
 				!isShellRunner, // outputMemCache
-				deploymentConfig,
 				dronePtr,
+				deploymentConfig,
 				projectServicePtr)
 		}
 
@@ -1093,10 +1104,13 @@ func roleBasedRunner(
 	trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner init: %s\n", control)
 
-	if trcDeployRoot, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcdeployroot"]; ok {
-		trcshDriverConfig.DriverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
-		trcshDriverConfig.DriverConfig.EndDir = trcDeployRoot.(string)
-	} else {
+	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+		if trcDeployRoot, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcdeployroot"]; ok {
+			trcshDriverConfig.DriverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
+			trcshDriverConfig.DriverConfig.EndDir = trcDeployRoot.(string)
+		}
+	}
+	if trcshDriverConfig.DriverConfig.DeploymentConfig == nil || len(*trcshDriverConfig.DriverConfig.DeploymentConfig) == 0 {
 		trcshDriverConfig.DriverConfig.StartDir = []string{"trc_templates"}
 		trcshDriverConfig.DriverConfig.EndDir = "."
 	}
@@ -1114,7 +1128,7 @@ func roleBasedRunner(
 		} else {
 			tokenName = "config_token_pluginany"
 		}
-		if kernelopts.BuildOptions.IsKernel() {
+		if kernelPluginHandler != nil {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig, kernelPluginHandler)
 		} else {
 			err = trcplgtoolbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig)
@@ -1335,15 +1349,14 @@ func processDroneCmds(_ *kube.TrcKubeConfig,
 //	dronePtr: Pointer to drone flag.
 func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig *capauth.TrcshDriverConfig,
-	deploymentConfig *map[string]interface{},
 	trcPath string,
 	projectService string,
 	dronePtr *bool,
 ) {
 	// Extract deployment name from config
 	var deployment string
-	if deploymentConfig != nil {
-		if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
+	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+		if trcPlugin, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
 			if deploymentName, isString := trcPlugin.(string); isString {
 				deployment = deploymentName
 			}
@@ -1381,21 +1394,22 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 	// Chewbacca: scrub before checkin
 	// This data is generated by TrcshAuth
-	// configRole := os.Getenv("CONFIG_ROLE")
-	// pubRole := os.Getenv("PUB_ROLE")
-	// pluginAny := os.Getenv("PLUGIN_ANY")
-	// fileBytes, _ := os.ReadFile("")
-	// kc := base64.StdEncoding.EncodeToString(fileBytes)
-	// gTrcshConfig = &capauth.TrcShConfig{Env: "dev",
-	//     EnvContext:    "dev",
-	//     TokenCache:    trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
-	//     KubeConfigPtr: &kc,
-	// }
-	// vAddr := os.Getenv("VAULT_ADDR")
-	// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(&vAddr)
-	// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", &pluginAny)
-	// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", &configRole)
-	// trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", &pubRole)
+	configRole := os.Getenv("CONFIG_ROLE")
+	pubRole := os.Getenv("PUB_ROLE")
+	pluginAny := os.Getenv("PLUGIN_ANY")
+	fileBytes, _ := os.ReadFile("")
+	kc := base64.StdEncoding.EncodeToString(fileBytes)
+	gTrcshConfig = &capauth.TrcShConfig{
+		Env:           "dev",
+		EnvContext:    "dev",
+		TokenCache:    trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
+		KubeConfigPtr: &kc,
+	}
+	vAddr := os.Getenv("VAULT_ADDR")
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(&vAddr)
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", &pluginAny)
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", &configRole)
+	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", &pubRole)
 	// Chewbacca: end scrub
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
@@ -1462,46 +1476,39 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	// Set up a separate deployer config for the deployer process.
 	var deployerDriverConfig config.DriverConfig
 	deployerDriverConfig.CoreConfig = trcshDriverConfig.DriverConfig.CoreConfig
+	deployerDriverConfig.IsDrone = trcshDriverConfig.DriverConfig.IsDrone
 	deployerDriverConfig.SubOutputMemCache = true
 	deployerDriverConfig.OutputMemCache = true
 	deployerDriverConfig.ReadMemCache = true
 	deployerDriverConfig.ZeroConfig = true
 	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
+	deployerDriverConfig.DeploymentConfig = trcshDriverConfig.DriverConfig.DeploymentConfig
 
-	if kernelopts.BuildOptions.IsKernel() || ((len(os.Args) > 1) && len(trcPath) > 0) && !strings.Contains(pwd, "TrcDeploy") {
+	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" {
 		// Generate trc code...
 		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
-		// Chewbacca: Continue shellRunner
-		if kernelopts.BuildOptions.IsKernel() || gTrcshConfig.IsShellRunner {
-			// Use deploymentConfig passed down from caller instead of loading from Vault
-			if deploymentConfig != nil {
-				if pjService, ok := (*deploymentConfig)["trcprojectservice"]; ok {
-					if pjServiceStr, isString := pjService.(string); isString {
-						projectService = pjServiceStr
-					} else {
-						deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
-						return
-					}
-				} else {
-					deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
-					return
-				}
-
-				if trcBootstrap, ok := (*deploymentConfig)["trcbootstrap"]; ok {
-					if bootstrapStr, isString := trcBootstrap.(string); isString && strings.Contains(bootstrapStr, "/deploy/") {
-						trcPath = bootstrapStr
-					} else {
-						deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
-						return
-					}
-				} else {
-					deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
-					return
-				}
+		if pjService, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcprojectservice"]; ok {
+			if pjServiceStr, isString := pjService.(string); isString {
+				projectService = pjServiceStr
 			} else {
-				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing deployment configuration for: %s.\n", deployment)
+				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
 				return
 			}
+		} else {
+			deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
+			return
+		}
+
+		if trcBootstrap, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcbootstrap"]; ok {
+			if bootstrapStr, isString := trcBootstrap.(string); isString && strings.Contains(bootstrapStr, "/deploy/") {
+				trcPath = bootstrapStr
+			} else {
+				deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
+				return
+			}
+		} else {
+			deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
+			return
 		}
 
 		trcPathParts := strings.Split(trcPath, "/")
@@ -1582,7 +1589,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Processing trcshell")
 	} else {
-		if !strings.Contains(pwd, "TrcDeploy") || trcshDriverConfig.DriverConfig.DeploymentConfig == nil {
+		if !strings.Contains(pwd, "TrcDeploy") || trcshDriverConfig.DriverConfig.DeploymentConfig == nil || len(*trcshDriverConfig.DriverConfig.DeploymentConfig) == 0 {
 			fmt.Fprintln(os.Stderr, "Processing manual trcshell")
 			if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" {
 				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
@@ -1600,7 +1607,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	}
 
 collaboratorReRun:
-	if featherCtx != nil && content == nil {
+	if featherCtx != nil && content == nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshservice" {
 		// Start with a clean cache always.
 		if trcshDriverConfig.DriverConfig != nil && trcshDriverConfig.DriverConfig.MemFs != nil {
 			trcshDriverConfig.DriverConfig.MemFs.ClearCache(".")
@@ -1617,7 +1624,11 @@ collaboratorReRun:
 
 		content, err = deployutil.LoadPluginDeploymentScript(trcshDriverConfig, gTrcshConfig, pwd)
 		if err != nil {
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
+			if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
+			} else {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: <unknown>\n")
+			}
 			time.Sleep(time.Minute)
 			content = nil
 			goto collaboratorReRun
