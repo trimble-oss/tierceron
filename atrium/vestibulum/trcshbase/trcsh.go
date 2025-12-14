@@ -266,7 +266,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	}
 	if deploymentConfig != nil {
 		// Use the provided deployment configuration
-		trcshDriverConfig.DriverConfig.DeploymentConfig = *deploymentConfig
+		trcshDriverConfig.DriverConfig.DeploymentConfig = deploymentConfig
 		trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan = make(chan string, 20)
 		if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
 			if deployment, isString := trcPlugin.(string); isString {
@@ -1093,7 +1093,7 @@ func roleBasedRunner(
 	trcshDriverConfig.DriverConfig.IsShellSubProcess = true
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner init: %s\n", control)
 
-	if trcDeployRoot, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcdeployroot"]; ok {
+	if trcDeployRoot, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcdeployroot"]; ok {
 		trcshDriverConfig.DriverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 		trcshDriverConfig.DriverConfig.EndDir = trcDeployRoot.(string)
 	} else {
@@ -1582,7 +1582,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Processing trcshell")
 	} else {
-		if !strings.Contains(pwd, "TrcDeploy") || len(trcshDriverConfig.DriverConfig.DeploymentConfig) == 0 {
+		if !strings.Contains(pwd, "TrcDeploy") || trcshDriverConfig.DriverConfig.DeploymentConfig == nil {
 			fmt.Fprintln(os.Stderr, "Processing manual trcshell")
 			if trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis == "itdev" {
 				content, err = os.ReadFile(pwd + "/deploy/buildtest.trc")
@@ -1617,7 +1617,7 @@ collaboratorReRun:
 
 		content, err = deployutil.LoadPluginDeploymentScript(trcshDriverConfig, gTrcshConfig, pwd)
 		if err != nil {
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"])
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
 			time.Sleep(time.Minute)
 			content = nil
 			goto collaboratorReRun

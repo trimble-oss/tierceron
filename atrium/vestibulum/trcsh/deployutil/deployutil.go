@@ -66,9 +66,9 @@ func KernelShutdownWatcher(logger *log.Logger) {
 
 // LoadPluginDeploymentScript - Loads a plugin's deploy.trc script directly from vault.
 func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, trcshConfig *capauth.TrcShConfig, pwd string) ([]byte, error) {
-	if strings.Contains(pwd, "TrcDeploy") && len(trcshDriverConfig.DriverConfig.DeploymentConfig) > 0 {
-		if deployment, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcplugin"]; ok {
-			if deploymentAlias, deployAliasOk := trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"]; deployAliasOk {
+	if strings.Contains(pwd, "TrcDeploy") && trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+		if deployment, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
+			if deploymentAlias, deployAliasOk := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcpluginalias"]; deployAliasOk {
 				deployment = deploymentAlias
 			}
 			mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
@@ -107,13 +107,13 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				return nil, err
 			}
 			deploymentConfig["trcpluginalias"] = deployment
-			trcshDriverConfig.DriverConfig.DeploymentConfig = deploymentConfig
-			if trcDeployRoot, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcdeployroot"]; ok {
+			trcshDriverConfig.DriverConfig.DeploymentConfig = &deploymentConfig
+			if trcDeployRoot, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcdeployroot"]; ok {
 				trcshDriverConfig.DriverConfig.StartDir = []string{fmt.Sprintf("%s/trc_templates", trcDeployRoot.(string))}
 				trcshDriverConfig.DriverConfig.EndDir = trcDeployRoot.(string)
 			}
 
-			if trcProjectService, ok := trcshDriverConfig.DriverConfig.DeploymentConfig["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
+			if trcProjectService, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcprojectservice"]; ok && strings.Contains(trcProjectService.(string), "/") {
 				var content []byte
 				trcProjectServiceSlice := strings.Split(trcProjectService.(string), "/")
 				fmt.Fprintf(os.Stderr, "Loading deployment script for %s and env %s\n", deployment, mod.Env)
