@@ -1128,14 +1128,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
 				_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
 				if err != nil {
-					driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s\n", err)
-					return
-				}
-				if kernelvault != nil {
-					defer kernelvault.Close()
+					driverConfig.CoreConfig.Log.Printf("Problem initializing stat mod: %s  Continuing without stats.\n", err)
+				} else {
+					if kernelvault != nil {
+						defer kernelvault.Close()
+					}
+
+					go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				}
 
-				go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				go pluginHandler.receiver(driverConfig)
 			}
 
