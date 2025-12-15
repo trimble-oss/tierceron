@@ -136,7 +136,8 @@ func CommonMain(envPtr *string,
 	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		isKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
-			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice"
+			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice")
 
 		args := argLines[1:]
 		argOffset := 1
