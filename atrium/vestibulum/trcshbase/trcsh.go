@@ -88,6 +88,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 	outputMemCache bool,
 	isShell bool,
 	deploymentConfig *map[string]any,
+	isTraceless bool,
 	logger ...*log.Logger,
 ) (*capauth.TrcshDriverConfig, error) {
 	if len(env) == 0 {
@@ -99,7 +100,13 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 
 	regions := []string{}
 	if (kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernel()) || strings.HasPrefix(env, "staging") || strings.HasPrefix(env, "prod") || strings.HasPrefix(env, "dev") {
-		prod.SetProdByEnv(env)
+		if isTraceless && strings.Contains(env, "staging") {
+			// Dev environments have a 'staging' launch area.
+			// traceless mode allows this special staging environment to work in dev environment.
+			prod.SetProd(false)
+		} else {
+			prod.SetProdByEnv(env)
+		}
 
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if region != "" {
@@ -258,6 +265,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	outputMemCache bool,
 	dronePtr *bool,
 	deploymentConfig *map[string]any,
+	tracelessPtr *bool,
 	projectService ...*string,
 ) {
 	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
@@ -268,6 +276,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 		outputMemCache,
 		false, // isShell
 		deploymentConfig,
+		*tracelessPtr,
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Initialization setup error: %s\n", err.Error())
@@ -364,7 +373,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	trcPathPtr = flagset.String("c", "", "Optional script to execute.") // If this is blank -> use context otherwise override context.
 	projectServiceFlagPtr = flagset.String("projectService", "", "Service namespace to pull templates from if not present in LFS")
 	pluginNamePtr = flagset.String("pluginName", "", "Plugin name (optional for some operations)")
-	tracelessPtr := flagset.Bool("traceless", false, "Trace less")
+	tracelessPtr := flagset.Bool("traceless", false, "Trace less") // For running with staging env and dev behavior
 	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	isShellRunner := (configMap != nil)
@@ -438,6 +447,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			true, // outputMemCache
 			true, // isShell
 			nil,  // DeploymentConfig
+			*tracelessPtr,
 		)
 		if err != nil {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("ERROR: trcsh config setup failure: %s", err.Error()), 124)
@@ -600,7 +610,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			agentEnv = *envPtr
 		}
 
-		if strings.HasPrefix(agentEnv, "staging") || strings.HasPrefix(agentEnv, "prod") {
+		if !*tracelessPtr && (strings.HasPrefix(agentEnv, "staging") || strings.HasPrefix(agentEnv, "prod")) {
 			prod.SetProd(true)
 		}
 
@@ -685,6 +695,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			kernelopts.BuildOptions.IsKernel(), // outputMemCache
 			false,                              // isShell
 			nil,
+			*tracelessPtr,
 			driverConfigPtr.CoreConfig.Log,
 		)
 		if err != nil {
@@ -913,6 +924,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 						kernelopts.BuildOptions.IsKernel(),
 						dronePtr,
 						deploymentConfig,
+						tracelessPtr,
 						projectServicePtr)
 					driverConfigPtr.CoreConfig.Log.Println("Healthcheck deployer started, waiting 5 seconds before starting other deployers...")
 					for {
@@ -943,6 +955,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					trcPath string,
 					outputMemCache bool,
 					dronePtr *bool,
+					trcLessPtr *bool,
 					projectService *string,
 					allPluginDeployments []*map[string]interface{},
 				) {
@@ -969,6 +982,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 								outputMemCache,
 								dronePtr,
 								deployConfig,
+								trcLessPtr,
 								projectService)
 						}
 					}
@@ -978,6 +992,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					*trcPathPtr,
 					kernelopts.BuildOptions.IsKernel(), // outputMemCache
 					dronePtr,
+					tracelessPtr,
 					projectServicePtr,
 					pluginDeployments)
 			}
@@ -990,6 +1005,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				!isShellRunner, // outputMemCache
 				dronePtr,
 				deploymentConfig,
+				tracelessPtr,
 				projectServicePtr)
 		}
 
