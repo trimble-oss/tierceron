@@ -82,7 +82,7 @@ func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
 				WantCerts: false,
 			},
 			StartDir:         []string{},
-			DeploymentConfig: make(map[string]any),
+			DeploymentConfig: &map[string]any{},
 			EndDir:           ".",
 			ServicesWanted:   []string{"hello/Service"},
 		}
@@ -129,11 +129,11 @@ func TestGeneratePaths_CaseOne(t *testing.T) {
 			".Project/",
 			"foo/nopeProject/Service",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"Project/Service"},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project1/Service1"
 
 	_, _, err := generatePaths(driverConfig)
 	if err == nil {
@@ -157,11 +157,11 @@ func TestGeneratePaths_BadProjServ(t *testing.T) {
 			".Project/",
 			"foo/Project/Service",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"ProjectService"},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project1/Service1"
 
 	_, _, err := generatePaths(driverConfig)
 	if err == nil {
@@ -182,11 +182,11 @@ func TestGeneratePaths_CaseTwo(t *testing.T) {
 			"~/bar/Project/",
 			"~/hello.world/Project",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"Project/Service"},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project1/Service1"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -220,11 +220,11 @@ func TestGeneratePaths_CaseTwoWin(t *testing.T) {
 			"~/bar/Project/",
 			"~/hello.world/Project",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "~/checking...if\\other characters _/will_cause_panic-!",
 		ServicesWanted:   []string{"Project/Service"},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project1/Service1"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project1/Service1"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -257,7 +257,7 @@ func TestGeneratePaths_CaseThree(t *testing.T) {
 			"hellos/bonjour/fake.tmpl",
 			"hello",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{"hello/world/seeing/if/it/works//with random words"},
 	}
@@ -280,7 +280,7 @@ func TestGeneratePaths_CaseThreeWin(t *testing.T) {
 			"hellos/bonjour/fake.tmpl",
 			"hello",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{"hello/world/seeing/if/it/works//with random words"},
 	}
@@ -302,11 +302,11 @@ func TestGeneratePaths_CaseFour(t *testing.T) {
 		StartDir: []string{
 			"hello/bonjour/Project",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -338,11 +338,11 @@ func TestGeneratePaths_CaseFourWin(t *testing.T) {
 		StartDir: []string{
 			"hello/bonjour/Project",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -372,11 +372,11 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 		StartDir: []string{
 			"hello/bonjour",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "ProjectService"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "ProjectService"
 
 	_, _, err := generatePaths(driverConfig)
 
@@ -394,11 +394,11 @@ func TestGeneratePaths_CaseFiveWin(t *testing.T) {
 		StartDir: []string{
 			"hello/bonjour",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/bonjour",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "ProjectService"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "ProjectService"
 
 	_, _, err := generatePaths(driverConfig)
 
@@ -420,11 +420,11 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 			"~./Project",
 			"~\\hello\\/Project",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -467,11 +467,11 @@ func TestGeneratePaths_CaseSixWin(t *testing.T) {
 			"~./Project",
 			"~\\hello\\/Project",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello\\world\\Project\\Service\\bonjour\\monde",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -506,11 +506,11 @@ func TestGeneratePaths_CaseSeven(t *testing.T) {
 		StartDir: []string{
 			"hello/bonjour",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -541,11 +541,11 @@ func TestGeneratePaths_CaseSevenWin(t *testing.T) {
 		StartDir: []string{
 			"C:\\hello\\bonjour",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -576,11 +576,11 @@ func TestGeneratePaths_CaseEightWin(t *testing.T) {
 		StartDir: []string{
 			"D:\\hello\\bonjour",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {
@@ -612,11 +612,11 @@ func TestGeneratePaths_CaseNineWin(t *testing.T) {
 			"D:\\hello\\bonjour",
 			"C:\\hello\\Project\\",
 		},
-		DeploymentConfig: make(map[string]any),
+		DeploymentConfig: &map[string]any{},
 		EndDir:           "hello/world/Project/Service/bonjour/monde",
 		ServicesWanted:   []string{},
 	}
-	driverConfig.DeploymentConfig["trcprojectservice"] = "Project/Service"
+	(*driverConfig.DeploymentConfig)["trcprojectservice"] = "Project/Service"
 
 	templatePaths, endPaths, err := generatePaths(driverConfig)
 	if err != nil {

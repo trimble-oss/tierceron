@@ -133,8 +133,13 @@ func CommonMain(envPtr *string,
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 	isGetCommand := false
 	repoName := ""
-
+	isRunnableKernelPlugin := false
 	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
+		isRunnableKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
+			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
+			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
+				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
+
 		args := argLines[1:]
 		argOffset := 1
 		// Check for commands before validating flags
@@ -220,7 +225,7 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
 	}
 
-	if !kernelopts.BuildOptions.IsKernel() {
+	if !isRunnableKernelPlugin {
 		if eUtils.RefLength(addrPtr) == 0 {
 			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
 		} else {
@@ -228,9 +233,9 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"] != nil {
+	if trcshDriverConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcpluginalias"] != nil {
 		// Prefer internal definition of alias
-		*pluginNameAliasPtr = trcshDriverConfig.DriverConfig.DeploymentConfig["trcpluginalias"].(string)
+		*pluginNameAliasPtr = (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcpluginalias"].(string)
 	}
 
 	if (len(*newrelicAppNamePtr) == 0 && len(*newrelicLicenseKeyPtr) != 0) || (len(*newrelicAppNamePtr) != 0 && len(*newrelicLicenseKeyPtr) == 0) {
@@ -302,6 +307,7 @@ func CommonMain(envPtr *string,
 			return errors.New("-pathParam can only contain alphanumberic characters or underscores")
 		}
 	}
+
 	if *agentdeployPtr || *winservicestopPtr || *winservicestartPtr || *codebundledeployPtr || *pluginservicestopPtr || *pluginservicestartPtr {
 		*pluginTypePtr = "trcshservice"
 	}
@@ -431,7 +437,7 @@ func CommonMain(envPtr *string,
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else if *pluginNamePtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
-	} else if deployPlugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+	} else if deployPlugin, ok := (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
 		if subsv, k := deployPlugin.(string); k {
 			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
 			*pluginNamePtr = subsv
@@ -441,7 +447,7 @@ func CommonMain(envPtr *string,
 	var pluginHandler *hive.PluginHandler = nil
 	var kernelPluginHandler *hive.PluginHandler = nil
 	if *pluginNamePtr == "" {
-		if deployPlugin, ok := trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcplugin"]; ok {
+		if deployPlugin, ok := (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
 			if dep, k := deployPlugin.(string); k {
 				*pluginNamePtr = dep
 			} else {
@@ -451,7 +457,8 @@ func CommonMain(envPtr *string,
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
 		}
 	}
-	if kernelopts.BuildOptions.IsKernel() {
+
+	if isRunnableKernelPlugin {
 		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
 			kernelPluginHandler = mainPluginHandler[0]
 			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
@@ -809,8 +816,8 @@ func CommonMain(envPtr *string,
 			return nil
 		}
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
-			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"] != nil && len(trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"].(string)) > 0 {
-				pluginToolConfig["trcsha256"] = trcshDriverConfigBase.DriverConfig.DeploymentConfig["trcsha256"]
+			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"] != nil && len((*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"].(string)) > 0 {
+				pluginToolConfig["trcsha256"] = (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"]
 			}
 		}
 
@@ -920,7 +927,7 @@ func CommonMain(envPtr *string,
 			}
 			return errors.New(errMessage)
 		}
-		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && kernelopts.BuildOptions.IsKernel() {
+		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && isRunnableKernelPlugin {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
@@ -1262,7 +1269,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintln(os.Stderr, "Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pluginservicestartPtr && kernelopts.BuildOptions.IsKernel() {
+	} else if *pluginservicestartPtr && isRunnableKernelPlugin {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
 			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
 				fmt.Fprintf(os.Stderr, "Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
@@ -1275,7 +1282,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintf(os.Stderr, "Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 		}
-	} else if *pluginservicestopPtr && kernelopts.BuildOptions.IsKernel() {
+	} else if *pluginservicestopPtr && isRunnableKernelPlugin {
 		if pluginHandler != nil && pluginHandler.State != 2 {
 			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {

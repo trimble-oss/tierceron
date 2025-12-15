@@ -583,7 +583,7 @@ func CommonMain(envDefaultPtr *string,
 			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
-		if len(driverConfigBase.DeploymentConfig) > 0 {
+		if driverConfigBase.DeploymentConfig != nil {
 			dConfig.DeploymentConfig = driverConfigBase.DeploymentConfig
 		}
 		configCtx.ConfigWg.Add(1)
