@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
@@ -132,12 +133,12 @@ func CommonMain(envPtr *string,
 	certPathPtr := flagset.String("certPath", "", "Path to certificate to push to Azure")
 	isGetCommand := false
 	repoName := ""
-	isKernelPlugin := false
+	isRunnableKernelPlugin := false
 	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
-		isKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
+		isRunnableKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
-				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice")
+				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
 
 		args := argLines[1:]
 		argOffset := 1
@@ -224,7 +225,7 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
 	}
 
-	if !isKernelPlugin {
+	if !isRunnableKernelPlugin {
 		if eUtils.RefLength(addrPtr) == 0 {
 			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
 		} else {
@@ -457,7 +458,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if isKernelPlugin {
+	if isRunnableKernelPlugin {
 		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
 			kernelPluginHandler = mainPluginHandler[0]
 			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
@@ -926,7 +927,7 @@ func CommonMain(envPtr *string,
 			}
 			return errors.New(errMessage)
 		}
-		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && isKernelPlugin {
+		if ptcsha256, ok := pluginToolConfig["trcsha256"]; ok && isRunnableKernelPlugin {
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Starting verification of plugin module.")
 			h := sha256.New()
 			pathToSO := hive.LoadPluginPath(trcshDriverConfigBase.DriverConfig, pluginToolConfig)
@@ -1268,7 +1269,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintln(os.Stderr, "Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pluginservicestartPtr && isKernelPlugin {
+	} else if *pluginservicestartPtr && isRunnableKernelPlugin {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
 			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
 				fmt.Fprintf(os.Stderr, "Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
@@ -1281,7 +1282,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintf(os.Stderr, "Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 		}
-	} else if *pluginservicestopPtr && isKernelPlugin {
+	} else if *pluginservicestopPtr && isRunnableKernelPlugin {
 		if pluginHandler != nil && pluginHandler.State != 2 {
 			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {
