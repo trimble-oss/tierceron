@@ -75,12 +75,12 @@ type DriverConfig struct {
 	CertPathOverrides map[string]string // certFileName -> certDest
 
 	// Config modes....
-	NoVault     bool //Working straight from seed files
+	NoVault     bool // Working straight from seed files
 	ZeroConfig  bool
 	GenAuth     bool
-	TrcShellRaw string   //Used for TrcShell
-	Trcxe       []string //Used for TRCXE
-	Trcxr       bool     //Used for TRCXR
+	TrcShellRaw string   // Used for TrcShell
+	Trcxe       []string // Used for TRCXE
+	Trcxr       bool     // Used for TRCXR
 
 	Clean  bool
 	Update func(*ConfigContext, *string, string)
@@ -106,7 +106,7 @@ type DriverConfig struct {
 	SubSectionValue string
 	ServiceFilter   []string // Which tables to use.
 
-	DeploymentConfig         map[string]any // For trcsh to indicate which deployment to work on
+	DeploymentConfig         *map[string]any // For trcsh to indicate which deployment to work on
 	DeploymentCtlMessageChan chan string
 }
 
@@ -148,7 +148,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 		}
 
 		projectFiles := []string{}
-		for projectFileName, _ := range projectFileNames {
+		for projectFileName := range projectFileNames {
 			if !strings.HasSuffix(projectFileName, ".DS_Store") {
 				projectFiles = append(projectFiles, projectFileName)
 			}
@@ -210,7 +210,7 @@ func ConfigControl(ctx ProcessContext, configCtx *ConfigContext, driverConfig *D
 		}
 
 		if len(driverConfig.VersionFilter) == 0 {
-			for projectFileName, _ := range projectFileNames {
+			for projectFileName := range projectFileNames {
 				for _, projectSection := range driverConfig.ProjectSections {
 					if !strings.HasSuffix(projectFileName, ".DS_Store") && projectFileName == projectSection {
 						driverConfig.VersionFilter = append(driverConfig.VersionFilter, projectFileName)

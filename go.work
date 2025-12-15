@@ -1,4 +1,4 @@
-go 1.25.4
+go 1.25.5
 
 use .
 
@@ -23,6 +23,8 @@ use ./atrium/vestibulum/hive/plugins/trcviride
 use ./atrium/vestibulum/hive/plugins/trcdb
 
 use ./atrium/vestibulum/hive/plugins/trcpraevius
+
+use ./atrium/vestibulum/hive/plugins/trcprocurator
 
 use ./atrium/vestibulum/hive/plugins/trctrcsh
 
