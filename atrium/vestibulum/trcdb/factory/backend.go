@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -298,6 +299,9 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			pec["pluginName"] = "trc-vault-plugin"
 		}
 		flowMachineInitContext := flowcore.FlowMachineInitContext{
+			GetIdColumnType:             harbingeropts.BuildOptions.GetIdColumnType,
+			TableGrantNotify:            harbingeropts.BuildOptions.TableGrantNotify,
+			BuildTableGrant:             harbingeropts.BuildOptions.BuildTableGrant,
 			FlowMachineInterfaceConfigs: map[string]any{},
 			GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
 			IsSupportedFlow:             coreopts.BuildOptions.IsSupportedFlow,
