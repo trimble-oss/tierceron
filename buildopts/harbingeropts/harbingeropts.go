@@ -31,6 +31,12 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
 
+// GetIdColumnType - this is a test config setup function.
+func GetIdColumnType(table string) any {
+	//	var idType sqles.Type = sqles.Text
+	return sqles.Text // or sqles.Int64
+}
+
 // Folder prefix for _seed and _templates.  This function takes a list of paths and looking
 // at the first entry, retrieve an embedded folder prefix.
 func GetFolderPrefix(custom []string) string {

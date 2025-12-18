@@ -9,6 +9,7 @@ import (
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
+	GetIdColumnType    func(table string) any
 	GetFolderPrefix    func(custom []string) string
 	IsValidProjectName func(projectName string) bool
 	BuildInterface     func(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext any, vaultDatabaseConfig map[string]any, serverListener any) error
@@ -18,6 +19,7 @@ type OptionsBuilder struct {
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
+		optionsBuilder.GetIdColumnType = GetIdColumnType
 		optionsBuilder.GetFolderPrefix = GetFolderPrefix
 		optionsBuilder.IsValidProjectName = IsValidProjectName
 		optionsBuilder.BuildInterface = BuildInterface
