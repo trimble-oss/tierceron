@@ -1500,7 +1500,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
 	deployerDriverConfig.DeploymentConfig = trcshDriverConfig.DriverConfig.DeploymentConfig
 
-	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" {
+	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && ((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" || (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice") {
 		// Generate trc code...
 		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
 		if pjService, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcprojectservice"]; ok {
