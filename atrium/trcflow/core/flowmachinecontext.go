@@ -199,13 +199,26 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		changeTableName := tableName + "_Changes"
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			tfmContext.LogInfo("Creating tierceron sql table: " + changeTableName)
-			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
-				sqle.NewPrimaryKeySchema(sqle.Schema{
-					{Name: "id", Type: flowMachineInitContext.GetIdColumnType(tableName).(sqle.Type), Source: changeTableName, PrimaryKey: true},
-					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
-				}),
-				TableCollationIdGen(tableName),
-			)
+			var err error
+			var columnType any
+
+			if flowMachineInitContext.GetIdColumnType == nil {
+				err = fmt.Errorf("GetIdColumnType is nil - harbingeropts may not be properly initialized")
+			} else {
+				columnType = flowMachineInitContext.GetIdColumnType(tableName)
+				if columnType == nil {
+					err = fmt.Errorf("GetIdColumnType returned nil for table %s", tableName)
+				} else {
+					err = tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
+						sqle.NewPrimaryKeySchema(sqle.Schema{
+							{Name: "id", Type: columnType.(sqle.Type), Source: changeTableName, PrimaryKey: true},
+							{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+						}),
+						TableCollationIdGen(tableName),
+					)
+				}
+			}
+
 			if err != nil {
 				tfmContext.GetTableModifierLock().Unlock()
 				tfmContext.Log("Could not create table.", err)
