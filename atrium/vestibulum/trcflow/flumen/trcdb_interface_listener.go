@@ -234,7 +234,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 			} else {
 				// Other statement types (CREATE TABLE, etc.) - just call the handler
 				if flowcoreopts.BuildOptions.IsCreateTableEnabled() && success && strings.HasPrefix(strings.ToLower(query), "create") {
-					trcdb.HandleCreateTableTemplate(tl.TfmContext.TierceronEngine, query)
+					trcdb.HandleCreateTableTemplate(tl.TfmContext.TierceronEngine, query, tl.TfmContext)
 				}
 			}
 		} else {
