@@ -2,15 +2,19 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	bitcore "github.com/trimble-oss/tierceron-core/v2/bitlock"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -24,6 +28,232 @@ import (
 )
 
 var m sync.Mutex
+
+// isCreateTableStatement checks if a SQL query is a CREATE TABLE statement
+func isCreateTableStatement(query string) bool {
+	trimmedQuery := strings.TrimSpace(query)
+	return strings.HasPrefix(strings.ToUpper(trimmedQuery), "CREATE TABLE")
+}
+
+// ColumnDef represents a column definition in a table
+type ColumnDef struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+// TableSchema represents the schema of a table
+type TableSchema struct {
+	TableName string      `json:"table_name"`
+	Columns   []ColumnDef `json:"columns"`
+	CreatedAt string      `json:"created_at"`
+}
+
+// parseCreateTableStatement extracts table name and column definitions from a CREATE TABLE statement
+// Returns (tableName, columns, error)
+func parseCreateTableStatement(query string) (string, []ColumnDef, error) {
+	// Regex to match: CREATE TABLE [IF NOT EXISTS] tablename (column definitions)
+	createTableRegex := regexp.MustCompile(`(?i)CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:[\w]+\.)?(\w+)\s*\((.*)\)`)
+	matches := createTableRegex.FindStringSubmatch(query)
+	if len(matches) < 3 {
+		return "", nil, errors.New("invalid CREATE TABLE syntax")
+	}
+
+	tableName := matches[1]
+	columnDefs := matches[2]
+
+	// Parse column definitions
+	var columns []ColumnDef
+
+	// Split by comma, but be careful with nested parentheses
+	columnParts := strings.Split(columnDefs, ",")
+	for _, part := range columnParts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		// Skip constraint definitions (PRIMARY KEY, UNIQUE, KEY, INDEX, etc.)
+		upperPart := strings.ToUpper(part)
+		if strings.HasPrefix(upperPart, "PRIMARY KEY") ||
+			strings.HasPrefix(upperPart, "UNIQUE") ||
+			strings.HasPrefix(upperPart, "KEY ") ||
+			strings.HasPrefix(upperPart, "INDEX") ||
+			strings.HasPrefix(upperPart, "FOREIGN KEY") ||
+			strings.HasPrefix(upperPart, "CONSTRAINT") {
+			continue
+		}
+
+		// Extract column name and type
+		fields := strings.Fields(part)
+		if len(fields) >= 2 {
+			colName := fields[0]
+			colType := fields[1]
+
+			// Validate that column type is string-like (VARCHAR, CHAR, TEXT, STRING, etc.)
+			upperColType := strings.ToUpper(colType)
+			if !isStringType(upperColType) {
+				return "", nil, fmt.Errorf("column %s has type %s; only string types (VARCHAR, CHAR, TEXT, etc.) are allowed", colName, colType)
+			}
+
+			columns = append(columns, ColumnDef{
+				Name: colName,
+				Type: colType,
+			})
+		}
+	}
+
+	if len(columns) == 0 {
+		return "", nil, errors.New("no valid columns found in CREATE TABLE statement")
+	}
+
+	return tableName, columns, nil
+}
+
+// isStringType checks if a column type is a string type
+func isStringType(colType string) bool {
+	stringTypes := map[string]bool{
+		"VARCHAR":    true,
+		"CHAR":       true,
+		"TEXT":       true,
+		"STRING":     true,
+		"TINYTEXT":   true,
+		"MEDIUMTEXT": true,
+		"LONGTEXT":   true,
+	}
+	return stringTypes[colType]
+}
+
+// buildSchemaTemplate creates a schema template in JSON format for Vault storage
+func buildSchemaTemplate(tableName string, columns []ColumnDef) ([]byte, error) {
+	schema := TableSchema{
+		TableName: tableName,
+		Columns:   columns,
+		CreatedAt: fmt.Sprintf("%d", time.Now().Unix()),
+	}
+
+	schemaBytes, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+
+	return schemaBytes, nil
+}
+
+// handleCreateTableStatement processes a CREATE TABLE statement
+// It validates the controller database, parses the statement, pushes schema to Vault,
+// and registers the table with the TierceronEngine
+// Note: This function should only be called if IsCreateTableEnabled() returns true
+func handleCreateTableStatement(te *engine.TierceronEngine, query string) error {
+	// Only allow CREATE TABLE in the controller database
+	if !isControllerDatabase(te.Database.Name()) {
+		return fmt.Errorf("CREATE TABLE is only allowed in the controller database, not in %s", te.Database.Name())
+	}
+
+	// Parse the CREATE TABLE statement
+	tableName, columns, err := parseCreateTableStatement(query)
+	if err != nil {
+		return fmt.Errorf("failed to parse CREATE TABLE statement: %w", err)
+	}
+
+	// Build schema template
+	schemaBytes, err := buildSchemaTemplate(tableName, columns)
+	if err != nil {
+		return fmt.Errorf("failed to build schema template: %w", err)
+	}
+
+	// Get a Vault modifier to push the schema to Vault
+	mod, err := helperkv.NewModifierFromCoreConfig(te.Config.CoreConfig,
+		"config_token_"+te.Config.CoreConfig.Env,
+		te.Config.CoreConfig.Env,
+		false)
+	if err != nil {
+		return fmt.Errorf("failed to create vault modifier: %w", err)
+	}
+	defer mod.Release()
+
+	// Push schema to Vault at templates/settings/{tableName}/schema
+	templatePath := fmt.Sprintf("templates/settings/%s/schema", tableName)
+	warn, err := mod.Write(templatePath, map[string]any{
+		"data": schemaBytes,
+		"ext":  ".json",
+	}, te.Config.CoreConfig.Log)
+
+	if err != nil || len(warn) > 0 {
+		return fmt.Errorf("failed to push schema to vault: %w, warnings: %v", err, warn)
+	}
+
+	if te.Config.CoreConfig.Log != nil {
+		te.Config.CoreConfig.Log.Printf("Successfully pushed schema for table %s to vault at %s\n", tableName, templatePath)
+	}
+
+	// Note: The actual table creation in the MySQL engine happens in the Query functions
+	// after this handler returns successfully. If this returns an error, the CREATE TABLE
+	// statement will not be executed in the database.
+
+	return nil
+}
+
+// isControllerDatabase checks if the given database name is the controller database
+// The controller database is always "TierceronFlow" as defined in tierceron-core
+func isControllerDatabase(dbName string) bool {
+	return dbName == flowcore.TierceronControllerFlow.FlowName()
+}
+
+// HandleCreateTableTemplate is the public entry point for CREATE TABLE template generation.
+// This is called from the query callback after a CREATE TABLE statement has been executed.
+// It parses the CREATE TABLE statement and generates a template in Vault.
+// Note: This does NOT execute the CREATE TABLE - that's done by the normal query flow.
+func HandleCreateTableTemplate(te *engine.TierceronEngine, query string) {
+	if te == nil || te.Config.CoreConfig == nil {
+		return
+	}
+
+	// Only generate template for controller database
+	if !isControllerDatabase(te.Database.Name()) {
+		return
+	}
+
+	// Parse the CREATE TABLE statement
+	tableName, columns, err := parseCreateTableStatement(query)
+	if err != nil {
+		te.Config.CoreConfig.Log.Printf("Failed to parse CREATE TABLE statement: %v\n", err)
+		return
+	}
+
+	// Build schema template
+	schemaBytes, err := buildSchemaTemplate(tableName, columns)
+	if err != nil {
+		te.Config.CoreConfig.Log.Printf("Failed to build schema template: %v\n", err)
+		return
+	}
+
+	// Get a Vault modifier to push the schema to Vault
+	mod, err := helperkv.NewModifierFromCoreConfig(te.Config.CoreConfig,
+		"config_token_"+te.Config.CoreConfig.Env,
+		te.Config.CoreConfig.Env,
+		false)
+	if err != nil {
+		te.Config.CoreConfig.Log.Printf("Failed to create vault modifier: %v\n", err)
+		return
+	}
+	defer mod.Release()
+
+	// Push schema to Vault at templates/settings/{tableName}/schema
+	templatePath := fmt.Sprintf("templates/settings/%s/schema", tableName)
+	warn, err := mod.Write(templatePath, map[string]any{
+		"data": schemaBytes,
+		"ext":  ".json",
+	}, te.Config.CoreConfig.Log)
+
+	if err != nil || len(warn) > 0 {
+		te.Config.CoreConfig.Log.Printf("Failed to push schema to vault: %v, warnings: %v\n", err, warn)
+		return
+	}
+
+	if te.Config.CoreConfig.Log != nil {
+		te.Config.CoreConfig.Log.Printf("Successfully pushed schema for table %s to vault at %s\n", tableName, templatePath)
+	}
+}
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
 func CreateEngine(driverConfig *config.DriverConfig,
