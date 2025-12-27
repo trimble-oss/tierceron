@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"regexp"
 	"strings"
 	"sync"
@@ -204,33 +203,15 @@ func isControllerDatabase(dbName string) bool {
 // and initializes it for flow processing using the generic flow pattern.
 // tfmContextI is passed as 'any' to avoid circular imports (it's TrcFlowMachineContext from trcflow/core)
 // logger is passed as 'any' and should have a Printf method (typically *log.Logger or similar)
-func registerFlowInTierceronFlow(tfmContextI any, tableName string, logger any) {
-	if tfmContextI == nil || tableName == "" {
-		return
-	}
-
-	// Use reflection to call methods on TrcFlowMachineContext without direct import
-	tfmContextVal := reflect.ValueOf(tfmContextI)
-	if !tfmContextVal.IsValid() {
-		return
-	}
-
-	// Get the GetFlowContext method and call it with TierceronControllerFlow
-	getFlowContextMethod := tfmContextVal.MethodByName("GetFlowContext")
-	if !getFlowContextMethod.IsValid() {
-		logMessage(logger, fmt.Sprintf("Could not find GetFlowContext method for registering flow: %s\n", tableName))
+func registerFlowInTierceronFlow(tfmContext flowcore.FlowMachineContext, tableName string) {
+	if tfmContext == nil || tableName == "" {
 		return
 	}
 
 	// Call GetFlowContext with the controller flow name
-	controllerFlowName := flowcore.TierceronControllerFlow.FlowName()
-	result := getFlowContextMethod.Call([]reflect.Value{reflect.ValueOf(flowcore.FlowNameType(controllerFlowName))})
-	if len(result) == 0 || result[0].IsNil() {
-		logMessage(logger, fmt.Sprintf("Could not get TierceronFlow context for registering new flow: %s\n", tableName))
-		return
-	}
 
-	tfContext := result[0].Interface()
+	controllerFlowName := flowcore.TierceronControllerFlow.FlowName()
+	tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(controllerFlowName))
 
 	// Insert row into TierceronFlow with the new flow definition
 	// Use INSERT IGNORE to silently ignore duplicate key errors (no-op if flow already exists)
@@ -243,56 +224,25 @@ func registerFlowInTierceronFlow(tfmContextI any, tableName string, logger any) 
 		tableName,
 	)
 
-	// Call CallDBQuery method
-	callDBQueryMethod := tfmContextVal.MethodByName("CallDBQuery")
-	if !callDBQueryMethod.IsValid() {
-		logMessage(logger, fmt.Sprintf("Failed to find CallDBQuery method for registering flow: %s\n", tableName))
-		return
-	}
-
 	queryMap := map[string]any{"TrcQuery": insertQuery}
 	flowNames := []flowcore.FlowNameType{flowcore.FlowNameType(controllerFlowName)}
 
-	result = callDBQueryMethod.Call([]reflect.Value{
-		reflect.ValueOf(tfContext),
-		reflect.ValueOf(queryMap),
-		reflect.ValueOf(nil),
-		reflect.ValueOf(false),
-		reflect.ValueOf("INSERT"),
-		reflect.ValueOf(flowNames),
-		reflect.ValueOf(""),
-	})
+	// Call CallDBQuery method
+	result, success := tfmContext.CallDBQuery(tfContext, queryMap, nil, false, "INSERT", flowNames, "")
 
-	if len(result) > 1 {
-		errResult := result[1].Interface()
-		if errResult != nil {
-			logMessage(logger, fmt.Sprintf("Failed to insert flow definition for %s into TierceronFlow: %v\n", tableName, errResult))
-			return
-		}
-	}
-
-	logMessage(logger, fmt.Sprintf("Successfully registered new flow '%s' in TierceronFlow table\n", tableName))
-}
-
-// logMessage logs a message using reflection to avoid type assertions
-// logger should have a Printf(string, ...interface{}) method
-func logMessage(logger any, message string) {
-	if logger == nil {
+	if !success || len(result) == 0 {
+		tfmContext.Log(fmt.Sprintf("Failed to insert flow definition for %s into TierceronFlow\n", tableName), nil)
 		return
 	}
 
-	logVal := reflect.ValueOf(logger)
-	printfMethod := logVal.MethodByName("Printf")
-	if printfMethod.IsValid() {
-		printfMethod.Call([]reflect.Value{reflect.ValueOf(message)})
-	}
+	tfmContext.Log(fmt.Sprintf("Successfully registered new flow '%s' in TierceronFlow table\n", tableName), nil)
 }
 
 // HandleCreateTableTemplate is the public entry point for CREATE TABLE template generation.
 // This is called from the query callback after a CREATE TABLE statement has been executed.
 // It parses the CREATE TABLE statement, generates a template in Vault, and registers the flow.
 // Note: This does NOT execute the CREATE TABLE - that's done by the normal query flow.
-func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmContext any) {
+func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmContext flowcore.FlowMachineContext) {
 	if te == nil || te.Config.CoreConfig == nil {
 		return
 	}
@@ -344,7 +294,7 @@ func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmCont
 	// Register the new flow in TierceronFlow table
 	// This creates a flow definition that can be started and managed
 	if tfmContext != nil {
-		registerFlowInTierceronFlow(tfmContext, tableName, te.Config.CoreConfig.Log)
+		registerFlowInTierceronFlow(tfmContext, tableName)
 	}
 }
 
