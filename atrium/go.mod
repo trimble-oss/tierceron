@@ -33,7 +33,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2 v2.1.0
 	github.com/danieljoos/wincred v1.2.2
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
-	github.com/go-git/go-billy/v5 v5.6.2
 	github.com/google/go-github/v61 v61.0.0
 	github.com/microsoft/azure-devops-go-api/azuredevops v1.0.0-b5
 	github.com/newrelic/go-agent/v3 v3.35.0
@@ -71,6 +70,7 @@ require (
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/frankban/quicktest v1.14.6 // indirect
 	github.com/ftbe/dawg v0.0.0-20131228112149-aadae8139481 // indirect
+	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
 	github.com/go-text/render v0.2.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
@@ -226,7 +226,7 @@ require (
 	github.com/fyne-io/gl-js v0.0.0-20220119005834-d2da28d9ccfe // indirect
 	github.com/fyne-io/glfw-js v0.0.0-20240101223322-6e1efdc71b7a // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
-	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a // indirect
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20240506104042-037f3cc74f2a
 	github.com/go-text/typesetting v0.2.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
@@ -331,6 +331,8 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspira
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore => ./vestibulum/hive/plugins/trcrosea/hcore
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore => ./vestibulum/hive/plugins/trcdb/hcore
+
+replace github.com/trimble-oss/tierceron/atrium/trcdb => ./trcdb
 
 //replace github.com/trimble-oss/tierceron-nute => ../tierceron-nute
 
