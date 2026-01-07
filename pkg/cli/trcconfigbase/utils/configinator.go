@@ -50,54 +50,58 @@ func generatePaths(driverConfig *config.DriverConfig) ([]string, []string, error
 	var trcProjectService string = ""
 	var trcService string = ""
 	var project string = ""
-
+	var projectService string = ""
 	if driverConfig.DeploymentConfig != nil {
-		if projectService, ok := (*driverConfig.DeploymentConfig)["trcprojectservice"]; ok && len(driverConfig.ServicesWanted) == 0 || len(driverConfig.ServicesWanted) == 1 {
-			if driverConfig.CoreConfig.WantCerts {
-				trcProjectService = "Common"
+		if projServ, ok := (*driverConfig.DeploymentConfig)["trcprojectservice"].(string); ok {
+			projectService = projServ
+		}
+	}
+
+	if (len(projectService) > 0 && len(driverConfig.ServicesWanted) == 0) || len(driverConfig.ServicesWanted) == 1 {
+		if driverConfig.CoreConfig.WantCerts {
+			trcProjectService = "Common"
+		} else {
+			if len(projectService) > 0 && len(driverConfig.ServicesWanted) == 0 {
+				trcProjectService = strings.ReplaceAll(projectService, "\\", "/")
 			} else {
-				if ok && len(driverConfig.ServicesWanted) == 0 {
-					trcProjectService = strings.ReplaceAll(projectService.(string), "\\", "/")
-				} else {
-					trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
+				trcProjectService = strings.ReplaceAll(driverConfig.ServicesWanted[0], "\\", "/")
+			}
+			if !strings.Contains(trcProjectService, "/") {
+				fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service specified without slash")
+			}
+			if !strings.HasSuffix(trcProjectService, "/") {
+				trcProjectService = trcProjectService + "/"
+			}
+		}
+		if trcProjectService != "Common" {
+			trcProjectServiceParts := strings.Split(trcProjectService, "/")
+			if len(trcProjectServiceParts) < 2 {
+				fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
+				return templatePaths, endPaths, errors.New("project and service not specified correctly")
+			}
+			project = trcProjectServiceParts[0] + "/"
+			trcService = "/" + trcProjectServiceParts[1] + "/"
+		}
+		if len(driverConfig.StartDir) > 1 {
+			// If multiple starting directories, filter starting directories based on project name
+			startDirFiltered := []string{}
+			for _, startDir := range driverConfig.StartDir {
+				startDir = strings.ReplaceAll(startDir, "\\", "/")
+				if !strings.HasSuffix(startDir, "/") {
+					startDir = startDir + "/"
 				}
-				if !strings.Contains(trcProjectService, "/") {
-					fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
-					return templatePaths, endPaths, errors.New("project and service specified without slash")
+				if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, "/") {
+					project = "/" + project
 				}
-				if !strings.HasSuffix(trcProjectService, "/") {
-					trcProjectService = trcProjectService + "/"
+				if strings.Contains(startDir, project) { // HasSuffix
+					startDirFiltered = append(startDirFiltered, startDir)
 				}
 			}
-			if trcProjectService != "Common" {
-				trcProjectServiceParts := strings.Split(trcProjectService, "/")
-				if len(trcProjectServiceParts) < 2 {
-					fmt.Fprintln(os.Stderr, "Make sure both Project/Service is specified with proper formatting.")
-					return templatePaths, endPaths, errors.New("project and service not specified correctly")
-				}
-				project = trcProjectServiceParts[0] + "/"
-				trcService = "/" + trcProjectServiceParts[1] + "/"
-			}
-			if len(driverConfig.StartDir) > 1 {
-				// If multiple starting directories, filter starting directories based on project name
-				startDirFiltered := []string{}
-				for _, startDir := range driverConfig.StartDir {
-					startDir = strings.ReplaceAll(startDir, "\\", "/")
-					if !strings.HasSuffix(startDir, "/") {
-						startDir = startDir + "/"
-					}
-					if strings.Index(startDir, project) != 0 && !strings.HasPrefix(project, "/") {
-						project = "/" + project
-					}
-					if strings.Contains(startDir, project) { // HasSuffix
-						startDirFiltered = append(startDirFiltered, startDir)
-					}
-				}
-				driverConfig.StartDir = startDirFiltered
-				if len(driverConfig.StartDir) == 0 {
-					fmt.Fprintln(os.Stderr, "Invalid starting directory, ensure directory includes project name.")
-					return templatePaths, endPaths, errors.New("invalid starting directory passed in")
-				}
+			driverConfig.StartDir = startDirFiltered
+			if len(driverConfig.StartDir) == 0 {
+				fmt.Fprintln(os.Stderr, "Invalid starting directory, ensure directory includes project name.")
+				return templatePaths, endPaths, errors.New("invalid starting directory passed in")
 			}
 		}
 	}
