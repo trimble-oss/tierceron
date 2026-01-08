@@ -377,6 +377,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	droneFlagPtr = flagset.Bool("drone", false, "Run as drone.")
 	addrPtr := flagset.String("addr", "", "API endpoint for the vault")
 	isShellRunner := (configMap != nil)
+	isShell := false
 
 	// Initialize the token cache
 	gTokenCache = driverConfigPtr.CoreConfig.TokenCache
@@ -386,13 +387,14 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			fmt.Fprintln(os.Stderr, "Trcsh cannot be run as root.")
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, "ERROR: Trcsh cannot be run as root", -1)
 		} else {
-			if isShellRunner && (driverConfigPtr == nil || driverConfigPtr.CoreConfig == nil || !driverConfigPtr.CoreConfig.IsEditor) {
+			if (len(os.Args) > 1 && strings.HasSuffix(os.Args[1], ".trc")) && (driverConfigPtr == nil || driverConfigPtr.CoreConfig == nil || !driverConfigPtr.CoreConfig.IsEditor) {
+				isShell = true
 				util.CheckNotSudo()
 			}
 		}
 
 		if len(os.Args) > 1 {
-			if strings.Contains(os.Args[1], "trc") && !strings.Contains(os.Args[1], "-c") {
+			if strings.HasSuffix(os.Args[1], ".trc") && !strings.Contains(os.Args[1], "-c") {
 				// Running as shell.
 				os.Args[1] = "-c=" + os.Args[1]
 			}
@@ -423,11 +425,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	}
 	projectServicePtr = projectServiceFlagPtr
 
-	if isShellRunner && !*dronePtr && (projectServicePtr == nil || len(*projectServicePtr) == 0) {
+	if isShell && !*dronePtr && (projectServicePtr == nil || len(*projectServicePtr) == 0) {
 		eUtils.LogSyncAndExit(nil, "Script exiting, projectService flag is required", -1)
 	}
 
-	if !*dronePtr && !isShellRunner {
+	if isShell || (!*dronePtr && !isShellRunner) {
 		if driverConfigPtr.CoreConfig.TokenCache.GetRole("hivekernel") == nil {
 			deployRole := os.Getenv("DEPLOY_ROLE")
 			deploySecret := os.Getenv("DEPLOY_SECRET")
@@ -1371,7 +1373,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 ) {
 	// Extract deployment name from config
 	var deployment string
-	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
 		if trcPlugin, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
 			if deploymentName, isString := trcPlugin.(string); isString {
 				deployment = deploymentName
@@ -1500,31 +1502,33 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
 	deployerDriverConfig.DeploymentConfig = trcshDriverConfig.DriverConfig.DeploymentConfig
 
-	if trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && ((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" || (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice") {
+	if trcshDriverConfig.DriverConfig.CoreConfig.IsShell || (trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && ((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" || (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice")) {
 		// Generate trc code...
 		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
-		if pjService, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcprojectservice"]; ok {
-			if pjServiceStr, isString := pjService.(string); isString {
-				projectService = pjServiceStr
+		if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
+			if pjService, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcprojectservice"]; ok {
+				if pjServiceStr, isString := pjService.(string); isString {
+					projectService = pjServiceStr
+				} else {
+					deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
+					return
+				}
 			} else {
 				deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
 				return
 			}
-		} else {
-			deployerDriverConfig.CoreConfig.Log.Printf("Kernel Missing plugin component project service: %s.\n", deployment)
-			return
-		}
 
-		if trcBootstrap, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcbootstrap"]; ok {
-			if bootstrapStr, isString := trcBootstrap.(string); isString && strings.Contains(bootstrapStr, "/deploy/") {
-				trcPath = bootstrapStr
+			if trcBootstrap, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcbootstrap"]; ok {
+				if bootstrapStr, isString := trcBootstrap.(string); isString && strings.Contains(bootstrapStr, "/deploy/") {
+					trcPath = bootstrapStr
+				} else {
+					deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
+					return
+				}
 			} else {
 				deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
 				return
 			}
-		} else {
-			deployerDriverConfig.CoreConfig.Log.Printf("Plugin %s missing plugin component bootstrap.\n", deployment)
-			return
 		}
 
 		trcPathParts := strings.Split(trcPath, "/")
@@ -1623,7 +1627,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	}
 
 collaboratorReRun:
-	if featherCtx != nil && content == nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshservice" {
+	if featherCtx != nil && content == nil && trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshservice" {
 		// Start with a clean cache always.
 		if trcshDriverConfig.DriverConfig != nil && trcshDriverConfig.DriverConfig.MemFs != nil {
 			trcshDriverConfig.DriverConfig.MemFs.ClearCache(".")
