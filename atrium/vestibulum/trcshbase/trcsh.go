@@ -209,7 +209,12 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
 	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		eUtils.LogSyncAndExit(featherCtx.Log, "Deployment controller complete - exiting with code 0", 0)
+		if eUtils.IsWindows() {
+			featherCtx.Log.Println("Deployment controller complete")
+			return
+		} else {
+			eUtils.LogSyncAndExit(featherCtx.Log, "Deployment controller complete - exiting with code 0\n", 0)
+		}
 	}
 
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
@@ -219,7 +224,12 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerID, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		eUtils.LogSyncAndExit(featherCtx.Log, "Deployment encountered errors - exiting with code 0", 0)
+		if eUtils.IsWindows() {
+			featherCtx.Log.Println("Deployment encountered errors")
+			return
+		} else {
+			eUtils.LogSyncAndExit(featherCtx.Log, "Deployment encountered errors - exiting with code 0\n", 0)
+		}
 	}
 }
 
