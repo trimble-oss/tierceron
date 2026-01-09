@@ -814,7 +814,9 @@ func CommonMain(envPtr *string,
 			}
 
 			eUtils.LogInfo(trcshDriverConfigBase.DriverConfig.CoreConfig, fmt.Sprintf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string)))
-			return nil
+			if isRunnableKernelPlugin {
+				return nil
+			}
 		}
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
 			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"] != nil && len((*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"].(string)) > 0 {
@@ -862,7 +864,7 @@ func CommonMain(envPtr *string,
 			}
 			deployPath = filepath.Join(deployRoot, pluginToolConfig["trccodebundle"].(string))
 
-			if !plugincoreopts.BuildOptions.IsPluginHardwired() {
+			if eUtils.IsWindows() || !plugincoreopts.BuildOptions.IsPluginHardwired() {
 				fmt.Fprintf(os.Stderr, "Deploying image to: %s\n", deployPath)
 				if _, err = os.Stat(deployRoot); err != nil && !os.IsPermission(err) {
 					err = os.MkdirAll(deployRoot, 0o700)

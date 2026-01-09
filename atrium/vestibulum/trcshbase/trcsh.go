@@ -1816,6 +1816,8 @@ func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
 						default:
 							break
 						}
+					} else {
+						time.Sleep(1 * time.Second)
 					}
 				}
 			} else {
