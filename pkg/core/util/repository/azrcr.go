@@ -25,11 +25,25 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
+// getRegistryName returns the container registry name from the config map.
+// It first checks for "trcaltplugin" and falls back to "trcplugin" if not found.
+func getRegistryName(pluginToolConfig *map[string]any) string {
+	if trcRegistryName, ok := (*pluginToolConfig)["trcaltplugin"].(string); ok && len(trcRegistryName) > 0 {
+		return trcRegistryName
+	}
+	if trcPlugin, ok := (*pluginToolConfig)["trcplugin"].(string); ok {
+		return trcPlugin
+	}
+	return ""
+}
+
 func getImageSHA(driverConfig *config.DriverConfig, svc *azidentity.ClientSecretCredential, pluginToolConfig map[string]any) error {
 	err := ValidateRepository(driverConfig, pluginToolConfig)
 	if err != nil {
 		return err
 	}
+
+	registryName := getRegistryName(&pluginToolConfig)
 
 	client, err := azcontainerregistry.NewClient(
 		pluginToolConfig["acrrepository"].(string),
@@ -40,7 +54,7 @@ func getImageSHA(driverConfig *config.DriverConfig, svc *azidentity.ClientSecret
 	}
 	ctx := context.Background()
 	latestTag := ""
-	pager := client.NewListTagsPager(pluginToolConfig["trcplugin"].(string), &azcontainerregistry.ClientListTagsOptions{
+	pager := client.NewListTagsPager(registryName, &azcontainerregistry.ClientListTagsOptions{
 		MaxNum:  to.Ptr[int32](1),
 		OrderBy: to.Ptr(azcontainerregistry.ArtifactTagOrderByLastUpdatedOnDescending),
 	})
@@ -52,7 +66,7 @@ foundTag:
 			return err
 		}
 		for _, v := range page.Tags {
-			latestTag = *v.Name //Always only returns 1 tag due to MaxNum being set
+			latestTag = *v.Name // Always only returns 1 tag due to MaxNum being set
 			if latestTag != "" {
 				break foundTag
 			}
@@ -60,7 +74,7 @@ foundTag:
 	}
 
 	// Get manifest
-	manifestRes, err := client.GetManifest(ctx, pluginToolConfig["trcplugin"].(string), latestTag, &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
+	manifestRes, err := client.GetManifest(ctx, registryName, latestTag, &azcontainerregistry.ClientGetManifestOptions{Accept: to.Ptr(string(azcontainerregistry.ContentTypeApplicationVndDockerDistributionManifestV2JSON))})
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("failed to get manifest: %v", err)
 		return err
@@ -94,7 +108,7 @@ foundTag:
 	for i := len(layers) - 1; i >= 0; i-- {
 		if layer, layerOk := layers[i].(map[string]any)["digest"]; layerOk {
 			if layerD, ok := layer.(string); ok {
-				sha256, shaErr := GetImageShaFromLayer(blobClient, pluginToolConfig["trcplugin"].(string), layerD, pluginToolConfig)
+				sha256, shaErr := GetImageShaFromLayer(blobClient, registryName, layerD, pluginToolConfig)
 				if shaErr != nil {
 					return errors.New("Failed to load image sha from layer:" + shaErr.Error())
 				}
@@ -213,7 +227,6 @@ func PushImage(driverConfig *config.DriverConfig, pluginToolConfig map[string]an
 		summary, err := dockerCli.ImageList(context.Background(), image.ListOptions{
 			Filters: filters.NewArgs(filters.Arg("reference", sourceName)),
 		})
-
 		if err != nil {
 			return errors.New("Failed to list existing images: " + err.Error())
 		}
@@ -222,7 +235,6 @@ func PushImage(driverConfig *config.DriverConfig, pluginToolConfig map[string]an
 			driverConfig.CoreConfig.Log.Printf("Pulling %v from remote\n", sourceName)
 			sourceName = repo + "/" + sourceName
 			err = pullQualifiedName(*dockerCli, driverConfig, pluginToolConfig, sourceName)
-
 			if err != nil {
 				driverConfig.CoreConfig.Log.Printf("Failed to pull image %v from remote, is this image built and pushed?", sourceName)
 				return err
@@ -262,7 +274,6 @@ func pullQualifiedName(dockerCli client.Client, driverConfig *config.DriverConfi
 	pullResponse, err := dockerCli.ImagePull(context.Background(), qualifiedName, image.PullOptions{
 		RegistryAuth: authStr,
 	})
-
 	if err != nil {
 		driverConfig.CoreConfig.Log.Printf("Failed to pull image from ACR: %v\n", err)
 		return err
