@@ -1175,6 +1175,10 @@ func roleBasedRunner(
 			envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
 			tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
 		}
+		if trcshDriverConfig.DriverConfig.IsDrone && eUtils.IsWindows() {
+			// Can this be enabled without disrupting the kernel on linux?
+			trcshDriverConfig.DriverConfig.OutputMemCache = false
+		}
 		err = trcconfigbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 	case "trcsub":
 		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
