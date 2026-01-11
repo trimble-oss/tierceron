@@ -4,9 +4,12 @@
 package repository
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -125,6 +128,12 @@ foundTag:
 		}
 	}
 
+	if pluginToolConfig["imagesha256"] == nil || pluginToolConfig["trcsha256"] == nil || pluginToolConfig["imagesha256"].(string) != pluginToolConfig["trcsha256"].(string) {
+		if pluginToolConfig["codebundledeployPtr"] != nil && pluginToolConfig["codebundledeployPtr"].(bool) {
+			errMessage := fmt.Sprintf("image not certified.  cannot deploy image for %s", pluginToolConfig["trcplugin"])
+			return errors.New(errMessage)
+		}
+	}
 	return nil
 }
 
@@ -133,39 +142,54 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 	if err != nil {
 		return "", errors.New("Failed to get config:" + err.Error())
 	}
-
+	writingFile := false
+	sha := ""
+writeToFile:
 	reader, readErr := azcontainerregistry.NewDigestValidationReader(digest, configRes.BlobData)
 	if readErr != nil {
 		return "", errors.New("Failed to create validation reader" + readErr.Error())
 	}
 
-	layerData, configErr := io.ReadAll(reader)
-	if configErr != nil {
-		return "", errors.New("Failed to read config data:" + configErr.Error())
-	}
-
-	pluginTarredData, gUnZipError := gUnZipData(&layerData)
+	gzipReader, gUnZipError := gzip.NewReader(reader)
 	if gUnZipError != nil {
 		return "", errors.New("gunzip failed")
 	}
-	pluginImage, gUnTarError := untarData(&pluginTarredData)
-	if gUnTarError != nil {
-		return "", errors.New("untarring failed")
-	}
-	pluginSha := sha256.Sum256(pluginImage)
-	sha256 := fmt.Sprintf("%x", pluginSha)
-	if pluginToolConfig != nil {
-		if _, ok := pluginToolConfig["trcsha256"]; !ok {
-			// Not looking for anything in particular so just grab the last image.
-			pluginToolConfig["rawImageFile"] = pluginImage
+
+	tarReader := tar.NewReader(gzipReader)
+	if writingFile {
+		writingFile = false
+		err := deployImage(tarReader, pluginToolConfig)
+		if err != nil {
+			fmt.Println("Unable to deploy image.")
+			return sha, err
 		} else {
-			if pluginToolConfig["trcsha256"].(string) == sha256 {
-				pluginToolConfig["rawImageFile"] = pluginImage
+			return sha, nil
+		}
+	} else {
+		hash := sha256.New()
+		for {
+			_, err := tarReader.Next()
+			if err == io.EOF {
+				break
 			}
+			if err != nil {
+				return "", err
+			}
+			if _, err := io.Copy(hash, tarReader); err != nil {
+				return "", err
+			}
+		}
+		sha = hex.EncodeToString(hash.Sum(nil))
+	}
+
+	if pluginToolConfig["trcsha256"] != nil && pluginToolConfig["trcsha256"].(string) == sha {
+		if pluginToolConfig["codebundledeployPtr"] != nil && pluginToolConfig["codebundledeployPtr"].(bool) {
+			writingFile = true
+			goto writeToFile
 		}
 	}
 
-	return sha256, nil
+	return sha, nil
 }
 
 // Return url to the image to be used for download.
