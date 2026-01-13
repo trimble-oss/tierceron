@@ -159,16 +159,28 @@ type localhostOnlyHandler struct {
 }
 
 func (h *localhostOnlyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		h.logger.Printf("Failed to parse remote address: %v", err)
-		http.Error(w, "Forbidden", http.StatusForbidden)
+	if len(r.Header) > 100 { // Max 100 headers
+		h.logger.Printf("Blocked request with excessive headers from: %s", r.RemoteAddr)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	// Only allow localhost
-	if host != "127.0.0.1" && host != "::1" {
-		h.logger.Printf("Blocked non-localhost connection from: %s", host)
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		h.logger.Printf("Failed to parse RemoteAddr: %v", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	if r.TLS == nil {
+		h.logger.Printf("Blocked non-TLS request from: %s", host)
+		http.Error(w, "HTTPS Required", http.StatusUpgradeRequired)
+		return
+	}
+
+	ip := net.ParseIP(host)
+	if ip == nil || !ip.IsPrivate() {
+		h.logger.Printf("Blocked non-private IP connection from: %s", host)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
@@ -286,13 +298,15 @@ func start(pluginName string) {
 
 	// Create HTTPS server
 	proxyServer = &http.Server{
-		Addr:         fmt.Sprintf(":%d", listenPort),
-		Handler:      handler,
-		TLSConfig:    tlsConfig,
-		ReadTimeout:  60 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		IdleTimeout:  180 * time.Second,
-		ErrorLog:     configContext.Log,
+		Addr:              fmt.Sprintf(":%d", listenPort),
+		Handler:           handler,
+		TLSConfig:         tlsConfig,
+		ReadTimeout:       60 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       180 * time.Second,
+		ErrorLog:          configContext.Log,
+		MaxHeaderBytes:    1 << 20,          // 1 MB max headers - header attack guard
+		ReadHeaderTimeout: 10 * time.Second, // slow loris guard
 	}
 
 	// Start server in background

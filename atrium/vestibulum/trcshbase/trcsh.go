@@ -209,7 +209,12 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
 	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		eUtils.LogSyncAndExit(featherCtx.Log, "Deployment controller complete - exiting with code 0", 0)
+		if eUtils.IsWindows() {
+			featherCtx.Log.Println("Deployment controller complete")
+			return
+		} else {
+			eUtils.LogSyncAndExit(featherCtx.Log, "Deployment controller complete - exiting with code 0\n", 0)
+		}
 	}
 
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
@@ -219,7 +224,12 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerID, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		eUtils.LogSyncAndExit(featherCtx.Log, "Deployment encountered errors - exiting with code 0", 0)
+		if eUtils.IsWindows() {
+			featherCtx.Log.Println("Deployment encountered errors")
+			return
+		} else {
+			eUtils.LogSyncAndExit(featherCtx.Log, "Deployment encountered errors - exiting with code 0\n", 0)
+		}
 	}
 }
 
@@ -1165,6 +1175,10 @@ func roleBasedRunner(
 			envDefaultPtr = trcshDriverConfig.DriverConfig.CoreConfig.Env
 			tokenName = "config_token_" + eUtils.GetEnvBasis(trcshDriverConfig.DriverConfig.CoreConfig.Env)
 		}
+		if trcshDriverConfig.DriverConfig.IsDrone && eUtils.IsWindows() {
+			// Can this be enabled without disrupting the kernel on linux?
+			trcshDriverConfig.DriverConfig.OutputMemCache = false
+		}
 		err = trcconfigbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 	case "trcsub":
 		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
@@ -1816,6 +1830,8 @@ func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
 						default:
 							break
 						}
+					} else {
+						time.Sleep(1 * time.Second)
 					}
 				}
 			} else {
