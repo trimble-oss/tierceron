@@ -1459,7 +1459,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 		if autoErr != nil {
 			eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, fmt.Sprintf("Unable to auth: %s\n", autoErr.Error()), -1)
 		} else {
-			eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Unable to auth: vault_token_azuredeploy is empty\n", -1)
+			eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Unable to auth: deployment token empty\n", -1)
 		}
 	}
 
