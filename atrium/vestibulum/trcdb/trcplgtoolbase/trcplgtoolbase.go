@@ -457,6 +457,8 @@ func CommonMain(envPtr *string,
 				} else {
 					trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
 				}
+			} else {
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
 			}
 		}
 	}
