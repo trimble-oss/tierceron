@@ -1456,7 +1456,11 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	authTokenName := "vault_token_azuredeploy"
 	autoErr := eUtils.AutoAuth(trcshDriverConfig.DriverConfig, &authTokenName, &deployTokenPtr, &authTokenEnv, &trcshEnvBasis, &currentRoleEntity, false)
 	if autoErr != nil || eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken("vault_token_azuredeploy")) == 0 {
-		eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, fmt.Sprintf("Unable to auth: %s\n", autoErr.Error()), -1)
+		if autoErr != nil {
+			eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, fmt.Sprintf("Unable to auth: %s\n", autoErr.Error()), -1)
+		} else {
+			eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Unable to auth: deployment token empty\n", -1)
+		}
 	}
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Bootstrap..")
