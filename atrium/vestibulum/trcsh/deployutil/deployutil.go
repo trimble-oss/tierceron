@@ -238,6 +238,16 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 				continue
 			}
 
+			if _, ok := deploymentConfig["trcplugin"]; !ok {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Missing Certify entry, ignoring deployment: %s\n", deployment)
+				continue
+			}
+
+			if trcplugin, ok := deploymentConfig["trcplugin"].(string); !ok || trcplugin != deployment {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Ignoring invalid deployment name: %s\n", deployment)
+				continue
+			}
+
 			if isDrone && !isShellRunner {
 				var valid_id string
 				if deployerids, ok := deploymentConfig["trcdeployerids"]; ok {
