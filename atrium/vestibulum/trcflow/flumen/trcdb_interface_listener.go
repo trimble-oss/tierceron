@@ -8,8 +8,6 @@ import (
 	"time"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
-	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 
 	"github.com/dolthub/go-mysql-server/server"
@@ -33,7 +31,7 @@ func (tl *TrcDBServerEventListener) QueryStarted(query string) {
 	if tl == nil || tl.TfmContext == nil {
 		return
 	}
-	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") || strings.HasPrefix(strings.ToLower(query), "create") {
+	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
 		// Workaround: Vitess to the rescue.
@@ -136,7 +134,7 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 	if tl == nil || tl.TfmContext == nil {
 		return
 	}
-	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") || strings.HasPrefix(strings.ToLower(query), "create") {
+	if strings.HasPrefix(strings.ToLower(query), "replace") || strings.HasPrefix(strings.ToLower(query), "insert") || strings.HasPrefix(strings.ToLower(query), "update") || strings.HasPrefix(strings.ToLower(query), "delete") {
 		// TODO: one could implement exactly which flows to notify based on the query.
 		//
 		// Workaround: Vitess to the rescue.
@@ -231,11 +229,6 @@ func (tl *TrcDBServerEventListener) QueryCompleted(query string, success bool, d
 				}
 				tl.TfmContext.DriverConfig.CoreConfig.Log.Printf("Query completed: %v %v\n", flows, success)
 
-			} else {
-				// Other statement types (CREATE TABLE, etc.) - just call the handler
-				if flowcoreopts.BuildOptions.IsCreateTableEnabled() && success && strings.HasPrefix(strings.ToLower(query), "create") {
-					trcdb.HandleCreateTableTemplate(tl.TfmContext.TierceronEngine, query, tl.TfmContext)
-				}
 			}
 		} else {
 			// Log the error but don't panic

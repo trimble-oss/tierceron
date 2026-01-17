@@ -6,6 +6,7 @@ import (
 	sqle "github.com/dolthub/go-mysql-server"
 	"github.com/dolthub/go-mysql-server/memory"
 	"github.com/dolthub/go-mysql-server/sql"
+	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
 
 type TierceronTable struct {
@@ -19,4 +20,5 @@ type TierceronEngine struct {
 	Engine     *sqle.Engine
 	Context    *sql.Context
 	TableCache map[string]*TierceronTable
+	TfmContext flowcore.FlowMachineContext
 }

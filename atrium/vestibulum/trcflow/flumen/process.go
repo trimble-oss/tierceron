@@ -277,6 +277,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	tfmContext.SetFlumeDbType(flowcore.TrcDb)
 	tfmContext.TierceronEngine, err = trcdb.CreateEngine(&driverConfigBasis, templateList, pluginConfig["env"].(string), coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb))
+	if err != nil {
+		return nil, err
+	}
+	tfmContext.TierceronEngine.TfmContext = tfmContext
 	tfmContext.DriverConfig = &driverConfigBasis
 
 	if err != nil {
@@ -386,6 +390,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	if err != nil {
 		return nil, err
 	}
+	tfmFlumeContext.TierceronEngine.TfmContext = tfmFlumeContext
 	tfmFlumeContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	tfmFlumeContext.DriverConfig = &driverConfigBasis
 	tfmFlumeContext.Init(

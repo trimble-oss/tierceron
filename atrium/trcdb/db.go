@@ -15,6 +15,7 @@ import (
 
 	bitcore "github.com/trimble-oss/tierceron-core/v2/bitlock"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -201,21 +202,20 @@ func isControllerDatabase(dbName string) bool {
 
 // registerFlowInTierceronFlow inserts a new flow definition into the TierceronFlow table
 // and initializes it for flow processing using the generic flow pattern.
-// tfmContextI is passed as 'any' to avoid circular imports (it's TrcFlowMachineContext from trcflow/core)
-// logger is passed as 'any' and should have a Printf method (typically *log.Logger or similar)
+// registerFlowInTierceronFlow registers the newly created table as a flow in the TierceronFlow table.
+// It inserts a row with default settings (state=0 for offline, syncMode=nosync, empty syncFilter).
+// Uses INSERT IGNORE to gracefully handle duplicate flow names.
 func registerFlowInTierceronFlow(tfmContext flowcore.FlowMachineContext, tableName string) {
 	if tfmContext == nil || tableName == "" {
 		return
 	}
 
-	// Call GetFlowContext with the controller flow name
-
+	// Get the flow context for the controller database
 	controllerFlowName := flowcore.TierceronControllerFlow.FlowName()
 	tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(controllerFlowName))
 
-	// Insert row into TierceronFlow with the new flow definition
-	// Use INSERT IGNORE to silently ignore duplicate key errors (no-op if flow already exists)
-	// Default state=0, syncMode=nosync, syncFilter=, flowAlias=tableName
+	// Build INSERT IGNORE query to register the new flow in TierceronFlow table
+	// Default state=0 (offline), syncMode='nosync', empty syncFilter, flowAlias=tableName
 	insertQuery := fmt.Sprintf(
 		"INSERT IGNORE INTO %s.%s (flowName, state, syncMode, syncFilter, flowAlias, lastModified) VALUES ('%s', 0, 'nosync', '', '%s', NOW())",
 		controllerFlowName,
@@ -227,7 +227,7 @@ func registerFlowInTierceronFlow(tfmContext flowcore.FlowMachineContext, tableNa
 	queryMap := map[string]any{"TrcQuery": insertQuery}
 	flowNames := []flowcore.FlowNameType{flowcore.FlowNameType(controllerFlowName)}
 
-	// Call CallDBQuery method
+	// Insert the flow definition
 	result, success := tfmContext.CallDBQuery(tfContext, queryMap, nil, false, "INSERT", flowNames, "")
 
 	if !success || len(result) == 0 {
@@ -239,31 +239,30 @@ func registerFlowInTierceronFlow(tfmContext flowcore.FlowMachineContext, tableNa
 }
 
 // HandleCreateTableTemplate is the public entry point for CREATE TABLE template generation.
-// This is called from the query callback after a CREATE TABLE statement has been executed.
+// This is called from Query methods after intercepting a CREATE TABLE statement.
 // It parses the CREATE TABLE statement, generates a template in Vault, and registers the flow.
-// Note: This does NOT execute the CREATE TABLE - that's done by the normal query flow.
-func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmContext flowcore.FlowMachineContext) {
+func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmContext flowcore.FlowMachineContext) error {
 	if te == nil || te.Config.CoreConfig == nil {
-		return
+		return errors.New("engine or config is nil")
 	}
 
 	// Only generate template for controller database
 	if !isControllerDatabase(te.Database.Name()) {
-		return
+		return errors.New("CREATE TABLE only allowed in controller database")
 	}
 
 	// Parse the CREATE TABLE statement
 	tableName, columns, err := parseCreateTableStatement(query)
 	if err != nil {
 		te.Config.CoreConfig.Log.Printf("Failed to parse CREATE TABLE statement: %v\n", err)
-		return
+		return err
 	}
 
 	// Build schema template
 	schemaBytes, err := buildSchemaTemplate(tableName, columns)
 	if err != nil {
 		te.Config.CoreConfig.Log.Printf("Failed to build schema template: %v\n", err)
-		return
+		return err
 	}
 
 	// Get a Vault modifier to push the schema to Vault
@@ -273,7 +272,7 @@ func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmCont
 		false)
 	if err != nil {
 		te.Config.CoreConfig.Log.Printf("Failed to create vault modifier: %v\n", err)
-		return
+		return err
 	}
 	defer mod.Release()
 
@@ -286,7 +285,7 @@ func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmCont
 
 	if err != nil || len(warn) > 0 {
 		te.Config.CoreConfig.Log.Printf("Failed to push schema to vault: %v, warnings: %v\n", err, warn)
-		return
+		return err
 	}
 
 	te.Config.CoreConfig.Log.Printf("Successfully pushed schema for table %s to vault at %s\n", tableName, templatePath)
@@ -296,6 +295,8 @@ func HandleCreateTableTemplate(te *engine.TierceronEngine, query string, tfmCont
 	if tfmContext != nil {
 		registerFlowInTierceronFlow(tfmContext, tableName)
 	}
+
+	return nil
 }
 
 // CreateEngine - creates a Tierceron query engine for query of configurations.
@@ -402,6 +403,21 @@ func CreateEngine(driverConfig *config.DriverConfig,
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
 func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (string, []string, [][]any, error) {
+	// Intercept CREATE TABLE statements before they reach the MySQL engine
+	if flowcoreopts.BuildOptions.IsCreateTableEnabled() && isCreateTableStatement(query) {
+		if !isControllerDatabase(te.Database.Name()) {
+			// CREATE TABLE only allowed in controller database
+			return "", nil, nil, errors.New("CREATE TABLE only allowed in controller database")
+		}
+		// Handle CREATE TABLE programmatically, not via SQL execution
+		handleErr := HandleCreateTableTemplate(te, query, te.TfmContext)
+		if handleErr != nil {
+			return "", nil, nil, handleErr
+		}
+		// Return success without executing the query through the engine
+		return "ok", nil, nil, nil
+	}
+
 	// Create a test memory database and register it to the default engine.
 
 	if strings.Contains(query, "%s.") {
@@ -477,6 +493,21 @@ func Query(te *engine.TierceronEngine, query string, queryLock *sync.Mutex) (str
 // Able to run query with multiple flows
 // Example: select * from ServiceTechMobileAPI.configfile
 func QueryN(te *engine.TierceronEngine, query string, queryMask uint64, bitlock bitcore.BitLock) (string, []string, [][]any, error) {
+	// Intercept CREATE TABLE statements before they reach the MySQL engine
+	if flowcoreopts.BuildOptions.IsCreateTableEnabled() && isCreateTableStatement(query) {
+		if !isControllerDatabase(te.Database.Name()) {
+			// CREATE TABLE only allowed in controller database
+			return "", nil, nil, errors.New("CREATE TABLE only allowed in controller database")
+		}
+		// Handle CREATE TABLE programmatically, not via SQL execution
+		handleErr := HandleCreateTableTemplate(te, query, te.TfmContext)
+		if handleErr != nil {
+			return "", nil, nil, handleErr
+		}
+		// Return success without executing the query through the engine
+		return "ok", nil, nil, nil
+	}
+
 	// Create a test memory database and register it to the default engine.
 
 	for _, literal := range []string{"from %s.", "FROM %s.", "join %s.", "JOIN %s."} {
@@ -553,6 +584,21 @@ func QueryN(te *engine.TierceronEngine, query string, queryMask uint64, bitlock 
 // Query - queries configurations using standard ANSI SQL syntax.
 // Example: select * from ServiceTechMobileAPI.configfile
 func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[string]sqles.Expression, queryLock *sync.Mutex) (string, []string, [][]any, error) {
+	// Intercept CREATE TABLE statements before they reach the MySQL engine
+	if flowcoreopts.BuildOptions.IsCreateTableEnabled() && isCreateTableStatement(query) {
+		if !isControllerDatabase(te.Database.Name()) {
+			// CREATE TABLE only allowed in controller database
+			return "", nil, nil, errors.New("CREATE TABLE only allowed in controller database")
+		}
+		// Handle CREATE TABLE programmatically, not via SQL execution
+		handleErr := HandleCreateTableTemplate(te, query, te.TfmContext)
+		if handleErr != nil {
+			return "", nil, nil, handleErr
+		}
+		// Return success without executing the query through the engine
+		return "ok", nil, nil, nil
+	}
+
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
@@ -623,6 +669,21 @@ func QueryWithBindings(te *engine.TierceronEngine, query string, bindings map[st
 // Able to run query with multiple flows with bindings.
 // Example: select * from ServiceTechMobileAPI.configfile
 func QueryWithBindingsN(te *engine.TierceronEngine, query string, bindings map[string]sqles.Expression, queryMask uint64, bitlock bitcore.BitLock) (string, []string, [][]any, error) {
+	// Intercept CREATE TABLE statements before they reach the MySQL engine
+	if flowcoreopts.BuildOptions.IsCreateTableEnabled() && isCreateTableStatement(query) {
+		if !isControllerDatabase(te.Database.Name()) {
+			// CREATE TABLE only allowed in controller database
+			return "", nil, nil, errors.New("CREATE TABLE only allowed in controller database")
+		}
+		// Handle CREATE TABLE programmatically, not via SQL execution
+		handleErr := HandleCreateTableTemplate(te, query, te.TfmContext)
+		if handleErr != nil {
+			return "", nil, nil, handleErr
+		}
+		// Return success without executing the query through the engine
+		return "ok", nil, nil, nil
+	}
+
 	// Create a test memory database and register it to the default engine.
 
 	//ctx := sql.NewContext(context.Background(), sql.WithIndexRegistry(sql.NewIndexRegistry()), sql.WithViewRegistry(sql.NewViewRegistry())).WithCurrentDB(te.Database.Name())
