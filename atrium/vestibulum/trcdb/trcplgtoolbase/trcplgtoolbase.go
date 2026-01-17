@@ -438,24 +438,28 @@ func CommonMain(envPtr *string,
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = *pluginNameAliasPtr
 	} else if *pluginNamePtr != "" {
 		trcshDriverConfigBase.DriverConfig.SubSectionValue = strings.Split(*pluginNamePtr, ":")[0]
-	} else if deployPlugin, ok := (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
-		if subsv, k := deployPlugin.(string); k {
-			trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
-			*pluginNamePtr = subsv
+	} else if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+		if deployPlugin, ok := (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
+			if subsv, k := deployPlugin.(string); k {
+				trcshDriverConfigBase.DriverConfig.SubSectionValue = subsv
+				*pluginNamePtr = subsv
+			}
 		}
 	}
 
 	var pluginHandler *hive.PluginHandler = nil
 	var kernelPluginHandler *hive.PluginHandler = nil
 	if *pluginNamePtr == "" {
-		if deployPlugin, ok := (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
-			if dep, k := deployPlugin.(string); k {
-				*pluginNamePtr = dep
+		if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+			if deployPlugin, ok := (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
+				if dep, k := deployPlugin.(string); k {
+					*pluginNamePtr = dep
+				} else {
+					trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
+				}
 			} else {
-				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unexpected type for plugin name.")
+				trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
 			}
-		} else {
-			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Unable to set plugin name.")
 		}
 	}
 
