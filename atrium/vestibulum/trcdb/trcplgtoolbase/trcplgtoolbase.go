@@ -592,6 +592,7 @@ func CommonMain(envPtr *string,
 	pluginToolConfig["expandTargetPtr"] = *expandTargetPtr // is a bool that gets converted to a string for writeout/certify
 	pluginToolConfig["newrelicAppName"] = *newrelicAppNamePtr
 	pluginToolConfig["newrelicLicenseKey"] = *newrelicLicenseKeyPtr
+	pluginToolConfig["codebundledeployPtr"] = *codebundledeployPtr // for optimization change in certify
 	pluginToolConfig["buildImagePtr"] = *buildImagePtr
 	pluginToolConfig["pushAliasPtr"] = *pushAliasPtr
 	pluginToolConfig["trcbootstrapPtr"] = *trcbootstrapPtr
