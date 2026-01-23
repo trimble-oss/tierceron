@@ -6,18 +6,20 @@ import (
 )
 
 type FlowStateUpdate struct {
-	FlowName    string
-	StateUpdate string
-	SyncFilter  string
-	SyncMode    string
-	FlowAlias   string
+	FlowName     string
+	StateUpdate  string
+	SyncFilter   string
+	SyncMode     string
+	FlowAlias    string
+	LastModified string
 }
 
 type CurrentFlowState struct {
-	State      int64
-	SyncMode   string
-	SyncFilter string
-	FlowAlias  string
+	State        int64
+	SyncMode     string
+	SyncFilter   string
+	FlowAlias    string
+	LastModified string
 }
 
 func UpdateTierceronFlowState(tfmContext flowcore.FlowMachineContext, flowName string, newState string, syncFilter string, syncMode string, flowAlias string) map[string]any {

@@ -514,6 +514,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				if dataMap["flowAlias"] != nil {
 					tcfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
 				}
+				if dataMap["lastModified"] != nil {
+					tcfContext.SetLastModifiedTime(dataMap["lastModified"].(string))
+					tcfContext.SetLastRefreshedTime(dataMap["lastModified"].(string))
+				}
 			}
 			tcfContext.FlowHeader.SourceAlias = coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb)
 			if tcfContext.FlowHeader.FlowName() == flowcore.ArgosSociiFlow.FlowName() {

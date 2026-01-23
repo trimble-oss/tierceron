@@ -802,7 +802,7 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Fprintf(os.Stderr, "Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
-		if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		if isRunnableKernelPlugin && plugincoreopts.BuildOptions.IsPluginHardwired() {
 			var deployRoot string
 			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
 				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
@@ -818,9 +818,7 @@ func CommonMain(envPtr *string,
 			}
 
 			eUtils.LogInfo(trcshDriverConfigBase.DriverConfig.CoreConfig, fmt.Sprintf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string)))
-			if isRunnableKernelPlugin {
-				return nil
-			}
+			return nil
 		}
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
 			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"] != nil && len((*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"].(string)) > 0 {

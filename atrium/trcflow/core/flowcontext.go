@@ -49,6 +49,7 @@ type TrcFlowContext struct {
 	PreviousFlowStateLock *sync.RWMutex
 	QueryLock             *sync.Mutex
 	Inserter              sql.RowInserter
+	LastRefreshed         string
 
 	Restart                 bool
 	Init                    bool
@@ -175,6 +176,30 @@ func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
 	tfContext.FlowState.SyncMode = syncMode
+}
+
+func (tfContext *TrcFlowContext) GetLastModifiedTime() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
+	return tfContext.FlowState.LastModified
+}
+
+func (tfContext *TrcFlowContext) SetLastModifiedTime(lastModified string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
+	tfContext.FlowState.LastModified = lastModified
+}
+
+func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
+	return tfContext.LastRefreshed
+}
+
+func (tfContext *TrcFlowContext) SetLastRefreshedTime(lastRefreshed string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
+	tfContext.LastRefreshed = lastRefreshed
 }
 
 func (tfContext *TrcFlowContext) GetFlowSource() string {
