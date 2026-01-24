@@ -1,12 +1,10 @@
 package flowcoreopts
 
-import sqle "github.com/dolthub/go-mysql-server/sql"
-
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
 	// Flow Core
-	GetIdColumnType      func(table string) sqle.Type
+	GetIdColumnType      func(table string) any
 	IsCreateTableEnabled func() bool
 }
 
