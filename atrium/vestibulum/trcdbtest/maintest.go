@@ -15,11 +15,17 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
+	testoptsloader "github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
+	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -31,6 +37,20 @@ func IsSupportedFlow(flow string) bool {
 // New seed files are written (or overwrite current seed files) to the specified directory.
 func main() {
 	// Supported build flags:
+
+	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
+	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
+	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
+	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
+	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
+	testopts.NewOptionsBuilder(testoptsloader.LoadOptions())
+	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
+	//	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
+	// saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
+	// cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
+
 	//    insecure harbinger tc testrunner ( mysql, testflow -- auto registration -- warning do not use!)
 	logFilePtr := flag.String("log", "./trcdbplugin.log", "Output path for log file")
 	tokenPtr := flag.String("token", "", "Vault access Token")
@@ -39,7 +59,6 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	logger := log.New(f, "[trcdbplugin]", log.LstdFlags)
 	eUtils.CheckError(&coreconfig.CoreConfig{ExitOnFailure: true, Log: logger}, err, true)
-	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 
 	pluginConfig := testopts.BuildOptions.GetTestConfig(tokenPtr, false)
 	pluginConfig["address"] = os.Getenv("VAULT_ADDR")
@@ -72,6 +91,8 @@ func main() {
 	flowMachineInitContext := flowcore.FlowMachineInitContext{
 		FlowMachineInterfaceConfigs: map[string]any{},
 		GetDatabaseName:             coreopts.BuildOptions.GetDatabaseName,
+		GetIdColumnType:             flowcoreopts.BuildOptions.GetIdColumnType,
+		TableGrantNotify:            harbingeropts.BuildOptions.TableGrantNotify,
 		GetTableFlows: func() []flowcore.FlowDefinition {
 			tableFlows := []flowcore.FlowDefinition{}
 			for _, template := range pluginConfig["templatePath"].([]string) {

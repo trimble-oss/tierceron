@@ -12,6 +12,6 @@ const DataflowTestStateCodeColumn = "stateCode"
 // GetIdColumnType is provided as a custom override to allow users of the TrcDb
 // to specify the type of the index column for a given table. Examples of this are
 // sqles.Text, sqles.Int64, etc...
-func GetIdColumnType(table string) sqle.Type {
+func GetIdColumnType(table string) any {
 	return sqle.Text
 }
