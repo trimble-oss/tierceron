@@ -1802,12 +1802,15 @@ collaboratorReRun:
 					completeOnce = true
 				}
 				time.Sleep(time.Second)
+			} else if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
+				// Only restart deployment if explicitly requested via RESETTING state
+				content = nil
+				goto collaboratorReRun
 			} else {
-				break
+				// Other states - keep waiting
+				time.Sleep(time.Second)
 			}
 		}
-		content = nil
-		goto collaboratorReRun
 	}
 	// Make the arguments in the script -> os.args.
 }

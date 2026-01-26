@@ -11,8 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -108,7 +111,7 @@ foundTag:
 	for i := len(layers) - 1; i >= 0; i-- {
 		if layer, layerOk := layers[i].(map[string]any)["digest"]; layerOk {
 			if layerD, ok := layer.(string); ok {
-				sha256, shaErr := GetImageShaFromLayer(blobClient, registryName, layerD, pluginToolConfig)
+				sha256, shaErr := GetImageShaFromLayer(blobClient, registryName, layerD, pluginToolConfig, driverConfig.CoreConfig.Log)
 				if shaErr != nil {
 					return errors.New("Failed to load image sha from layer:" + shaErr.Error())
 				}
@@ -128,9 +131,29 @@ foundTag:
 	return nil
 }
 
-func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name string, digest string, pluginToolConfig map[string]any) (string, error) {
-	configRes, err := blobClient.GetBlob(context.Background(), name, digest, nil)
-	if err != nil {
+func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name string, digest string, pluginToolConfig map[string]any, logger *log.Logger) (string, error) {
+	maxRetries := 3
+	retryDelay := 2 * time.Second
+
+	var configRes azcontainerregistry.BlobClientGetBlobResponse
+	var err error
+
+	// Retry GetBlob operation on timeout
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		configRes, err = blobClient.GetBlob(context.Background(), name, digest, nil)
+		if err == nil {
+			break
+		}
+
+		// Check if error is timeout related
+		if isTimeoutError(err) {
+			if attempt < maxRetries {
+				logger.Printf("GetBlob attempt %d/%d failed with timeout, retrying in %v: %v\n", attempt, maxRetries, retryDelay, err)
+				time.Sleep(retryDelay)
+				retryDelay *= 2 // Exponential backoff
+				continue
+			}
+		}
 		return "", errors.New("Failed to get config:" + err.Error())
 	}
 
@@ -139,8 +162,35 @@ func GetImageShaFromLayer(blobClient *azcontainerregistry.BlobClient, name strin
 		return "", errors.New("Failed to create validation reader" + readErr.Error())
 	}
 
-	layerData, configErr := io.ReadAll(reader)
-	if configErr != nil {
+	var layerData []byte
+	var configErr error
+
+	// Retry ReadAll operation on timeout
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		layerData, configErr = io.ReadAll(reader)
+		if configErr == nil {
+			break
+		}
+
+		// Check if error is timeout related
+		if isTimeoutError(configErr) {
+			if attempt < maxRetries {
+				logger.Printf("ReadAll attempt %d/%d failed with timeout, retrying in %v: %v\n", attempt, maxRetries, retryDelay, configErr)
+				time.Sleep(retryDelay)
+				retryDelay *= 2 // Exponential backoff
+
+				// Need to re-fetch the blob to get a fresh reader
+				configRes, err = blobClient.GetBlob(context.Background(), name, digest, nil)
+				if err != nil {
+					return "", errors.New("Failed to get config on retry:" + err.Error())
+				}
+				reader, readErr = azcontainerregistry.NewDigestValidationReader(digest, configRes.BlobData)
+				if readErr != nil {
+					return "", errors.New("Failed to create validation reader on retry:" + readErr.Error())
+				}
+				continue
+			}
+		}
 		return "", errors.New("Failed to read config data:" + configErr.Error())
 	}
 
@@ -347,4 +397,29 @@ func ValidateRepository(driverConfig *config.DriverConfig, pluginToolConfig map[
 	}
 
 	return nil
+}
+
+// isTimeoutError checks if the error is a timeout or connection-related error
+func isTimeoutError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for common timeout and connection error patterns
+	errStr := err.Error()
+	if strings.Contains(errStr, "timeout") ||
+		strings.Contains(errStr, "Timeout") ||
+		strings.Contains(errStr, "timed out") ||
+		strings.Contains(errStr, "connection reset") ||
+		strings.Contains(errStr, "connection refused") ||
+		strings.Contains(errStr, "EOF") {
+		return true
+	}
+
+	// Check for net.Error timeout
+	if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		return true
+	}
+
+	return false
 }
