@@ -55,6 +55,12 @@ cursorksha:
 	sha256sum plugins/deploy/target/trcsh-cursor-k | cut -d' ' -f1 > plugins/deploy/target/trcsh-cursor-k.sha256
 cursork: cursorkbuild cursorksha
 
+cursorzbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "salty insecure azrcr localbuild trcshcursorz" -o plugins/deploy/target/trcsh-cursor-z github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/cursor
+cursorzsha:
+	sha256sum plugins/deploy/target/trcsh-cursor-z | cut -d' ' -f1 > plugins/deploy/target/trcsh-cursor-z.sha256
+cursorz: cursorzbuild cursorzsha
+
 devplugintrcdbbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags "-w" -tags "salty insecure localbuild" -o plugins/deploy/target/trc-vault-plugin github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/trcdb
 devplugintrcdbsha:
@@ -95,13 +101,13 @@ trcshkernelbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshkernelsha:
 	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
-trcshkernel: trcshkernelbuild trcshkernelsha
+trcshk: trcshkernelbuild trcshkernelsha
 
-trcshellkernelmbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
-trcshellkernelmsha:
-	sha256sum plugins/deploy/target/trcshk | cut -d' ' -f1 > plugins/deploy/target/trcshk.sha256
-trcshellkernelm: trcshellkernelmbuild trcshellkernelmsha
+trcshkernelbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcsh -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+trcshkernelsha:
+	sha256sum plugins/deploy/target/trcsh | cut -d' ' -f1 > plugins/deploy/target/trcsh.sha256
+trcshkz: trcshkernelbuild trcshkernelsha
 
 testbuild:
 	CGO_ENABLED=0  go build  -o test -ldflags "-w" github.com/trimble-oss/tierceron/atrium/test

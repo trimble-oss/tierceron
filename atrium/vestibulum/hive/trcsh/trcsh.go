@@ -47,6 +47,19 @@ func main() {
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
+
+	// Safety check: Prevent non-Kubernetes variants from running in Kubernetes
+	if !coreopts.BuildOptions.IsKubeRunnable() {
+		if _, aksExists := os.LookupEnv("KUBERNETES_SERVICE_HOST"); aksExists {
+			fmt.Fprintln(os.Stderr, "ERROR: This trcsh variant is not permitted to run in AKS/Kubernetes environments")
+			os.Exit(1)
+		}
+		if _, err := os.Stat("/var/run/secrets/kubernetes.io"); err == nil {
+			fmt.Fprintln(os.Stderr, "ERROR: This trcsh variant is not permitted to run in AKS/Kubernetes environments")
+			os.Exit(1)
+		}
+	}
+
 	eUtils.InitHeadless(true)
 
 	tiercerontls.InitRoot()

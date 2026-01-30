@@ -1,5 +1,5 @@
-//go:build trcshcurator && !trcshcursoraw && !trcshcursork
-// +build trcshcurator,!trcshcursoraw,!trcshcursork
+//go:build trcshcurator && !trcshcursoraw && !trcshcursork && !trcshcursorz
+// +build trcshcurator,!trcshcursoraw,!trcshcursork,!trcshcursorz
 
 package cursoropts
 
@@ -28,12 +28,12 @@ func GetCursorConfigPath() string {
 
 func GetTrusts() map[string][]string {
 	return map[string][]string{
-		"trcsh-cursor-aw": []string{
+		"trcsh-cursor-aw": {
 			"trcsh-cursor-aw",                        // Certify pluginName,
 			"/etc/opt/vault/plugins/trcsh-cursor-aw", // vault plugin path.
 			"root",                                   // Group ownership of vault plugin.
 		}, // original
-		"trcsh-cursor-k": []string{
+		"trcsh-cursor-k": {
 			"trcsh-cursor-k",                        // Certify pluginName,
 			"/etc/opt/vault/plugins/trcsh-cursor-k", // vault plugin path.
 			"root",                                  // Group ownership of vault plugin.
@@ -43,35 +43,35 @@ func GetTrusts() map[string][]string {
 
 func GetCursorFields() map[string]CursorFieldAttributes {
 	return map[string]CursorFieldAttributes{
-		"pubrole": CursorFieldAttributes{
+		"pubrole": {
 			Description: "Pub role for specified environment.",
 			KeepSecret:  true,
 		},
-		"configrole": CursorFieldAttributes{
+		"configrole": {
 			Description: "Read only role for specified environment.",
 			KeepSecret:  true,
 		},
-		"kubeconfig": CursorFieldAttributes{
+		"kubeconfig": {
 			Description: "kube config for specified environment.",
 			KeepSecret:  true,
 		},
-		"token": CursorFieldAttributes{
+		"token": {
 			Description: "Token used for specified environment.",
 			KeepSecret:  true,
 		},
-		"vaddress": CursorFieldAttributes{
+		"vaddress": {
 			Description: "Vault Url for plugin reference purposes.",
 			KeepSecret:  false,
 		},
-		"caddress": CursorFieldAttributes{
+		"caddress": {
 			Description: "Vault Url for plugin certification purposes.",
 			KeepSecret:  false,
 		},
-		"ctoken": CursorFieldAttributes{
+		"ctoken": {
 			Description: "Token for plugin certification purposes.",
 			KeepSecret:  true,
 		},
-		"plugin": CursorFieldAttributes{
+		"plugin": {
 			Description: "Optional plugin name.",
 			KeepSecret:  false,
 		},

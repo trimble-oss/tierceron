@@ -1,5 +1,5 @@
-//go:build trcshcursoraw && !trcshcursork
-// +build trcshcursoraw,!trcshcursork
+//go:build trcshcursoraw && !trcshcursork && !trcshcursorz
+// +build trcshcursoraw,!trcshcursork,!trcshcursorz
 
 package cursoropts
 
@@ -50,7 +50,7 @@ func GetCursorConfigPath() string {
 func GetTrusts() map[string][]string {
 	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcsh-curator
 	return map[string][]string{
-		"trcshqaw": []string{
+		"trcshqaw": {
 			"trcshqaw",                       // Certify pluginName,
 			"/home/azuredeploy/bin/trcshqaw", // agent plugin path.
 			"azuredeploy",                    // Group ownership of agent plugin.
@@ -60,35 +60,35 @@ func GetTrusts() map[string][]string {
 
 func GetCursorFields() map[string]CursorFieldAttributes {
 	return map[string]CursorFieldAttributes{
-		"pubrole": CursorFieldAttributes{
+		"pubrole": {
 			Description: "Pub role for specified environment.",
 			KeepSecret:  true,
 		},
-		"configrole": CursorFieldAttributes{
+		"configrole": {
 			Description: "Read only role for specified environment.",
 			KeepSecret:  true,
 		},
-		"kubeconfig": CursorFieldAttributes{
+		"kubeconfig": {
 			Description: "kube config for specified environment.",
 			KeepSecret:  true,
 		},
-		"token": CursorFieldAttributes{
+		"token": {
 			Description: "The restricted plugin readonly token.",
 			KeepSecret:  true,
 		},
-		"vaddress": CursorFieldAttributes{
+		"vaddress": {
 			Description: "Vault Url for plugin reference purposes.",
 			KeepSecret:  false,
 		},
-		"caddress": CursorFieldAttributes{
+		"caddress": {
 			Description: "Vault Url for plugin certification purposes.",
 			KeepSecret:  false,
 		},
-		"ctoken": CursorFieldAttributes{
+		"ctoken": {
 			Description: "Token for plugin certification purposes.",
 			KeepSecret:  true,
 		},
-		"plugin": CursorFieldAttributes{
+		"plugin": {
 			Description: "Optional plugin name.",
 			KeepSecret:  false,
 		},
