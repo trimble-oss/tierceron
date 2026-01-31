@@ -15,6 +15,7 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh/shell"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -144,6 +145,15 @@ func start(pluginName string) {
 		configContext.Log.Println("Missing common configs")
 		send_err(errors.New("missing common configs"))
 		return
+	}
+
+	// Launch interactive shell with bubbletea
+	configContext.Log.Println("Starting interactive shell...")
+	if err := shell.RunShell(); err != nil {
+		configContext.Log.Printf("Shell exited with error: %v\n", err)
+		send_err(err)
+	} else {
+		configContext.Log.Println("Shell exited normally")
 	}
 }
 
