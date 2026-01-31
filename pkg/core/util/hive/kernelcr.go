@@ -80,6 +80,19 @@ type KernelCtx struct {
 	PluginRestartChan *chan tccore.KernelCmd
 }
 
+// IsRunningInKubernetes detects if the process is running in a Kubernetes/AKS environment
+func IsRunningInKubernetes() bool {
+	// Check for Kubernetes service host environment variable
+	if _, exists := os.LookupEnv("KUBERNETES_SERVICE_HOST"); exists {
+		return true
+	}
+	// Check for Kubernetes service account directory
+	if _, err := os.Stat("/var/run/secrets/kubernetes.io"); err == nil {
+		return true
+	}
+	return false
+}
+
 func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
 	certCache := cmap.New[*certValue]()
@@ -601,6 +614,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
+	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
 	go pluginHandler.handleErrors(driverConfig)
 	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -613,6 +627,13 @@ func (pluginHandler *PluginHandler) RunPlugin(
 
 	go pluginHandler.receiver(driverConfig)
 	pluginHandler.Init(serviceConfig)
+
+	// Check if plugin refused to initialize
+	if refused, ok := (*serviceConfig)["pluginRefused"].(bool); ok && refused {
+		driverConfig.CoreConfig.Log.Printf("Plugin %s refused to initialize. Skipping start.", service)
+		return
+	}
+
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 	safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 		PluginName: pluginHandler.Name,
@@ -975,6 +996,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
+			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -1145,6 +1167,13 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 
 			pluginHandler.Init(&serviceConfig)
+
+			// Check if plugin refused to initialize
+			if refused, ok := serviceConfig["pluginRefused"].(bool); ok && refused {
+				driverConfig.CoreConfig.Log.Printf("Plugin %s refused to initialize. Skipping start.", service)
+				return
+			}
+
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 			go safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 				PluginName: pluginHandler.Name,
