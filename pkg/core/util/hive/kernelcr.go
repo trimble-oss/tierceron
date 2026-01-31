@@ -554,6 +554,11 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 		return
 	}
 
+	if pluginHandler.Name == "trcsh" && !IsRunningInKubernetes() {
+		pluginHandler.ConfigContext.Log.Println("Initializing trcshcmd kernel plugin for shell command execution")
+		trcshcmd.Init("trcshcmd", properties)
+	}
+
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 		if pluginHandler.PluginMod == nil {
 			pluginHandler.ConfigContext.Log.Println("No plugin module set for initializing plugin service.")
@@ -615,6 +620,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
+	(*serviceConfig)["driverConfig"] = driverConfig
 	go pluginHandler.handleErrors(driverConfig)
 	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -632,6 +638,12 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	if refused, ok := (*serviceConfig)["pluginRefused"].(bool); ok && refused {
 		driverConfig.CoreConfig.Log.Printf("Plugin %s refused to initialize. Skipping start.", service)
 		return
+	}
+
+	// Start trcshcmd plugin if trcsh is starting and not in Kubernetes
+	if pluginHandler.Name == "trcsh" && !IsRunningInKubernetes() {
+		driverConfig.CoreConfig.Log.Println("Starting trcshcmd kernel plugin for shell command execution")
+		CallPluginStart("trcshcmd")
 	}
 
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)

@@ -873,6 +873,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		pluginDeployments := []*map[string]interface{}{}
 
 		if eUtils.IsWindows() || kernelopts.BuildOptions.IsKernel() {
+			trcshDeployed := false
 			for _, deployablePluginConfig := range deployablePlugins {
 				if deployablePluginConfig != nil {
 					// Extract deployment name from the config map
@@ -882,12 +883,28 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 								pluginDeployments = append(pluginDeployments, deployablePluginConfig)
 								if kernelPluginHandler != nil {
 									kernelPluginHandler.AddKernelPlugin(deploymentName, trcshDriverConfig.DriverConfig, deployablePluginConfig)
+									// Track if trcsh plugin is being deployed
+									if deploymentName == "trcsh" {
+										trcshDeployed = true
+									}
 								}
 							}
 						}
 					}
 				}
 			}
+
+			// Register trcshcmd plugin if trcsh is deployed and not in Kubernetes
+			if trcshDeployed && !hive.IsRunningInKubernetes() && kernelPluginHandler != nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Registering trcshcmd kernel plugin for shell command execution")
+				// Create a minimal deployment config for trcshcmd
+				trcshcmdConfig := map[string]interface{}{
+					"trcplugin": "trcshcmd",
+					"trctype":   "trcshcmdtoolplugin",
+				}
+				kernelPluginHandler.AddKernelPlugin("trcshcmd", trcshDriverConfig.DriverConfig, &trcshcmdConfig)
+			}
+
 			if kernelPluginHandler != nil {
 				kernelPluginHandler.InitPluginStatus(trcshDriverConfig.DriverConfig)
 			}
