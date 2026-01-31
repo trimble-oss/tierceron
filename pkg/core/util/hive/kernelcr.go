@@ -556,7 +556,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 
 	if pluginHandler.Name == "trcsh" && !IsRunningInKubernetes() {
 		pluginHandler.ConfigContext.Log.Println("Initializing trcshcmd kernel plugin for shell command execution")
-		trcshcmd.Init("trcshcmd", properties)
+		CallPluginInit("trcshcmd", "trcshcmd", properties)
 	}
 
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
