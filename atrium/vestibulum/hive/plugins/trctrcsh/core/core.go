@@ -128,9 +128,8 @@ func start(pluginName string) {
 		fmt.Fprintln(os.Stderr, "no config context initialized for trcsh")
 		return
 	}
-	var config map[string]any
 
-	if config != nil {
+	if configContext.Config != nil {
 		dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
 		dfstat.UpdateDataFlowStatistic("System",
 			pluginName,

@@ -139,6 +139,7 @@ func CommonMain(envPtr *string,
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin" ||
 				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
 
 		args := argLines[1:]
@@ -966,8 +967,10 @@ func CommonMain(envPtr *string,
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
-						if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
-							pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						if pluginToolConfig != nil {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice" || s == "trcshcmdtoolplugin") {
+								pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+							}
 						}
 						pluginHandler.Signature = sha
 					}

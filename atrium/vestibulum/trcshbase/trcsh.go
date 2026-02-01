@@ -1537,7 +1537,12 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
 	deployerDriverConfig.DeploymentConfig = trcshDriverConfig.DriverConfig.DeploymentConfig
 
-	if trcshDriverConfig.DriverConfig.CoreConfig.IsShell || (trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && ((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" || (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice")) {
+	if trcshDriverConfig.DriverConfig.CoreConfig.IsShell ||
+		(trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
+			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
+			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshcmdtoolplugin")) {
 		// Generate trc code...
 		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
 		if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
