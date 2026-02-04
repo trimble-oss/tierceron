@@ -8,6 +8,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
+
+	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 )
 
 var (
@@ -27,13 +30,21 @@ type ShellModel struct {
 	draft        string
 	output       []string
 	scrollOffset int
+	memFs        trcshio.MemoryFileSystem
 }
 
-func InitShell() *ShellModel {
+func InitShell(memFs ...trcshio.MemoryFileSystem) *ShellModel {
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		width = 80
 		height = 24
+	}
+
+	var memFileSystem trcshio.MemoryFileSystem
+	if len(memFs) > 0 && memFs[0] != nil {
+		memFileSystem = memFs[0]
+	} else {
+		memFileSystem = trcshmemfs.NewTrcshMemFs()
 	}
 
 	return &ShellModel{
@@ -47,6 +58,7 @@ func InitShell() *ShellModel {
 		draft:        "",
 		output:       []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""},
 		scrollOffset: 0,
+		memFs:        memFileSystem,
 	}
 }
 
@@ -217,6 +229,19 @@ func (m *ShellModel) executeCommand(cmd string) {
 		m.output = append(m.output, "Goodbye!")
 		// Note: actual exit will be handled by Ctrl+C or the program can call tea.Quit
 
+	case "ls":
+		if entries, err := m.memFs.ReadDir("."); err == nil {
+			for _, entry := range entries {
+				name := entry.Name()
+				if entry.IsDir() {
+					name += "/"
+				}
+				m.output = append(m.output, name)
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
+		}
+
 	case "help":
 		m.output = append(m.output, "Available commands:")
 		m.output = append(m.output, "  help     - Show this help message")
@@ -248,8 +273,8 @@ func (m *ShellModel) executeCommand(cmd string) {
 	m.output = append(m.output, "")
 }
 
-func RunShell() error {
-	p := tea.NewProgram(InitShell())
+func RunShell(memFs ...trcshio.MemoryFileSystem) error {
+	p := tea.NewProgram(InitShell(memFs...))
 	_, err := p.Run()
 	return err
 }

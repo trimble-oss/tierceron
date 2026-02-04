@@ -1,5 +1,5 @@
-//go:build hardwired
-// +build hardwired
+//go:build hardwired && !trcshkernelz
+// +build hardwired,!trcshkernelz
 
 package pluginopts
 

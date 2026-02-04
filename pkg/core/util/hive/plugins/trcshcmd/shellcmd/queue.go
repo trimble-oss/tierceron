@@ -73,6 +73,14 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 			err = native.KubeCtl(trcKubeConfig, driverConfig)
 		}
 
+	case CmdTrcBoot:
+		// Simply return the memFs from driverConfig without executing any commands
+		// This is used for initializing plugins that need access to the shared memFs
+		if driverConfig != nil && driverConfig.MemFs != nil {
+			return driverConfig.MemFs
+		}
+		return nil
+
 	default:
 		// Unknown command type
 		return nil

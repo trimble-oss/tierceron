@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
@@ -43,6 +44,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
+	trcshcmdhcore "github.com/trimble-oss/tierceron/pkg/core/util/hive/plugins/trcshcmd/hcore"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"gopkg.in/yaml.v2"
@@ -897,12 +899,25 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			// Register trcshcmd plugin if trcsh is deployed and not in Kubernetes
 			if trcshDeployed && !hive.IsRunningInKubernetes() && kernelPluginHandler != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Registering trcshcmd kernel plugin for shell command execution")
-				// Create a minimal deployment config for trcshcmd
+
+				// Create a ready channel for trcshcmd so trcsh can wait for it
+				pluginsync.CreatePluginReadyChannel("trcshcmd")
+
+				// Create a deployment config for trcshcmd with template path
 				trcshcmdConfig := map[string]interface{}{
-					"trcplugin": "trcshcmd",
-					"trctype":   "trcshcmdtoolplugin",
+					"trcplugin":         "trcshcmd",
+					"trctype":           "kernelplugin",
+					"trcprojectservice": "Hive/PluginCmdTrcsh",
+					"trcdeployroot":     "/usr/local/trcshk",
+					"trcbootstrap":      "/deploy/deploy.trc",
 				}
 				kernelPluginHandler.AddKernelPlugin("trcshcmd", trcshDriverConfig.DriverConfig, &trcshcmdConfig)
+
+				// Register callbacks for trcshcmd so CallPluginInit/CallPluginStart work
+				hive.RegisterPluginCallbacks("trcshcmd", trcshcmdhcore.Init, trcshcmdhcore.Start)
+
+				// Prepend trcshcmd to pluginDeployments so it starts before trcsh
+				pluginDeployments = append([]*map[string]interface{}{&trcshcmdConfig}, pluginDeployments...)
 			}
 
 			if kernelPluginHandler != nil {
@@ -1542,7 +1557,8 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" ||
 				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice" ||
-				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshcmdtoolplugin")) {
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshcmdtoolplugin" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "kernelplugin")) {
 		// Generate trc code...
 		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
 		if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {

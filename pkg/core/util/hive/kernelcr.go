@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
@@ -75,11 +76,6 @@ type PluginHandler struct {
 	DeploymentConfig map[string]interface{} // Full deployment configuration from Vault Certify
 }
 
-type KernelCtx struct {
-	DeployRestartChan *chan string
-	PluginRestartChan *chan tccore.KernelCmd
-}
-
 // IsRunningInKubernetes detects if the process is running in a Kubernetes/AKS environment
 func IsRunningInKubernetes() bool {
 	// Check for Kubernetes service host environment variable
@@ -91,6 +87,11 @@ func IsRunningInKubernetes() bool {
 		return true
 	}
 	return false
+}
+
+type KernelCtx struct {
+	DeployRestartChan *chan string
+	PluginRestartChan *chan tccore.KernelCmd
 }
 
 func InitKernel(id string) *PluginHandler {
@@ -554,12 +555,21 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 		return
 	}
 
-	if pluginHandler.Name == "trcsh" && !IsRunningInKubernetes() {
-		pluginHandler.ConfigContext.Log.Println("Initializing trcshcmd kernel plugin for shell command execution")
-		CallPluginInit("trcshcmd", "trcshcmd", properties)
+	// Check if this is a kernel-type plugin (uses callback pattern)
+	var isKernelPlugin bool
+	if properties != nil {
+		if certify, ok := (*properties)["certify"].(map[string]interface{}); ok {
+			if trctype, ok := certify["trctype"].(string); ok {
+				isKernelPlugin = (trctype == "kernelplugin")
+			}
+		}
 	}
 
-	if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+	if isKernelPlugin {
+		// Use callback-based initialization for kernel plugins
+		pluginHandler.ConfigContext.Log.Printf("Initializing kernel plugin %s via callbacks\n", pluginHandler.Name)
+		CallPluginInit(pluginHandler.Name, pluginHandler.Name, properties)
+	} else if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 		if pluginHandler.PluginMod == nil {
 			pluginHandler.ConfigContext.Log.Println("No plugin module set for initializing plugin service.")
 			return
@@ -620,7 +630,6 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
-	(*serviceConfig)["driverConfig"] = driverConfig
 	go pluginHandler.handleErrors(driverConfig)
 	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -638,12 +647,6 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	if refused, ok := (*serviceConfig)["pluginRefused"].(bool); ok && refused {
 		driverConfig.CoreConfig.Log.Printf("Plugin %s refused to initialize. Skipping start.", service)
 		return
-	}
-
-	// Start trcshcmd plugin if trcsh is starting and not in Kubernetes
-	if pluginHandler.Name == "trcsh" && !IsRunningInKubernetes() {
-		driverConfig.CoreConfig.Log.Println("Starting trcshcmd kernel plugin for shell command execution")
-		CallPluginStart("trcshcmd")
 	}
 
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
@@ -1019,6 +1022,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 			(serviceConfig)["certify"] = pluginHandler.DeploymentConfig
 
+			// Add driverConfig for kernel plugins only
+			if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok && trctype == "kernelplugin" {
+				(serviceConfig)["driverConfig"] = driverConfig
+			}
+
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
 			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
 				go func() {
@@ -1197,11 +1205,29 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 }
 
 func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
+	// Check if this is a kernel-type plugin at receiver startup
+	var isKernelPlugin bool
+	if pluginHandler.DeploymentConfig != nil {
+		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+			isKernelPlugin = (trctype == "kernelplugin")
+		}
+	}
+
 	for {
 		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
+			if isKernelPlugin {
+				// Use callback-based start for kernel plugins
+				driverConfig.CoreConfig.Log.Printf("Starting kernel plugin %s via callbacks\n", pluginHandler.Name)
+				CallPluginStart(pluginHandler.Name)
+				// For kernel plugins, wait until they signal ready before setting State
+			}
 			pluginHandler.State = 1
+			pluginsync.SignalPluginReady(pluginHandler.Name)
+			if isKernelPlugin {
+				driverConfig.CoreConfig.Log.Printf("Kernel plugin %s is ready\n", pluginHandler.Name)
+			}
 			if globalPluginStatusChan != nil {
 				<-globalPluginStatusChan
 			}
@@ -1466,6 +1492,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
 					StatisticsDoc: msg.StatisticsDoc,
+					HookResponse:  msg.HookResponse,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*newMsg.Query = append(*newMsg.Query, *msg.Name)
@@ -1503,12 +1530,19 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				}
 				go safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
 			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
-				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
 					responseError := "Service unavailable"
+					if (*pluginHandler.Services)[*msg.Name].State == 0 {
+						responseError = "Service initializing"
+						driverConfig.CoreConfig.Log.Printf("Service initializing while processessing query from %s\n", *msg.Name)
+					} else {
+						driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
+					}
 					time.Sleep(2 * time.Second) // Give time for the plugin to start
 					msg.Response = &responseError
 					go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 				}
 				continue
 			} else {

@@ -139,6 +139,7 @@ func CommonMain(envPtr *string,
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "kernelplugin" ||
 				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin" ||
 				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
 
@@ -534,11 +535,21 @@ func CommonMain(envPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
-	if plcErr != nil {
-		fmt.Fprintln(os.Stderr, plcErr.Error())
-		return plcErr
+	var pluginToolConfig map[string]any
+	var plcErr error
+
+	// For kernel plugins with hardcoded config, use DeploymentConfig directly
+	if isRunnableKernelPlugin && trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Using hardcoded DeploymentConfig for kernel plugin")
+		pluginToolConfig = *trcshDriverConfigBase.DriverConfig.DeploymentConfig
+	} else {
+		pluginToolConfig, plcErr = trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
+		if plcErr != nil {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println(plcErr.Error())
+			return plcErr
+		}
 	}
+
 	if *certifyImagePtr {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
 	}

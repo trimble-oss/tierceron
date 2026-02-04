@@ -12,9 +12,10 @@ import (
 	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
+	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh/shell"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -22,13 +23,15 @@ import (
 
 var (
 	configContext *tccore.ConfigContext
+	memFs         trcshio.MemoryFileSystem
+	memFsReady    chan bool
 	sender        chan error
 	dfstat        *tccore.TTDINode
 )
 
-func receiver(receive_chan *chan tccore.KernelCmd) {
+func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
-		event := <-*receive_chan
+		event := <-receive_chan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
 			go start(event.PluginName)
@@ -40,6 +43,38 @@ func receiver(receive_chan *chan tccore.KernelCmd) {
 			// TODO
 		default:
 			// TODO
+		}
+	}
+}
+
+func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+	for {
+		event := <-chat_receive_chan
+		switch {
+		case event == nil:
+			continue
+		case event.Name != nil && *event.Name == "SHUTDOWN":
+			if configContext != nil {
+				configContext.Log.Println("trcsh shutting down chat receiver")
+			}
+			return
+		case event.HookResponse != nil:
+			// Check if this is a MemoryFileSystem response from trcshcmd
+			if mfs, ok := event.HookResponse.(trcshio.MemoryFileSystem); ok {
+				configContext.Log.Println("Received MemoryFileSystem from trcshcmd")
+				SetMemFs(mfs)
+				// Signal that memFs is ready
+				if memFsReady != nil {
+					select {
+					case memFsReady <- true:
+					default:
+					}
+				}
+			}
+		default:
+			if configContext != nil {
+				configContext.Log.Println("trcsh received chat message")
+			}
 		}
 	}
 }
@@ -76,7 +111,7 @@ func send_dfstat() {
 		send_err(err)
 		return
 	}
-	pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+	tccore.SendDfStat(configContext, dfsctx, dfstat)
 }
 
 func send_err(err error) {
@@ -98,7 +133,7 @@ func send_err(err error) {
 			func(msg string, err error) {
 				configContext.Log.Println(msg, err)
 			})
-		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+		tccore.SendDfStat(configContext, dfsctx, dfstat)
 	}
 	*configContext.ErrorChan <- err
 }
@@ -146,9 +181,40 @@ func start(pluginName string) {
 		return
 	}
 
+	// Acknowledge plugin has started - kernel needs this to set State = 1
+	*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
+	configContext.Log.Println("Sent PLUGIN_EVENT_START to kernel")
+
+	// Request initial memFs from trcshcmd using trcboot command
+	// The kernel ensures trcshcmd State = 1 only after it signals ready,
+	// so routing will wait until trcshcmd is actually ready to handle requests
+	configContext.Log.Println("Requesting initial MemoryFileSystem from trcshcmd")
+	memFsReady = make(chan bool, 1)
+	pluginSenderName := "trcsh"
+	trcbootCmd := "trcboot"
+	msg := &tccore.ChatMsg{
+		Name:   &pluginSenderName,     // Source plugin name
+		Query:  &[]string{"trcshcmd"}, // Destination is trcshcmd
+		ChatId: &trcbootCmd,           // Command to execute
+	}
+	if configContext.ChatSenderChan != nil {
+		*configContext.ChatSenderChan <- msg
+	}
+
+	// Block waiting for memFs - shell cannot start without it
+	configContext.Log.Println("Waiting for MemoryFileSystem response...")
+	<-memFsReady
+	configContext.Log.Println("MemoryFileSystem received, launching shell")
+
 	// Launch interactive shell with bubbletea
 	configContext.Log.Println("Starting interactive shell...")
-	if err := shell.RunShell(); err != nil {
+	var err error
+	if memFs != nil {
+		err = shell.RunShell(memFs)
+	} else {
+		err = shell.RunShell()
+	}
+	if err != nil {
 		configContext.Log.Printf("Shell exited with error: %v\n", err)
 		send_err(err)
 	} else {
@@ -180,6 +246,14 @@ func stop(pluginName string) {
 
 func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
 
+func SetMemFs(mfs trcshio.MemoryFileSystem) {
+	memFs = mfs
+}
+
+func GetMemFs() trcshio.MemoryFileSystem {
+	return memFs
+}
+
 func GetConfigPaths(pluginName string) []string {
 	return []string{}
 }
@@ -187,7 +261,8 @@ func GetConfigPaths(pluginName string) []string {
 func PostInit(configContext *tccore.ConfigContext) {
 	configContext.Start = start
 	sender = *configContext.ErrorChan
-	go receiver(configContext.CmdReceiverChan)
+	go receiver(*configContext.CmdReceiverChan)
+	go chat_receiver(*configContext.ChatReceiverChan)
 }
 
 func Init(pluginName string, properties *map[string]any) {
@@ -200,7 +275,22 @@ func Init(pluginName string, properties *map[string]any) {
 		return
 	}
 
-	configContext, err = pluginlib.Init(pluginName, properties, PostInit)
+	// Wait for trcshcmd to be ready before initializing
+	// This prevents race conditions where trcsh tries to use trcshcmd before it's ready
+	logger := (*properties)["log"].(*log.Logger)
+	logger.Println("Waiting for trcshcmd plugin to be ready before trcsh initialization...")
+	pluginsync.WaitForPluginReady("trcshcmd")
+	logger.Println("trcshcmd is ready, proceeding with trcsh initialization")
+
+	configContext, err = tccore.Init(properties,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
+		"", // No common config path needed for trcsh
+		"trcsh",
+		start,
+		receiver,
+		chat_receiver,
+	)
 	if err != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return

@@ -35,6 +35,7 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 }
 
 func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+	// Signal that trcshcmd is ready for requests
 	for {
 		event := <-chat_receive_chan
 		switch {
@@ -45,15 +46,23 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				configContext.Log.Println("trcshcmd shutting down message receiver")
 			}
 			return
-		case event.Response != nil && *event.Response != "":
+		case event.ChatId != nil && *event.ChatId != "":
 			// Handle shell command requests
-			cmdType := *event.Response
+			cmdType := *event.ChatId
+			if event.Response != nil {
+				if *event.Response == "Service initializing" && cmdType != shellcmd.CmdTrcBoot {
+					return // Allow trcboot to go through when service unavailable.
+				} else if *event.Response == "Service unavailable" {
+					// Service is actually unavailable and in error state likely.
+					return
+				}
+			}
 
 			// Check if this is a shell command type
 			if cmdType == shellcmd.CmdTrcConfig || cmdType == shellcmd.CmdTrcPub ||
 				cmdType == shellcmd.CmdTrcSub || cmdType == shellcmd.CmdTrcX ||
 				cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPlgtool ||
-				cmdType == shellcmd.CmdKubectl {
+				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot {
 
 				if configContext != nil {
 					configContext.Log.Printf("Received shell command request: %s\n", cmdType)
@@ -93,6 +102,12 @@ func start(pluginName string) {
 		fmt.Println("no config context initialized for trcshcmd")
 		return
 	}
+	// Initiate final plugin startup sequence.
+	go func(cmd_send_chan *chan tccore.KernelCmd) {
+		if cmd_send_chan != nil {
+			*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
+		}
+	}(configContext.CmdSenderChan)
 
 	configContext.Log.Printf("Shell command plugin %s started\n", pluginName)
 }
@@ -108,7 +123,7 @@ func GetConfigPaths(pluginName string) []string {
 	return []string{}
 }
 
-func Init(pluginName string, properties *map[string]any) {
+func initPlugin(pluginName string, properties *map[string]any) {
 	// Check if running in Kubernetes - refuse to initialize
 	if isKubernetes, ok := (*properties)["isKubernetes"].(bool); ok && isKubernetes {
 		(*properties)["pluginRefused"] = true
@@ -138,11 +153,5 @@ func Init(pluginName string, properties *map[string]any) {
 }
 
 // Start sends the START command to the trcshcmd plugin
-func Start() {
-	if configContext != nil && configContext.CmdSenderChan != nil {
-		*configContext.CmdSenderChan <- tccore.KernelCmd{
-			PluginName: "trcshcmd",
-			Command:    tccore.PLUGIN_EVENT_START,
-		}
-	}
+func startPlugin() {
 }
