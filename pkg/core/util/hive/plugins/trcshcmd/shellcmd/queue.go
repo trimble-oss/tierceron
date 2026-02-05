@@ -53,7 +53,9 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		trcpubbase.CommonMain(&pubEnv, &envCtx, &pubTokenName, nil, argLines, driverConfig)
 
 	case CmdTrcSub:
+		originalEndDir := driverConfig.EndDir
 		err = trcsubbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, nil, argLines, driverConfig)
+		driverConfig.EndDir = originalEndDir
 
 	case CmdTrcX:
 		trcxbase.CommonMain(nil, nil, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -37,8 +38,8 @@ type ShellModel struct {
 	history        []string
 	historyIndex   int
 	draft          string
-	output         []string
-	scrollOffset   int
+	output         []string       // Persistent buffer - holds ALL output
+	viewport       viewport.Model // Viewport handles scrolling
 	memFs          trcshio.MemoryFileSystem
 	chatSenderChan *chan *tccore.ChatMsg
 	pendingExit    bool
@@ -58,6 +59,12 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		memFileSystem = trcshmemfs.NewTrcshMemFs()
 	}
 
+	// Initialize viewport for scrolling
+	// Reserve 3 lines: 1 for blank line, 1 for prompt, 1 for input
+	vp := viewport.New(width, height-3)
+	initialOutput := []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""}
+	vp.SetContent(strings.Join(initialOutput, "\\n"))
+
 	return &ShellModel{
 		width:          width,
 		height:         height,
@@ -67,8 +74,8 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		history:        []string{},
 		historyIndex:   -1,
 		draft:          "",
-		output:         []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""},
-		scrollOffset:   0,
+		output:         initialOutput,
+		viewport:       vp,
 		memFs:          memFileSystem,
 		chatSenderChan: chatSenderChan,
 		pendingExit:    false,
@@ -84,16 +91,15 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		// Adjust scroll offset to stay within valid bounds after resize
-		visibleLines := m.height - 3
-		maxScroll := len(m.output) - visibleLines
-		if maxScroll < 0 {
-			maxScroll = 0
-		}
-		if m.scrollOffset > maxScroll {
-			m.scrollOffset = maxScroll
-		}
+		// Update viewport size (reserve 3 lines for prompt area)
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height - 3
 
+	case tea.MouseMsg:
+		// Forward mouse events to viewport for scrolling
+		var cmd tea.Cmd
+		m.viewport, cmd = m.viewport.Update(msg)
+		return m, cmd
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -109,10 +115,14 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.pendingExit = false
 				if response == "y" || response == "yes" {
 					m.output = append(m.output, "Goodbye!")
+					m.updateViewportContent()
+					m.viewport.GotoBottom()
 					m.output = append(m.output, "")
 					return m, tea.Quit
 				} else {
 					m.output = append(m.output, "Exit cancelled.")
+					m.updateViewportContent()
+					m.viewport.GotoBottom()
 					m.output = append(m.output, "")
 				}
 				return m, nil
@@ -120,7 +130,9 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Execute command
 			if len(strings.TrimSpace(m.input)) > 0 {
-				outputLenBefore := len(m.output)
+				// Check if we're at bottom before executing (for auto-scroll decision)
+				wasAtBottom := m.viewport.AtBottom()
+
 				shouldQuit := m.executeCommand(m.input)
 				m.history = append(m.history, m.input)
 				m.input = ""
@@ -128,43 +140,23 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.historyIndex = -1
 				m.draft = ""
 
+				// Update viewport with new output
+				m.updateViewportContent()
+
+				// Auto-scroll to bottom only if we were already at bottom
+				if wasAtBottom {
+					m.viewport.GotoBottom()
+				}
+
 				if shouldQuit {
 					return m, tea.Quit
 				}
-
-				// Only auto-scroll if output is small or if we're already at the bottom
-				// This allows viewing long outputs like tree from the top
-				visibleLines := m.height - 3
-				outputAdded := len(m.output) - outputLenBefore
-				maxScrollBefore := outputLenBefore - visibleLines
-				if maxScrollBefore < 0 {
-					maxScrollBefore = 0
-				}
-				wasAtBottom := m.scrollOffset >= maxScrollBefore
-				if outputAdded <= visibleLines || wasAtBottom {
-					// Auto-scroll to bottom after command execution
-					if len(m.output) > visibleLines {
-						m.scrollOffset = len(m.output) - visibleLines
-					}
-				} else {
-					// Large output was added and we weren't at bottom
-					// Position scroll to show new content from the command that was entered
-					m.scrollOffset = outputLenBefore
-					// Ensure scrollOffset is within valid range
-					maxScroll := len(m.output) - visibleLines
-					if maxScroll < 0 {
-						maxScroll = 0
-					}
-					if m.scrollOffset > maxScroll {
-						m.scrollOffset = maxScroll
-					}
-				}
 			} else {
 				m.output = append(m.output, "")
+				m.updateViewportContent()
 			}
 
 		case tea.KeyUp:
-			// Navigate history up
 			if len(m.history) > 0 {
 				if m.historyIndex == -1 {
 					m.draft = m.input
@@ -223,27 +215,14 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlL:
 			// Clear screen
 			m.output = []string{}
-			m.scrollOffset = 0
+			m.updateViewportContent()
+			m.viewport.GotoTop()
 
-		case tea.KeyPgUp:
-			// Scroll up one page
-			visibleLines := m.height - 3
-			m.scrollOffset -= visibleLines
-			if m.scrollOffset < 0 {
-				m.scrollOffset = 0
-			}
-
-		case tea.KeyPgDown:
-			// Scroll down one page
-			visibleLines := m.height - 3
-			m.scrollOffset += visibleLines
-			maxScroll := len(m.output) - visibleLines
-			if maxScroll < 0 {
-				maxScroll = 0
-			}
-			if m.scrollOffset > maxScroll {
-				m.scrollOffset = maxScroll
-			}
+		case tea.KeyPgUp, tea.KeyPgDown:
+			// Forward scrolling to viewport
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
 
 		default:
 			// Insert character
@@ -258,21 +237,16 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// updateViewportContent updates the viewport with all output from the persistent buffer
+func (m *ShellModel) updateViewportContent() {
+	m.viewport.SetContent(strings.Join(m.output, "\n"))
+}
+
 func (m *ShellModel) View() string {
 	var sb strings.Builder
 
-	// Display output history
-	visibleLines := m.height - 3
-	startLine := m.scrollOffset
-	endLine := startLine + visibleLines
-	if endLine > len(m.output) {
-		endLine = len(m.output)
-	}
-
-	for i := startLine; i < endLine; i++ {
-		sb.WriteString(outputStyle.Render(m.output[i]))
-		sb.WriteString("\n")
-	}
+	// Render viewport content (persistent buffer with scrolling)
+	sb.WriteString(m.viewport.View())
 
 	// Display prompt and input
 	sb.WriteString("\n")
@@ -324,17 +298,27 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		return false
 
 	case "ls":
-		if entries, err := m.memFs.ReadDir("."); err == nil {
-			for _, entry := range entries {
-				name := entry.Name()
-				// Skip io directory
-				if name == "io" {
-					continue
+		// Determine which directory to list
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+
+		if entries, err := m.memFs.ReadDir(dir); err == nil {
+			if len(entries) == 0 {
+				m.output = append(m.output, "(empty directory)")
+			} else {
+				for _, entry := range entries {
+					name := entry.Name()
+					// Skip io directory
+					if name == "io" {
+						continue
+					}
+					if entry.IsDir() {
+						name += "/"
+					}
+					m.output = append(m.output, name)
 				}
-				if entry.IsDir() {
-					name += "/"
-				}
-				m.output = append(m.output, name)
 			}
 		} else {
 			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
@@ -441,7 +425,8 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 
 	case "clear":
 		m.output = []string{}
-		m.scrollOffset = 0
+		m.updateViewportContent()
+		m.viewport.GotoTop()
 
 	case "history":
 		if len(m.history) == 0 {
@@ -574,7 +559,8 @@ func callTrcshCmd(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []s
 func RunShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) error {
 	model := InitShell(chatSenderChan, memFs...)
 	globalShellModel = model
-	p := tea.NewProgram(model)
+	// Enable mouse support for wheel scrolling
+	p := tea.NewProgram(model, tea.WithMouseCellMotion())
 	_, err := p.Run()
 	globalShellModel = nil
 	return err
