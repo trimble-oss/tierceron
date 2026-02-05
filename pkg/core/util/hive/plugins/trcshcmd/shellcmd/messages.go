@@ -10,4 +10,8 @@ const (
 	CmdTrcPlgtool = "trcplgtool"
 	CmdKubectl    = "kubectl"
 	CmdTrcBoot    = "trcboot"
+	CmdRm         = "rm"
+	CmdCp         = "cp"
+	CmdMv         = "mv"
+	CmdCat        = "cat"
 )
