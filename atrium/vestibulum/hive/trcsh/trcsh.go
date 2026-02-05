@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
@@ -28,6 +29,21 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
+var logger *log.Logger
+
+func init() {
+	// Initialize kernelopts early so IsKernelZ() is available in plugin init() functions
+	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
+
+	// Create log file early so stderr redirection happens before plugin init() functions
+	var logErr error
+	logger, logErr = trcshbase.CreateLogFile()
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create log file: %v\n", logErr)
+		os.Exit(1)
+	}
+}
+
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
@@ -45,7 +61,6 @@ func main() {
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
-	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
 
 	// Safety check: Prevent non-Kubernetes variants from running in Kubernetes
@@ -71,11 +86,6 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "", "Environment to be processed") // If this is blank -> use context otherwise override context.
-
-	logger, logErr := trcshbase.CreateLogFile()
-	if logErr != nil {
-		os.Exit(1)
-	}
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{

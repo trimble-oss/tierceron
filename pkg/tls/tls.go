@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	"google.golang.org/grpc/credentials"
 )
@@ -88,7 +89,9 @@ func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Cert read failure.")
+		if !kernelopts.BuildOptions.IsKernelZ() {
+			fmt.Fprintln(os.Stderr, "Cert read failure.")
+		}
 		return
 	}
 

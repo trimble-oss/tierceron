@@ -22,6 +22,13 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		return nil
 	}
 
+	if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+		driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: cmdType=%s, args=%v, IsShellCommand before=%v\n", cmdType, args, driverConfig.IsShellCommand)
+	}
+
+	// Mark that this command is running from trcshcmd
+	driverConfig.IsShellCommand = true
+
 	var err error
 
 	// Pull common values from DriverConfig like trcsh.go does
@@ -33,20 +40,23 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		region = driverConfig.CoreConfig.Regions[0]
 	}
 
+	// Prepend command name to args as argLines[0]
+	argLines := append([]string{cmdType}, args...)
+
 	switch cmdType {
 	case CmdTrcConfig:
-		err = trcconfigbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, &region, nil, args, driverConfig)
+		err = trcconfigbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, &region, nil, argLines, driverConfig)
 
 	case CmdTrcPub:
 		pubTokenName := fmt.Sprintf("vault_pub_token_%s", driverConfig.CoreConfig.EnvBasis)
 		pubEnv := driverConfig.CoreConfig.Env
-		trcpubbase.CommonMain(&pubEnv, &envCtx, &pubTokenName, nil, args, driverConfig)
+		trcpubbase.CommonMain(&pubEnv, &envCtx, &pubTokenName, nil, argLines, driverConfig)
 
 	case CmdTrcSub:
-		err = trcsubbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, nil, args, driverConfig)
+		err = trcsubbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, nil, argLines, driverConfig)
 
 	case CmdTrcX:
-		trcxbase.CommonMain(nil, nil, &envDefaultPtr, nil, &envCtx, nil, nil, args, driverConfig)
+		trcxbase.CommonMain(nil, nil, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)
 
 	case CmdTrcInit:
 		pubTokenName := fmt.Sprintf("vault_pub_token_%s", driverConfig.CoreConfig.EnvBasis)
@@ -88,9 +98,14 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 
 	if err != nil {
 		// Error occurred, but MemFs may still have partial output
-		_ = err
+		if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: command execution error: %v\n", err)
+		}
 	}
 
 	// Return the MemFs where command wrote its output
+	if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+		driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: returning MemFs (nil=%v)\n", driverConfig.MemFs == nil)
+	}
 	return driverConfig.MemFs
 }

@@ -3,6 +3,7 @@ package hcore
 import (
 	"errors"
 	"fmt"
+	"io"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive/plugins/trcshcmd/shellcmd"
@@ -77,12 +78,39 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				}
 
 				// Execute command - output written to MemFs
-				memFs := shellcmd.ExecuteShellCommand(cmdType, args, driverConfig)
+				result := shellcmd.ExecuteShellCommand(cmdType, args, driverConfig)
 
-				// Return the MemFs in HookResponse
-				responseMsg := fmt.Sprintf("Command %s completed", cmdType)
+				// Read output from io/STDIO if it exists
+				responseMsg := "Command completed"
+				if result != nil {
+					if stdioFile, err := result.Open("io/STDIO"); err == nil {
+						defer stdioFile.Close()
+						if data, readErr := io.ReadAll(stdioFile); readErr == nil {
+							if len(data) > 0 {
+								responseMsg = string(data)
+							}
+							if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+								driverConfig.CoreConfig.Log.Printf("Read STDIO output, length: %d\n", len(data))
+							}
+						} else {
+							if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+								driverConfig.CoreConfig.Log.Printf("Error reading STDIO: %v\n", readErr)
+							}
+						}
+					} else {
+						if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+							driverConfig.CoreConfig.Log.Printf("Error opening io/STDIO: %v\n", err)
+						}
+					}
+				} else {
+					if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+						driverConfig.CoreConfig.Log.Println("ExecuteShellCommand returned nil result")
+					}
+				}
 				event.Response = &responseMsg
-				event.HookResponse = memFs
+
+				// Return the memFs in HookResponse so trcsh can see updates
+				event.HookResponse = result
 
 				// Send response back to requesting plugin
 				if configContext != nil && configContext.ChatSenderChan != nil {

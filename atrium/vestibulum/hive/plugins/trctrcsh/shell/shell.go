@@ -4,36 +4,46 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"golang.org/x/term"
 
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 )
 
 var (
-	promptStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
-	outputStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
-	errorStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	promptStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Bold(true)
+	outputStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
+	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	chatMsgHooks = cmap.New[tccore.ChatHookFunc]()
 )
 
-type ShellModel struct {
-	width        int
-	height       int
-	prompt       string
-	input        string
-	cursor       int
-	history      []string
-	historyIndex int
-	draft        string
-	output       []string
-	scrollOffset int
-	memFs        trcshio.MemoryFileSystem
+// GetChatMsgHooks returns the chat message hooks map
+func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
+	return &chatMsgHooks
 }
 
-func InitShell(memFs ...trcshio.MemoryFileSystem) *ShellModel {
+type ShellModel struct {
+	width          int
+	height         int
+	prompt         string
+	input          string
+	cursor         int
+	history        []string
+	historyIndex   int
+	draft          string
+	output         []string
+	scrollOffset   int
+	memFs          trcshio.MemoryFileSystem
+	chatSenderChan *chan *tccore.ChatMsg
+}
+
+func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
 		width = 80
@@ -48,17 +58,18 @@ func InitShell(memFs ...trcshio.MemoryFileSystem) *ShellModel {
 	}
 
 	return &ShellModel{
-		width:        width,
-		height:       height,
-		prompt:       "$",
-		input:        "",
-		cursor:       0,
-		history:      []string{},
-		historyIndex: -1,
-		draft:        "",
-		output:       []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""},
-		scrollOffset: 0,
-		memFs:        memFileSystem,
+		width:          width,
+		height:         height,
+		prompt:         "$",
+		input:          "",
+		cursor:         0,
+		history:        []string{},
+		historyIndex:   -1,
+		draft:          "",
+		output:         []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""},
+		scrollOffset:   0,
+		memFs:          memFileSystem,
+		chatSenderChan: chatSenderChan,
 	}
 }
 
@@ -80,12 +91,25 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			// Execute command
 			if len(strings.TrimSpace(m.input)) > 0 {
+				outputLenBefore := len(m.output)
 				m.executeCommand(m.input)
 				m.history = append(m.history, m.input)
 				m.input = ""
 				m.cursor = 0
 				m.historyIndex = -1
 				m.draft = ""
+
+				// Only auto-scroll if output is small or if we're already at the bottom
+				// This allows viewing long outputs like tree from the top
+				visibleLines := m.height - 3
+				outputAdded := len(m.output) - outputLenBefore
+				wasAtBottom := m.scrollOffset >= (outputLenBefore - visibleLines)
+				if outputAdded <= visibleLines || wasAtBottom {
+					// Auto-scroll to bottom after command execution
+					if len(m.output) > visibleLines {
+						m.scrollOffset = len(m.output) - visibleLines
+					}
+				}
 			} else {
 				m.output = append(m.output, "")
 			}
@@ -150,6 +174,27 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlL:
 			// Clear screen
 			m.output = []string{}
+			m.scrollOffset = 0
+
+		case tea.KeyPgUp:
+			// Scroll up one page
+			visibleLines := m.height - 3
+			m.scrollOffset -= visibleLines
+			if m.scrollOffset < 0 {
+				m.scrollOffset = 0
+			}
+
+		case tea.KeyPgDown:
+			// Scroll down one page
+			visibleLines := m.height - 3
+			m.scrollOffset += visibleLines
+			maxScroll := len(m.output) - visibleLines
+			if maxScroll < 0 {
+				maxScroll = 0
+			}
+			if m.scrollOffset > maxScroll {
+				m.scrollOffset = maxScroll
+			}
 
 		default:
 			// Insert character
@@ -159,12 +204,6 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 		}
-	}
-
-	// Auto-scroll to bottom if needed
-	visibleLines := m.height - 3 // Reserve space for prompt
-	if len(m.output) > visibleLines {
-		m.scrollOffset = len(m.output) - visibleLines
 	}
 
 	return m, nil
@@ -233,6 +272,10 @@ func (m *ShellModel) executeCommand(cmd string) {
 		if entries, err := m.memFs.ReadDir("."); err == nil {
 			for _, entry := range entries {
 				name := entry.Name()
+				// Skip io directory
+				if name == "io" {
+					continue
+				}
 				if entry.IsDir() {
 					name += "/"
 				}
@@ -242,12 +285,100 @@ func (m *ShellModel) executeCommand(cmd string) {
 			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
 		}
 
+	case "tree":
+		m.output = append(m.output, ".")
+		dirCount, fileCount, err := m.printTree(".", "")
+		if err != nil {
+			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
+		} else {
+			m.output = append(m.output, "")
+			m.output = append(m.output, fmt.Sprintf("%d directories, %d files", dirCount, fileCount))
+		}
+
+	case "tsub":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd synchronously - let trcsub handle its own usage validation
+		response := callTrcshCmd(m.chatSenderChan, "trcsub", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+		}
+
+	case "tpub":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd synchronously - let trcpub handle its own usage validation
+		response := callTrcshCmd(m.chatSenderChan, "trcpub", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+		}
+
+	case "tx":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd synchronously - let trcx handle its own usage validation
+		response := callTrcshCmd(m.chatSenderChan, "trcx", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+		}
+
+	case "tconfig":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd synchronously - let trcconfig handle its own usage validation
+		response := callTrcshCmd(m.chatSenderChan, "trcconfig", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+		}
+
 	case "help":
 		m.output = append(m.output, "Available commands:")
 		m.output = append(m.output, "  help     - Show this help message")
 		m.output = append(m.output, "  echo     - Echo arguments")
+		m.output = append(m.output, "  ls       - List directory contents")
+		m.output = append(m.output, "  tree     - Display directory tree structure")
 		m.output = append(m.output, "  clear    - Clear screen (or press Ctrl+L)")
 		m.output = append(m.output, "  history  - Show command history")
+		m.output = append(m.output, "  tsub     - Run trcsub commands")
+		m.output = append(m.output, "  tpub     - Run trcpub commands")
+		m.output = append(m.output, "  tx       - Run trcx commands")
+		m.output = append(m.output, "  tconfig  - Run trcconfig commands")
 		m.output = append(m.output, "  exit     - Exit shell (or press Ctrl+C)")
 
 	case "echo":
@@ -255,6 +386,7 @@ func (m *ShellModel) executeCommand(cmd string) {
 
 	case "clear":
 		m.output = []string{}
+		m.scrollOffset = 0
 
 	case "history":
 		if len(m.history) == 0 {
@@ -273,8 +405,118 @@ func (m *ShellModel) executeCommand(cmd string) {
 	m.output = append(m.output, "")
 }
 
-func RunShell(memFs ...trcshio.MemoryFileSystem) error {
-	p := tea.NewProgram(InitShell(memFs...))
+// printTree recursively prints the directory tree structure
+// Returns (dirCount, fileCount, error)
+func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
+	entries, err := m.memFs.ReadDir(path)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Filter out io directory
+	filteredEntries := []os.FileInfo{}
+	for _, entry := range entries {
+		if entry.Name() != "io" {
+			filteredEntries = append(filteredEntries, entry)
+		}
+	}
+
+	dirCount := 0
+	fileCount := 0
+
+	for i, entry := range filteredEntries {
+		isLast := i == len(filteredEntries)-1
+		var linePrefix, childPrefix string
+
+		if isLast {
+			linePrefix = prefix + "└── "
+			childPrefix = prefix + "    "
+		} else {
+			linePrefix = prefix + "├── "
+			childPrefix = prefix + "│   "
+		}
+
+		name := entry.Name()
+		if entry.IsDir() {
+			dirCount++
+			m.output = append(m.output, linePrefix+name+"/")
+			// Recursively print subdirectory
+			subPath := path
+			if path == "." {
+				subPath = name
+			} else {
+				subPath = path + "/" + name
+			}
+			subDirCount, subFileCount, err := m.printTree(subPath, childPrefix)
+			if err != nil {
+				m.output = append(m.output, childPrefix+errorStyle.Render(fmt.Sprintf("Error: %v", err)))
+			} else {
+				dirCount += subDirCount
+				fileCount += subFileCount
+			}
+		} else {
+			fileCount++
+			m.output = append(m.output, linePrefix+name)
+		}
+	}
+
+	return dirCount, fileCount, nil
+}
+
+var globalShellModel *ShellModel
+
+// callTrcshCmd sends a command to trcshcmd and waits for the response
+func callTrcshCmd(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []string) string {
+	id := fmt.Sprintf("%s-%d", cmdType, time.Now().UnixNano())
+	responseChan := make(chan string, 1)
+
+	// Register hook for response
+	GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
+		if msg.RoutingId != nil && *msg.RoutingId == id {
+			if msg.Response != nil {
+				go func() {
+					responseChan <- *msg.Response
+				}()
+			} else {
+				go func() {
+					responseChan <- ""
+				}()
+			}
+			return true
+		}
+		return false
+	})
+
+	// Send request
+	pluginName := "trcsh"
+	msg := &tccore.ChatMsg{
+		Name:         &pluginName,
+		Query:        &[]string{"trcshcmd"},
+		ChatId:       &cmdType,
+		RoutingId:    &id,
+		HookResponse: args,
+	}
+
+	go func() {
+		*chatSenderChan <- msg
+	}()
+
+	// Wait for response with timeout
+	select {
+	case response := <-responseChan:
+		GetChatMsgHooks().Remove(id)
+		return response
+	case <-time.After(11 * time.Second):
+		GetChatMsgHooks().Remove(id)
+		return ""
+	}
+}
+
+func RunShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) error {
+	model := InitShell(chatSenderChan, memFs...)
+	globalShellModel = model
+	p := tea.NewProgram(model)
 	_, err := p.Run()
+	globalShellModel = nil
 	return err
 }

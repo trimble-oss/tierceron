@@ -67,7 +67,27 @@ func CreateLogFile() (*log.Logger, error) {
 	var logPrefix string = "[DEPLOY]"
 	if kernelopts.BuildOptions.IsKernel() {
 		logPrefix = "[trcshk]"
-		f = os.Stdout
+		// Check if running in Kubernetes
+		_, aksExists := os.LookupEnv("KUBERNETES_SERVICE_HOST")
+		_, k8sSecretsExists := os.Stat("/var/run/secrets/kubernetes.io")
+
+		if aksExists || k8sSecretsExists == nil {
+			// Running in AKS/Kubernetes - use stdout (original behavior)
+			f = os.Stdout
+		} else {
+			// Kernel but not AKS - use trcsh.log file
+			logFile := "./trcsh.log"
+			var errOpenFile error
+			f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+			if errOpenFile != nil {
+				return nil, errOpenFile
+			}
+
+			// For kernelz mode (editor), redirect stderr to the log file to keep TUI clean
+			if kernelopts.BuildOptions.IsKernelZ() {
+				os.Stderr = f
+			}
+		}
 	} else {
 		logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
@@ -1726,6 +1746,9 @@ collaboratorReRun:
 		}
 		// Print current process line.
 		if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployPipeline)
+		} else if kernelopts.BuildOptions.IsKernelZ() {
+			// Log to trcsh.log instead of stderr when trcshkernelz build tag is used
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployPipeline)
 		} else {
 			fmt.Fprintln(os.Stderr, deployPipeline)

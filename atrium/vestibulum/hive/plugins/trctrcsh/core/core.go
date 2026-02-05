@@ -71,7 +71,23 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 					}
 				}
 			}
+			// Also process through registered hooks using RoutingId
+			if event.RoutingId != nil && *event.RoutingId != "" {
+				if hook, ok := shell.GetChatMsgHooks().Get(*event.RoutingId); ok {
+					if hook(event) {
+						shell.GetChatMsgHooks().Remove(*event.RoutingId)
+					}
+				}
+			}
 		default:
+			// Try processing through registered hooks first using RoutingId
+			if event.RoutingId != nil && *event.RoutingId != "" {
+				if hook, ok := shell.GetChatMsgHooks().Get(*event.RoutingId); ok {
+					if hook(event) {
+						shell.GetChatMsgHooks().Remove(*event.RoutingId)
+					}
+				}
+			}
 			if configContext != nil {
 				configContext.Log.Println("trcsh received chat message")
 			}
@@ -210,9 +226,9 @@ func start(pluginName string) {
 	configContext.Log.Println("Starting interactive shell...")
 	var err error
 	if memFs != nil {
-		err = shell.RunShell(memFs)
+		err = shell.RunShell(configContext.ChatSenderChan, memFs)
 	} else {
-		err = shell.RunShell()
+		err = shell.RunShell(configContext.ChatSenderChan)
 	}
 	if err != nil {
 		configContext.Log.Printf("Shell exited with error: %v\n", err)
