@@ -33,7 +33,7 @@ require (
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.0
+	github.com/trimble-oss/tierceron-core/v2 v2.10.1
 	github.com/trimble-oss/tierceron-hat v1.2.10
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20251204195016-a8311d409497
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
@@ -311,4 +311,4 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb =>
 
 //replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
