@@ -298,17 +298,27 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		return false
 
 	case "ls":
-		if entries, err := m.memFs.ReadDir("."); err == nil {
-			for _, entry := range entries {
-				name := entry.Name()
-				// Skip io directory
-				if name == "io" {
-					continue
+		// Determine which directory to list
+		dir := "."
+		if len(args) > 0 {
+			dir = args[0]
+		}
+
+		if entries, err := m.memFs.ReadDir(dir); err == nil {
+			if len(entries) == 0 {
+				m.output = append(m.output, "(empty directory)")
+			} else {
+				for _, entry := range entries {
+					name := entry.Name()
+					// Skip io directory
+					if name == "io" {
+						continue
+					}
+					if entry.IsDir() {
+						name += "/"
+					}
+					m.output = append(m.output, name)
 				}
-				if entry.IsDir() {
-					name += "/"
-				}
-				m.output = append(m.output, name)
 			}
 		} else {
 			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
