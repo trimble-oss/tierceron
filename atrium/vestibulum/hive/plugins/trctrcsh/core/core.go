@@ -235,9 +235,10 @@ func start(pluginName string) {
 		send_err(err)
 	} else {
 		configContext.Log.Println("Shell exited normally")
-		// Exit the entire program when shell exits normally (user typed exit/quit)
-		os.Exit(0)
 	}
+
+	// Exit the entire program when shell exits (either normally or with error)
+	os.Exit(0)
 }
 
 func stop(pluginName string) {

@@ -63,7 +63,7 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	// Reserve 3 lines: 1 for blank line, 1 for prompt, 1 for input
 	vp := viewport.New(width, height-3)
 	initialOutput := []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""}
-	vp.SetContent(strings.Join(initialOutput, "\\n"))
+	vp.SetContent(strings.Join(initialOutput, "\n"))
 
 	return &ShellModel{
 		width:          width,
@@ -189,6 +189,8 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.cursor > 0 && len(m.input) > 0 {
 				m.input = m.input[:m.cursor-1] + m.input[m.cursor:]
 				m.cursor--
+				// Scroll to bottom when user starts editing
+				m.viewport.GotoBottom()
 			}
 
 		case tea.KeyLeft:
@@ -211,6 +213,8 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Clear line
 			m.input = ""
 			m.cursor = 0
+			// Scroll to bottom when user starts editing
+			m.viewport.GotoBottom()
 
 		case tea.KeyCtrlL:
 			// Clear screen
@@ -230,6 +234,8 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(s) == 1 {
 				m.input = m.input[:m.cursor] + s + m.input[m.cursor:]
 				m.cursor++
+				// Scroll to bottom when user starts typing
+				m.viewport.GotoBottom()
 			}
 		}
 	}
@@ -305,20 +311,22 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 		if entries, err := m.memFs.ReadDir(dir); err == nil {
-			if len(entries) == 0 {
-				m.output = append(m.output, "(empty directory)")
-			} else {
-				for _, entry := range entries {
-					name := entry.Name()
-					// Skip io directory
-					if name == "io" {
-						continue
-					}
-					if entry.IsDir() {
-						name += "/"
-					}
-					m.output = append(m.output, name)
+			// Filter out io directory and count visible entries
+			visibleCount := 0
+			for _, entry := range entries {
+				name := entry.Name()
+				// Skip io directory
+				if name == "io" {
+					continue
 				}
+				visibleCount++
+				if entry.IsDir() {
+					name += "/"
+				}
+				m.output = append(m.output, name)
+			}
+			if visibleCount == 0 {
+				m.output = append(m.output, ".")
 			}
 		} else {
 			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
@@ -332,6 +340,78 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		} else {
 			m.output = append(m.output, "")
 			m.output = append(m.output, fmt.Sprintf("%d directories, %d files", dirCount, fileCount))
+		}
+
+	case "rm":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd for rm command with args
+		response := callTrcshCmd(m.chatSenderChan, "rm", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, "Files removed successfully")
+		}
+
+	case "cp":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd for cp command with args
+		response := callTrcshCmd(m.chatSenderChan, "cp", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, "Files copied successfully")
+		}
+
+	case "mv":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd for mv command with args
+		response := callTrcshCmd(m.chatSenderChan, "mv", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, "Files moved successfully")
+		}
+
+	case "cat":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd for cat command with args
+		response := callTrcshCmd(m.chatSenderChan, "cat", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tsub":
@@ -412,6 +492,10 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		m.output = append(m.output, "  echo     - Echo arguments")
 		m.output = append(m.output, "  ls       - List directory contents")
 		m.output = append(m.output, "  tree     - Display directory tree structure")
+		m.output = append(m.output, "  cat      - Display file contents")
+		m.output = append(m.output, "  rm       - Remove files or directories (use -r for recursive)")
+		m.output = append(m.output, "  cp       - Copy files or directories (use -r for recursive)")
+		m.output = append(m.output, "  mv       - Move/rename files or directories")
 		m.output = append(m.output, "  clear    - Clear screen (or press Ctrl+L)")
 		m.output = append(m.output, "  history  - Show command history")
 		m.output = append(m.output, "  tsub     - Run trcsub commands")
@@ -559,8 +643,8 @@ func callTrcshCmd(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []s
 func RunShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) error {
 	model := InitShell(chatSenderChan, memFs...)
 	globalShellModel = model
-	// Enable mouse support for wheel scrolling
-	p := tea.NewProgram(model, tea.WithMouseCellMotion())
+	// Use alternate screen and enable mouse support - this ensures proper terminal restoration
+	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	_, err := p.Run()
 	globalShellModel = nil
 	return err
