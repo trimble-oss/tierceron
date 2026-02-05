@@ -1234,8 +1234,11 @@ func roleBasedRunner(
 		}
 		err = trcconfigbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, &region, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 	case "trcsub":
+		// Save original EndDir and restore after trcsub completes
+		originalEndDir := trcshDriverConfig.DriverConfig.EndDir
 		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
 		err = trcsubbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, nil, deployArgLines, trcshDriverConfig.DriverConfig)
+		trcshDriverConfig.DriverConfig.EndDir = originalEndDir
 	}
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Role runner complete: %s\n", control)
 

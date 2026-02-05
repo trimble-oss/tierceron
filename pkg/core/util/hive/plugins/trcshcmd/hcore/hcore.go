@@ -63,7 +63,9 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			if cmdType == shellcmd.CmdTrcConfig || cmdType == shellcmd.CmdTrcPub ||
 				cmdType == shellcmd.CmdTrcSub || cmdType == shellcmd.CmdTrcX ||
 				cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPlgtool ||
-				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot {
+				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot ||
+				cmdType == shellcmd.CmdRm || cmdType == shellcmd.CmdCp ||
+				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat {
 
 				if configContext != nil {
 					configContext.Log.Printf("Received shell command request: %s\n", cmdType)
@@ -90,11 +92,11 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 								responseMsg = string(data)
 							}
 							if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
-								driverConfig.CoreConfig.Log.Printf("Read STDIO output, length: %d\n", len(data))
+								driverConfig.CoreConfig.Log.Printf("Read io/STDIO output, length: %d\n", len(data))
 							}
 						} else {
 							if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
-								driverConfig.CoreConfig.Log.Printf("Error reading STDIO: %v\n", readErr)
+								driverConfig.CoreConfig.Log.Printf("Error reading io/STDIO: %v\n", readErr)
 							}
 						}
 					} else {
@@ -109,8 +111,13 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				}
 				event.Response = &responseMsg
 
-				// Return the memFs in HookResponse so trcsh can see updates
-				event.HookResponse = result
+				// Only return MemFs in HookResponse for trcboot (initial setup)
+				// After that, both plugins share the same MemFs instance
+				if cmdType == shellcmd.CmdTrcBoot {
+					event.HookResponse = result
+				} else {
+					event.HookResponse = nil
+				}
 
 				// Send response back to requesting plugin
 				if configContext != nil && configContext.ChatSenderChan != nil {

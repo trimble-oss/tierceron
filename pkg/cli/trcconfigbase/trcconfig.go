@@ -156,7 +156,23 @@ func CommonMain(envDefaultPtr *string,
 
 	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
 	if driverConfig != nil && driverConfig.IsShellCommand && driverConfig.MemFs != nil {
-		stdioFile, err := driverConfig.MemFs.Create("io/STDIO")
+		var stdioFile io.ReadWriteCloser
+		var err error
+		// Check if io directory exists
+		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+			// Directory exists, open file and seek to end for append
+			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+			if err == nil {
+				if seeker, ok := stdioFile.(io.Seeker); ok {
+					seeker.Seek(0, io.SeekEnd)
+				}
+			}
+		} else {
+			// Directory doesn't exist, use WriteToMemFile to create it
+			emptyData := []byte{}
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
+			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+		}
 		if err == nil {
 			outWriter = stdioFile
 			defer stdioFile.Close()
