@@ -1308,8 +1308,6 @@ github.com/tjfoc/gmsm v1.4.1 h1:aMe1GlZb+0bLjn+cKTPEvvn9oUEBlJitaZiiBwsbgho=
 github.com/tjfoc/gmsm v1.4.1/go.mod h1:j4INPkHWMrhJb38G+J6W4Tw0AbuN8Thu3PbdVYhVcTE=
 github.com/trimble-oss/go-mysql-server v0.12.0-1.30 h1:v44vgutBz55yGOiPxnD6d7rdoPTKjJnp52A3pWsQK7g=
 github.com/trimble-oss/go-mysql-server v0.12.0-1.30/go.mod h1:BjVA7gHh8UXnf5Yd19NqUlqYVcsMUe5IUZF7ufZayhM=
-github.com/trimble-oss/tierceron-core/v2 v2.10.0 h1:fccOMY5hOycVXfwdmPSPcyvDx0NVjnPwJAbsidf0DpE=
-github.com/trimble-oss/tierceron-core/v2 v2.10.0/go.mod h1:+G2xDhshlyq4yg0DDadw1pEw9o3zQ88aOb0yNwCOQOc=
 github.com/trimble-oss/tierceron-hat v1.2.10 h1:eRNf2RYLQz/OqkSeOU+6yJvM5fWNERu+y0RuikzhRjw=
 github.com/trimble-oss/tierceron-hat v1.2.10/go.mod h1:nm81Cvzj7UuBK0t8l53BLhc/U2v2xNymG1QV24kBLNw=
 github.com/trimble-oss/tierceron-nute v1.0.10 h1:3EXG4dF9631DeEsrcszTaCnwJ9KaTkkRTg8mLkPUCsE=
@@ -1320,6 +1318,8 @@ github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 h
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103/go.mod h1:pS2vkiPDNCOggDomTxvPTLucBOB/PdeOQWzLIHHjvu0=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0 h1:uct12l1LATde2Oh7C5jD4FZjhgE51ZQxWnQBqnxcTzY=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0/go.mod h1:K5aGoUPyP8qIXAzq707M14+jlQ6SNOd8wtoQHsdeM8s=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc h1:g0mP/yh4B+qSXp5xR/lg28bu2MWXfzDkiPxQNZ12fLs=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc/go.mod h1:+Iv1louJ7n9tV2rCUN2VUkr20CDkHmNC/KFRB5G+Uxc=
 github.com/twitchtv/twirp v5.12.1+incompatible h1:UnrJ4Z8llkdjnQbLqJBWRBwaDGojBsU5lft3DrD/SvY=
 github.com/twitchtv/twirp v5.12.1+incompatible/go.mod h1:RRJoFSAmTEh2weEqWtpPE3vFK5YBhA6bqp2l1kfCC5A=
 github.com/ugorji/go/codec v1.2.7 h1:YPXUKf7fYbp/y8xloBqZOw2qaVggbfwMlI8WM3wZUJ0=

@@ -41,6 +41,7 @@ type ShellModel struct {
 	scrollOffset   int
 	memFs          trcshio.MemoryFileSystem
 	chatSenderChan *chan *tccore.ChatMsg
+	pendingExit    bool
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -70,6 +71,7 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		scrollOffset:   0,
 		memFs:          memFileSystem,
 		chatSenderChan: chatSenderChan,
+		pendingExit:    false,
 	}
 }
 
@@ -82,6 +84,15 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Adjust scroll offset to stay within valid bounds after resize
+		visibleLines := m.height - 3
+		maxScroll := len(m.output) - visibleLines
+		if maxScroll < 0 {
+			maxScroll = 0
+		}
+		if m.scrollOffset > maxScroll {
+			m.scrollOffset = maxScroll
+		}
 
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -89,25 +100,63 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case tea.KeyEnter:
+			// Handle exit confirmation if pending
+			if m.pendingExit {
+				response := strings.ToLower(strings.TrimSpace(m.input))
+				m.output = append(m.output, "(y/n) "+m.input)
+				m.input = ""
+				m.cursor = 0
+				m.pendingExit = false
+				if response == "y" || response == "yes" {
+					m.output = append(m.output, "Goodbye!")
+					m.output = append(m.output, "")
+					return m, tea.Quit
+				} else {
+					m.output = append(m.output, "Exit cancelled.")
+					m.output = append(m.output, "")
+				}
+				return m, nil
+			}
+
 			// Execute command
 			if len(strings.TrimSpace(m.input)) > 0 {
 				outputLenBefore := len(m.output)
-				m.executeCommand(m.input)
+				shouldQuit := m.executeCommand(m.input)
 				m.history = append(m.history, m.input)
 				m.input = ""
 				m.cursor = 0
 				m.historyIndex = -1
 				m.draft = ""
 
+				if shouldQuit {
+					return m, tea.Quit
+				}
+
 				// Only auto-scroll if output is small or if we're already at the bottom
 				// This allows viewing long outputs like tree from the top
 				visibleLines := m.height - 3
 				outputAdded := len(m.output) - outputLenBefore
-				wasAtBottom := m.scrollOffset >= (outputLenBefore - visibleLines)
+				maxScrollBefore := outputLenBefore - visibleLines
+				if maxScrollBefore < 0 {
+					maxScrollBefore = 0
+				}
+				wasAtBottom := m.scrollOffset >= maxScrollBefore
 				if outputAdded <= visibleLines || wasAtBottom {
 					// Auto-scroll to bottom after command execution
 					if len(m.output) > visibleLines {
 						m.scrollOffset = len(m.output) - visibleLines
+					}
+				} else {
+					// Large output was added and we weren't at bottom
+					// Position scroll to show new content from the command that was entered
+					m.scrollOffset = outputLenBefore
+					// Ensure scrollOffset is within valid range
+					maxScroll := len(m.output) - visibleLines
+					if maxScroll < 0 {
+						maxScroll = 0
+					}
+					if m.scrollOffset > maxScroll {
+						m.scrollOffset = maxScroll
 					}
 				}
 			} else {
@@ -227,7 +276,11 @@ func (m *ShellModel) View() string {
 
 	// Display prompt and input
 	sb.WriteString("\n")
-	sb.WriteString(promptStyle.Render(m.prompt + " "))
+	if m.pendingExit {
+		sb.WriteString(promptStyle.Render("(y/n) "))
+	} else {
+		sb.WriteString(promptStyle.Render(m.prompt + " "))
+	}
 
 	// Render input with cursor
 	if m.cursor < len(m.input) {
@@ -248,7 +301,7 @@ func (m *ShellModel) View() string {
 	return sb.String()
 }
 
-func (m *ShellModel) executeCommand(cmd string) {
+func (m *ShellModel) executeCommand(cmd string) bool {
 	trimmedCmd := strings.TrimSpace(cmd)
 
 	// Add command to output
@@ -257,7 +310,7 @@ func (m *ShellModel) executeCommand(cmd string) {
 	// Parse and execute command
 	parts := strings.Fields(trimmedCmd)
 	if len(parts) == 0 {
-		return
+		return false
 	}
 
 	command := parts[0]
@@ -265,8 +318,10 @@ func (m *ShellModel) executeCommand(cmd string) {
 
 	switch command {
 	case "exit", "quit":
-		m.output = append(m.output, "Goodbye!")
-		// Note: actual exit will be handled by Ctrl+C or the program can call tea.Quit
+		m.output = append(m.output, "All uncommitted changes will be lost. Are you sure?")
+		m.pendingExit = true
+		// Don't add the normal empty line at the end for exit
+		return false
 
 	case "ls":
 		if entries, err := m.memFs.ReadDir("."); err == nil {
@@ -402,7 +457,11 @@ func (m *ShellModel) executeCommand(cmd string) {
 		m.output = append(m.output, "Type 'help' for available commands")
 	}
 
-	m.output = append(m.output, "")
+	// Don't add empty line if waiting for exit confirmation
+	if !m.pendingExit {
+		m.output = append(m.output, "")
+	}
+	return false
 }
 
 // printTree recursively prints the directory tree structure

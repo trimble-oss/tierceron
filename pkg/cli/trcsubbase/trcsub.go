@@ -140,7 +140,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
-		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
+		if (len(driverConfigBase.EndDir) == 0 || driverConfigBase.EndDir == ".") && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
