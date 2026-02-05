@@ -275,6 +275,9 @@ func GetPluginRestrictedMappings() map[string][][]string {
 		"trcsh-cursor-k": {
 			[]string{"-templateFilter=TrcVault/TrcshCursorK", "-restricted=TrcshCursorK", "-serviceFilter=config", "-indexFilter=config"},
 		},
+		"trcsh-cursor-z": {
+			[]string{"-templateFilter=TrcVault/TrcshCursorZ", "-restricted=TrcshCursorZ", "-serviceFilter=config", "-indexFilter=config"},
+		},
 		"trc-vault-plugin": {
 			[]string{"-templateFilter=FlumeDatabase/TierceronFlow", "-indexed=FlumeDatabase", "-serviceFilter=TierceronFlow", "-indexFilter=flowName"},
 			[]string{"-templateFilter=TrcVault/Database", "-indexed=TrcVault", "-serviceFilter=Database", "-indexFilter=regionId"},

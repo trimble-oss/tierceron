@@ -3,6 +3,7 @@ package trcxbase
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -51,7 +53,12 @@ func CommonMain(ctx config.ProcessContext,
 	isProd := strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")
 	// Executable input arguments(flags)
 	if flagset == nil {
-		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
+		errorHandling := flag.ExitOnError
+		if driverConfig != nil && (driverConfig.IsShellCommand || kernelopts.BuildOptions.IsKernelZ()) {
+			errorHandling = flag.ContinueOnError
+		}
+		flagset = flag.NewFlagSet(argLines[0], errorHandling)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
@@ -95,13 +102,28 @@ func CommonMain(ctx config.ProcessContext,
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
 
+	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
+	var outWriter io.Writer = os.Stderr
+	if driverConfig != nil && driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+		stdioFile, err := driverConfig.MemFs.Create("io/STDIO")
+		if err == nil {
+			outWriter = stdioFile
+			defer stdioFile.Close()
+			// Redirect flagset output to the same writer for help messages
+			flagset.SetOutput(outWriter)
+		}
+	}
+
 	// Checks for proper flag input
 	args := argLines[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
 		if s[0] != '-' {
-			fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)
-			os.Exit(1)
+			fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
+			if driverConfig == nil || (!driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ()) {
+				os.Exit(1)
+			}
+			return
 		}
 	}
 
@@ -175,36 +197,36 @@ func CommonMain(ctx config.ProcessContext,
 	}
 
 	if cleanPresent && !envPresent {
-		fmt.Fprintln(os.Stderr, "Environment must be defined with -env=env1,... for -clean usage")
+		fmt.Fprintln(outWriter, "Environment must be defined with -env=env1,... for -clean usage")
 		os.Exit(1)
 	} else if *diffPtr && *versionPtr {
-		fmt.Fprintln(os.Stderr, "-version flag cannot be used with -diff flag")
+		fmt.Fprintln(outWriter, "-version flag cannot be used with -diff flag")
 		os.Exit(1)
 	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
-		fmt.Fprintln(os.Stderr, "-restricted flags cannot be used with -versions flag")
+		fmt.Fprintln(outWriter, "-restricted flags cannot be used with -versions flag")
 		os.Exit(1)
 	} else if isProd && *addrPtr == "" {
-		fmt.Fprintln(os.Stderr, "The -addr flag must be used with staging/prod environment")
+		fmt.Fprintln(outWriter, "The -addr flag must be used with staging/prod environment")
 		os.Exit(1)
 	} else if (len(*fieldsPtr) == 0) && len(*seedPathPtr) != 0 {
-		fmt.Fprintln(os.Stderr, "The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
+		fmt.Fprintln(outWriter, "The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
 		os.Exit(1)
 	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*seedPathPtr) == 0) {
-		fmt.Fprintln(os.Stderr, "The -encrypted flag must be used with -seedPath flag if -readonly is used")
+		fmt.Fprintln(outWriter, "The -encrypted flag must be used with -seedPath flag if -readonly is used")
 		os.Exit(1)
 	} else {
 		if len(*dynamicPathPtr) == 0 {
 			if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-serviceFilter and -indexFilter must be specified to use -indexed flag")
+				fmt.Fprintln(outWriter, "-serviceFilter and -indexFilter must be specified to use -indexed flag")
 				os.Exit(1)
 			} else if len(*eUtils.ServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-serviceFilter must be specified to use -restricted flag")
+				fmt.Fprintln(outWriter, "-serviceFilter must be specified to use -restricted flag")
 				os.Exit(1)
 			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
+				fmt.Fprintln(outWriter, "-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
 				os.Exit(1)
 			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
+				fmt.Fprintln(outWriter, "-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
 				os.Exit(1)
 			}
 		}
@@ -233,12 +255,12 @@ func CommonMain(ctx config.ProcessContext,
 
 	if *versionPtr {
 		if strings.Contains(*envPtr, ",") {
-			fmt.Fprintln(os.Stderr, Yellow+"Invalid environment, please specify one environment."+Reset)
+			fmt.Fprintln(outWriter, Yellow+"Invalid environment, please specify one environment."+Reset)
 			os.Exit(1)
 		}
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
-			fmt.Fprintln(os.Stderr, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
+			fmt.Fprintln(outWriter, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
 			*envPtr = strings.Split(*envPtr, "_")[0]
 		}
 		configCtx.EnvSlice = append(configCtx.EnvSlice, *envPtr+"_versionInfo")
@@ -252,12 +274,12 @@ func CommonMain(ctx config.ProcessContext,
 			configCtx.EnvSlice = strings.Split(*envPtr, ",")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 			if len(configCtx.EnvSlice) > 4 {
-				fmt.Fprintln(os.Stderr, "Unsupported number of environments - Maximum: 4")
+				fmt.Fprintln(outWriter, "Unsupported number of environments - Maximum: 4")
 				os.Exit(1)
 			}
 			for i, env := range configCtx.EnvSlice {
 				if env == "local" {
-					fmt.Fprintln(os.Stderr, "Unsupported env: local not available with diff flag")
+					fmt.Fprintln(outWriter, "Unsupported env: local not available with diff flag")
 					os.Exit(1)
 				}
 				if !strings.Contains(env, "_") {
@@ -265,12 +287,12 @@ func CommonMain(ctx config.ProcessContext,
 				}
 			}
 		} else {
-			fmt.Fprintln(os.Stderr, "Incorrect format for diff: -env=env1,env2,...")
+			fmt.Fprintln(outWriter, "Incorrect format for diff: -env=env1,env2,...")
 			os.Exit(1)
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
-			fmt.Fprintln(os.Stderr, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
+			fmt.Fprintln(outWriter, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
 			os.Exit(1)
 		}
 		configCtx.EnvSlice = append(configCtx.EnvSlice, (*envPtr))
@@ -286,7 +308,7 @@ func CommonMain(ctx config.ProcessContext,
 				roleEntityPtr, *pingPtr)
 
 			if autoErr != nil {
-				fmt.Fprintln(os.Stderr, "Auth failure: "+autoErr.Error())
+				fmt.Fprintln(outWriter, "Auth failure: "+autoErr.Error())
 				eUtils.LogErrorMessage(driverConfigBase.CoreConfig, autoErr.Error(), true)
 			}
 		} else {
@@ -296,7 +318,7 @@ func CommonMain(ctx config.ProcessContext,
 		if len(envVersion) >= 2 { // Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
-				fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1")
+				fmt.Fprintln(outWriter, "Must declare desired version number after '_' : -env=env1_ver1")
 				os.Exit(1)
 			}
 		} else {
@@ -313,7 +335,7 @@ func CommonMain(ctx config.ProcessContext,
 	}
 
 	if len(listCheck) != len(configCtx.EnvSlice) {
-		fmt.Fprintf(os.Stderr, "Cannot diff an environment against itself.\n")
+		fmt.Fprintf(outWriter, "Cannot diff an environment against itself.\n")
 		os.Exit(1)
 	}
 
@@ -321,16 +343,19 @@ skipDiff:
 	// Prints usage if no flags are specified
 	if *helpPtr {
 		flagset.Usage()
-		os.Exit(1)
+		if driverConfig == nil || (!driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ()) {
+			os.Exit(1)
+		}
+		return
 	}
 	if ctx == nil && !driverConfig.CoreConfig.IsEditor {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Fprintln(os.Stderr, "Missing required start template folder: "+*startDirPtr)
+			fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
 			os.Exit(1)
 		}
 		if !*diffPtr { // -diff doesn't require seed folder
 			if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-				fmt.Fprintln(os.Stderr, "Missing required start seed folder: "+*endDirPtr)
+				fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
 				os.Exit(1)
 			}
 		}
@@ -373,20 +398,20 @@ skipDiff:
 			},
 		}, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, roleEntityPtr, *pingPtr)
 		if autoErr != nil {
-			fmt.Fprintln(os.Stderr, "Missing auth components.")
+			fmt.Fprintln(outWriter, "Missing auth components.")
 			eUtils.LogErrorMessage(driverConfigBase.CoreConfig, autoErr.Error(), true)
 		}
 	}
 
 	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0) && !*noVaultPtr {
-		fmt.Fprintf(os.Stderr, "Missing required auth token for env: %s\n", envBasis)
+		fmt.Fprintf(outWriter, "Missing required auth token for env: %s\n", envBasis)
 		os.Exit(1)
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
-		fmt.Fprintln(os.Stderr, *envPtr)
+		fmt.Fprintln(outWriter, *envPtr)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 

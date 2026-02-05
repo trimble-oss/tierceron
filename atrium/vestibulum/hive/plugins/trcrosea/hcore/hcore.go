@@ -202,6 +202,13 @@ func PostInit(configContext *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 
+	// Refuse to run on Kubernetes
+	if isK8s, ok := (*properties)["isKubernetes"].(bool); ok && isK8s {
+		(*properties)["log"].(*log.Logger).Printf("Rosea plugin is not allowed to run on Kubernetes. Refusing to initialize.")
+		(*properties)["pluginRefused"] = true
+		return
+	}
+
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
