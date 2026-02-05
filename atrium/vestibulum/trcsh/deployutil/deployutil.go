@@ -248,6 +248,12 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 				continue
 			}
 
+			// Skip trcshcmdtoolplugin types if running on Kubernetes
+			if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" && hive.IsRunningInKubernetes() {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Skipping trcshcmdtoolplugin %s on Kubernetes\n", deployment)
+				continue
+			}
+
 			if isDrone && !isShellRunner {
 				var valid_id string
 				if deployerids, ok := deploymentConfig["trcdeployerids"]; ok {
@@ -280,9 +286,13 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 				}
 				isValidInstance := false
 				if validEnv, ok := deploymentConfig["instances"]; ok && kernelopts.BuildOptions.IsKernel() {
-					kernelID := kernelPluginHandler.GetKernelID()
 					if instances, ok := validEnv.(string); ok {
 						if len(instances) > 0 {
+							if instances == "*" {
+								isValidInstance = true
+								goto allvalid
+							}
+							kernelID := kernelPluginHandler.GetKernelID()
 							instancesList := strings.Split(instances, ",")
 							for _, instance := range instancesList {
 								if instance == "*" {
@@ -305,7 +315,8 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 						return nil, errors.New("unexpected type of instances returned from vault for " + deployment)
 					}
 				}
-				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice") {
+			allvalid:
+				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" || deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin") {
 					deploymentList = append(deploymentList, &deploymentConfig)
 				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" || deploymentConfig["trctype"].(string) == "trcshpluginservice") && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, &deploymentConfig)

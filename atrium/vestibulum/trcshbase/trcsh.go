@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
+	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
@@ -43,6 +44,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive"
+	trcshcmdhcore "github.com/trimble-oss/tierceron/pkg/core/util/hive/plugins/trcshcmd/hcore"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"gopkg.in/yaml.v2"
@@ -65,7 +67,27 @@ func CreateLogFile() (*log.Logger, error) {
 	var logPrefix string = "[DEPLOY]"
 	if kernelopts.BuildOptions.IsKernel() {
 		logPrefix = "[trcshk]"
-		f = os.Stdout
+		// Check if running in Kubernetes
+		_, aksExists := os.LookupEnv("KUBERNETES_SERVICE_HOST")
+		_, k8sSecretsExists := os.Stat("/var/run/secrets/kubernetes.io")
+
+		if aksExists || k8sSecretsExists == nil {
+			// Running in AKS/Kubernetes - use stdout (original behavior)
+			f = os.Stdout
+		} else {
+			// Kernel but not AKS - use trcsh.log file
+			logFile := "./trcsh.log"
+			var errOpenFile error
+			f, errOpenFile = os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o600)
+			if errOpenFile != nil {
+				return nil, errOpenFile
+			}
+
+			// For kernelz mode (editor), redirect stderr to the log file to keep TUI clean
+			if kernelopts.BuildOptions.IsKernelZ() {
+				os.Stderr = f
+			}
+		}
 	} else {
 		logFile := "./" + coreopts.BuildOptions.GetFolderPrefix(nil) + "deploy.log"
 		if _, err := os.Stat("/var/log/"); os.IsNotExist(err) && logFile == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"deploy.log" {
@@ -873,6 +895,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		pluginDeployments := []*map[string]interface{}{}
 
 		if eUtils.IsWindows() || kernelopts.BuildOptions.IsKernel() {
+			trcshDeployed := false
 			for _, deployablePluginConfig := range deployablePlugins {
 				if deployablePluginConfig != nil {
 					// Extract deployment name from the config map
@@ -882,12 +905,41 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 								pluginDeployments = append(pluginDeployments, deployablePluginConfig)
 								if kernelPluginHandler != nil {
 									kernelPluginHandler.AddKernelPlugin(deploymentName, trcshDriverConfig.DriverConfig, deployablePluginConfig)
+									// Track if trcsh plugin is being deployed
+									if deploymentName == "trcsh" {
+										trcshDeployed = true
+									}
 								}
 							}
 						}
 					}
 				}
 			}
+
+			// Register trcshcmd plugin if trcsh is deployed and not in Kubernetes
+			if trcshDeployed && !hive.IsRunningInKubernetes() && kernelPluginHandler != nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Registering trcshcmd kernel plugin for shell command execution")
+
+				// Create a ready channel for trcshcmd so trcsh can wait for it
+				pluginsync.CreatePluginReadyChannel("trcshcmd")
+
+				// Create a deployment config for trcshcmd with template path
+				trcshcmdConfig := map[string]interface{}{
+					"trcplugin":         "trcshcmd",
+					"trctype":           "kernelplugin",
+					"trcprojectservice": "Hive/PluginCmdTrcsh",
+					"trcdeployroot":     "/usr/local/trcshk",
+					"trcbootstrap":      "/deploy/deploy.trc",
+				}
+				kernelPluginHandler.AddKernelPlugin("trcshcmd", trcshDriverConfig.DriverConfig, &trcshcmdConfig)
+
+				// Register callbacks for trcshcmd so CallPluginInit/CallPluginStart work
+				hive.RegisterPluginCallbacks("trcshcmd", trcshcmdhcore.Init, trcshcmdhcore.Start)
+
+				// Prepend trcshcmd to pluginDeployments so it starts before trcsh
+				pluginDeployments = append([]*map[string]interface{}{&trcshcmdConfig}, pluginDeployments...)
+			}
+
 			if kernelPluginHandler != nil {
 				kernelPluginHandler.InitPluginStatus(trcshDriverConfig.DriverConfig)
 			}
@@ -1520,7 +1572,13 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	deployerDriverConfig.MemFs = trcshmemfs.NewTrcshMemFs()
 	deployerDriverConfig.DeploymentConfig = trcshDriverConfig.DriverConfig.DeploymentConfig
 
-	if trcshDriverConfig.DriverConfig.CoreConfig.IsShell || (trcshDriverConfig.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil && ((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" || (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice")) {
+	if trcshDriverConfig.DriverConfig.CoreConfig.IsShell ||
+		(trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
+			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
+			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcflowpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "trcshcmdtoolplugin" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"].(string) == "kernelplugin")) {
 		// Generate trc code...
 		deployerDriverConfig.CoreConfig.Log.Println("Preload setup")
 		if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
@@ -1688,6 +1746,9 @@ collaboratorReRun:
 		}
 		// Print current process line.
 		if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
+			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployPipeline)
+		} else if kernelopts.BuildOptions.IsKernelZ() {
+			// Log to trcsh.log instead of stderr when trcshkernelz build tag is used
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println(deployPipeline)
 		} else {
 			fmt.Fprintln(os.Stderr, deployPipeline)

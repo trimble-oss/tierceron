@@ -35,6 +35,7 @@ type OptionsBuilder struct {
 	GetPluginRestrictedMappings func() map[string][][]string
 	GetConfigPaths              func(string) []string
 	GetSupportedCertIssuers     func() []string
+	IsKubeRunnable              func() bool
 }
 
 func LoadOptions() Option {
@@ -65,6 +66,7 @@ func LoadOptions() Option {
 		optionsBuilder.GetPluginRestrictedMappings = GetPluginRestrictedMappings
 		optionsBuilder.GetConfigPaths = GetConfigPaths
 		optionsBuilder.GetSupportedCertIssuers = GetSupportedCertIssuers
+		optionsBuilder.IsKubeRunnable = IsKubeRunnable
 	}
 }
 
