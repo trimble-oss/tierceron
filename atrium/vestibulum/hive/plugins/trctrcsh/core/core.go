@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"os/exec"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
@@ -238,6 +239,7 @@ func start(pluginName string) {
 	}
 
 	// Exit the entire program when shell exits (either normally or with error)
+	exec.Command("stty", "sane").Run() // Reset terminal to sane defaults
 	os.Exit(0)
 }
 
