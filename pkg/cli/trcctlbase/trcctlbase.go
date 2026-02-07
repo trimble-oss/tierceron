@@ -82,6 +82,7 @@ func CommonMain(envDefaultPtr *string,
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
 	} else {
 		logFilePtr = flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"config.log", "Output path for log file")
+		//		envDefaultPtr = flagset.String("env", "", "Environment to be seeded") //If this is blank -> use context otherwise override context.
 		addrPtr = flagset.String("addr", "", "API endpoint for the vault")
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr

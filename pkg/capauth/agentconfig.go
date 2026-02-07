@@ -417,14 +417,14 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 		var vaultAddressPtr *string
 		var penseError error
 		// Chewbacca -- Local debug
-		// if true {
-		// 	configRole := os.Getenv("CONFIG_ROLE")
-		// 	bambooRolePtr = &configRole
-		// 	vaddress := os.Getenv("VAULT_ADDR")
-		// 	vaultAddressPtr = &vaddress
-		// 	pluginAny := os.Getenv("PLUGIN_ANY")
-		// 	pluginAnyPtr = &pluginAny
-		// }
+		if true {
+			configRole := os.Getenv("CONFIG_ROLE")
+			bambooRolePtr = &configRole
+			vaddress := os.Getenv("VAULT_ADDR")
+			vaultAddressPtr = &vaddress
+			pluginAny := os.Getenv("PLUGIN_ANY")
+			pluginAnyPtr = &pluginAny
+		}
 		// End Chewbacca
 		if eUtils.RefLength(bambooRolePtr) == 0 {
 			bambooRolePtr, penseError = agentconfig.RetryingPenseFeatherQuery("configrole")
