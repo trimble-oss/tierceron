@@ -1,0 +1,18 @@
+vault_addr: https://atvc.dexchadev.com:8305
+agent_env: "dev"              # or "staging", "prod", etc.
+region: "us-west-2"
+deployments: "kubernetes"
+
+# OAuth/OIDC Configuration for Trimble ID
+# Get client_id and client_secret from Trimble developer portal
+oauth_discovery_url: "https://id.trimble.com/.well-known/openid-configuration"
+oauth_client_id: "your-oauth-client-id-here"
+oauth_client_secret: ""       # Optional - leave empty for public client
+oauth_callback_port: 8080     # Redirect URL will be http://localhost:<port>/callback
+
+# Note: OAuth scopes are hardcoded to "openid profile email" 
+# (openid required by OIDC, email required for Vault JWT validation)
+
+# Vault Role Configuration
+# Must match what was configured in Vault (same name for both JWT role and AppRole)
+vault_role: "trcshhivez"
