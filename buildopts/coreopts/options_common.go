@@ -64,12 +64,20 @@ func GetSupportedEndpoints(prod bool) [][]string {
 				"prodtierceron.test",
 				"n/a",
 			},
+			{
+				"atvc.dexchadev.com",
+				"10.123.181.4",
+			},
 		}
 	} else {
 		return [][]string{
 			{
 				"tierceron.test:1234",
 				"127.0.0.1",
+			},
+			{
+				"atvc.dexchadev.com:8305",
+				"10.123.181.4",
 			},
 		}
 	}
@@ -78,12 +86,12 @@ func GetSupportedEndpoints(prod bool) [][]string {
 // GetSupportedDomains - return a list of supported domains.  Override this function to provide
 // a list of supported domains.
 func GetSupportedDomains(prod bool) []string {
-	return []string{"tierceron.test:1234"}
+	return []string{"tierceron.test:1234", "atvc.dexchadev.com:8305"}
 }
 
 // GetLocalHost - return the local host name.  Override this function to provide a custom local host name.
 func GetLocalHost() string {
-	return "https://tierceron.test:1234"
+	return "atvc.dexchadev.com:8305"
 }
 
 // GetRegion - return the region.  Override this function to provide default region given a host name.
@@ -93,12 +101,12 @@ func GetRegion(hostName string) string {
 
 // GetVaultHost - return the vault host.  Override this function to provide a custom vault host.
 func GetVaultHost() string {
-	return "tierceron.test:1234"
+	return "atvc.dexchadev.com"
 }
 
 // GetVaultHost - return the vault host and port.  Override this function to provide a custom vault host and port.
 func GetVaultHostPort() string {
-	return "tierceron.test:1234"
+	return "atvc.dexchadev.com:8305"
 }
 
 // GetUserNameField - return the user name field.  Override this function to provide a custom user name field.

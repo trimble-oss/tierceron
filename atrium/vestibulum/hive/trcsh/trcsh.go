@@ -47,6 +47,10 @@ func init() {
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
+	if os.Geteuid() == 0 {
+		eUtils.LogSyncAndExit(logger, "ERROR: trcsh must not run as root or with sudo privileges (FUNDAMENTALS Law #3)", 1)
+	}
+
 	if memonly.IsMemonly() {
 		memprotectopts.MemProtectInit(nil)
 	}
