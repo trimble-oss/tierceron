@@ -1,0 +1,13 @@
+# Vault connection
+vault_addr: {{ .vault_addr }}
+agent_env: {{ .agent_env }}
+deployments: {{ .deployments }}
+region: {{ .region }}
+
+# OAuth/OIDC Configuration for JWT Authentication
+oauth_discovery_url: {{ .oauth_discovery_url }}
+oauth_client_id: {{ .oauth_client_id }}
+oauth_client_secret: {{ .oauth_client_secret }}
+oauth_callback_port: {{ .oauth_callback_port }}
+oauth_callback_path: {{or .oauth_callback_path "/callback"}}
+

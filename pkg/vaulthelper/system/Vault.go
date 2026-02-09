@@ -582,6 +582,119 @@ func (v *Vault) GetStatus() (map[string]any, error) {
 	}, nil
 }
 
+// JWTLogin authenticates to Vault using a JWT token (from OIDC) and returns a client token
+func (v *Vault) JWTLogin(jwt string, role string) (*string, error) {
+	r := v.client.NewRequest("POST", fmt.Sprintf("/v1/auth/jwt/login"))
+
+	payload := map[string]any{
+		"jwt":  jwt,
+		"role": role,
+	}
+
+	if err := r.SetJSONBody(payload); err != nil {
+		return nil, err
+	}
+
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonData map[string]any
+	if err = response.DecodeJSON(&jsonData); err != nil {
+		return nil, err
+	}
+
+	if authData, ok := jsonData["auth"].(map[string]any); ok {
+		if token, ok := authData["client_token"].(string); ok {
+			return &token, nil
+		}
+		return nil, fmt.Errorf("error parsing response for key 'auth.client_token'")
+	}
+
+	return nil, fmt.Errorf("error parsing response for key 'auth'")
+}
+
+// EnableJWT enables the JWT/OIDC auth method
+func (v *Vault) EnableJWT() error {
+	sys := v.client.Sys()
+	err := sys.EnableAuthWithOptions("jwt", &api.EnableAuthOptions{
+		Type:        "jwt",
+		Description: "JWT/OIDC authentication",
+	})
+	return err
+}
+
+// JWTConfigOptions holds configuration for JWT/OIDC auth method
+type JWTConfigOptions struct {
+	OIDCDiscoveryURL string            `json:"oidc_discovery_url,omitempty"`
+	OIDCClientID     string            `json:"oidc_client_id,omitempty"`
+	OIDCClientSecret string            `json:"oidc_client_secret,omitempty"`
+	DefaultRole      string            `json:"default_role,omitempty"`
+	BoundIssuer      string            `json:"bound_issuer,omitempty"`
+	JWKSCACert       string            `json:"jwks_ca_cert,omitempty"`
+	ProviderConfig   map[string]string `json:"provider_config,omitempty"`
+}
+
+// ConfigureJWT configures the JWT/OIDC auth method with OIDC discovery
+func (v *Vault) ConfigureJWT(options *JWTConfigOptions) error {
+	r := v.client.NewRequest("POST", "/v1/auth/jwt/config")
+	if err := r.SetJSONBody(options); err != nil {
+		return err
+	}
+
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+	return err
+}
+
+// JWTRoleOptions holds configuration for a JWT role
+type JWTRoleOptions struct {
+	RoleType        string                 `json:"role_type,omitempty"` // "jwt" or "oidc"
+	BoundAudiences  []string               `json:"bound_audiences,omitempty"`
+	BoundSubject    string                 `json:"bound_subject,omitempty"`
+	BoundClaims     map[string]interface{} `json:"bound_claims,omitempty"`
+	ClaimMappings   map[string]string      `json:"claim_mappings,omitempty"`
+	UserClaim       string                 `json:"user_claim,omitempty"`
+	GroupsClaim     string                 `json:"groups_claim,omitempty"`
+	Policies        []string               `json:"policies,omitempty"`
+	TTL             string                 `json:"ttl,omitempty"`
+	MaxTTL          string                 `json:"max_ttl,omitempty"`
+	Period          string                 `json:"period,omitempty"`
+	TokenBoundCIDRs []string               `json:"token_bound_cidrs,omitempty"`
+}
+
+// CreateJWTRole creates a new JWT role with the given options
+func (v *Vault) CreateJWTRole(roleName string, options *JWTRoleOptions) error {
+	r := v.client.NewRequest("POST", fmt.Sprintf("/v1/auth/jwt/role/%s", roleName))
+	if err := r.SetJSONBody(options); err != nil {
+		return err
+	}
+
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+	return err
+}
+
+// DeleteJWTRole deletes a JWT role
+func (v *Vault) DeleteJWTRole(roleName string) error {
+	r := v.client.NewRequest("DELETE", fmt.Sprintf("/v1/auth/jwt/role/%s", roleName))
+
+	response, err := v.client.RawRequest(r)
+	if response != nil && response.Body != nil {
+		defer response.Body.Close()
+	}
+	return err
+}
+
 // Proper shutdown of modifier.
 func (v *Vault) Close() {
 	if v.httpClient != nil {

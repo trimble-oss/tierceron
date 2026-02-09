@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron/pkg/oauth"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
@@ -24,6 +26,20 @@ type cert struct {
 	ApproleID string `yaml:"approleID"`
 	SecretID  string `yaml:"secretID"`
 	EnvCtx    string `yaml:"envCtx"`
+}
+
+// kernelZConfig is the configuration structure for KernelZ OAuth/JWT authentication
+// This is a read-only configuration file - credentials are NEVER written to it
+type kernelZConfig struct {
+	VaultHost         string `yaml:"vault_addr"`
+	AgentEnv          string `yaml:"agent_env"`
+	Deployments       string `yaml:"deployments"`
+	Region            string `yaml:"region"`
+	OAuthDiscoveryURL string `yaml:"oauth_discovery_url"`
+	OAuthClientID     string `yaml:"oauth_client_id"`
+	OAuthClientSecret string `yaml:"oauth_client_secret,omitempty"`
+	OAuthCallbackPort int    `yaml:"oauth_callback_port"`
+	OAuthCallbackPath string `yaml:"oauth_callback_path"`
 }
 
 var prodRegions = []string{"west", "east", "ca"}
@@ -166,6 +182,140 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 	return env, envContext, nil
 }
 
+// oauthKernelZAuth handles OAuth/JWT authentication for KernelZ builds
+// roleName parameter allows specifying which role to authenticate (e.g., "trcshhivez" or "trcshunrestricted")
+// Returns: (roleID, secretID, vaultAddress, error)
+func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig, roleName string) (string, string, string, error) {
+	// Check if OAuth configuration is present
+	if kzConfig.OAuthDiscoveryURL == "" || kzConfig.OAuthClientID == "" {
+		return "", "", "", fmt.Errorf("OAuth configuration incomplete in config.yml - need oauth_discovery_url and oauth_client_id")
+	}
+
+	// Determine which role to use (hardcoded role names)
+	targetRole := roleName
+	if targetRole == "" {
+		targetRole = "trcshhivez"
+	}
+
+	// KernelZ: Always perform OAuth authentication (no disk caching)
+	// Credentials are stored only in-memory in TokenCache for the session
+	fmt.Fprintf(os.Stderr, "Performing OAuth authentication for %s...\n", targetRole)
+	fmt.Fprintf(os.Stderr, "Opening browser for Trimble ID login...\n")
+
+	// Create vault connection
+	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, &kzConfig.VaultHost, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
+	if err != nil {
+		return "", "", "", fmt.Errorf("failed to connect to Vault: %w", err)
+	}
+	defer vault.Close()
+
+	// Set default callback port and construct redirect URL
+	callbackPort := kzConfig.OAuthCallbackPort
+	if callbackPort == 0 {
+		callbackPort = 8080
+	}
+	callbackPath := kzConfig.OAuthCallbackPath
+	if callbackPath == "" {
+		callbackPath = "/callback"
+	}
+
+	// OAuth uses its own self-contained HTTP server that starts/stops as needed
+	redirectURL := fmt.Sprintf("http://localhost:%d%s", callbackPort, callbackPath)
+
+	// Configure OAuth login with self-contained HTTP server
+	oauthConfig := &sys.OAuthLoginConfig{
+		OIDCDiscoveryURL: kzConfig.OAuthDiscoveryURL,
+		ClientID:         kzConfig.OAuthClientID,
+		ClientSecret:     kzConfig.OAuthClientSecret,
+		RedirectURL:      redirectURL,
+		Scopes:           []string{"openid", "profile", "email"},
+		CallbackPort:     callbackPort,
+		JWTRole:          targetRole,
+		LocalServerConfig: &oauth.LocalServerConfig{
+			Port: callbackPort,
+			Path: callbackPath,
+		},
+	}
+
+	// Perform OAuth login and get AppRole credentials
+	ctx := context.Background()
+	roleID, secretID, userInfo, err := vault.GetAppRoleCredentialsWithOAuth(ctx, oauthConfig, targetRole)
+	if err != nil {
+		return "", "", "", fmt.Errorf("OAuth authentication failed: %w", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "Successfully authenticated as: %s (%s)\n", userInfo.UserName, userInfo.UserEmail)
+	fmt.Fprintf(os.Stderr, "Retrieved %s AppRole credentials\n", targetRole)
+
+	// KernelZ: Store credentials ONLY in-memory TokenCache, never write to disk
+	// This maintains security by not persisting credentials to ~/.tierceron/config.yml
+	// The credentials will be used for this session only
+
+	return roleID, secretID, kzConfig.VaultHost, nil
+}
+
+// KernelZOAuthForRole performs OAuth authentication for a specific role at runtime
+// This can be called at any point to get credentials for a different role (e.g., unrestricted write access)
+func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) error {
+	if kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernelZ() {
+		return fmt.Errorf("KernelZ OAuth is only available in KernelZ builds")
+	}
+
+	fmt.Fprintf(os.Stderr, "KernelZOAuthForRole: received driverConfig=%p\n", driverConfig)
+
+	// Check if we already have valid credentials in TokenCache under "hivekernel"
+	existingCreds := driverConfig.CoreConfig.TokenCache.GetRole("hivekernel")
+	if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
+		fmt.Fprintf(os.Stderr, "Using existing hivekernel credentials from cache\n")
+		return nil
+	}
+
+	// Read config file
+	userHome, homeErr := userHome(driverConfig.CoreConfig.Log)
+	if homeErr != nil {
+		return fmt.Errorf("failed to get user home: %w", homeErr)
+	}
+
+	// KernelZ uses ~/.trcshrc
+	yamlFile, readErr := os.ReadFile(userHome + "/.trcshrc")
+	if readErr != nil {
+		return fmt.Errorf("failed to read config file: %w", readErr)
+	}
+
+	var kzConfig kernelZConfig
+	unmarshalErr := yaml.Unmarshal(yamlFile, &kzConfig)
+	if unmarshalErr != nil {
+		return fmt.Errorf("failed to parse config file: %w", unmarshalErr)
+	}
+
+	if kzConfig.OAuthDiscoveryURL == "" || kzConfig.OAuthClientID == "" {
+		return fmt.Errorf("OAuth configuration not found in config.yml")
+	}
+
+	// Perform OAuth authentication for the specified role
+	targetRole := roleName
+	if targetRole == "" {
+		targetRole = "trcshhivez"
+	}
+	roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, &kzConfig, roleName)
+	if oauthErr != nil {
+		return fmt.Errorf("OAuth authentication failed for role %s: %w", roleName, oauthErr)
+	}
+
+	// Store credentials under "hivekernel" key so kernel code can find them
+	// (regardless of whether the actual Vault role is trcshhivez or trcshunrestricted)
+	appRoleSecret := []string{roleID, secretID}
+	driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", &appRoleSecret)
+
+	// Update vault address if needed
+	if vaultHost != "" {
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
+	}
+
+	fmt.Fprintf(os.Stderr, "Successfully authenticated for role: %s\n", targetRole)
+	return nil
+}
+
 // AutoAuth attempts to authenticate a user.
 func AutoAuth(driverConfig *config.DriverConfig,
 	wantedTokenNamePtr *string,
@@ -189,6 +339,68 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		(*appRoleSecret) = append((*appRoleSecret), "")
 		(*appRoleSecret) = append((*appRoleSecret), "")
 	}
+
+	// KernelZ OAuth/JWT authentication flow
+	if kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernelZ() {
+		// Read config file to check for OAuth settings and credentials
+		userHome, homeErr := userHome(driverConfig.CoreConfig.Log)
+		if homeErr == nil {
+			// KernelZ uses ~/.trcshrc
+			if _, statErr := os.Stat(userHome + "/.trcshrc"); !os.IsNotExist(statErr) {
+				// Try to read as KernelZ config first
+				yamlFile, readErr := os.ReadFile(userHome + "/.trcshrc")
+				if readErr == nil {
+					var kzConfig kernelZConfig
+					unmarshalErr := yaml.Unmarshal(yamlFile, &kzConfig)
+					if unmarshalErr == nil && kzConfig.OAuthDiscoveryURL != "" && kzConfig.OAuthClientID != "" {
+						// Check if we already have credentials cached under "hivekernel"
+						existingCreds := driverConfig.CoreConfig.TokenCache.GetRole("hivekernel")
+
+						needsAuth := true
+						if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
+							fmt.Fprintf(os.Stderr, "Using existing hivekernel credentials from cache\n")
+							needsAuth = false
+							hivekernelRole := "hivekernel"
+							roleEntityPtr = &hivekernelRole
+							appRoleSecret = existingCreds
+							if kzConfig.VaultHost != "" {
+								addrPtr = &kzConfig.VaultHost
+								driverConfig.CoreConfig.TokenCache.SetVaultAddress(&kzConfig.VaultHost)
+							}
+						}
+
+						if needsAuth {
+							// Use OAuth/JWT authentication for KernelZ (for default role - trcshhivez)
+							roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, &kzConfig, "")
+							if oauthErr != nil {
+								return fmt.Errorf("KernelZ OAuth authentication failed: %w", oauthErr)
+							}
+
+							// Store under "hivekernel" key so kernel code can find credentials
+							hivekernelRole := "hivekernel"
+							roleEntityPtr = &hivekernelRole
+
+							// Set AppRole credentials
+							(*appRoleSecret)[0] = roleID
+							(*appRoleSecret)[1] = secretID
+
+							// Update token cache with hivekernel key (OAuth retrieved trcshhivez role)
+							driverConfig.CoreConfig.TokenCache.AddRole(hivekernelRole, appRoleSecret)
+
+							// Set vault address
+							if vaultHost != "" {
+								addrPtr = &vaultHost
+								driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
+							}
+
+							fmt.Fprintf(os.Stderr, "Using trcshhivez AppRole stored as hivekernel\n")
+						}
+					}
+				}
+			}
+		}
+	}
+
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*wantedTokenNamePtr)
@@ -211,6 +423,8 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		!RefEquals(addrPtr, "") &&
 		!RefEquals(roleEntityPtr, "deployauth") &&
 		!RefEquals(roleEntityPtr, "hivekernel") &&
+		!RefEquals(roleEntityPtr, "trcshhivez") &&
+		!RefEquals(roleEntityPtr, "trcshunrestricted") &&
 		(driverConfig.CoreConfig.CurrentTokenNamePtr == nil && wantedTokenNamePtr != nil ||
 			// Accept provided token if:
 			// 1. current nil, wanted not nil.
@@ -307,6 +521,14 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			tokenNamePrefix = "trcsh_agent"
 			*wantedTokenNamePtr = tokenNamePrefix + "_" + GetEnvBasis(env)
 			goto skipswitch
+		case "trcshhivez":
+			tokenNamePrefix = "trcsh_agent"
+			*wantedTokenNamePtr = tokenNamePrefix + "_" + GetEnvBasis(env)
+			goto skipswitch
+		case "trcshunrestricted":
+			tokenNamePrefix = "config"
+			*wantedTokenNamePtr = tokenNamePrefix + "_" + GetEnvBasis(env) + "_unrestricted"
+			goto skipswitch
 		}
 		switch GetEnvBasis(env) {
 		case "dev":
@@ -388,6 +610,12 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		case "hivekernel":
 			mod.EnvBasis = "hivekernel"
 			mod.Env = "hivekernel"
+		case "trcshhivez":
+			mod.EnvBasis = "trcshhivez"
+			mod.Env = "trcshhivez"
+		case "trcshunrestricted":
+			mod.EnvBasis = "trcshunrestricted"
+			mod.Env = "trcshunrestricted"
 		case "rattan":
 			mod.EnvBasis = "rattan"
 			mod.Env = "rattan"
