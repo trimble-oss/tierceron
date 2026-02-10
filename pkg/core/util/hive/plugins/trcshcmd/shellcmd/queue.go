@@ -783,9 +783,9 @@ func ExecuteSu(driverConfig *config.DriverConfig) error {
 	// Perform OAuth authentication for unrestricted access
 	err := eUtils.GetUnrestrictedAccess(driverConfig)
 	if err != nil {
-		errMsg := fmt.Sprintf("su: authentication failed: %v\n", err)
+		errMsg := "su: authentication failed\n"
 		if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
-			driverConfig.CoreConfig.Log.Print(errMsg)
+			driverConfig.CoreConfig.Log.Printf("su: authentication failed: %v", err)
 		}
 		output.WriteString(errMsg)
 	} else {

@@ -336,7 +336,8 @@ func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig
 	ctx := context.Background()
 	roleID, secretID, userInfo, err := vault.GetAppRoleCredentialsWithOAuth(ctx, oauthConfig, targetRole)
 	if err != nil {
-		return "", "", "", fmt.Errorf("OAuth authentication failed: %w", err)
+		// Return simple error message without verbose HTTP details
+		return "", "", "", fmt.Errorf("authentication failed - check role authorization")
 	}
 
 	fmt.Fprintf(os.Stderr, "Successfully authenticated as: %s (%s)\n", userInfo.UserName, userInfo.UserEmail)
@@ -358,10 +359,21 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) err
 
 	fmt.Fprintf(os.Stderr, "KernelZOAuthForRole: received driverConfig\n")
 
-	// Check if we already have valid credentials in TokenCache under "hivekernel"
-	existingCreds := driverConfig.CoreConfig.TokenCache.GetRole("hivekernel")
+	// Determine target role
+	targetRole := roleName
+	if targetRole == "" {
+		targetRole = "trcshhivez"
+	}
+
+	// Use role-specific cache key to avoid mixing credentials from different roles
+	cacheKey := "hivekernel:" + targetRole
+
+	// Check if we already have valid credentials for THIS SPECIFIC role
+	existingCreds := driverConfig.CoreConfig.TokenCache.GetRole(cacheKey)
 	if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
-		fmt.Fprintf(os.Stderr, "Using existing hivekernel credentials from cache\n")
+		fmt.Fprintf(os.Stderr, "Using existing credentials from cache for role: %s\n", targetRole)
+		// Also ensure "hivekernel" points to these credentials for backward compatibility
+		driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", existingCreds)
 		return nil
 	}
 
@@ -376,18 +388,17 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) err
 	}
 
 	// Perform OAuth authentication for the specified role
-	targetRole := roleName
-	if targetRole == "" {
-		targetRole = "trcshhivez"
-	}
 	roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, kzConfig, roleName)
 	if oauthErr != nil {
-		return fmt.Errorf("OAuth authentication failed for role %s: %w", roleName, oauthErr)
+		// Return simple error without extra wrapping
+		return oauthErr
 	}
 
-	// Store credentials under "hivekernel" key so kernel code can find them
-	// (regardless of whether the actual Vault role is trcshhivez or trcshunrestricted)
+	// Store credentials under both role-specific key AND generic "hivekernel" key
+	// Role-specific key prevents credential mixing between roles
+	// Generic "hivekernel" key maintains backward compatibility with existing code
 	appRoleSecret := []string{roleID, secretID}
+	driverConfig.CoreConfig.TokenCache.AddRole(cacheKey, &appRoleSecret)
 	driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", &appRoleSecret)
 
 	// Update vault address if needed
