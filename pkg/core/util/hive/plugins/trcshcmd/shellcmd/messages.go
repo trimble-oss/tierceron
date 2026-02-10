@@ -14,4 +14,5 @@ const (
 	CmdCp         = "cp"
 	CmdMv         = "mv"
 	CmdCat        = "cat"
+	CmdSu         = "su"
 )

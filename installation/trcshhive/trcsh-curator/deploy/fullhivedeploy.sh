@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "This script will install and certify a new hive including a trcshq, trcsh-cursor-x, and trcshk or trcsh.exe components."
+echo "This script will install and certify a new hive including a trcshqx, trcsh-cursor-x, and trcshk or trcsh.exe components."
 
 if [[ -z "${AGENT_VAULT_ADDR}" ]]; then
 echo "Enter agent vault host base url: "
@@ -33,12 +33,12 @@ fi
 
 
 
-echo "Will this be a (aw - traditional aks and windows), (k - advanced aks hive kernel), or (b - both) cursor? (aw, k, or b): "
+echo "Will this be a (aw - traditional aks and windows), (k - advanced aks hive kernel), (z - oauth/jwt hive kernel), or (b - both aw+k) cursor? (aw, k, z, or b): "
 read CURSOR_TYPE_IN
 
 CURSOR_TYPES=()
 
-if [ "$CURSOR_TYPE_IN" = 'aw' ] || [ "$CURSOR_TYPE_IN" = 'k' ]; then
+if [ "$CURSOR_TYPE_IN" = 'aw' ] || [ "$CURSOR_TYPE_IN" = 'k' ] || [ "$CURSOR_TYPE_IN" = 'z' ]; then
     CURSOR_TYPES+=("$CURSOR_TYPE_IN")
     echo "Preparing to install cursor type $CURSOR_TYPE_IN..."
 elif [ "$CURSOR_TYPE_IN" = 'b' ]; then
@@ -122,41 +122,44 @@ function curatorDeployHive () {
     exit $certifystatus
     fi
 
-    #================================================================
-    #trcshq$CURSOR_TYPE deployment (the hive queen)
-    #================================================================
-    echo "Preparing trcshq$CURSOR_TYPE for certification"
-    TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE"
+    # Skip queen certification for 'z' type - hivez workers connect directly to cursor
+    if [ "$CURSOR_TYPE" != 'z' ]; then
+        #================================================================
+        #trcshq$CURSOR_TYPE deployment (the hive queen)
+        #================================================================
+        echo "Preparing trcshq$CURSOR_TYPE for certification"
+        TRC_PLUGIN_NAME="trcshq$CURSOR_TYPE"
 
-    FILE="target/$TRC_PLUGIN_NAME"
-    if [ ! -f "$FILE" ]; then
-        echo "$FILE does not exist."
-        exit 1
-    fi
-
-    FILESHA="target/$TRC_PLUGIN_NAME.sha256"
-    if [ ! -f "$FILESHA" ]; then
-        echo "$FILESHA does not exist."
-        exit 1
-    fi
-
-    FILESHAVAL=$(cat $FILESHA)
-
-    if [ -z "${PROD_EXT}" ]; then
-        VAULT_ENV="dev"
-    fi
-
-    echo "Certifying trcshq$CURSOR_TYPE"
-
-    trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=target/$TRC_PLUGIN_NAME -pluginType=agent
-            certifystatus=$?
-        if [ $certifystatus -eq 0 ]; then
-            echo "No certification problems encountered."
-            echo "trcshq$CURSOR_TYPE successfully certified"
-        else
-            echo "Unexpected certification error."
-            echo "trcshq$CURSOR_TYPE failed certification"
+        FILE="target/$TRC_PLUGIN_NAME"
+        if [ ! -f "$FILE" ]; then
+            echo "$FILE does not exist."
+            exit 1
         fi
+
+        FILESHA="target/$TRC_PLUGIN_NAME.sha256"
+        if [ ! -f "$FILESHA" ]; then
+            echo "$FILESHA does not exist."
+            exit 1
+        fi
+
+        FILESHAVAL=$(cat $FILESHA)
+
+        if [ -z "${PROD_EXT}" ]; then
+            VAULT_ENV="dev"
+        fi
+
+        echo "Certifying trcshq$CURSOR_TYPE"
+
+        trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=$TRC_PLUGIN_NAME -sha256=target/$TRC_PLUGIN_NAME -pluginType=agent
+                certifystatus=$?
+            if [ $certifystatus -eq 0 ]; then
+                echo "No certification problems encountered."
+                echo "trcshq$CURSOR_TYPE successfully certified"
+            else
+                echo "Unexpected certification error."
+                echo "trcshq$CURSOR_TYPE failed certification"
+            fi
+    fi
 }
 
 function certifyWorkers() {
@@ -203,12 +206,17 @@ function certifyWorkers() {
 function certifyKernelWorker() {
     CURSOR_TYPE=$1
 
-    if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'k' ]; then
+    if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'k' ] || [ "$CURSOR_TYPE" = 'z' ]; then
         #================================================================
-        #trcshk deployment
+        #trcshk/trcshz deployment
         #================================================================
-        echo "Certifying trcshk worker"
-        TRC_PLUGIN_NAME="trcshk"
+        if [ "$CURSOR_TYPE" = 'z' ]; then
+            TRC_PLUGIN_NAME="trcshz"
+            echo "Certifying trcshz worker"
+        else
+            TRC_PLUGIN_NAME="trcshk"
+            echo "Certifying trcshk worker"
+        fi
 
         FILE="target/$TRC_PLUGIN_NAME"
         if [ ! -f "$FILE" ]; then
@@ -233,7 +241,17 @@ function certifyKernelWorker() {
             vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
         fi
 
-        echo "trcshk certified and ready for release pipeline deployment"
+        echo "$TRC_PLUGIN_NAME certified and ready for release pipeline deployment"
+        
+        # For hive-z, install trcshz to /usr/local/trcshz/ and create symlink
+        if [ "$CURSOR_TYPE" = 'z' ]; then
+            echo "Installing trcshz to /usr/local/trcshz/"
+            sudo mkdir -p /usr/local/trcshz
+            sudo cp target/trcshz /usr/local/trcshz/
+            echo "Creating symlink /usr/local/bin/trcshz"
+            sudo ln -sf /usr/local/trcshz/trcshz /usr/local/bin/trcshz
+            echo "trcshz installed and symlinked successfully"
+        fi
     fi
 }
 
@@ -257,10 +275,12 @@ function registerCursors() {
     echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT successful"
 }
 
-# Deploy curator only for dev and staging
+# Deploy curator only for dev and staging (skip 'z' since trcshqz runs locally)
 if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
     for cursorType in ${CURSOR_TYPES[@]}; do
-        curatorDeployHive $cursorType
+        if [ "$cursorType" != 'z' ]; then
+            curatorDeployHive $cursorType
+        fi
     done
 
     echo "Hive deployed successfully? trcshqx and trcsh-cursor-x must at least have deployed by this point Y/n: "
@@ -271,10 +291,12 @@ if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
     fi
 fi
 
-# Register cursors only for dev and staging
+# Register cursors only for dev and staging (skip 'z' since trcsh-cursor-z runs locally)
 if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
     for cursorType in ${CURSOR_TYPES[@]}; do
-        registerCursors $cursorType
+        if [ "$cursorType" != 'z' ]; then
+            registerCursors $cursorType
+        fi
     done
 fi
 

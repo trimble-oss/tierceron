@@ -43,6 +43,7 @@ type ShellModel struct {
 	memFs          trcshio.MemoryFileSystem
 	chatSenderChan *chan *tccore.ChatMsg
 	pendingExit    bool
+	elevatedMode   bool // Track if user has unrestricted write access
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -79,6 +80,7 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		memFs:          memFileSystem,
 		chatSenderChan: chatSenderChan,
 		pendingExit:    false,
+		elevatedMode:   false,
 	}
 }
 
@@ -298,6 +300,14 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 
 	switch command {
 	case "exit", "quit":
+		// If in elevated mode, exit just reverts to normal mode
+		if m.elevatedMode {
+			m.elevatedMode = false
+			m.prompt = "$"
+			m.output = append(m.output, "Exited elevated mode. Returned to normal access.")
+			return false
+		}
+		// Otherwise, exit the shell
 		m.output = append(m.output, "All uncommitted changes will be lost. Are you sure?")
 		m.pendingExit = true
 		// Don't add the normal empty line at the end for exit
@@ -433,6 +443,13 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 	case "tpub":
+		// Only available in elevated mode
+		if !m.elevatedMode {
+			m.output = append(m.output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
+			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			break
+		}
+
 		if m.chatSenderChan == nil {
 			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
 			break
@@ -444,13 +461,85 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
+				// Style authorization errors in red
+				if strings.Contains(line, "AUTHORIZATION ERROR") {
+					m.output = append(m.output, errorStyle.Render(line))
+				} else {
+					m.output = append(m.output, line)
+				}
+			}
+		} else {
+			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+		}
+
+	case "su":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd to perform OAuth authentication for unrestricted access
+		m.output = append(m.output, "Requesting elevated access...")
+		response := callTrcshCmd(m.chatSenderChan, "su", args)
+		if response != "" && strings.Contains(response, "success") {
+			m.elevatedMode = true
+			m.prompt = "#"
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
 				m.output = append(m.output, line)
+			}
+			m.output = append(m.output, "")
+			m.output = append(m.output, "Elevated mode activated. Additional commands available:")
+			m.output = append(m.output, "  tinit    - Run trcinit commands (write access)")
+			m.output = append(m.output, "  tx       - Run trcx commands (write access)")
+			m.output = append(m.output, "Type 'exit' to return to normal mode.")
+		} else {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, errorStyle.Render(line))
+			}
+		}
+
+	case "tinit":
+		// Only available in elevated mode
+		if !m.elevatedMode {
+			m.output = append(m.output, errorStyle.Render("Error: 'tinit' command requires elevated access"))
+			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			break
+		}
+
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd synchronously - let trcinit handle its own usage validation
+		response := callTrcshCmd(m.chatSenderChan, "trcinit", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				// Style authorization errors in red
+				if strings.Contains(line, "AUTHORIZATION ERROR") {
+					m.output = append(m.output, errorStyle.Render(line))
+				} else {
+					m.output = append(m.output, line)
+				}
 			}
 		} else {
 			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tx":
+		// Only available in elevated mode
+		if !m.elevatedMode {
+			m.output = append(m.output, errorStyle.Render("Error: 'tx' command requires elevated access"))
+			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			break
+		}
+
 		if m.chatSenderChan == nil {
 			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
 			break
@@ -462,7 +551,12 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				// Style authorization errors in red
+				if strings.Contains(line, "AUTHORIZATION ERROR") {
+					m.output = append(m.output, errorStyle.Render(line))
+				} else {
+					m.output = append(m.output, line)
+				}
 			}
 		} else {
 			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
@@ -499,10 +593,19 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		m.output = append(m.output, "  clear    - Clear screen (or press Ctrl+L)")
 		m.output = append(m.output, "  history  - Show command history")
 		m.output = append(m.output, "  tsub     - Run trcsub commands")
-		m.output = append(m.output, "  tpub     - Run trcpub commands")
-		m.output = append(m.output, "  tx       - Run trcx commands")
 		m.output = append(m.output, "  tconfig  - Run trcconfig commands")
+		if !m.elevatedMode {
+			m.output = append(m.output, "  su       - Obtain elevated access for write operations")
+		} else {
+			m.output = append(m.output, "  tinit    - Run trcinit commands (elevated mode only)")
+			m.output = append(m.output, "  tpub     - Run trcpub commands (elevated mode only)")
+			m.output = append(m.output, "  tx       - Run trcx commands (elevated mode only)")
+		}
 		m.output = append(m.output, "  exit     - Exit shell (or press Ctrl+C)")
+		if m.elevatedMode {
+			m.output = append(m.output, "")
+			m.output = append(m.output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")
+		}
 
 	case "echo":
 		m.output = append(m.output, strings.Join(args, " "))

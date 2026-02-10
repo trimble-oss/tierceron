@@ -18,8 +18,29 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
+
+// hasUnrestrictedAccess checks if the user has unrestricted write access
+// by verifying if trcshunrestricted role credentials are present in TokenCache
+func hasUnrestrictedAccess(driverConfig *config.DriverConfig) bool {
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		return false
+	}
+
+	// Check if trcshunrestricted role has credentials
+	roleName := "trcshunrestricted"
+	appRoleSecret := driverConfig.CoreConfig.TokenCache.GetRoleStr(&roleName)
+	if appRoleSecret == nil || len(*appRoleSecret) < 2 {
+		return false
+	}
+
+	// Verify credentials are non-empty (valid UUID format is 36 chars)
+	roleID := (*appRoleSecret)[0]
+	secretID := (*appRoleSecret)[1]
+	return len(roleID) == 36 && len(secretID) == 36
+}
 
 // ExecuteShellCommand executes a shell command based on the command type string from ChatMsg.Response
 // Returns the MemoryFileSystem where command output is written
@@ -64,6 +85,11 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		err = trcconfigbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, &region, nil, argLines, driverConfig)
 
 	case CmdTrcPub:
+		// Require elevated access for trcpub (write operations)
+		if !hasUnrestrictedAccess(driverConfig) {
+			err = errors.New("AUTHORIZATION ERROR: 'tpub' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
+			break
+		}
 		pubTokenName := fmt.Sprintf("vault_pub_token_%s", driverConfig.CoreConfig.EnvBasis)
 		pubEnv := driverConfig.CoreConfig.Env
 		trcpubbase.CommonMain(&pubEnv, &envCtx, &pubTokenName, nil, argLines, driverConfig)
@@ -74,9 +100,19 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		driverConfig.EndDir = originalEndDir
 
 	case CmdTrcX:
+		// Require elevated access for trcx (write operations)
+		if !hasUnrestrictedAccess(driverConfig) {
+			err = errors.New("AUTHORIZATION ERROR: 'tx' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
+			break
+		}
 		trcxbase.CommonMain(nil, nil, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)
 
 	case CmdTrcInit:
+		// Require elevated access for trcinit (write operations)
+		if !hasUnrestrictedAccess(driverConfig) {
+			err = errors.New("AUTHORIZATION ERROR: 'tinit' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
+			break
+		}
 		pubTokenName := fmt.Sprintf("vault_pub_token_%s", driverConfig.CoreConfig.EnvBasis)
 		pubEnv := driverConfig.CoreConfig.Env
 		uploadCert := driverConfig.CoreConfig.WantCerts
@@ -104,7 +140,7 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 	case CmdTrcBoot:
 		// Simply return the memFs from driverConfig without executing any commands
 		// This is used for initializing plugins that need access to the shared memFs
-		if driverConfig != nil && driverConfig.MemFs != nil {
+		if driverConfig.MemFs != nil {
 			return driverConfig.MemFs
 		}
 		return nil
@@ -121,6 +157,10 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 	case CmdCat:
 		err = ExecuteCat(args, driverConfig)
 
+	case CmdSu:
+		// Perform OAuth authentication for unrestricted write access
+		err = ExecuteSu(driverConfig)
+
 	default:
 		// Unknown command type
 		return nil
@@ -130,6 +170,27 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		// Error occurred, but MemFs may still have partial output
 		if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
 			driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: command execution error: %v\n", err)
+		}
+
+		// Write error message to io/STDIO so shell can display it
+		// This is especially important for authorization errors
+		if driverConfig.MemFs != nil {
+			errMsg := fmt.Sprintf("%v\n", err)
+			outputData := []byte(errMsg)
+
+			// Check if io directory exists
+			if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+				// Directory exists, open file for append
+				if stdioFile, writeErr := driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644); writeErr == nil {
+					stdioFile.Write(outputData)
+					stdioFile.Close()
+				} else {
+					driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+				}
+			} else {
+				// Directory doesn't exist, use WriteToMemFile to create it
+				driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+			}
 		}
 	}
 
@@ -707,4 +768,48 @@ func ExecuteCat(args []string, driverConfig *config.DriverConfig) error {
 	}
 
 	return nil
+}
+
+// ExecuteSu performs OAuth authentication for unrestricted write access
+func ExecuteSu(driverConfig *config.DriverConfig) error {
+	if driverConfig == nil || driverConfig.MemFs == nil {
+		return errors.New("driver config or memfs is nil")
+	}
+
+	fmt.Printf("ExecuteSu: received driverConfig=%p\n", driverConfig)
+
+	var output strings.Builder
+
+	// Perform OAuth authentication for unrestricted access
+	err := eUtils.GetUnrestrictedAccess(driverConfig)
+	if err != nil {
+		errMsg := fmt.Sprintf("su: authentication failed: %v\n", err)
+		if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Print(errMsg)
+		}
+		output.WriteString(errMsg)
+	} else {
+		output.WriteString("success: Elevated access granted.\n")
+		output.WriteString("You now have write access to configuration tokens.\n")
+	}
+
+	// Write output to io/STDIO so it can be read as response
+	if output.Len() > 0 {
+		outputData := []byte(output.String())
+		// Check if io directory exists
+		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+			// Directory exists, open file for append
+			if stdioFile, err := driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644); err == nil {
+				stdioFile.Write(outputData)
+				stdioFile.Close()
+			} else {
+				driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+			}
+		} else {
+			// Directory doesn't exist, use WriteToMemFile to create it
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+		}
+	}
+
+	return err
 }
