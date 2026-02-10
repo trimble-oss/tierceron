@@ -83,7 +83,7 @@ if err != nil {
 1. **Register OAuth Application**
    - Go to Identity Provider Portal
    - Create new application
-   - Set redirect URI to `http://localhost:8080/callback`
+   - Set redirect URI to `http://localhost:<oauth_callback_port>/<oauth_callback_path>`
    - Save the client_id (and client_secret if provided)
 
 2. **Configure Vault** (Admin only)
@@ -111,7 +111,6 @@ if err != nil {
    - Users can now run `trcsh login` to authenticate
 ### Initial Startup (Read-Only Access)
 1. User runs trcsh
-2. System checks `~/.tierceron/config.yml` for cached credentials
 3. If no valid credentials:
    - Browser opens to Identity provider login page
    - User authenticates with their Identity credentials
@@ -127,8 +126,6 @@ if err != nil {
 ### On-Demand Write Access
 When a trcsh command needs write access:
 1. Command calls `utils.GetUnrestrictedAccess(driverConfig)`
-2. System checks `~/.tierceron/config.yml` for cached unrestricted credentials
-3. If no valid credentials:cached in `~/.tierceron/config.yml` (0600 permissions)
 - **Separate from Kubernetes** - trcshhivez/trcshunrestricted AppRoles are separate from hivekernel
 - **Role-based access**:
   - `trcshhivez`: Broad user whitelist for read operations
@@ -169,17 +166,13 @@ When a trcsh command needs write access:
 - Vault must be able to reach `oauth_jwks_url` for public key validation
 
 ### Network Issues
-- Port 8080 must be available for OAuth callback
-- Firewall must allow s: 
-  - Read-only: `/home/jrieke/workspace/Github/trimble-oss/VaultConfig.Bootstrap/vault_namespaces/vault/approle_files/trcshhivez.yml`
-  - Write access: `/home/jrieke/workspace/Github/trimble-oss/VaultConfig.Bootstrap/vault_namespaces/vault/approle_files/trcshunrestricted.yml`
+- Port <oauth_callback_port> must be available for OAuth callback
 - Vault Policies:
-  - `/home/jrieke/workspace/Github/trimble-oss/VaultConfig.Bootstrap/vault_namespaces/vault/policy_files/trcshhivez-approle-read.hcl`
-  - `/home/jrieke/workspace/Github/trimble-oss/VaultConfig.Bootstrap/vault_namespaces/vault/policy_files/trcshunrestricted-approle-read.hc
+  - Read-only: `installation/trcshhive/trcshz/jwt_policy_files/trcshhivez-approle-read.hcl`
+  - Write access: `installation/trcshhive/trcshz/jwt_policy_files/trcshunrestricted-approle-read.hcl`
 - Vault must be network reachable
 
 ## References
 
 - OAuth Implementation: `/home/jrieke/workspace/Github/trimble-oss/tierceron/pkg/oauth/README.md`
 - Vault Integration: `/home/jrieke/workspace/Github/trimble-oss/tierceron/pkg/vaulthelper/system/OAUTH_VAULT_INTEGRATION.md`
-- Vault AppRole Config: `/home/jrieke/workspace/Github/trimble-oss/VaultConfig.Bootstrap/vault_namespaces/vault/approle_files/trcshhivez.yml`
