@@ -14,7 +14,7 @@ func Example_browserLogin() {
 
 	// Create OAuth client from discovery URL
 	client, err := oauth.NewClientFromDiscovery(
-		"https://id.trimble.com/.well-known/openid-configuration",
+		"https://tierceron.test/.well-known/openid-configuration",
 		"your-client-id",
 		"", // Empty for public client (no client secret)
 		"http://localhost:8080/callback",
@@ -52,7 +52,7 @@ func Example_manualFlow() {
 	ctx := context.Background()
 
 	// Fetch discovery document
-	discovery, err := oauth.GetDiscovery("https://id.trimble.com/.well-known/openid-configuration")
+	discovery, err := oauth.GetDiscovery("https://tierceron.test/.well-known/openid-configuration")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func Example_refreshToken() {
 	ctx := context.Background()
 
 	client, _ := oauth.NewClientFromDiscovery(
-		"https://id.trimble.com/.well-known/openid-configuration",
+		"https://tierceron.test/.well-known/openid-configuration",
 		"your-client-id",
 		"",
 		"http://localhost:8080/callback",
