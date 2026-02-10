@@ -6,12 +6,11 @@ import (
 )
 
 type FlowStateUpdate struct {
-	FlowName     string
-	StateUpdate  string
-	SyncFilter   string
-	SyncMode     string
-	FlowAlias    string
-	LastModified string
+	FlowName    string
+	StateUpdate string
+	SyncFilter  string
+	SyncMode    string
+	FlowAlias   string
 }
 
 type CurrentFlowState struct {

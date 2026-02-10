@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/glycerine/bchan"
@@ -107,6 +108,27 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
 		// Notify flow context it's loaded.
 		tfContext.ContextNotifyChan <- true
 	}()
+}
+
+func (tfContext *TrcFlowContext) NotifyFlowComponentNeedsRestart() {
+	currentFlowState := tfContext.GetFlowState().(flowcorehelper.CurrentFlowState)
+	if currentFlowState.State != 3 {
+		currentFlowState.State = 3
+		tfContext.SetFlowState(currentFlowState)
+	}
+	for {
+		if tfContext.GetFlowStateState() == 0 {
+			break
+		} else {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	// When state is set to 0, set state to 1 to trigger reload.
+	updateFlowState := tfContext.GetFlowState().(flowcorehelper.CurrentFlowState)
+	if updateFlowState.State != 3 {
+		updateFlowState.State = 1
+		tfContext.SetFlowState(updateFlowState)
+	}
 }
 
 func (tfContext *TrcFlowContext) WaitFlowLoaded() {
