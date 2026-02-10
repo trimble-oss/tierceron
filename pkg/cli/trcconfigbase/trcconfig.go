@@ -132,6 +132,7 @@ func CommonMain(envDefaultPtr *string,
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
+	swPtr := flagset.String("sw", "", "Alias for -servicesWanted")
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	certDestPathPtr := flagset.String("certDestPath", "", "Override templated cert destination paths. Format of tmplFileName:certDirPath/file.pfx")
 	keyStorePtr := flagset.String("keystore", "", "Put certificates into this keystore file.")
@@ -160,18 +161,13 @@ func CommonMain(envDefaultPtr *string,
 		var err error
 		// Check if io directory exists
 		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
-			// Directory exists, open file and seek to end for append
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
-			if err == nil {
-				if seeker, ok := stdioFile.(io.Seeker); ok {
-					seeker.Seek(0, io.SeekEnd)
-				}
-			}
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		} else {
 			// Directory doesn't exist, use WriteToMemFile to create it
 			emptyData := []byte{}
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		}
 		if err == nil {
 			outWriter = stdioFile
@@ -192,7 +188,19 @@ func CommonMain(envDefaultPtr *string,
 		}
 		diffPtr = flagset.Bool("diff", false, "Diff files")
 		versionInfoPtr = flagset.Bool("versions", false, "Version information about values")
-		flagset.Parse(argLines[1:])
+		parseErr := flagset.Parse(argLines[1:])
+		// If help flag was used, print usage and return early
+		if parseErr == flag.ErrHelp {
+			flagset.Usage()
+			return nil
+		}
+		if parseErr != nil {
+			return parseErr
+		}
+		// Handle -sw override for -servicesWanted
+		if len(*swPtr) > 0 {
+			*servicesWanted = *swPtr
+		}
 	} else {
 		versionInfo := false
 		versionInfoPtr = &versionInfo
@@ -200,7 +208,10 @@ func CommonMain(envDefaultPtr *string,
 		diffPtr = &diff
 		// TODO: rework to support standard arg parsing...
 		for _, args := range argLines {
-			if args == "-certs" {
+			if args == "-h" || args == "-help" || args == "--help" {
+				flagset.Usage()
+				return nil
+			} else if args == "-certs" {
 				driverConfig.CoreConfig.WantCerts = true
 			} else if strings.HasPrefix(args, "-keystore") {
 				storeArgs := strings.Split(args, "=")
@@ -216,6 +227,11 @@ func CommonMain(envDefaultPtr *string,
 				servicesWantedArg := strings.Split(args, "=")
 				if len(servicesWantedArg) > 1 {
 					*servicesWanted = servicesWantedArg[1]
+				}
+			} else if strings.HasPrefix(args, "-sw") {
+				swArg := strings.Split(args, "=")
+				if len(swArg) > 1 {
+					*swPtr = swArg[1]
 				}
 			} else if strings.HasPrefix(args, "-certDestPath") {
 				certDestPath := strings.Split(args, "=")
@@ -234,6 +250,10 @@ func CommonMain(envDefaultPtr *string,
 			}
 		}
 		flagset.Parse(nil)
+		// Handle -sw override for -servicesWanted in shell mode
+		if len(*swPtr) > 0 {
+			*servicesWanted = *swPtr
+		}
 		if driverConfig.CoreConfig.WantCerts {
 			*wantCertsPtr = true
 		}

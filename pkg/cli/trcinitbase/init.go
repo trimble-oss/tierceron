@@ -132,7 +132,16 @@ func CommonMain(envPtr *string,
 				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Wrong flag syntax: %s", s), 1)
 			}
 		}
-		eUtils.CheckInitFlags(flagset, argLines[1:])
+		parseErr := eUtils.CheckInitFlags(flagset, argLines[1:])
+		// If help flag was used, print usage and return early
+		if parseErr == flag.ErrHelp {
+			flagset.Usage()
+			return
+		}
+		if parseErr != nil {
+			fmt.Fprintln(os.Stderr, parseErr.Error())
+			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, parseErr.Error(), 1)
+		}
 
 		// Prints usage if no flags are specified
 		if flagset.NFlag() == 0 {
@@ -140,6 +149,13 @@ func CommonMain(envPtr *string,
 			os.Exit(1)
 		}
 	} else {
+		// Check for help flag in shell mode
+		for _, arg := range argLines {
+			if arg == "-h" || arg == "-help" || arg == "--help" {
+				flagset.Usage()
+				return
+			}
+		}
 		flagset.Parse(nil)
 	}
 	if eUtils.RefLength(addrPtr) > 0 {

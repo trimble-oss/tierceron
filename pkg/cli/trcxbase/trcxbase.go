@@ -109,18 +109,13 @@ func CommonMain(ctx config.ProcessContext,
 		var err error
 		// Check if io directory exists
 		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
-			// Directory exists, open file and seek to end for append
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
-			if err == nil {
-				if seeker, ok := stdioFile.(io.Seeker); ok {
-					seeker.Seek(0, io.SeekEnd)
-				}
-			}
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		} else {
 			// Directory doesn't exist, use WriteToMemFile to create it
 			emptyData := []byte{}
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		}
 		if err == nil {
 			outWriter = stdioFile
@@ -143,7 +138,19 @@ func CommonMain(ctx config.ProcessContext,
 		}
 	}
 
-	eUtils.CheckInitFlags(flagset, argLines[1:])
+	parseErr := eUtils.CheckInitFlags(flagset, argLines[1:])
+	// If help flag was used, print usage and return early
+	if parseErr == flag.ErrHelp {
+		flagset.Usage()
+		return
+	}
+	if parseErr != nil {
+		fmt.Fprintf(outWriter, "%s\n", parseErr.Error())
+		if driverConfig == nil || (!driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ()) {
+			os.Exit(1)
+		}
+		return
+	}
 
 	configCtx := &config.ConfigContext{
 		ResultMap:            make(map[string]*string),
