@@ -34,6 +34,7 @@ var logger *log.Logger
 func init() {
 	// Initialize kernelopts early so IsKernelZ() is available in plugin init() functions
 	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 
 	// Create log file early so stderr redirection happens before plugin init() functions
 	var logErr error
@@ -55,7 +56,6 @@ func main() {
 	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
 	pluginopts.NewOptionsBuilder(pluginopts.LoadOptions())
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
-	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())

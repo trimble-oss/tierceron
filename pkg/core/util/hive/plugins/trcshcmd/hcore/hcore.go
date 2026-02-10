@@ -15,6 +15,36 @@ var (
 	driverConfig  *config.DriverConfig
 )
 
+// GetConfigContext returns the trcshcmd config context for cross-plugin access
+func GetConfigContext() *tccore.ConfigContext {
+	return configContext
+}
+
+// GetDriverConfig returns the trcshcmd driver config
+func GetDriverConfig() *config.DriverConfig {
+	return driverConfig
+}
+
+// hasUnrestrictedAccess checks if the user has unrestricted write access
+// by verifying if trcshunrestricted role credentials are present in TokenCache
+func hasUnrestrictedAccess() bool {
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		return false
+	}
+
+	// Check if trcshunrestricted role has credentials
+	roleName := "trcshunrestricted"
+	appRoleSecret := driverConfig.CoreConfig.TokenCache.GetRoleStr(&roleName)
+	if appRoleSecret == nil || len(*appRoleSecret) < 2 {
+		return false
+	}
+
+	// Verify credentials are non-empty (valid UUID format is 36 chars)
+	roleID := (*appRoleSecret)[0]
+	secretID := (*appRoleSecret)[1]
+	return len(roleID) == 36 && len(secretID) == 36
+}
+
 func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
 		event := <-receive_chan
@@ -65,10 +95,27 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPlgtool ||
 				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot ||
 				cmdType == shellcmd.CmdRm || cmdType == shellcmd.CmdCp ||
-				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat {
+				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat ||
+				cmdType == shellcmd.CmdSu {
 
 				if configContext != nil {
 					configContext.Log.Printf("Received shell command request: %s\n", cmdType)
+				}
+
+				// Authorization check: Block privileged commands without elevated access
+				if (cmdType == shellcmd.CmdTrcX || cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub) && !hasUnrestrictedAccess() {
+					configContext.Log.Printf("AUTHORIZATION DENIED: Command %s requires elevated access\n", cmdType)
+
+					// Return authorization error immediately without executing command
+					errorMsg := fmt.Sprintf("AUTHORIZATION ERROR: '%s' command requires elevated access. Run 'su' to obtain unrestricted credentials.\n", cmdType)
+					event.Response = &errorMsg
+					event.HookResponse = nil
+
+					// Send error response back
+					if configContext != nil && configContext.ChatSenderChan != nil {
+						*configContext.ChatSenderChan <- event
+					}
+					continue
 				}
 
 				// Extract args from HookResponse field
@@ -168,6 +215,9 @@ func initPlugin(pluginName string, properties *map[string]any) {
 	// Get DriverConfig from properties
 	if dc, ok := (*properties)["driverConfig"].(*config.DriverConfig); ok {
 		driverConfig = dc
+		fmt.Printf("trcshcmd initPlugin: received driverConfig=%p\n", driverConfig)
+	} else {
+		fmt.Printf("trcshcmd initPlugin: no driverConfig in properties\n")
 	}
 
 	var err error
