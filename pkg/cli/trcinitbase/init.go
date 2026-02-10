@@ -166,6 +166,14 @@ func CommonMain(envPtr *string,
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
 
+	// Security check: Block dangerous operations in shell mode (IsKernelZ)
+	if kernelopts.BuildOptions.IsKernelZ() {
+		if *newPtr || *initNamespace || *rotateTokens || *tokenExpiration || *updateRole || *updatePolicy || *updateAppRole {
+			fmt.Fprintln(os.Stderr, "Error: -new, -initns, -rotateTokens, -tokenExpiration, -updateRole, -updatePolicy, and -updateAppRole are not available in shell mode for security reasons.")
+			return
+		}
+	}
+
 	var driverConfigBase *config.DriverConfig
 	if driverConfig.CoreConfig.IsShell {
 		driverConfigBase = driverConfig
@@ -265,12 +273,14 @@ func CommonMain(envPtr *string,
 		fmt.Fprintf(os.Stderr, "Are you sure you want to seed nested files? [y|n]: ")
 		_, err := fmt.Scanln(&input)
 		if err != nil {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Failed to read input", 1)
+			fmt.Fprintf(os.Stderr, "Failed to read input: %v\n", err)
+			return
 		}
 		input = strings.ToLower(input)
 
 		if input != "y" && input != "yes" {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Seeding nested files aborted", 1)
+			fmt.Fprintln(os.Stderr, "Seeding nested files aborted")
+			return
 		}
 	}
 
@@ -308,7 +318,7 @@ func CommonMain(envPtr *string,
 		if !driverConfigBase.CoreConfig.IsEditor {
 			if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
 				fmt.Fprintln(os.Stderr, "Missing required seed folder: "+*seedPtr)
-				os.Exit(1)
+				return
 			}
 		}
 	}
@@ -317,13 +327,13 @@ func CommonMain(envPtr *string,
 		if !strings.HasPrefix(*envPtr, "staging") && !strings.HasPrefix(*envPtr, "prod") {
 			fmt.Fprintln(os.Stderr, "The prod flag can only be used with the staging or prod env.")
 			flag.Usage()
-			os.Exit(1)
+			return
 		}
 	} else {
 		if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") {
 			fmt.Fprintln(os.Stderr, "The prod flag should be used with the staging or prod env.")
 			flag.Usage()
-			os.Exit(1)
+			return
 		}
 	}
 	if driverConfig.CoreConfig.IsShell {
@@ -351,13 +361,13 @@ func CommonMain(envPtr *string,
 			fmt.Fprintln(os.Stderr, err.Error())
 		}
 
-		os.Exit(0)
+		return
 	}
 	if *pingPtr {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Ping failure: %v\n", err)
 		}
-		os.Exit(0)
+		return
 	}
 	// Set up token file filters if there are any.
 	var tokenFileFiltersSet map[string]bool = make(map[string]bool)
@@ -384,12 +394,12 @@ func CommonMain(envPtr *string,
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
 		if err != nil || totalKeyShard > math.MaxInt {
 			fmt.Fprintln(os.Stderr, "Unable to parse totalKeyShard into int")
-			os.Exit(-1)
+			return
 		}
 		keyThreshold, err := strconv.ParseUint(*unsealShardPtr, 10, 32)
 		if err != nil || keyThreshold > math.MaxInt {
 			fmt.Fprintln(os.Stderr, "Unable to parse keyThreshold into int")
-			os.Exit(-1)
+			return
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
 		eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, true)
@@ -408,12 +418,12 @@ func CommonMain(envPtr *string,
 			if policyErr != nil {
 				eUtils.LogErrorObject(driverConfigBase.CoreConfig, policyErr, false)
 				fmt.Fprintln(os.Stderr, "Cannot safely determine policy.")
-				os.Exit(-1)
+				return
 			}
 
 			if policyExists {
 				fmt.Fprintf(os.Stderr, "Policy exists for policy configurations in directory: %s.  Refusing to continue.\n", namespacePolicyConfigs)
-				os.Exit(-1)
+				return
 			}
 
 			roleExists, roleErr := il.GetExistsRoles(driverConfigBase.CoreConfig, namespaceRoleConfigs, v)
@@ -424,7 +434,7 @@ func CommonMain(envPtr *string,
 
 			if roleExists {
 				fmt.Fprintf(os.Stderr, "Role exists for role configurations in directory: %s.  Refusing to continue.\n", namespaceRoleConfigs)
-				os.Exit(-1)
+				return
 			}
 
 			// Special path for generating custom scoped tokens.  This path requires
@@ -447,10 +457,10 @@ func CommonMain(envPtr *string,
 			} else {
 				driverConfigBase.CoreConfig.Log.Println(*namespaceVariable + " tokens failed to create.")
 			}
-			os.Exit(0)
+			return
 		} else {
 			fmt.Fprintln(os.Stderr, "initns or rotateTokens required with the namespace paramater.")
-			os.Exit(0)
+			return
 		}
 	}
 
@@ -487,7 +497,7 @@ func CommonMain(envPtr *string,
 				driverConfigBase.CoreConfig.Log)
 			if getOrRevokeError != nil {
 				fmt.Fprintln(os.Stderr, "Token revocation or access failure.  Cannot continue.")
-				os.Exit(-1)
+				return
 			}
 		}
 
@@ -500,7 +510,7 @@ func CommonMain(envPtr *string,
 					*rotateTokens = true
 				} else {
 					fmt.Fprintln(os.Stderr, "Role update failed.  Cannot continue.")
-					os.Exit(-1)
+					return
 				}
 			} else {
 				fmt.Fprintln(os.Stderr, "Role updated")
@@ -513,19 +523,13 @@ func CommonMain(envPtr *string,
 			errTokenPolicy := il.UploadPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v, false)
 			if errTokenPolicy != nil {
 				fmt.Fprintln(os.Stderr, "Policy update failed.  Cannot continue.")
-				os.Exit(-1)
+				return
 			} else {
 				fmt.Fprintln(os.Stderr, "Policies updated")
 			}
 		}
 
 		if *updateAppRole {
-			// Block this functionality from trcsh/trcshcmd for security
-			if kernelopts.BuildOptions.IsKernelZ() {
-				fmt.Fprintln(os.Stderr, "Error: -updateAppRole is not available in shell mode for security reasons.")
-				os.Exit(-1)
-			}
-
 			// Update AppRole without rotating tokens
 			fmt.Fprintln(os.Stderr, "Updating AppRole")
 
@@ -562,7 +566,7 @@ func CommonMain(envPtr *string,
 					}
 					fmt.Fprintf(os.Stderr, "These policies could potentially access trcshunrestricted tokens.\n")
 					fmt.Fprintf(os.Stderr, "Fix these policies to use specific paths (e.g., super-secrets/data/<rolename>/*) before creating restricted AppRoles.\n")
-					os.Exit(-1)
+					return
 				} else {
 					fmt.Fprintln(os.Stderr, "Security audit passed: No conflicting policy wildcards found (admin excluded)")
 				}
@@ -576,7 +580,7 @@ func CommonMain(envPtr *string,
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error creating modifier.")
 				eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
-				os.Exit(-1)
+				return
 			}
 
 			approleFilters := []string{}
@@ -592,7 +596,7 @@ func CommonMain(envPtr *string,
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error reading approle_files directory.")
 				eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
-				os.Exit(-1)
+				return
 			}
 
 			for _, file := range files {
@@ -741,6 +745,7 @@ func CommonMain(envPtr *string,
 		}
 
 		if *rotateTokens && !*tokenExpiration {
+			// Guard already checked above in (*rotateTokens || *tokenExpiration) block
 			var tokens []*apinator.InitResp_Token
 			// Create new tokens.
 			fmt.Fprintln(os.Stderr, "Creating new tokens")
@@ -754,7 +759,7 @@ func CommonMain(envPtr *string,
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error creating modifer.")
 				eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
-				os.Exit(-1)
+				return
 			}
 
 			approleFilters := []string{}
@@ -908,7 +913,7 @@ func CommonMain(envPtr *string,
 				}
 			}
 		}
-		os.Exit(0)
+		return
 	}
 
 	// Try to unseal if an old vault and unseal key given
@@ -936,13 +941,13 @@ func CommonMain(envPtr *string,
 
 		if mod.Exists("values/metadata") || mod.Exists("templates/metadata") || mod.Exists("super-secrets/metadata") {
 			fmt.Fprintln(os.Stderr, "Vault has been initialized already...")
-			os.Exit(1)
+			return
 		}
 
 		policyExists, err := il.GetExistsPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v)
 		if policyExists || err != nil {
 			fmt.Fprintf(os.Stderr, "Vault may be initialized already - Policies exists.\n")
-			os.Exit(1)
+			return
 		}
 
 		// Create secret engines
