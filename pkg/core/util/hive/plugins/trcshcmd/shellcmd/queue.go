@@ -157,6 +157,9 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 	case CmdCat:
 		err = ExecuteCat(args, driverConfig)
 
+	case CmdMkdir:
+		err = ExecuteMkdir(args, driverConfig)
+
 	case CmdSu:
 		// Perform OAuth authentication for unrestricted write access
 		err = ExecuteSu(driverConfig)
@@ -320,6 +323,131 @@ func removePath(driverConfig *config.DriverConfig, path string, recursive bool) 
 
 	// It's a file, remove it directly
 	return driverConfig.MemFs.Remove(path)
+}
+
+// ExecuteMkdir creates directories in memfs
+// Supports -p flag for creating parent directories
+func ExecuteMkdir(args []string, driverConfig *config.DriverConfig) error {
+	if driverConfig == nil || driverConfig.MemFs == nil {
+		return errors.New("driver config or memfs is nil")
+	}
+
+	if len(args) == 0 {
+		errMsg := "mkdir: missing operand"
+		outputBytes := []byte(errMsg)
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputBytes, "io/STDIO")
+		return errors.New(errMsg)
+	}
+
+	createParents := false
+	var paths []string
+
+	// Parse arguments
+	for _, arg := range args {
+		if arg == "-p" || arg == "--parents" {
+			createParents = true
+		} else if !strings.HasPrefix(arg, "-") {
+			paths = append(paths, arg)
+		}
+	}
+
+	if len(paths) == 0 {
+		errMsg := "mkdir: missing directory operand"
+		outputBytes := []byte(errMsg)
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputBytes, "io/STDIO")
+		return errors.New(errMsg)
+	}
+
+	var output strings.Builder
+	var hasError bool
+
+	// Create each directory
+	for _, path := range paths {
+		if err := createDirectory(driverConfig, path, createParents); err != nil {
+			if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+				driverConfig.CoreConfig.Log.Printf("mkdir: %v\n", err)
+			}
+			output.WriteString(fmt.Sprintf("mkdir: %v\n", err))
+			hasError = true
+		}
+	}
+
+	// Write output to io/STDIO
+	var outputData []byte
+	if output.Len() > 0 {
+		outputData = []byte(output.String())
+	} else {
+		outputData = []byte("Directory created successfully\n")
+	}
+
+	// Check if io directory exists
+	if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+		// Directory exists, open file for append
+		if stdioFile, err := driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644); err == nil {
+			stdioFile.Write(outputData)
+			stdioFile.Close()
+		} else {
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+		}
+	} else {
+		// Directory doesn't exist, use WriteToMemFile to create it
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+	}
+
+	if hasError {
+		return errors.New("mkdir encountered errors")
+	}
+	return nil
+}
+
+// createDirectory creates a single directory
+func createDirectory(driverConfig *config.DriverConfig, path string, createParents bool) error {
+	// Clean the path
+	if strings.HasPrefix(path, "./") {
+		path = strings.TrimPrefix(path, "./")
+	}
+
+	// Check if path already exists
+	if _, err := driverConfig.MemFs.Stat(path); err == nil {
+		return fmt.Errorf("cannot create directory '%s': File exists", path)
+	}
+
+	// If -p flag is set, create parent directories
+	if createParents {
+		// Split path and create each level
+		parts := strings.Split(path, "/")
+		currentPath := ""
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			if currentPath == "" {
+				currentPath = part
+			} else {
+				currentPath = currentPath + "/" + part
+			}
+
+			// Check if current path exists
+			if _, err := driverConfig.MemFs.Stat(currentPath); err != nil {
+				// Create this level
+				dirFile, err := driverConfig.MemFs.Create(currentPath)
+				if err != nil {
+					return fmt.Errorf("cannot create directory '%s': %v", currentPath, err)
+				}
+				dirFile.Close()
+			}
+		}
+		return nil
+	}
+
+	// Without -p flag, create only the final directory
+	dirFile, err := driverConfig.MemFs.Create(path)
+	if err != nil {
+		return fmt.Errorf("cannot create directory '%s': %v", path, err)
+	}
+	dirFile.Close()
+
+	return nil
 }
 
 // ExecuteCp copies files or directories from source to destination

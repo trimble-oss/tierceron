@@ -96,6 +96,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot ||
 				cmdType == shellcmd.CmdRm || cmdType == shellcmd.CmdCp ||
 				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat ||
+				cmdType == shellcmd.CmdMkdir ||
 				cmdType == shellcmd.CmdSu {
 
 				if configContext != nil {

@@ -424,6 +424,24 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
 		}
 
+	case "mkdir":
+		if m.chatSenderChan == nil {
+			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd for mkdir command with args
+		response := callTrcshCmd(m.chatSenderChan, "mkdir", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				m.output = append(m.output, line)
+			}
+		} else {
+			m.output = append(m.output, "Directory created successfully")
+		}
+
 	case "tsub":
 		if m.chatSenderChan == nil {
 			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
@@ -587,6 +605,7 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		m.output = append(m.output, "  ls       - List directory contents")
 		m.output = append(m.output, "  tree     - Display directory tree structure")
 		m.output = append(m.output, "  cat      - Display file contents")
+		m.output = append(m.output, "  mkdir    - Create directories (use -p for parent directories)")
 		m.output = append(m.output, "  rm       - Remove files or directories (use -r for recursive)")
 		m.output = append(m.output, "  cp       - Copy files or directories (use -r for recursive)")
 		m.output = append(m.output, "  mv       - Move/rename files or directories")

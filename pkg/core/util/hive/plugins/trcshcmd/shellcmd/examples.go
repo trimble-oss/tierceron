@@ -100,6 +100,12 @@ Available Commands:
 - "trcplgtool" - Plugin tool operations
 - "kubectl"    - Kubernetes operations (requires kubeconfig in HookResponse)
 - "tboot"    - Returns the shared MemoryFileSystem without executing any commands
+- "rm"       - Remove files or directories from memfs
+- "cp"       - Copy files or directories in memfs
+- "mv"       - Move/rename files or directories in memfs
+- "cat"      - Display file contents from memfs
+- "mkdir"    - Create directories in memfs
+- "su"       - Obtain elevated access for write operations
 
 Note: This architecture ensures plugins have NO dependencies on CLI packages.
 Only the kernel needs access to trcconfigbase, trcpubbase, etc.

@@ -14,5 +14,6 @@ const (
 	CmdCp         = "cp"
 	CmdMv         = "mv"
 	CmdCat        = "cat"
+	CmdMkdir      = "mkdir"
 	CmdSu         = "su"
 )
