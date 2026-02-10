@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"fmt"
+	"html"
 	"net"
 	"net/http"
 	"os/exec"
@@ -75,7 +76,7 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 
 		if result.Error != "" {
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, "<html><body><h1>Authentication Failed</h1><p>Error: %s</p><p>You can close this window.</p></body></html>", result.Error)
+			fmt.Fprintf(w, "<html><body><h1>Authentication Failed</h1><p>Error: %s</p><p>You can close this window.</p></body></html>", html.EscapeString(result.Error))
 		} else {
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, "<html><body><h1>Authentication Successful</h1><p>You can close this window and return to the terminal.</p></body></html>")
