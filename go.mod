@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0
@@ -33,7 +33,7 @@ require (
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.0
+	github.com/trimble-oss/tierceron-core/v2 v2.10.2
 	github.com/trimble-oss/tierceron-hat v1.2.10
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20251204195016-a8311d409497
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
@@ -42,6 +42,7 @@ require (
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20251103195122-175ade98adff
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20251103195122-175ade98adff
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
 	gopkg.in/yaml.v3 v3.0.1
 	kernel.org/pub/linux/libs/security/libcap/cap v1.2.70

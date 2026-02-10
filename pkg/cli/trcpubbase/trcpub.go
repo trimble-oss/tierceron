@@ -3,6 +3,7 @@ package trcpubbase
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -49,13 +51,24 @@ func CommonMain(envPtr *string,
 	}
 	var tokenPtr *string = nil
 	var addrPtr *string = nil
+	var helpPtr *bool = nil
 	if flagset == nil {
 		PrintVersion()
-		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		progName := "trcpub"
+		if len(argLines) > 0 {
+			progName = argLines[0]
+		}
+		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
+		errorHandling := flag.ExitOnError
+		if driverConfig.IsShellCommand || kernelopts.BuildOptions.IsKernelZ() {
+			errorHandling = flag.ContinueOnError
+		}
+		flagset = flag.NewFlagSet(progName, errorHandling)
 		flagset.Usage = func() {
-			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			fmt.Fprintf(flagset.Output(), "Usage:\n")
 			flagset.PrintDefaults()
 		}
+		helpPtr = flagset.Bool("h", false, "Display help")
 		flagset.String("env", "dev", "Environment to configure")
 		flagset.String("addr", "", "API endpoint for the vault")
 		flagset.String("token", "", "Vault access token")
@@ -73,16 +86,61 @@ func CommonMain(envPtr *string,
 	roleEntityPtr := flagset.String("approle", "configpub.yml", "Name of auth config file - example.yml (optional)")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
 
-	if driverConfig == nil || !driverConfig.IsShellSubProcess {
-		flagset.Parse(argLines[1:])
-	} else {
-		flagset.Parse(nil)
+	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
+	var outWriter io.Writer = os.Stderr
+	if driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+		var stdioFile io.ReadWriteCloser
+		var err error
+		// Check if io directory exists
+		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+			// Directory exists, open file and seek to end for append
+			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+			if err == nil {
+				if seeker, ok := stdioFile.(io.Seeker); ok {
+					seeker.Seek(0, io.SeekEnd)
+				}
+			}
+		} else {
+			// Directory doesn't exist, use WriteToMemFile to create it
+			emptyData := []byte{}
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
+			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+		}
+		if err == nil {
+			outWriter = stdioFile
+			defer stdioFile.Close()
+			// Redirect flagset output to the same writer for help messages
+			flagset.SetOutput(outWriter)
+		}
 	}
+
+	var parseErr error
+	if driverConfig == nil || !driverConfig.IsShellSubProcess || (driverConfig.IsShellCommand || kernelopts.BuildOptions.IsKernelZ()) {
+		parseErr = flagset.Parse(argLines[1:])
+	} else {
+		parseErr = flagset.Parse(nil)
+	}
+
+	// If help flag was used, return early (help output already written)
+	if parseErr == flag.ErrHelp {
+		return
+	}
+
+	// Check if -h flag was explicitly set
+	if helpPtr != nil && *helpPtr {
+		flagset.Usage()
+		return
+	}
+
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	} else {
 		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Please set the addr flag", 1)
+			fmt.Fprintln(os.Stderr, "Please set the addr flag")
+			if !driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ() {
+				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Please set the addr flag", 1)
+			}
+			return
 		}
 	}
 	if envPtr == nil {
@@ -132,7 +190,7 @@ func CommonMain(envPtr *string,
 	if envPtr != nil && len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
-		fmt.Fprintln(os.Stderr, *envPtr)
+		fmt.Fprintln(outWriter, *envPtr)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
@@ -140,8 +198,8 @@ func CommonMain(envPtr *string,
 		driverConfig.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 		driverConfig.CoreConfig.Log.Printf("Uploading templates in %s to vault\n", *dirPtr)
 	} else {
-		fmt.Fprintf(os.Stderr, "Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
-		fmt.Fprintf(os.Stderr, "Uploading templates in %s to vault\n", *dirPtr)
+		fmt.Fprintf(outWriter, "Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+		fmt.Fprintf(outWriter, "Uploading templates in %s to vault\n", *dirPtr)
 	}
 
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
@@ -157,7 +215,11 @@ func CommonMain(envPtr *string,
 	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Template upload failure %s", err.Error()), -1)
+			fmt.Fprintf(outWriter, "Template upload failure %s\n", err.Error())
+			if !driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ() {
+				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Template upload failure %s", err.Error()), -1)
+			}
+			return
 		}
 	}
 

@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
@@ -39,8 +39,8 @@ require (
 	github.com/newrelic/go-agent/v3 v3.35.0
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron v1.51.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.0
+	github.com/trimble-oss/tierceron v1.52.1
+	github.com/trimble-oss/tierceron-core/v2 v2.10.2
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	gopkg.in/fsnotify.v1 v1.4.7
@@ -92,8 +92,10 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20251103195122-175ade98adff // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20251103195122-175ade98adff // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20251103195122-175ade98adff // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.35.0 // indirect
@@ -336,8 +338,9 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hc
 
 //replace github.com/trimble-oss/tierceron-core/v2 => ../../tierceron-core
 
-//replace github.com/trimble-oss/tierceron => ../
-replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.51.0
+replace github.com/trimble-oss/tierceron => ../
+
+//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron
 
 replace github.com/g3n/engine v0.2.0 => github.com/mrjrieke/engine v0.2.1-0.20230107141038-8bd28c2897c4
 

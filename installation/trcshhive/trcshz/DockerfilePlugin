@@ -1,0 +1,2 @@
+FROM scratch
+ADD bin/trcshz /usr/local/trcshz

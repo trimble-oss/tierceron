@@ -139,6 +139,8 @@ func CommonMain(envPtr *string,
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "kernelplugin" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin" ||
 				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
 
 		args := argLines[1:]
@@ -533,11 +535,21 @@ func CommonMain(envPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
-	if plcErr != nil {
-		fmt.Fprintln(os.Stderr, plcErr.Error())
-		return plcErr
+	var pluginToolConfig map[string]any
+	var plcErr error
+
+	// For kernel plugins with hardcoded config, use DeploymentConfig directly
+	if isRunnableKernelPlugin && trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Using hardcoded DeploymentConfig for kernel plugin")
+		pluginToolConfig = *trcshDriverConfigBase.DriverConfig.DeploymentConfig
+	} else {
+		pluginToolConfig, plcErr = trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
+		if plcErr != nil {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println(plcErr.Error())
+			return plcErr
+		}
 	}
+
 	if *certifyImagePtr {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
 	}
@@ -964,8 +976,10 @@ func CommonMain(envPtr *string,
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
-						if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
-							pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						if pluginToolConfig != nil {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice" || s == "trcshcmdtoolplugin") {
+								pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+							}
 						}
 						pluginHandler.Signature = sha
 					}
