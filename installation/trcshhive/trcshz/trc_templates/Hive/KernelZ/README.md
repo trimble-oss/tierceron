@@ -1,6 +1,6 @@
 # OAuth/JWT Configuration for trcsh
 
-This configuration enables browser-based OAuth authentication for trcsh using Trimble ID and Vault JWT auth.
+This configuration enables browser-based OAuth authentication for trcsh using an oauth identity provider and Vault JWT auth.
 
 ## Configuration Files
 
@@ -19,13 +19,13 @@ This configuration enables browser-based OAuth authentication for trcsh using Tr
 These are obtained from your OAuth provider registration:
 
 - `oauth_discovery_url` - OIDC discovery endpoint (used by client for OAuth flow)
-  - Trimble ID: `https://id.trimble.com/.well-known/openid-configuration`
+  - Your ID provider: `https://<provider>/.well-known/openid-configuration`
 
 - `oauth_jwks_url` - JWKS endpoint (used by Vault for JWT validation)
-  - Trimble ID: `https://id.trimble.com/.well-known/jwks.json`
+  - Your ID provider: `https://<provider>/.well-known/jwks.json`
   
 - `oauth_client_id` - Your OAuth application client ID
-  - Register at Trimble developer portal
+  - Register at Identity Provider
   
 - `oauth_client_secret` - Client secret (optional for public clients)
   - Leave empty if using PKCE without client secret
@@ -81,14 +81,14 @@ if err != nil {
 ## Setup Steps
 
 1. **Register OAuth Application**
-   - Go to Trimble developer portal
+   - Go to Identity Provider Portal
    - Create new application
    - Set redirect URI to `http://localhost:8080/callback`
    - Save the client_id (and client_secret if provided)
 
 2. **Configure Vault** (Admin only)
    - Enable JWT auth method
-   - Configure Trimble OIDC provider
+   - Configure OIDC provider
    - Create JWT role `trcshhivez` with read user whitelist
    - Create AppRole `trcshhivez` with read-only policies
    - Create policy `trcshhivez-approle-read` for AppRole credential retrieval
@@ -113,9 +113,9 @@ if err != nil {
 1. User runs trcsh
 2. System checks `~/.tierceron/config.yml` for cached credentials
 3. If no valid credentials:
-   - Browser opens to Trimble ID login page
-   - User authenticates with their Trimble credentials
-   - Trimble redirects back with authorization code
+   - Browser opens to Identity provider login page
+   - User authenticates with their Identity credentials
+   - Identity provider redirects back with authorization code
    - trcsh exchanges code for ID token using PKCE
 4. trcsh presents ID token to Vault JWT auth for `trcshhivez` role
 5. Vault validates JWT and checks email against allowed list
@@ -134,7 +134,7 @@ When a trcsh command needs write access:
   - `trcshhivez`: Broad user whitelist for read operations
   - `trcshunrestricted`: Highly restricted admin whitelist for write operations
 - **Separate credential caching** - Read and write credentials are cached separately
-   - User authenticates with their Trimble credentials
+   - User authenticates with their Identity provider credentials
    - trcsh exchanges for new ID token
 4. trcsh presents ID token to Vault JWT auth for `trcshunrestricted` role
 5. Vault validates JWT and checks email against admin whitelist
