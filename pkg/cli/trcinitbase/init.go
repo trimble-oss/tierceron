@@ -671,14 +671,20 @@ func CommonMain(envPtr *string,
 								continue
 							}
 
-							// Try to validate the token by creating a temporary modifier
+							// Validate the token using LookupSelf
 							testMod, testErr := helperkv.NewModifier(*insecurePtr, &tokenValueStr, driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log)
-							if testMod != nil {
-								testMod.Release()
-							}
 							if testErr != nil {
-								validationErrors = append(validationErrors, fmt.Sprintf("Token %s failed validation: %v", tokenNameStr, testErr))
+								validationErrors = append(validationErrors, fmt.Sprintf("Token %s failed to create modifier: %v", tokenNameStr, testErr))
 								continue
+							}
+							if testMod != nil {
+								// Validate token by calling LookupSelf - this will fail if token is invalid or expired
+								lookupErr := testMod.ValidateToken()
+								testMod.Release()
+								if lookupErr != nil {
+									validationErrors = append(validationErrors, fmt.Sprintf("Token %s is invalid or expired: %v", tokenNameStr, lookupErr))
+									continue
+								}
 							}
 
 							tokenMap[tokenNameStr] = tokenValue
