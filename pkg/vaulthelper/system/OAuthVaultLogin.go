@@ -42,7 +42,7 @@ type OAuthLoginResult struct {
 // LoginWithOAuth performs a complete OAuth flow and authenticates to Vault using the resulting ID token
 //
 // This method:
-// 1. Opens a browser for user to authenticate with OIDC provider (e.g., Trimble ID)
+// 1. Opens a browser for user to authenticate with OIDC provider (e.g., Identity provider)
 // 2. Receives the OAuth callback with authorization code
 // 3. Exchanges code for tokens (including ID token)
 // 4. Authenticates to Vault using the ID token and specified JWT role

@@ -295,7 +295,7 @@ func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig
 	// KernelZ: Always perform OAuth authentication (no disk caching)
 	// Credentials are stored only in-memory in TokenCache for the session
 	fmt.Fprintf(os.Stderr, "Performing OAuth authentication for %s...\n", targetRole)
-	fmt.Fprintf(os.Stderr, "Opening browser for Trimble ID login...\n")
+	fmt.Fprintf(os.Stderr, "Opening browser for Identity login...\n")
 
 	// Create vault connection
 	vault, err := sys.NewVault(driverConfig.CoreConfig.Insecure, &kzConfig.VaultHost, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
