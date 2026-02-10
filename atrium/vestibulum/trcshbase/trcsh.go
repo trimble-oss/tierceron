@@ -516,7 +516,17 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			// load via new properties and get config values
 			if configMap == nil || len(*configMap) == 0 {
 				configMap = &map[string]any{}
-				data, err := os.ReadFile("config.yml")
+				var data []byte
+				var err error
+				if kernelopts.BuildOptions.IsKernelZ() {
+					homeDir, homeErr := os.UserHomeDir()
+					if homeErr != nil {
+						eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Error getting home directory: %s", homeErr.Error()), -1)
+					}
+					data, err = os.ReadFile(homeDir + "/.trcshrc")
+				} else {
+					data, err = os.ReadFile("config.yml")
+				}
 				if err != nil {
 					eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Error reading YAML file: %s", err.Error()), -1)
 				}
@@ -537,9 +547,13 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 				}
 			} else {
-				useRole = false
-				if !isShellRunner {
-					driverConfigPtr.CoreConfig.Log.Println("Error reading config value")
+				// For KernelZ, we still need to call AutoAuth (it will perform OAuth to obtain credentials)
+				// For other kernels, agent_role is required
+				if !kernelopts.BuildOptions.IsKernelZ() {
+					useRole = false
+					if !isShellRunner {
+						driverConfigPtr.CoreConfig.Log.Println("Error reading config value")
+					}
 				}
 			}
 			if region, ok := (*configMap)["region"].(string); ok {
@@ -632,7 +646,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 
-		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !isShellRunner && !driverConfigPtr.CoreConfig.IsEditor {
+		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !kernelopts.BuildOptions.IsKernelZ() && !isShellRunner && !driverConfigPtr.CoreConfig.IsEditor {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, "drone trcsh requires AGENT_ROLE", -1)
 		}
 
@@ -848,7 +862,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if eUtils.IsWindows() {
 			pluginConfig["plugin"] = "trcsh.exe"
 		} else if kernelopts.BuildOptions.IsKernel() && !isShellRunner {
-			pluginConfig["plugin"] = "trcshk"
+			if kernelopts.BuildOptions.IsKernelZ() {
+				pluginConfig["plugin"] = "trcshz"
+			} else {
+				pluginConfig["plugin"] = "trcshk"
+			}
 		} else {
 			if isShellRunner {
 				pluginConfig["plugin"] = (*configMap)["plugin_name"]

@@ -215,7 +215,7 @@ func initPlugin(pluginName string, properties *map[string]any) {
 	// Get DriverConfig from properties
 	if dc, ok := (*properties)["driverConfig"].(*config.DriverConfig); ok {
 		driverConfig = dc
-		fmt.Printf("trcshcmd initPlugin: received driverConfig=%p\n", driverConfig)
+		fmt.Printf("trcshcmd initPlugin: received driverConfig\n")
 	} else {
 		fmt.Printf("trcshcmd initPlugin: no driverConfig in properties\n")
 	}

@@ -356,7 +356,7 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) err
 		return fmt.Errorf("KernelZ OAuth is only available in KernelZ builds")
 	}
 
-	fmt.Fprintf(os.Stderr, "KernelZOAuthForRole: received driverConfig=%p\n", driverConfig)
+	fmt.Fprintf(os.Stderr, "KernelZOAuthForRole: received driverConfig\n")
 
 	// Check if we already have valid credentials in TokenCache under "hivekernel"
 	existingCreds := driverConfig.CoreConfig.TokenCache.GetRole("hivekernel")

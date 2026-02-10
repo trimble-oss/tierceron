@@ -776,7 +776,7 @@ func ExecuteSu(driverConfig *config.DriverConfig) error {
 		return errors.New("driver config or memfs is nil")
 	}
 
-	fmt.Printf("ExecuteSu: received driverConfig=%p\n", driverConfig)
+	fmt.Printf("ExecuteSu: received driverConfig\n")
 
 	var output strings.Builder
 

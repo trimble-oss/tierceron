@@ -14,7 +14,7 @@ func GetUnrestrictedAccess(driverConfig *config.DriverConfig) error {
 	fmt.Fprintf(os.Stderr, "\n=== Obtaining Unrestricted Write Access ===\n")
 	fmt.Fprintf(os.Stderr, "This will authenticate you for write access to configuration tokens.\n")
 	fmt.Fprintf(os.Stderr, "You must be authorized in the trcshunrestricted Vault JWT role.\n\n")
-	fmt.Fprintf(os.Stderr, "GetUnrestrictedAccess: received driverConfig=%p\n", driverConfig)
+	fmt.Fprintf(os.Stderr, "GetUnrestrictedAccess: received driverConfig\n")
 
 	err := KernelZOAuthForRole(driverConfig, "trcshunrestricted")
 	if err != nil {
