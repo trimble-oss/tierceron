@@ -2,6 +2,7 @@ package trcinitbase
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -68,6 +70,7 @@ func CommonMain(envPtr *string,
 	var tokenExpiration *bool = defaultFalse()
 	var pingPtr *bool = defaultFalse()
 	var updateRole *bool = defaultFalse()
+	var updateAppRole *bool = defaultFalse()
 	var updatePolicy *bool = defaultFalse()
 	var initNamespace *bool = defaultFalse()
 	var doTidyPtr *bool = defaultFalse()
@@ -109,6 +112,7 @@ func CommonMain(envPtr *string,
 		tokenExpiration = flagset.Bool("tokenExpiration", false, "Look up Token expiration dates")
 		pingPtr = flagset.Bool("ping", false, "Ping vault.")
 		updateRole = flagset.Bool("updateRole", false, "Update security role")
+		updateAppRole = flagset.Bool("updateAppRole", false, "Update AppRole without rotating tokens")
 		updatePolicy = flagset.Bool("updatePolicy", false, "Update security policy")
 		initNamespace = flagset.Bool("initns", false, "Init namespace (tokens, policy, and role)")
 		doTidyPtr = flagset.Bool("tidy", false, "Clean up (tidy) expired tokens")
@@ -300,7 +304,7 @@ func CommonMain(envPtr *string,
 		namespaceAppRolePolicies = "vault_namespaces" + string(os.PathSeparator) + *namespaceVariable + string(os.PathSeparator) + "approle_files"
 	}
 
-	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*pingPtr {
+	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*updateAppRole && !*pingPtr {
 		if !driverConfigBase.CoreConfig.IsEditor {
 			if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
 				fmt.Fprintln(os.Stderr, "Missing required seed folder: "+*seedPtr)
@@ -397,7 +401,7 @@ func CommonMain(envPtr *string,
 	}
 	driverConfigBase.CoreConfig.Log.Printf("Successfully connected to vault at %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 
-	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *tokenExpiration) {
+	if !*newPtr && *namespaceVariable != "" && *namespaceVariable != "vault" && !(*rotateTokens || *updatePolicy || *updateRole || *updateAppRole || *tokenExpiration) {
 		if *initNamespace {
 			fmt.Fprintln(os.Stderr, "Creating tokens, roles, and policies.")
 			policyExists, policyErr := il.GetExistsPolicies(driverConfigBase.CoreConfig, namespacePolicyConfigs, v)
@@ -450,7 +454,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole) {
+	if !*newPtr && (*updatePolicy || *rotateTokens || *tokenExpiration || *updateRole || *updateAppRole) {
 		if *tokenExpiration {
 			fmt.Fprintln(os.Stderr, "Checking token expiration.")
 			roleId, lease, err := v.GetRoleID("bamboo")
@@ -513,6 +517,227 @@ func CommonMain(envPtr *string,
 			} else {
 				fmt.Fprintln(os.Stderr, "Policies updated")
 			}
+		}
+
+		if *updateAppRole {
+			// Block this functionality from trcsh/trcshcmd for security
+			if kernelopts.BuildOptions.IsKernelZ() {
+				fmt.Fprintln(os.Stderr, "Error: -updateAppRole is not available in shell mode for security reasons.")
+				os.Exit(-1)
+			}
+
+			// Update AppRole without rotating tokens
+			fmt.Fprintln(os.Stderr, "Updating AppRole")
+
+			// Security audit: Check for policies that might grant unintended access
+			fmt.Fprintln(os.Stderr, "Running security audit on policies...")
+			policyFiles, err := os.ReadDir(namespacePolicyConfigs)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Could not read policy directory for audit: %v\n", err)
+			} else {
+				conflictingPolicies := []string{}
+				for _, policyFile := range policyFiles {
+					if !strings.HasSuffix(policyFile.Name(), ".hcl") {
+						continue
+					}
+					policyPath := filepath.Join(namespacePolicyConfigs, policyFile.Name())
+					content, err := os.ReadFile(policyPath)
+					if err != nil {
+						continue
+					}
+					policyContent := string(content)
+					// Check for overly broad wildcards
+					if strings.Contains(policyContent, `"super-secrets/*"`) ||
+						strings.Contains(policyContent, `"super-secrets/data/*"`) {
+						policyName := policyFile.Name()[:len(policyFile.Name())-4]
+						if policyName != "admin" { // admin is expected to have full access
+							conflictingPolicies = append(conflictingPolicies, policyName)
+						}
+					}
+				}
+				if len(conflictingPolicies) > 0 {
+					fmt.Fprintf(os.Stderr, "ERROR: The following policies have wildcards that grant access to ALL super-secrets paths:\n")
+					for _, policy := range conflictingPolicies {
+						fmt.Fprintf(os.Stderr, "  - %s\n", policy)
+					}
+					fmt.Fprintf(os.Stderr, "These policies could potentially access trcshunrestricted tokens.\n")
+					fmt.Fprintf(os.Stderr, "Fix these policies to use specific paths (e.g., super-secrets/data/<rolename>/*) before creating restricted AppRoles.\n")
+					os.Exit(-1)
+				} else {
+					fmt.Fprintln(os.Stderr, "Security audit passed: No conflicting policy wildcards found (admin excluded)")
+				}
+			}
+
+			mod, err := helperkv.NewModifier(*insecurePtr, v.GetToken(), driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log)
+			if mod != nil {
+				defer mod.Release()
+			}
+
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error creating modifier.")
+				eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
+				os.Exit(-1)
+			}
+
+			approleFilters := []string{}
+			if *roleFileFilterPtr != "" {
+				if strings.Contains(*roleFileFilterPtr, ",") {
+					approleFilters = strings.Split(*roleFileFilterPtr, ",")
+				} else {
+					approleFilters = append(approleFilters, *roleFileFilterPtr)
+				}
+			}
+
+			files, err := os.ReadDir(namespaceAppRolePolicies)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Error reading approle_files directory.")
+				eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
+				os.Exit(-1)
+			}
+
+			for _, file := range files {
+				filename := file.Name()
+				ext := filepath.Ext(filename)
+				roleName := filename[0 : len(filename)-len(ext)]
+
+				// Skip if filter specified and doesn't match
+				if len(approleFilters) > 0 {
+					matched := false
+					for _, filter := range approleFilters {
+						if strings.Contains(roleName, filter) {
+							matched = true
+							break
+						}
+					}
+					if !matched {
+						continue
+					}
+				}
+
+				fileYAML, parseErr := il.ParseApproleYaml(roleName, *namespaceVariable)
+				if parseErr != nil {
+					fmt.Fprintf(os.Stderr, "Unable to parse approle yaml file %s, skipping.\n", roleName)
+					continue
+				}
+
+				tokenPerms, okPerms := fileYAML["Token_Permissions"].(map[any]any)
+				if !okPerms {
+					fmt.Fprintf(os.Stderr, "Read incorrect approle token permissions from file %s, skipping.\n", roleName)
+					continue
+				}
+
+				// Read tokens from JSON file in current directory
+				tokenFilePath := roleName + ".json"
+				tokenFileData, err := os.ReadFile(tokenFilePath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Error reading token file %s: %v\n", tokenFilePath, err)
+					fmt.Fprintf(os.Stderr, "Create a JSON file named %s with token names/values: {\"config_token_dev_unrestricted\": \"actual-token-value\", ...}\n", tokenFilePath)
+					continue
+				}
+
+				var allTokensData map[string]interface{}
+				if err := json.Unmarshal(tokenFileData, &allTokensData); err != nil {
+					fmt.Fprintf(os.Stderr, "Error parsing token JSON file %s: %v\n", tokenFilePath, err)
+					continue
+				}
+
+				// Set modifier environment to match the new approle name for writing
+				mod.EnvBasis = roleName
+				mod.Env = roleName
+
+				// Build token map with only the tokens this AppRole should have access to
+				tokenMap := map[string]any{}
+				validationErrors := []string{}
+				expectedTokenCount := 0
+
+				// First pass: validate all tokens before making any changes
+				for tokenName, hasAccess := range tokenPerms {
+					if hasAccess.(bool) {
+						expectedTokenCount++
+						tokenNameStr := tokenName.(string)
+						if tokenValue, exists := allTokensData[tokenNameStr]; exists {
+							// Validate token exists and is valid in Vault
+							tokenValueStr, ok := tokenValue.(string)
+							if !ok {
+								validationErrors = append(validationErrors, fmt.Sprintf("Token %s has invalid value type in JSON file", tokenNameStr))
+								continue
+							}
+							if tokenValueStr == "TODO" || tokenValueStr == "" {
+								validationErrors = append(validationErrors, fmt.Sprintf("Token %s has placeholder value", tokenNameStr))
+								continue
+							}
+
+							// Try to validate the token by creating a temporary modifier
+							testMod, testErr := helperkv.NewModifier(*insecurePtr, &tokenValueStr, driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr, "nonprod", nil, true, driverConfigBase.CoreConfig.Log)
+							if testMod != nil {
+								testMod.Release()
+							}
+							if testErr != nil {
+								validationErrors = append(validationErrors, fmt.Sprintf("Token %s failed validation: %v", tokenNameStr, testErr))
+								continue
+							}
+
+							tokenMap[tokenNameStr] = tokenValue
+						} else {
+							validationErrors = append(validationErrors, fmt.Sprintf("Token %s not found in JSON file", tokenNameStr))
+						}
+					}
+				}
+
+				// Check if all tokens validated successfully
+				if len(validationErrors) > 0 {
+					fmt.Fprintf(os.Stderr, "Token validation failed for AppRole %s:\n", roleName)
+					for _, errMsg := range validationErrors {
+						fmt.Fprintf(os.Stderr, "  - %s\n", errMsg)
+					}
+					fmt.Fprintf(os.Stderr, "All tokens must be valid before creating/updating AppRole. Skipping.\n")
+					continue
+				}
+
+				if len(tokenMap) != expectedTokenCount {
+					fmt.Fprintf(os.Stderr, "Expected %d tokens but only validated %d for AppRole %s. Skipping.\n", expectedTokenCount, len(tokenMap), roleName)
+					continue
+				}
+
+				if len(tokenMap) == 0 {
+					fmt.Fprintf(os.Stderr, "No tokens to assign to AppRole %s, skipping.\n", roleName)
+					continue
+				}
+
+				// Delete and recreate the AppRole
+				resp, role_cleanup := v.DeleteRole(roleName)
+				eUtils.CheckError(driverConfigBase.CoreConfig, role_cleanup, false)
+
+				if resp.StatusCode == 404 {
+					err = v.EnableAppRole()
+					eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+				}
+
+				err = v.CreateNewRole(roleName, &sys.NewRoleOptions{
+					TokenTTL:    "10m",
+					TokenMaxTTL: "15m",
+					Policies:    []string{roleName},
+				})
+				eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+
+				appRoleID, _, err := v.GetRoleID(roleName)
+				eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+
+				appRoleSecretID, err := v.GetSecretID(roleName)
+				eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+
+				// Write tokens to the AppRole's storage location (super-secrets/<rolename>/tokens)
+				warn, err := mod.Write("super-secrets/tokens", tokenMap, driverConfigBase.CoreConfig.Log)
+				eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
+				eUtils.LogWarningsObject(driverConfigBase.CoreConfig, warn, true)
+
+				fmt.Fprintf(os.Stderr, "Created/updated AppRole: %s\n", roleName)
+				fmt.Fprintf(os.Stderr, "Role ID: %s\n", appRoleID)
+				fmt.Fprintf(os.Stderr, "Secret ID: %s\n", appRoleSecretID)
+				fmt.Fprintf(os.Stderr, "Assigned %d token(s) to AppRole\n", len(tokenMap))
+			}
+
+			fmt.Fprintln(os.Stderr, "AppRole update completed")
 		}
 
 		if *rotateTokens && !*tokenExpiration {
