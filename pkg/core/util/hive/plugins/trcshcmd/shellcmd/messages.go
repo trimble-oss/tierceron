@@ -2,14 +2,14 @@ package shellcmd
 
 // Shell command types sent via ChatMsg.Response field
 const (
-	CmdTrcConfig  = "trcconfig"
-	CmdTrcPub     = "trcpub"
-	CmdTrcSub     = "trcsub"
-	CmdTrcX       = "trcx"
-	CmdTrcInit    = "trcinit"
+	CmdTrcConfig  = "tconfig"
+	CmdTrcPub     = "tpub"
+	CmdTrcSub     = "tsub"
+	CmdTrcX       = "tx"
+	CmdTrcInit    = "tinit"
 	CmdTrcPlgtool = "trcplgtool"
 	CmdKubectl    = "kubectl"
-	CmdTrcBoot    = "trcboot"
+	CmdTrcBoot    = "tboot"
 	CmdRm         = "rm"
 	CmdCp         = "cp"
 	CmdMv         = "mv"

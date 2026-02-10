@@ -431,7 +431,7 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 		// Call trcshcmd synchronously - let trcsub handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcsub", args)
+		response := callTrcshCmd(m.chatSenderChan, "tsub", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -456,7 +456,7 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 		// Call trcshcmd synchronously - let trcpub handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcpub", args)
+		response := callTrcshCmd(m.chatSenderChan, "tpub", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -516,7 +516,7 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 		// Call trcshcmd synchronously - let trcinit handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcinit", args)
+		response := callTrcshCmd(m.chatSenderChan, "tinit", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -546,7 +546,7 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 		// Call trcshcmd synchronously - let trcx handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcx", args)
+		response := callTrcshCmd(m.chatSenderChan, "tx", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -569,7 +569,7 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		}
 
 		// Call trcshcmd synchronously - let trcconfig handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcconfig", args)
+		response := callTrcshCmd(m.chatSenderChan, "tconfig", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")

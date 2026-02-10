@@ -131,9 +131,6 @@ func CommonMain(ctx config.ProcessContext,
 		s := args[i]
 		if s[0] != '-' {
 			fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
-			if driverConfig == nil || (!driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ()) {
-				os.Exit(1)
-			}
 			return
 		}
 	}
@@ -146,9 +143,6 @@ func CommonMain(ctx config.ProcessContext,
 	}
 	if parseErr != nil {
 		fmt.Fprintf(outWriter, "%s\n", parseErr.Error())
-		if driverConfig == nil || (!driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ()) {
-			os.Exit(1)
-		}
 		return
 	}
 
@@ -221,36 +215,36 @@ func CommonMain(ctx config.ProcessContext,
 
 	if cleanPresent && !envPresent {
 		fmt.Fprintln(outWriter, "Environment must be defined with -env=env1,... for -clean usage")
-		os.Exit(1)
+		return
 	} else if *diffPtr && *versionPtr {
 		fmt.Fprintln(outWriter, "-version flag cannot be used with -diff flag")
-		os.Exit(1)
+		return
 	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
 		fmt.Fprintln(outWriter, "-restricted flags cannot be used with -versions flag")
-		os.Exit(1)
+		return
 	} else if isProd && *addrPtr == "" {
 		fmt.Fprintln(outWriter, "The -addr flag must be used with staging/prod environment")
-		os.Exit(1)
+		return
 	} else if (len(*fieldsPtr) == 0) && len(*seedPathPtr) != 0 {
 		fmt.Fprintln(outWriter, "The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
-		os.Exit(1)
+		return
 	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*seedPathPtr) == 0) {
 		fmt.Fprintln(outWriter, "The -encrypted flag must be used with -seedPath flag if -readonly is used")
-		os.Exit(1)
+		return
 	} else {
 		if len(*dynamicPathPtr) == 0 {
 			if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
 				fmt.Fprintln(outWriter, "-serviceFilter and -indexFilter must be specified to use -indexed flag")
-				os.Exit(1)
+				return
 			} else if len(*eUtils.ServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
 				fmt.Fprintln(outWriter, "-serviceFilter must be specified to use -restricted flag")
-				os.Exit(1)
+				return
 			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
 				fmt.Fprintln(outWriter, "-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
-				os.Exit(1)
+				return
 			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
 				fmt.Fprintln(outWriter, "-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
-				os.Exit(1)
+				return
 			}
 		}
 	}
@@ -279,7 +273,7 @@ func CommonMain(ctx config.ProcessContext,
 	if *versionPtr {
 		if strings.Contains(*envPtr, ",") {
 			fmt.Fprintln(outWriter, Yellow+"Invalid environment, please specify one environment."+Reset)
-			os.Exit(1)
+			return
 		}
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
@@ -298,12 +292,12 @@ func CommonMain(ctx config.ProcessContext,
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 			if len(configCtx.EnvSlice) > 4 {
 				fmt.Fprintln(outWriter, "Unsupported number of environments - Maximum: 4")
-				os.Exit(1)
+				return
 			}
 			for i, env := range configCtx.EnvSlice {
 				if env == "local" {
 					fmt.Fprintln(outWriter, "Unsupported env: local not available with diff flag")
-					os.Exit(1)
+					return
 				}
 				if !strings.Contains(env, "_") {
 					configCtx.EnvSlice[i] = env + "_0"
@@ -311,12 +305,12 @@ func CommonMain(ctx config.ProcessContext,
 			}
 		} else {
 			fmt.Fprintln(outWriter, "Incorrect format for diff: -env=env1,env2,...")
-			os.Exit(1)
+			return
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
 			fmt.Fprintln(outWriter, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
-			os.Exit(1)
+			return
 		}
 		configCtx.EnvSlice = append(configCtx.EnvSlice, (*envPtr))
 		envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
@@ -342,7 +336,7 @@ func CommonMain(ctx config.ProcessContext,
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
 				fmt.Fprintln(outWriter, "Must declare desired version number after '_' : -env=env1_ver1")
-				os.Exit(1)
+				return
 			}
 		} else {
 			*envPtr = envVersion[0] + "_0"
@@ -359,27 +353,24 @@ func CommonMain(ctx config.ProcessContext,
 
 	if len(listCheck) != len(configCtx.EnvSlice) {
 		fmt.Fprintf(outWriter, "Cannot diff an environment against itself.\n")
-		os.Exit(1)
+		return
 	}
 
 skipDiff:
 	// Prints usage if no flags are specified
 	if *helpPtr {
 		flagset.Usage()
-		if driverConfig == nil || (!driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ()) {
-			os.Exit(1)
-		}
 		return
 	}
 	if ctx == nil && !driverConfig.CoreConfig.IsEditor {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
-			os.Exit(1)
+			return
 		}
 		if !*diffPtr { // -diff doesn't require seed folder
 			if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
 				fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
-				os.Exit(1)
+				return
 			}
 		}
 	}
@@ -428,7 +419,7 @@ skipDiff:
 
 	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0) && !*noVaultPtr {
 		fmt.Fprintf(outWriter, "Missing required auth token for env: %s\n", envBasis)
-		os.Exit(1)
+		return
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {

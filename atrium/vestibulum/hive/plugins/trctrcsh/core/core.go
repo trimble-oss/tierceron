@@ -208,7 +208,7 @@ func start(pluginName string) {
 	configContext.Log.Println("Requesting initial MemoryFileSystem from trcshcmd")
 	memFsReady = make(chan bool, 1)
 	pluginSenderName := "trcsh"
-	trcbootCmd := "trcboot"
+	trcbootCmd := "tboot"
 	msg := &tccore.ChatMsg{
 		Name:   &pluginSenderName,     // Source plugin name
 		Query:  &[]string{"trcshcmd"}, // Destination is trcshcmd

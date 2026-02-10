@@ -397,9 +397,11 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) err
 	// Store credentials under both role-specific key AND generic "hivekernel" key
 	// Role-specific key prevents credential mixing between roles
 	// Generic "hivekernel" key maintains backward compatibility with existing code
+	// Also store under bare role name for authorization checks
 	appRoleSecret := []string{roleID, secretID}
 	driverConfig.CoreConfig.TokenCache.AddRole(cacheKey, &appRoleSecret)
 	driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", &appRoleSecret)
+	driverConfig.CoreConfig.TokenCache.AddRole(targetRole, &appRoleSecret)
 
 	// Update vault address if needed
 	if vaultHost != "" {

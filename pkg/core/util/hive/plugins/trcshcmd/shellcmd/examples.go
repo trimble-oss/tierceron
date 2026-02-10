@@ -14,7 +14,7 @@ Pattern:
 1. Plugin sends ChatMsg with:
    - Name field: source plugin name (e.g., "trcsh")
    - Query field: destination plugin name []string{"trcshcmd"}
-   - Response field: command type string (e.g., "trcconfig", "trcpub", "trcboot", etc.)
+   - Response field: command type string (e.g., "tconfig", "tpub", "tboot", etc.)
    - HookResponse field: command arguments as []string for args, or KubectlCommand for kubectl
 
 2. Kernel routes the message to trcshcmd plugin's chat_receiver
@@ -25,9 +25,9 @@ Pattern:
 
 Example usage from a plugin:
 
-// Execute trcconfig command
+// Execute tconfig command
 pluginName := "trcsh"
-cmdType := "trcconfig"
+cmdType := "tconfig"
 args := []string{"-env=dev", "-servicesWanted=MyService"}
 
 msg := &tccore.ChatMsg{
@@ -92,14 +92,14 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 }
 
 Available Commands:
-- "trcconfig"  - Configuration management
-- "trcpub"     - Publish to vault
-- "trcsub"     - Subscribe/pull from vault
-- "trcx"       - Extended configuration operations
-- "trcinit"    - Initialize tierceron environment
+- "tconfig"  - Configuration management
+- "tpub"     - Publish to vault
+- "tsub"     - Subscribe/pull from vault
+- "tx"       - Extended configuration operations
+- "tinit"    - Initialize tierceron environment
 - "trcplgtool" - Plugin tool operations
 - "kubectl"    - Kubernetes operations (requires kubeconfig in HookResponse)
-- "trcboot"    - Returns the shared MemoryFileSystem without executing any commands
+- "tboot"    - Returns the shared MemoryFileSystem without executing any commands
 
 Note: This architecture ensures plugins have NO dependencies on CLI packages.
 Only the kernel needs access to trcconfigbase, trcpubbase, etc.
