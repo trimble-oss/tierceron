@@ -127,10 +127,9 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 			err = errors.New("AUTHORIZATION ERROR: 'tinit' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
 			break
 		}
-		pubTokenName := fmt.Sprintf("vault_pub_token_%s", driverConfig.CoreConfig.EnvBasis)
 		pubEnv := driverConfig.CoreConfig.Env
 		uploadCert := driverConfig.CoreConfig.WantCerts
-		trcinitbase.CommonMain(&pubEnv, &envCtx, &pubTokenName, &uploadCert, nil, args, driverConfig)
+		trcinitbase.CommonMain(&pubEnv, &envCtx, nil, &uploadCert, nil, args, driverConfig)
 
 	case CmdTrcPlgtool:
 		env := driverConfig.CoreConfig.Env
@@ -391,7 +390,7 @@ func ExecuteMkdir(args []string, driverConfig *config.DriverConfig) error {
 	if output.Len() > 0 {
 		outputData = []byte(output.String())
 	} else {
-		outputData = []byte("Directory created successfully\n")
+		outputData = []byte("")
 	}
 
 	// Check if io directory exists

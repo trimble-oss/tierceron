@@ -90,6 +90,13 @@ func CommonMain(envPtr *string,
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
 			PrintVersion()
 		}
+		if len(argLines) == 0 {
+			if kernelopts.BuildOptions.IsKernelZ() {
+				argLines = append(argLines, "tinit")
+			} else {
+				argLines = append(argLines, "trcinit")
+			}
+		}
 		// Restricted trcinit and trcsh
 		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
 		flagset.Usage = func() {
@@ -133,7 +140,10 @@ func CommonMain(envPtr *string,
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
-				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, fmt.Sprintf("Wrong flag syntax: %s", s), 1)
+				if driverConfig.CoreConfig.Log != nil {
+					driverConfig.CoreConfig.Log.Printf("Wrong flag syntax: %s", s)
+				}
+				return
 			}
 		}
 		parseErr := eUtils.CheckInitFlags(flagset, argLines[1:])
@@ -144,13 +154,16 @@ func CommonMain(envPtr *string,
 		}
 		if parseErr != nil {
 			fmt.Fprintln(os.Stderr, parseErr.Error())
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, parseErr.Error(), 1)
+			if driverConfig.CoreConfig.Log != nil {
+				driverConfig.CoreConfig.Log.Println(parseErr.Error())
+			}
+			return
 		}
 
 		// Prints usage if no flags are specified
 		if flagset.NFlag() == 0 {
 			flagset.Usage()
-			os.Exit(1)
+			return
 		}
 	} else {
 		// Check for help flag in shell mode
@@ -179,10 +192,10 @@ func CommonMain(envPtr *string,
 		driverConfigBase = driverConfig
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 	} else {
-		if eUtils.RefLength(tokenPtr) < 5 {
+		if !kernelopts.BuildOptions.IsKernelZ() && eUtils.RefLength(tokenPtr) < 5 {
 			fmt.Fprintf(os.Stderr, "-token is a required parameter for trcinit\n")
 			flagset.Usage()
-			os.Exit(1)
+			return
 		}
 		// If logging production directory does not exist and is selected log to local directory
 		if _, err := os.Stat("/var/log/"); *logFilePtr == "/var/log/"+coreopts.BuildOptions.GetFolderPrefix(nil)+"init.log" && os.IsNotExist(err) {
@@ -205,7 +218,10 @@ func CommonMain(envPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s_unrestricted", envBasis)
 			tokenNamePtr = &tokenName
 			if strings.ContainsAny(*tokenPtr, " \t\n\r") {
-				eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Invalid -token contains whitespace", 1)
+				if driverConfig.CoreConfig.Log != nil {
+					driverConfig.CoreConfig.Log.Println("Invalid -token contains whitespace")
+				}
+				return
 			}
 
 			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
@@ -214,8 +230,19 @@ func CommonMain(envPtr *string,
 		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {
 			if driverConfigBase != nil && driverConfigBase.CoreConfig != nil && driverConfigBase.CoreConfig.TokenCache != nil {
 				if driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr) == nil {
-					eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "-token cannot be empty.", 1)
+					if driverConfig.CoreConfig.Log != nil {
+						driverConfig.CoreConfig.Log.Println("-token cannot be empty.")
+					}
+					return
 				}
+			}
+		} else {
+			if kernelopts.BuildOptions.IsKernelZ() {
+				envBasis := eUtils.GetEnvBasis(*envPtr)
+				tokenName := fmt.Sprintf("config_%s_unrestricted", envBasis)
+				tokenNamePtr = &tokenName
+				roleEntity := "trcshunrestricted"
+				roleEntityPtr = &roleEntity
 			}
 		}
 	}
@@ -228,21 +255,33 @@ func CommonMain(envPtr *string,
 	allowNonLocal := false
 
 	if *namespaceVariable == "" && *newPtr {
-		eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Namespace (-namespace) required to initialize a new vault.", 1)
+		if driverConfigBase.CoreConfig.Log != nil {
+			driverConfigBase.CoreConfig.Log.Println("Namespace (-namespace) required to initialize a new vault.")
+		}
+		return
 	}
 
 	if *newPtr {
 		currentDir, dirErr := os.Getwd()
 		if dirErr != nil {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Couldn not retrieve current working directory", 1)
+			if driverConfigBase.CoreConfig.Log != nil {
+				driverConfigBase.CoreConfig.Log.Println("Couldn not retrieve current working directory")
+			}
+			return
 		}
 
 		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/token_files"); err != nil {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Could not locate token files required to initialize a new vault.", 1)
+			if driverConfigBase.CoreConfig.Log != nil {
+				driverConfigBase.CoreConfig.Log.Println("Could not locate token files required to initialize a new vault.")
+			}
+			return
 		}
 
 		if _, err := os.Stat(currentDir + "/vault_namespaces/vault/policy_files"); err != nil {
-			eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Could not locate policy files  required to initialize a new vault.", 1)
+			if driverConfigBase.CoreConfig.Log != nil {
+				driverConfigBase.CoreConfig.Log.Println("Could not locate policy files  required to initialize a new vault.")
+			}
+			return
 		}
 	}
 
@@ -316,7 +355,14 @@ func CommonMain(envPtr *string,
 
 	if *namespaceVariable == "" && !*rotateTokens && !*tokenExpiration && !*updatePolicy && !*updateRole && !*updateAppRole && !*pingPtr {
 		if !driverConfigBase.CoreConfig.IsEditor {
-			if _, err := os.Stat(*seedPtr); os.IsNotExist(err) {
+			// Check seed folder exists - use memfs in shell mode, otherwise use os
+			var err error
+			if kernelopts.BuildOptions.IsKernelZ() && driverConfig != nil && driverConfig.MemFs != nil {
+				_, err = driverConfig.MemFs.Stat(*seedPtr)
+			} else {
+				_, err = os.Stat(*seedPtr)
+			}
+			if err != nil {
 				fmt.Fprintln(os.Stderr, "Missing required seed folder: "+*seedPtr)
 				return
 			}

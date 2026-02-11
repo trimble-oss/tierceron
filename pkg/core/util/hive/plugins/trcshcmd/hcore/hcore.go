@@ -131,7 +131,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				result := shellcmd.ExecuteShellCommand(cmdType, args, driverConfig)
 
 				// Read output from io/STDIO if it exists
-				responseMsg := "Command completed"
+				responseMsg := ""
 				if result != nil {
 					if stdioFile, err := result.Open("io/STDIO"); err == nil {
 						defer stdioFile.Close()

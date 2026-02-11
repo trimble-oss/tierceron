@@ -472,8 +472,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			for _, line := range lines {
 				output = append(output, line)
 			}
-		} else {
-			output = append(output, "Directory created successfully")
 		}
 
 	case "tsub":
