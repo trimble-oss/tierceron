@@ -308,6 +308,77 @@ func (m *ShellModel) View() string {
 
 // executeCommandAsync returns a tea.Cmd that executes the command asynchronously
 func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
+	trimmedCmd := strings.TrimSpace(cmd)
+	parts := strings.Fields(trimmedCmd)
+
+	// Handle rosea command specially - it needs to suspend the tea program
+	if len(parts) > 0 && parts[0] == "rosea" {
+		if !m.elevatedMode {
+			return func() tea.Msg {
+				return commandResultMsg{
+					output:     []string{errorStyle.Render("Error: 'rosea' command requires elevated access"), "Run 'su' to obtain elevated access"},
+					shouldQuit: false,
+				}
+			}
+		}
+
+		if m.chatSenderChan == nil {
+			return func() tea.Msg {
+				return commandResultMsg{
+					output:     []string{errorStyle.Render("Error: chat channel not available")},
+					shouldQuit: false,
+				}
+			}
+		}
+
+		// Return a command that suspends the shell and launches editor
+		args := parts[1:]
+		return func() tea.Msg {
+			// Send message to trcshcmd/rosea and wait for editor completion
+			id := fmt.Sprintf("rosea-%d", time.Now().UnixNano())
+			responseChan := make(chan string, 1)
+
+			// Register hook for response
+			GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
+				if msg.RoutingId != nil && *msg.RoutingId == id {
+					if msg.Response != nil {
+						responseChan <- *msg.Response
+					} else {
+						responseChan <- ""
+					}
+					return true
+				}
+				return false
+			})
+
+			// Send request to launch editor
+			pluginName := "trcsh"
+			chatId := "rosea"
+			roseaMsg := &tccore.ChatMsg{
+				Name:         &pluginName,
+				Query:        &[]string{"trcshcmd"},
+				ChatId:       &chatId,
+				RoutingId:    &id,
+				HookResponse: args,
+			}
+			*m.chatSenderChan <- roseaMsg
+
+			// Wait for editor to complete (this blocks the tea program)
+			select {
+			case <-responseChan:
+				GetChatMsgHooks().Remove(id)
+			case <-time.After(30 * time.Minute):
+				GetChatMsgHooks().Remove(id)
+			}
+
+			return commandResultMsg{
+				output:     []string{},
+				shouldQuit: false,
+			}
+		}
+	}
+
+	// For all other commands, use normal async execution
 	return func() tea.Msg {
 		output, shouldQuit := m.executeCommand(cmd)
 		return commandResultMsg{
@@ -648,6 +719,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		if !m.elevatedMode {
 			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
+			output = append(output, "  rosea    - Edit files with rosea editor (elevated mode only)")
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
 			output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 			output = append(output, "  tx       - Run trcx commands (elevated mode only)")

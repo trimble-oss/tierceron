@@ -630,10 +630,11 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
+	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 
-	// Security: KernelZ only allows procurator, trcshcmd, and trcsh plugins
+	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
 	if kernelopts.BuildOptions.IsKernelZ() {
-		if service != "trcshcmd" && service != "trcsh" {
+		if service != "trcshcmd" && service != "trcsh" && service != "rosea" {
 			driverConfig.CoreConfig.Log.Printf("Security: Plugin %s not allowed in KernelZ.", service)
 			return
 		}
@@ -1028,6 +1029,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
+			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 

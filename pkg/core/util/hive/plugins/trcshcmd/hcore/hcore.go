@@ -96,11 +96,67 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot ||
 				cmdType == shellcmd.CmdRm || cmdType == shellcmd.CmdCp ||
 				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat ||
-				cmdType == shellcmd.CmdMkdir ||
+				cmdType == shellcmd.CmdMkdir || cmdType == shellcmd.CmdNano ||
 				cmdType == shellcmd.CmdSu {
 
 				if configContext != nil {
 					configContext.Log.Printf("Received shell command request: %s\n", cmdType)
+				}
+
+				// Handle rosea command specially - forward to rosea
+				if cmdType == shellcmd.CmdNano {
+					// Extract args from HookResponse field
+					var args []string
+					if event.HookResponse != nil {
+						if argsList, ok := event.HookResponse.([]string); ok {
+							args = argsList
+						}
+					}
+
+					// Validate args
+					if len(args) == 0 {
+						errorMsg := "rosea: missing file operand"
+						event.Response = &errorMsg
+						event.HookResponse = nil
+						if configContext != nil && configContext.ChatSenderChan != nil {
+							*configContext.ChatSenderChan <- event
+						}
+						continue
+					}
+
+					filename := args[0]
+
+					// Read file from memfs
+					var fileContent []byte
+					if driverConfig != nil && driverConfig.MemFs != nil {
+						if file, err := driverConfig.MemFs.Open(filename); err == nil {
+							defer file.Close()
+							fileContent, _ = io.ReadAll(file)
+						} else {
+							// File doesn't exist - create empty content
+							fileContent = []byte{}
+						}
+					}
+
+					// Forward to rosea plugin via ChatMsg
+					pluginName := "trcshcmd"
+					roseaMsg := &tccore.ChatMsg{
+						Name:      &pluginName,
+						Query:     &[]string{"rosea"},
+						ChatId:    &cmdType,        // "rosea"
+						RoutingId: event.RoutingId, // Preserve original routing ID for response
+						HookResponse: map[string]interface{}{
+							"memfs":    driverConfig.MemFs,
+							"filename": filename,
+							"content":  fileContent,
+						},
+					}
+
+					// Send to rosea - rosea will send response when editor completes
+					if configContext != nil && configContext.ChatSenderChan != nil {
+						*configContext.ChatSenderChan <- roseaMsg
+					}
+					continue
 				}
 
 				// Authorization check: Block privileged commands without elevated access

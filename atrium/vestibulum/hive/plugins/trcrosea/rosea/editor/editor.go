@@ -49,6 +49,7 @@ type RoseaEditorModel struct {
 
 	scrollOffset int
 	height       int
+	roseaMode    bool // If true, save directly to memfs instead of trcdb
 }
 
 func lines(b *[]byte) []string {
@@ -94,6 +95,7 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 		historyIndex: 0,
 		draft:        "",
 		editorStyle:  baseStyle.Padding(1, 2).Width(width),
+		roseaMode:    true, // Enable rosea mode for direct memfs save
 	}
 }
 
@@ -224,29 +226,78 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.Type {
 		case tea.KeyCtrlC:
 			return m, tea.Quit
+
+		case tea.KeyCtrlX: // Exit
+			if m.roseaMode {
+				// In rosea mode, Ctrl+X quits without saving
+				return m, tea.Quit
+			}
+			return m, tea.Quit
+
 		case tea.KeyEsc:
+			if m.roseaMode {
+				// In rosea mode, ESC quits without saving
+				return m, tea.Quit
+			}
 			return roseacore.GetRoseaNavigationCtx(), nil
 
-		case tea.KeyCtrlS: // Submit on Ctrl+S
-			m.draft = m.input
-			m.draftCursor = m.cursor
-			m.input = ""
-			m.cursor = 0
-			m.scrollOffset = 0
-			m.showAuthPopup = true // <-- Add this line to trigger the popup
-			m.popupMode = "token"
-			// Optionally, reset popup fields:
-			m.authInput = ""
-			m.input = ""
-			m.authCursor = 0
-			m.authError = ""
-			// TODO: figure out how to handle and save...
-			// m.lines = append(m.lines, m.input)
-			// m.input = ""
-			// m.cursor = 0
-			// m.historyIndex = 0
-			// m.draft = ""
+		case tea.KeyCtrlO: // Write Out (save)
+			if m.roseaMode {
+				// Rosea mode: save directly to memfs
+				memfs, filename := roseacore.GetRoseaContext()
+				if memfs != nil {
+					// Try to cast memfs to the expected interface
+					if mfs, ok := memfs.(interface {
+						Remove(string) error
+						Create(string) (io.WriteCloser, error)
+					}); ok {
+						mfs.Remove(filename)
+						file, err := mfs.Create(filename)
+						if err == nil {
+							defer file.Close()
+							io.WriteString(file, m.input)
+							// Don't quit after save, continue editing
+						}
+					}
+				}
+			}
+			return m, nil
 
+		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
+			if m.roseaMode {
+				// Rosea mode: save directly to memfs without auth popup
+				memfs, filename := roseacore.GetRoseaContext()
+				if memfs != nil {
+					// Try to cast memfs to the expected interface
+					if mfs, ok := memfs.(interface {
+						Remove(string) error
+						Create(string) (io.WriteCloser, error)
+					}); ok {
+						mfs.Remove(filename)
+						file, err := mfs.Create(filename)
+						if err == nil {
+							defer file.Close()
+							io.WriteString(file, m.input)
+							// Return to shell after save
+							return m, tea.Quit
+						}
+					}
+				}
+				return m, nil
+			} else {
+				// Original trcdb mode: show auth popup
+				m.draft = m.input
+				m.draftCursor = m.cursor
+				m.input = ""
+				m.cursor = 0
+				m.scrollOffset = 0
+				m.showAuthPopup = true
+				m.popupMode = "token"
+				m.authInput = ""
+				m.input = ""
+				m.authCursor = 0
+				m.authError = ""
+			}
 			return m, nil
 
 		case tea.KeyEnter:
@@ -450,6 +501,18 @@ func (m *RoseaEditorModel) View() string {
 			Render(popupContent)
 		// Overlay the popup (simple version)
 		b.WriteString("\n\n" + popup)
+	}
+
+	// Add rosea-style control bar at the bottom
+	if m.roseaMode {
+		b.WriteString("\n\n")
+		controlBar := lipgloss.NewStyle().
+			Background(lipgloss.Color("#393552")).
+			Foreground(lipgloss.Color("#e0def4")).
+			Width(m.width).
+			Padding(0, 1).
+			Render("^X Exit    ^O Write Out")
+		b.WriteString(controlBar)
 	}
 
 	return m.editorStyle.Width(m.width).Render(b.String())

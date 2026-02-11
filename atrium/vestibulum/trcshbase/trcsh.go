@@ -992,8 +992,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
-		// Prioritize trcshcmd and healthcheck deployments - start them first
-		priorityPlugins := []string{"trcshcmd", "healthcheck"}
+		// Prioritize trcshcmd, rosea, and healthcheck deployments - start them first
+		priorityPlugins := []string{"trcshcmd", "rosea", "healthcheck"}
 		priorityIndices := []int{}
 		for i, deploymentConfig := range pluginDeployments {
 			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {

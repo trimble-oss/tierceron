@@ -7,12 +7,31 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 )
 
-var roseaProgramCtx tea.Program
-var roseaNavigationCtx tea.Model
-var roseaEditorCtx tea.Model
+var (
+	roseaProgramCtx    tea.Program
+	roseaNavigationCtx tea.Model
+	roseaEditorCtx     tea.Model
+)
 
-var roseaSeedFile string
-var roseaMemFs trcshio.MemoryFileSystem
+var (
+	roseaSeedFile string
+	roseaMemFs    trcshio.MemoryFileSystem
+)
+
+// Rosea editor context
+var (
+	roseaMemFs    interface{}
+	roseaFilename string
+)
+
+func SetRoseaContext(memfs interface{}, filename string) {
+	roseaMemFs = memfs
+	roseaFilename = filename
+}
+
+func GetRoseaContext() (interface{}, string) {
+	return roseaMemFs, roseaFilename
+}
 
 func SetRoseaMemFs(rsf string, rmFs trcshio.MemoryFileSystem) {
 	roseaSeedFile = rsf

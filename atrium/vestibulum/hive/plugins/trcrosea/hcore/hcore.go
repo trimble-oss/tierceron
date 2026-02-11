@@ -14,9 +14,10 @@ import (
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea"
+	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
+	editor "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/editor"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -117,6 +118,49 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 		case *event.Name == "SHUTDOWN":
 			configContext.Log.Println("rosea shutting down message receiver")
 			return
+		case (*event).ChatId != nil && *event.ChatId == "rosea":
+			// Handle rosea editor request from trcshcmd
+			configContext.Log.Println("rosea received rosea editor request")
+
+			// Extract data from HookResponse
+			if event.HookResponse != nil {
+				if dataMap, ok := event.HookResponse.(map[string]interface{}); ok {
+					filename := dataMap["filename"].(string)
+					content := dataMap["content"].([]byte)
+					memfs := dataMap["memfs"]
+
+					configContext.Log.Printf("Opening rosea editor for file: %s\n", filename)
+
+					// Launch editor with the file content
+					// Store memfs and filename for save operation
+					roseacore.SetRoseaContext(memfs, filename)
+
+					// Initialize and run editor synchronously
+					editorModel := editor.InitRoseaEditor(filename, &content)
+					editorErr := rosea.RunRoseaEditor(editorModel)
+
+					// Send completion message back to trcsh with original RoutingId
+					completionMsg := "Editor closed"
+					if editorErr != nil {
+						configContext.Log.Printf("Error running rosea editor: %v\n", editorErr)
+						completionMsg = fmt.Sprintf("Editor error: %v", editorErr)
+					}
+
+					// Send response back using the routing ID from the request
+					if event.RoutingId != nil && configContext.ChatSenderChan != nil {
+						pluginName := "rosea"
+						responseMsg := &tccore.ChatMsg{
+							Name:      &pluginName,
+							Query:     &[]string{"trcsh"},
+							RoutingId: event.RoutingId,
+							Response:  &completionMsg,
+						}
+						*configContext.ChatSenderChan <- responseMsg
+					}
+
+					configContext.Log.Println("rosea editor session completed")
+				}
+			}
 		case (*event).ChatId != nil && *event.ChatId != "PROGRESS":
 			chatMsgHookCtxRef := flowutil.GetChatMsgHookCtx()
 			tccore.CallSelectedChatMsgHook(*chatMsgHookCtxRef, event)
@@ -131,19 +175,49 @@ func start(pluginName string) {
 		fmt.Fprintln(os.Stderr, "no config context initialized for rosea")
 		return
 	}
-	var config *map[string]any
-	var ok bool
-	if len(*configContext.Config) > 0 {
-		if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
-			configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
-			err := yaml.Unmarshal(configBytes, &config)
-			if err != nil {
-				configContext.Log.Println("Missing common configs")
-				send_err(err)
-				return
-			}
+
+	// Validate Config exists before accessing
+	if configContext.Config == nil {
+		if configContext.Log != nil {
+			configContext.Log.Println("Warning: Config is nil in rosea start, continuing without config")
 		}
+		// Continue without config - KernelZ mode doesn't need it
+		return
 	}
+
+	// var config *map[string]any
+	// var ok bool
+	// if len(*configContext.Config) > 0 {
+	// Check if COMMON_PATH exists in Config
+	// configData, exists := (*configContext.Config)[COMMON_PATH]
+	// if !exists {
+	// 	if configContext.Log != nil {
+	// 		configContext.Log.Println("Warning: COMMON_PATH not found in Config, continuing without common config")
+	// 	}
+	// 	// Continue without common config - KernelZ mode doesn't need it
+	// 	return
+	// } else {
+	// 	// Try to get as map first
+	// 	if config, ok = configData.(*map[string]any); !ok {
+	// 		// Try as bytes
+	// 		if configBytes, ok := configData.([]byte); ok {
+	// 			err := yaml.Unmarshal(configBytes, &config)
+	// 			if err != nil {
+	// 				if configContext.Log != nil {
+	// 					configContext.Log.Printf("Warning: Failed to unmarshal common config: %v\n", err)
+	// 				}
+	// 				send_err(err)
+	// 				return
+	// 			}
+	// 		} else {
+	// 			if configContext.Log != nil {
+	// 				configContext.Log.Println("Warning: COMMON_PATH data is not map or byte array, continuing anyway")
+	// 			}
+	// 			return
+	// 		}
+	// 	}
+	// }
+	//	}
 
 	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
 	dfstat.UpdateDataFlowStatistic("System",
@@ -202,11 +276,25 @@ func PostInit(configContext *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 
+	// Validate properties pointer
+	if properties == nil {
+		fmt.Fprintln(os.Stderr, "Rosea Init: properties is nil")
+		return
+	}
+
 	// Refuse to run on Kubernetes
 	if isK8s, ok := (*properties)["isKubernetes"].(bool); ok && isK8s {
-		(*properties)["log"].(*log.Logger).Printf("Rosea plugin is not allowed to run on Kubernetes. Refusing to initialize.")
+		if logger, ok := (*properties)["log"].(*log.Logger); ok && logger != nil {
+			logger.Printf("Rosea plugin is not allowed to run on Kubernetes. Refusing to initialize.")
+		}
 		(*properties)["pluginRefused"] = true
 		return
+	}
+
+	// Check if running in KernelZ mode (editor-only mode)
+	isKernelZ := false
+	if kernelZ, ok := (*properties)["isKernelZ"].(bool); ok && kernelZ {
+		isKernelZ = true
 	}
 
 	configContext, err = tccore.Init(properties,
@@ -219,17 +307,33 @@ func Init(pluginName string, properties *map[string]any) {
 		chat_receiver,
 	)
 	if err != nil {
-		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
+		if logger, ok := (*properties)["log"].(*log.Logger); ok && logger != nil {
+			logger.Printf("Rosea initialization error: %v", err)
+		} else {
+			fmt.Fprintf(os.Stderr, "Rosea initialization error: %v\n", err)
+		}
 		return
 	}
+
+	// Check for COMMON_PATH config - only warn if missing in non-KernelZ mode
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
-		fmt.Fprintln(os.Stderr, "Missing common config components")
-		return
+		if !isKernelZ {
+			if configContext != nil && configContext.Log != nil {
+				configContext.Log.Println("Warning: Missing common config components, continuing anyway")
+			} else {
+				fmt.Fprintln(os.Stderr, "Warning: Missing common config components")
+			}
+		}
 	}
 
-	flowutil.InitChatSenderChan(configContext.ChatSenderChan)
+	if configContext != nil && configContext.ChatSenderChan != nil {
+		flowutil.InitChatSenderChan(configContext.ChatSenderChan)
+	}
 
-	go FetchSocii(configContext) // Init must be non blocking
+	// Only fetch Socii if not running in KernelZ mode (editor-only)
+	if !isKernelZ && configContext != nil {
+		go FetchSocii(configContext) // Init must be non blocking
+	}
 }
 
 func GetPluginMessages(pluginName string) []string {
