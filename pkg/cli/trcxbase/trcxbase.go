@@ -363,14 +363,31 @@ skipDiff:
 		return
 	}
 	if ctx == nil && !driverConfig.CoreConfig.IsEditor {
-		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
-			return
-		}
-		if !*diffPtr { // -diff doesn't require seed folder
-			if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-				fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
+		// Check template folder - use memfs for shell mode, real fs otherwise
+		if driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+			if _, err := driverConfig.MemFs.Stat(*startDirPtr); err != nil {
+				fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
 				return
+			}
+		} else {
+			if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+				fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
+				return
+			}
+		}
+
+		if !*diffPtr { // -diff doesn't require seed folder
+			// Check seed folder - use memfs for shell mode, real fs otherwise
+			if driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+				if _, err := driverConfig.MemFs.Stat(*endDirPtr); err != nil {
+					fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
+					return
+				}
+			} else {
+				if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+					fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
+					return
+				}
 			}
 		}
 	}

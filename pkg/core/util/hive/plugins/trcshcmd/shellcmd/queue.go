@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
@@ -105,7 +106,20 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 			err = errors.New("AUTHORIZATION ERROR: 'tx' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
 			break
 		}
-		trcxbase.CommonMain(nil, nil, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)
+		// Save original values
+		originalStartDir := driverConfig.StartDir
+		originalEndDir := driverConfig.EndDir
+		// Set StartDir and EndDir defaults for tx command if not already set
+		if len(driverConfig.StartDir) == 0 {
+			driverConfig.StartDir = []string{"trc_templates"}
+		}
+		if driverConfig.EndDir == "" {
+			driverConfig.EndDir = "./trc_seeds/"
+		}
+		trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)
+		// Restore original values
+		driverConfig.StartDir = originalStartDir
+		driverConfig.EndDir = originalEndDir
 
 	case CmdTrcInit:
 		// Require elevated access for trcinit (write operations)
@@ -401,51 +415,43 @@ func ExecuteMkdir(args []string, driverConfig *config.DriverConfig) error {
 }
 
 // createDirectory creates a single directory
-func createDirectory(driverConfig *config.DriverConfig, path string, createParents bool) error {
+func createDirectory(driverConfig *config.DriverConfig, dirPath string, createParents bool) error {
 	// Clean the path
-	if strings.HasPrefix(path, "./") {
-		path = strings.TrimPrefix(path, "./")
+	if strings.HasPrefix(dirPath, "./") {
+		dirPath = strings.TrimPrefix(dirPath, "./")
 	}
 
 	// Check if path already exists
-	if _, err := driverConfig.MemFs.Stat(path); err == nil {
-		return fmt.Errorf("cannot create directory '%s': File exists", path)
+	if _, err := driverConfig.MemFs.Stat(dirPath); err == nil {
+		return fmt.Errorf("cannot create directory '%s': File exists", dirPath)
 	}
 
-	// If -p flag is set, create parent directories
-	if createParents {
-		// Split path and create each level
-		parts := strings.Split(path, "/")
-		currentPath := ""
-		for _, part := range parts {
-			if part == "" {
-				continue
-			}
-			if currentPath == "" {
-				currentPath = part
-			} else {
-				currentPath = currentPath + "/" + part
-			}
-
-			// Check if current path exists
-			if _, err := driverConfig.MemFs.Stat(currentPath); err != nil {
-				// Create this level
-				dirFile, err := driverConfig.MemFs.Create(currentPath)
-				if err != nil {
-					return fmt.Errorf("cannot create directory '%s': %v", currentPath, err)
-				}
-				dirFile.Close()
+	if !createParents {
+		// Check if parent directory exists
+		parentPath := path.Dir(dirPath)
+		if parentPath != "." && parentPath != dirPath {
+			if _, err := driverConfig.MemFs.Stat(parentPath); err != nil {
+				return fmt.Errorf("cannot create directory '%s': No such file or directory", dirPath)
 			}
 		}
-		return nil
+	} else {
+		// Create all parent directories if needed
+		parentPath := path.Dir(dirPath)
+		if parentPath != "." && parentPath != dirPath {
+			// Recursively create parent directories
+			if _, err := driverConfig.MemFs.Stat(parentPath); err != nil {
+				if err := createDirectory(driverConfig, parentPath, true); err != nil {
+					return err
+				}
+			}
+		}
 	}
 
-	// Without -p flag, create only the final directory
-	dirFile, err := driverConfig.MemFs.Create(path)
-	if err != nil {
-		return fmt.Errorf("cannot create directory '%s': %v", path, err)
-	}
-	dirFile.Close()
+	// Create the directory by writing a marker file inside it
+	// This is a workaround since MemoryFileSystem interface doesn't provide mkdir
+	emptyData := []byte{}
+	markerPath := dirPath + "/.trc.keep"
+	driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, markerPath)
 
 	return nil
 }
