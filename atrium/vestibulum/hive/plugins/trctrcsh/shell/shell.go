@@ -24,26 +24,33 @@ var (
 	chatMsgHooks = cmap.New[tccore.ChatHookFunc]()
 )
 
+// commandResultMsg is sent when a command completes execution
+type commandResultMsg struct {
+	output     []string
+	shouldQuit bool
+}
+
 // GetChatMsgHooks returns the chat message hooks map
 func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 	return &chatMsgHooks
 }
 
 type ShellModel struct {
-	width          int
-	height         int
-	prompt         string
-	input          string
-	cursor         int
-	history        []string
-	historyIndex   int
-	draft          string
-	output         []string       // Persistent buffer - holds ALL output
-	viewport       viewport.Model // Viewport handles scrolling
-	memFs          trcshio.MemoryFileSystem
-	chatSenderChan *chan *tccore.ChatMsg
-	pendingExit    bool
-	elevatedMode   bool // Track if user has unrestricted write access
+	width            int
+	height           int
+	prompt           string
+	input            string
+	cursor           int
+	history          []string
+	historyIndex     int
+	draft            string
+	output           []string       // Persistent buffer - holds ALL output
+	viewport         viewport.Model // Viewport handles scrolling
+	memFs            trcshio.MemoryFileSystem
+	chatSenderChan   *chan *tccore.ChatMsg
+	pendingExit      bool
+	elevatedMode     bool // Track if user has unrestricted write access
+	commandExecuting bool // Track if a command is currently executing
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -67,20 +74,21 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	vp.SetContent(strings.Join(initialOutput, "\n"))
 
 	return &ShellModel{
-		width:          width,
-		height:         height,
-		prompt:         "$",
-		input:          "",
-		cursor:         0,
-		history:        []string{},
-		historyIndex:   -1,
-		draft:          "",
-		output:         initialOutput,
-		viewport:       vp,
-		memFs:          memFileSystem,
-		chatSenderChan: chatSenderChan,
-		pendingExit:    false,
-		elevatedMode:   false,
+		width:            width,
+		height:           height,
+		prompt:           "$",
+		input:            "",
+		cursor:           0,
+		history:          []string{},
+		historyIndex:     -1,
+		draft:            "",
+		output:           initialOutput,
+		viewport:         vp,
+		memFs:            memFileSystem,
+		chatSenderChan:   chatSenderChan,
+		pendingExit:      false,
+		elevatedMode:     false,
+		commandExecuting: false,
 	}
 }
 
@@ -102,6 +110,20 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
+	case commandResultMsg:
+		// Command finished executing, add output
+		m.commandExecuting = false
+		wasAtBottom := m.viewport.AtBottom()
+		m.output = append(m.output, msg.output...)
+		m.updateViewportContent()
+		if wasAtBottom {
+			m.viewport.GotoBottom()
+		}
+		if msg.shouldQuit {
+			return m, tea.Quit
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -132,27 +154,26 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Execute command
 			if len(strings.TrimSpace(m.input)) > 0 {
-				// Check if we're at bottom before executing (for auto-scroll decision)
-				wasAtBottom := m.viewport.AtBottom()
-
-				shouldQuit := m.executeCommand(m.input)
+				cmdToExecute := m.input
 				m.history = append(m.history, m.input)
+
+				// Add command echo and newline to output immediately
+				m.output = append(m.output, promptStyle.Render(m.prompt+" ")+cmdToExecute)
+				m.output = append(m.output, "")
+
+				// Clear input and mark command as executing
 				m.input = ""
 				m.cursor = 0
 				m.historyIndex = -1
 				m.draft = ""
+				m.commandExecuting = true
 
-				// Update viewport with new output
+				// Update viewport to show the command echo and newline immediately
 				m.updateViewportContent()
+				m.viewport.GotoBottom()
 
-				// Auto-scroll to bottom only if we were already at bottom
-				if wasAtBottom {
-					m.viewport.GotoBottom()
-				}
-
-				if shouldQuit {
-					return m, tea.Quit
-				}
+				// Return a command that executes asynchronously
+				return m, m.executeCommandAsync(cmdToExecute)
 			} else {
 				m.output = append(m.output, "")
 				m.updateViewportContent()
@@ -256,43 +277,55 @@ func (m *ShellModel) View() string {
 	// Render viewport content (persistent buffer with scrolling)
 	sb.WriteString(m.viewport.View())
 
-	// Display prompt and input
-	sb.WriteString("\n")
-	if m.pendingExit {
-		sb.WriteString(promptStyle.Render("(y/n) "))
-	} else {
-		sb.WriteString(promptStyle.Render(m.prompt + " "))
-	}
+	// Display prompt and input only if not executing a command
+	if !m.commandExecuting {
+		sb.WriteString("\n")
+		if m.pendingExit {
+			sb.WriteString(promptStyle.Render("(y/n) "))
+		} else {
+			sb.WriteString(promptStyle.Render(m.prompt + " "))
+		}
 
-	// Render input with cursor
-	if m.cursor < len(m.input) {
-		before := m.input[:m.cursor]
-		at := string(m.input[m.cursor])
-		after := m.input[m.cursor+1:]
+		// Render input with cursor
+		if m.cursor < len(m.input) {
+			before := m.input[:m.cursor]
+			at := string(m.input[m.cursor])
+			after := m.input[m.cursor+1:]
 
-		cursorStyle := lipgloss.NewStyle().Reverse(true)
-		sb.WriteString(before)
-		sb.WriteString(cursorStyle.Render(at))
-		sb.WriteString(after)
-	} else {
-		sb.WriteString(m.input)
-		cursorStyle := lipgloss.NewStyle().Reverse(true)
-		sb.WriteString(cursorStyle.Render(" "))
+			cursorStyle := lipgloss.NewStyle().Reverse(true)
+			sb.WriteString(before)
+			sb.WriteString(cursorStyle.Render(at))
+			sb.WriteString(after)
+		} else {
+			sb.WriteString(m.input)
+			cursorStyle := lipgloss.NewStyle().Reverse(true)
+			sb.WriteString(cursorStyle.Render(" "))
+		}
 	}
 
 	return sb.String()
 }
 
-func (m *ShellModel) executeCommand(cmd string) bool {
-	trimmedCmd := strings.TrimSpace(cmd)
+// executeCommandAsync returns a tea.Cmd that executes the command asynchronously
+func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
+	return func() tea.Msg {
+		output, shouldQuit := m.executeCommand(cmd)
+		return commandResultMsg{
+			output:     output,
+			shouldQuit: shouldQuit,
+		}
+	}
+}
 
-	// Add command to output
-	m.output = append(m.output, promptStyle.Render(m.prompt+" ")+cmd)
+// executeCommand executes a command and returns the output lines and whether to quit
+func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
+	trimmedCmd := strings.TrimSpace(cmd)
+	var output []string
 
 	// Parse and execute command
 	parts := strings.Fields(trimmedCmd)
 	if len(parts) == 0 {
-		return false
+		return output, false
 	}
 
 	command := parts[0]
@@ -304,14 +337,14 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		if m.elevatedMode {
 			m.elevatedMode = false
 			m.prompt = "$"
-			m.output = append(m.output, "Exited elevated mode. Returned to normal access.")
-			return false
+			output = append(output, "Exited elevated mode. Returned to normal access.")
+			return output, false
 		}
 		// Otherwise, exit the shell
-		m.output = append(m.output, "All uncommitted changes will be lost. Are you sure?")
+		output = append(output, "All uncommitted changes will be lost. Are you sure?")
 		m.pendingExit = true
 		// Don't add the normal empty line at the end for exit
-		return false
+		return output, false
 
 	case "ls":
 		// Determine which directory to list
@@ -333,28 +366,29 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 				if entry.IsDir() {
 					name += "/"
 				}
-				m.output = append(m.output, name)
+				output = append(output, name)
 			}
 			if visibleCount == 0 {
-				m.output = append(m.output, ".")
+				output = append(output, ".")
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
+			output = append(output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
 		}
 
 	case "tree":
-		m.output = append(m.output, ".")
-		dirCount, fileCount, err := m.printTree(".", "")
+		output = append(output, ".")
+		treeOutput, dirCount, fileCount, err := m.printTree(".", "")
 		if err != nil {
-			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
+			output = append(output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
 		} else {
-			m.output = append(m.output, "")
-			m.output = append(m.output, fmt.Sprintf("%d directories, %d files", dirCount, fileCount))
+			output = append(output, treeOutput...)
+			output = append(output, "")
+			output = append(output, fmt.Sprintf("%d directories, %d files", dirCount, fileCount))
 		}
 
 	case "rm":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -364,15 +398,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Files removed successfully")
+			output = append(output, "Files removed successfully")
 		}
 
 	case "cp":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -382,15 +416,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Files copied successfully")
+			output = append(output, "Files copied successfully")
 		}
 
 	case "mv":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -400,15 +434,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Files moved successfully")
+			output = append(output, "Files moved successfully")
 		}
 
 	case "cat":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -418,15 +452,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "mkdir":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -436,15 +470,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Directory created successfully")
+			output = append(output, "Directory created successfully")
 		}
 
 	case "tsub":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -454,22 +488,22 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tpub":
 		// Only available in elevated mode
 		if !m.elevatedMode {
-			m.output = append(m.output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
-			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			output = append(output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
+			output = append(output, "Run 'su' to obtain elevated access")
 			break
 		}
 
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -481,23 +515,23 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			for _, line := range lines {
 				// Style authorization errors in red
 				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					m.output = append(m.output, errorStyle.Render(line))
+					output = append(output, errorStyle.Render(line))
 				} else {
-					m.output = append(m.output, line)
+					output = append(output, line)
 				}
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "su":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
 		// Call trcshcmd to perform OAuth authentication for unrestricted access
-		m.output = append(m.output, "Requesting elevated access...")
+		output = append(output, "Requesting elevated access...")
 		response := callTrcshCmd(m.chatSenderChan, "su", args)
 		if response != "" && strings.Contains(response, "success") {
 			m.elevatedMode = true
@@ -505,31 +539,31 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
-			m.output = append(m.output, "")
-			m.output = append(m.output, "Elevated mode activated. Additional commands available:")
-			m.output = append(m.output, "  tinit    - Run trcinit commands (write access)")
-			m.output = append(m.output, "  tx       - Run trcx commands (write access)")
-			m.output = append(m.output, "Type 'exit' to return to normal mode.")
+			output = append(output, "")
+			output = append(output, "Elevated mode activated. Additional commands available:")
+			output = append(output, "  tinit    - Run trcinit commands (write access)")
+			output = append(output, "  tx       - Run trcx commands (write access)")
+			output = append(output, "Type 'exit' to return to normal mode.")
 		} else {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, errorStyle.Render(line))
+				output = append(output, errorStyle.Render(line))
 			}
 		}
 
 	case "tinit":
 		// Only available in elevated mode
 		if !m.elevatedMode {
-			m.output = append(m.output, errorStyle.Render("Error: 'tinit' command requires elevated access"))
-			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			output = append(output, errorStyle.Render("Error: 'tinit' command requires elevated access"))
+			output = append(output, "Run 'su' to obtain elevated access")
 			break
 		}
 
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -541,25 +575,25 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			for _, line := range lines {
 				// Style authorization errors in red
 				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					m.output = append(m.output, errorStyle.Render(line))
+					output = append(output, errorStyle.Render(line))
 				} else {
-					m.output = append(m.output, line)
+					output = append(output, line)
 				}
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tx":
 		// Only available in elevated mode
 		if !m.elevatedMode {
-			m.output = append(m.output, errorStyle.Render("Error: 'tx' command requires elevated access"))
-			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			output = append(output, errorStyle.Render("Error: 'tx' command requires elevated access"))
+			output = append(output, "Run 'su' to obtain elevated access")
 			break
 		}
 
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -571,18 +605,18 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			for _, line := range lines {
 				// Style authorization errors in red
 				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					m.output = append(m.output, errorStyle.Render(line))
+					output = append(output, errorStyle.Render(line))
 				} else {
-					m.output = append(m.output, line)
+					output = append(output, line)
 				}
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tconfig":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -592,75 +626,79 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "help":
-		m.output = append(m.output, "Available commands:")
-		m.output = append(m.output, "  help     - Show this help message")
-		m.output = append(m.output, "  echo     - Echo arguments")
-		m.output = append(m.output, "  ls       - List directory contents")
-		m.output = append(m.output, "  tree     - Display directory tree structure")
-		m.output = append(m.output, "  cat      - Display file contents")
-		m.output = append(m.output, "  mkdir    - Create directories (use -p for parent directories)")
-		m.output = append(m.output, "  rm       - Remove files or directories (use -r for recursive)")
-		m.output = append(m.output, "  cp       - Copy files or directories (use -r for recursive)")
-		m.output = append(m.output, "  mv       - Move/rename files or directories")
-		m.output = append(m.output, "  clear    - Clear screen (or press Ctrl+L)")
-		m.output = append(m.output, "  history  - Show command history")
-		m.output = append(m.output, "  tsub     - Run trcsub commands")
-		m.output = append(m.output, "  tconfig  - Run trcconfig commands")
+		output = append(output, "Available commands:")
+		output = append(output, "  help     - Show this help message")
+		output = append(output, "  echo     - Echo arguments")
+		output = append(output, "  ls       - List directory contents")
+		output = append(output, "  tree     - Display directory tree structure")
+		output = append(output, "  cat      - Display file contents")
+		output = append(output, "  mkdir    - Create directories (use -p for parent directories)")
+		output = append(output, "  rm       - Remove files or directories (use -r for recursive)")
+		output = append(output, "  cp       - Copy files or directories (use -r for recursive)")
+		output = append(output, "  mv       - Move/rename files or directories")
+		output = append(output, "  clear    - Clear screen (or press Ctrl+L)")
+		output = append(output, "  history  - Show command history")
+		output = append(output, "  tsub     - Run trcsub commands")
+		output = append(output, "  tconfig  - Run trcconfig commands")
 		if !m.elevatedMode {
-			m.output = append(m.output, "  su       - Obtain elevated access for write operations")
+			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
-			m.output = append(m.output, "  tinit    - Run trcinit commands (elevated mode only)")
-			m.output = append(m.output, "  tpub     - Run trcpub commands (elevated mode only)")
-			m.output = append(m.output, "  tx       - Run trcx commands (elevated mode only)")
+			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
+			output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
+			output = append(output, "  tx       - Run trcx commands (elevated mode only)")
 		}
-		m.output = append(m.output, "  exit     - Exit shell (or press Ctrl+C)")
+		output = append(output, "  exit     - Exit shell (or press Ctrl+C)")
 		if m.elevatedMode {
-			m.output = append(m.output, "")
-			m.output = append(m.output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")
+			output = append(output, "")
+			output = append(output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")
 		}
 
 	case "echo":
-		m.output = append(m.output, strings.Join(args, " "))
+		output = append(output, strings.Join(args, " "))
 
 	case "clear":
+		// Clear command needs immediate effect, bypass async pattern
 		m.output = []string{}
 		m.updateViewportContent()
 		m.viewport.GotoTop()
+		return output, false
 
 	case "history":
 		if len(m.history) == 0 {
-			m.output = append(m.output, "No command history")
+			output = append(output, "No command history")
 		} else {
 			for i, h := range m.history {
-				m.output = append(m.output, fmt.Sprintf("%4d  %s", i+1, h))
+				output = append(output, fmt.Sprintf("%4d  %s", i+1, h))
 			}
 		}
 
 	default:
-		m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Unknown command: %s", command)))
-		m.output = append(m.output, "Type 'help' for available commands")
+		output = append(output, errorStyle.Render(fmt.Sprintf("Unknown command: %s", command)))
+		output = append(output, "Type 'help' for available commands")
 	}
 
 	// Don't add empty line if waiting for exit confirmation
 	if !m.pendingExit {
-		m.output = append(m.output, "")
+		output = append(output, "")
 	}
-	return false
+	return output, false
 }
 
 // printTree recursively prints the directory tree structure
-// Returns (dirCount, fileCount, error)
-func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
+// Returns (output lines, dirCount, fileCount, error)
+func (m *ShellModel) printTree(path string, prefix string) ([]string, int, int, error) {
+	var treeOutput []string
+
 	entries, err := m.memFs.ReadDir(path)
 	if err != nil {
-		return 0, 0, err
+		return treeOutput, 0, 0, err
 	}
 
 	// Filter out io directory
@@ -689,7 +727,7 @@ func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
 		name := entry.Name()
 		if entry.IsDir() {
 			dirCount++
-			m.output = append(m.output, linePrefix+name+"/")
+			treeOutput = append(treeOutput, linePrefix+name+"/")
 			// Recursively print subdirectory
 			subPath := path
 			if path == "." {
@@ -697,20 +735,21 @@ func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
 			} else {
 				subPath = path + "/" + name
 			}
-			subDirCount, subFileCount, err := m.printTree(subPath, childPrefix)
+			subOutput, subDirCount, subFileCount, err := m.printTree(subPath, childPrefix)
 			if err != nil {
-				m.output = append(m.output, childPrefix+errorStyle.Render(fmt.Sprintf("Error: %v", err)))
+				treeOutput = append(treeOutput, childPrefix+errorStyle.Render(fmt.Sprintf("Error: %v", err)))
 			} else {
+				treeOutput = append(treeOutput, subOutput...)
 				dirCount += subDirCount
 				fileCount += subFileCount
 			}
 		} else {
 			fileCount++
-			m.output = append(m.output, linePrefix+name)
+			treeOutput = append(treeOutput, linePrefix+name)
 		}
 	}
 
-	return dirCount, fileCount, nil
+	return treeOutput, dirCount, fileCount, nil
 }
 
 var globalShellModel *ShellModel
