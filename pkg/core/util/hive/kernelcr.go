@@ -649,7 +649,14 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	}
 	(*serviceConfig)["certify"] = pluginHandler.DeploymentConfig
 
-	go pluginHandler.receiver(driverConfig)
+	// Determine kernel plugin type before starting receiver to avoid race
+	var isKernelPlugin bool
+	if pluginHandler.DeploymentConfig != nil {
+		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+			isKernelPlugin = (trctype == "kernelplugin")
+		}
+	}
+	go pluginHandler.receiver(driverConfig, isKernelPlugin)
 	pluginHandler.Init(serviceConfig)
 
 	// Check if plugin refused to initialize
@@ -1152,8 +1159,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							continue
 						}
 
+						var isKernelPlugin bool
+						if pluginHandler.DeploymentConfig != nil {
+							if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+								isKernelPlugin = (trctype == "kernelplugin")
+							}
+						}
+
 						go handler.handleDataflowStat(bootDriverConfig, statMod, nil)
-						go handler.receiver(bootDriverConfig)
+						go handler.receiver(bootDriverConfig, isKernelPlugin)
 					}
 				}()
 
@@ -1188,10 +1202,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				}
 
-				go pluginHandler.receiver(driverConfig)
-			}
+				// Determine if this is a kernel plugin BEFORE starting receiver to avoid race
+				var isKernelPlugin bool
+				if pluginHandler.DeploymentConfig != nil {
+					if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+						isKernelPlugin = (trctype == "kernelplugin")
+					}
+				}
 
-			if len(driverConfig.CoreConfig.Regions) > 0 {
+				go pluginHandler.receiver(driverConfig, isKernelPlugin)
 				serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
 			}
 
@@ -1213,14 +1232,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 }
 
-func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
-	// Check if this is a kernel-type plugin at receiver startup
-	var isKernelPlugin bool
-	if pluginHandler.DeploymentConfig != nil {
-		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
-			isKernelPlugin = (trctype == "kernelplugin")
-		}
-	}
+func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig, isKernelPlugin bool) {
+	// isKernelPlugin is now passed as parameter to avoid race condition
+	// on DeploymentConfig map access
 
 	for {
 		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
