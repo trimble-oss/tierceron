@@ -219,12 +219,12 @@ func start(pluginName string) {
 	}
 
 	// Block waiting for memFs - shell cannot start without it
-	configContext.Log.Println("Waiting for MemoryFileSystem response...")
+	configContext.Log.Println("Waiting for MemoryFileSystem response from trcshcmd...")
 	<-memFsReady
 	configContext.Log.Println("MemoryFileSystem received, launching shell")
 
 	// Launch interactive shell with bubbletea
-	configContext.Log.Println("Starting interactive shell...")
+	configContext.Log.Println("Starting interactive shell UI...")
 	var err error
 	if memFs != nil {
 		err = shell.RunShell(configContext.ChatSenderChan, memFs)

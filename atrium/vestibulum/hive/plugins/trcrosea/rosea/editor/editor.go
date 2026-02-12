@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,6 +15,25 @@ import (
 	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
 	"golang.org/x/term"
 )
+
+// EditorCloseMsg signals that the editor should be closed
+type EditorCloseMsg struct{}
+
+// CloseEditor returns a command that sends EditorCloseMsg
+func CloseEditor() tea.Cmd {
+	return func() tea.Msg {
+		return EditorCloseMsg{}
+	}
+}
+
+// cursorBlinkMsg triggers cursor blink in editor
+type cursorBlinkMsg struct{}
+
+func cursorBlink() tea.Cmd {
+	return tea.Tick(time.Millisecond*530, func(t time.Time) tea.Msg {
+		return cursorBlinkMsg{}
+	})
+}
 
 // Rosé Pine Moon styles
 var (
@@ -30,14 +50,15 @@ var (
 )
 
 type RoseaEditorModel struct {
-	title        string
-	width        int      // terminal width
-	lines        []string // Committed lines
-	input        string   // Current input (multi-line)
-	cursor       int      // Cursor position in input
-	historyIndex int      // 0 = live input, 1 = last, 2 = second last, etc.
-	draft        string   // Saved live input when entering history mode
-	draftCursor  int
+	title         string
+	width         int      // terminal width
+	lines         []string // Committed lines
+	input         string   // Current input (multi-line)
+	cursor        int      // Cursor position in input
+	cursorVisible bool     // For blinking cursor
+	historyIndex  int      // 0 = live input, 1 = last, 2 = second last, etc.
+	draft         string   // Saved live input when entering history mode
+	draftCursor   int
 
 	// Authentication related fields
 	showAuthPopup bool
@@ -86,25 +107,30 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 	}
 
 	return &RoseaEditorModel{
-		title:        title,
-		width:        width,
-		height:       height,
-		lines:        []string{},
-		input:        strings.Join(lines(data), "\n"), // Initialize input with existing lines
-		cursor:       0,
-		historyIndex: 0,
-		draft:        "",
-		editorStyle:  baseStyle.Padding(1, 2).Width(width),
-		roseaMode:    true, // Enable rosea mode for direct memfs save
+		title:         title,
+		width:         width,
+		height:        height,
+		lines:         []string{},
+		input:         strings.Join(lines(data), "\n"), // Initialize input with existing lines
+		cursor:        0,
+		cursorVisible: true,
+		historyIndex:  0,
+		draft:         "",
+		editorStyle:   baseStyle.Padding(1, 2).Width(width),
+		roseaMode:     true, // Enable rosea mode for direct memfs save
 	}
 }
 
 func (m *RoseaEditorModel) Init() tea.Cmd {
-	return nil
+	return cursorBlink()
 }
 
 func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case cursorBlinkMsg:
+		m.cursorVisible = !m.cursorVisible
+		return m, cursorBlink()
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -225,39 +251,33 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			return m, tea.Quit
+			return m, CloseEditor()
 
 		case tea.KeyCtrlX: // Exit
 			if m.roseaMode {
 				// In rosea mode, Ctrl+X quits without saving
-				return m, tea.Quit
+				return m, CloseEditor()
 			}
-			return m, tea.Quit
+			return m, CloseEditor()
 
 		case tea.KeyEsc:
 			if m.roseaMode {
 				// In rosea mode, ESC quits without saving
-				return m, tea.Quit
+				return m, CloseEditor()
 			}
 			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlO: // Write Out (save)
 			if m.roseaMode {
 				// Rosea mode: save directly to memfs
-				memfs, filename := roseacore.GetRoseaContext()
+				filename, memfs := roseacore.GetRoseaMemFs()
 				if memfs != nil {
-					// Try to cast memfs to the expected interface
-					if mfs, ok := memfs.(interface {
-						Remove(string) error
-						Create(string) (io.WriteCloser, error)
-					}); ok {
-						mfs.Remove(filename)
-						file, err := mfs.Create(filename)
-						if err == nil {
-							defer file.Close()
-							io.WriteString(file, m.input)
-							// Don't quit after save, continue editing
-						}
+					memfs.Remove(filename)
+					file, err := memfs.Create(filename)
+					if err == nil {
+						defer file.Close()
+						io.WriteString(file, m.input)
+						// Don't quit after save, continue editing
 					}
 				}
 			}
@@ -266,21 +286,15 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
 			if m.roseaMode {
 				// Rosea mode: save directly to memfs without auth popup
-				memfs, filename := roseacore.GetRoseaContext()
+				filename, memfs := roseacore.GetRoseaMemFs()
 				if memfs != nil {
-					// Try to cast memfs to the expected interface
-					if mfs, ok := memfs.(interface {
-						Remove(string) error
-						Create(string) (io.WriteCloser, error)
-					}); ok {
-						mfs.Remove(filename)
-						file, err := mfs.Create(filename)
-						if err == nil {
-							defer file.Close()
-							io.WriteString(file, m.input)
-							// Return to shell after save
-							return m, tea.Quit
-						}
+					memfs.Remove(filename)
+					file, err := memfs.Create(filename)
+					if err == nil {
+						defer file.Close()
+						io.WriteString(file, m.input)
+						// Return to shell after save
+						return m, CloseEditor()
 					}
 				}
 				return m, nil
@@ -452,31 +466,19 @@ func (m *RoseaEditorModel) View() string {
 			b.WriteString("\n")
 		}
 		if i == row {
-			var orig string
-			if i < len(m.lines) {
-				orig = m.lines[i]
-			}
-			split := 0
-			maxCmp := min(len(line), len(orig))
-			for split < maxCmp && line[split] == orig[split] {
-				split++
-			}
-			left := foamStyle.Render(line[:split])
-			changed := editedStyle.Render(line[split:])
-			cursor := goldStyle.Render("|")
-			// Place cursor at the right spot
-			if col <= split {
-				// Cursor in unchanged part
-				b.WriteString(foamStyle.Render(line[:col]))
-				b.WriteString(cursor)
-				b.WriteString(foamStyle.Render(line[col:split]))
-				b.WriteString(changed)
+			// Current line with cursor - render with uniform styling
+			b.WriteString(foamStyle.Render(line[:col]))
+			if m.cursorVisible {
+				if col < len(line) {
+					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#c4a7e7"))
+					b.WriteString(cursorStyle.Render(string(line[col])))
+					b.WriteString(foamStyle.Render(line[col+1:]))
+				} else {
+					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#c4a7e7"))
+					b.WriteString(cursorStyle.Render(" "))
+				}
 			} else {
-				// Cursor in changed part
-				b.WriteString(left)
-				b.WriteString(editedStyle.Render(line[split:col]))
-				b.WriteString(cursor)
-				b.WriteString(editedStyle.Render(line[col:]))
+				b.WriteString(foamStyle.Render(line[col:]))
 			}
 		} else {
 			b.WriteString(foamStyle.Render(line))
@@ -487,8 +489,20 @@ func (m *RoseaEditorModel) View() string {
 		var popupContent string
 		switch m.popupMode {
 		case "token":
+			cursorChar := " "
+			if m.authCursor < len(m.authInput) {
+				cursorChar = string(m.authInput[m.authCursor])
+			}
+			cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#f6c177"))
+			cursorBlock := ""
+			if m.cursorVisible {
+				cursorBlock = cursorStyle.Render(cursorChar)
+			} else {
+				cursorBlock = cursorChar
+			}
+
 			popupContent = "Enter authentication token:\n\n" +
-				m.authInput[:m.authCursor] + goldStyle.Render("|") + m.authInput[m.authCursor:] +
+				m.authInput[:m.authCursor] + cursorBlock + m.authInput[min(m.authCursor+1, len(m.authInput)):] +
 				"\n\n" + m.authError + "\n\n[Enter=Submit, Esc=Cancel]"
 		case "confirm":
 			popupContent = "Are you sure you want to proceed?\n\n[Enter=Yes, Esc=Cancel]"

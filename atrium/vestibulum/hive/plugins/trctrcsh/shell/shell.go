@@ -15,6 +15,7 @@ import (
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
+	testr "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/editor"
 )
 
 var (
@@ -30,6 +31,9 @@ type commandResultMsg struct {
 	shouldQuit bool
 }
 
+// editorCloseMsg is sent when the editor wants to close
+type editorCloseMsg struct{}
+
 // GetChatMsgHooks returns the chat message hooks map
 func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 	return &chatMsgHooks
@@ -41,6 +45,7 @@ type ShellModel struct {
 	prompt           string
 	input            string
 	cursor           int
+	cursorVisible    bool // For blinking cursor
 	history          []string
 	historyIndex     int
 	draft            string
@@ -49,8 +54,9 @@ type ShellModel struct {
 	memFs            trcshio.MemoryFileSystem
 	chatSenderChan   *chan *tccore.ChatMsg
 	pendingExit      bool
-	elevatedMode     bool // Track if user has unrestricted write access
-	commandExecuting bool // Track if a command is currently executing
+	elevatedMode     bool      // Track if user has unrestricted write access
+	commandExecuting bool      // Track if a command is currently executing
+	editorModel      tea.Model // Active editor model (nil when not editing)
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -79,6 +85,7 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		prompt:           "$",
 		input:            "",
 		cursor:           0,
+		cursorVisible:    true,
 		history:          []string{},
 		historyIndex:     -1,
 		draft:            "",
@@ -92,12 +99,61 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	}
 }
 
+// cursorBlinkMsg triggers cursor blink
+type cursorBlinkMsg struct{}
+
+func cursorBlink() tea.Cmd {
+	return tea.Tick(time.Millisecond*530, func(t time.Time) tea.Msg {
+		return cursorBlinkMsg{}
+	})
+}
+
 func (m *ShellModel) Init() tea.Cmd {
-	return nil
+	return cursorBlink()
 }
 
 func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle editor close messages first
+	if _, ok := msg.(testr.EditorCloseMsg); ok {
+		// Editor requested to close - follow same pattern as commandResultMsg
+		m.editorModel = nil
+		m.commandExecuting = false
+		wasAtBottom := m.viewport.AtBottom()
+		m.updateViewportContent()
+		if wasAtBottom {
+			m.viewport.GotoBottom()
+		}
+		return m, cursorBlink()
+	}
+	if _, ok := msg.(editorCloseMsg); ok {
+		// Legacy - can remove later
+		m.editorModel = nil
+		m.commandExecuting = false
+		wasAtBottom := m.viewport.AtBottom()
+		m.updateViewportContent()
+		if wasAtBottom {
+			m.viewport.GotoBottom()
+		}
+		return m, cursorBlink()
+	}
+
+	// If editor is active, forward ALL messages to it
+	if m.editorModel != nil {
+		updated, cmd := m.editorModel.Update(msg)
+		m.editorModel = updated
+		return m, cmd
+	}
+
+	// Shell-only message handling (when editor is not active)
 	switch msg := msg.(type) {
+	case cursorBlinkMsg:
+		m.cursorVisible = !m.cursorVisible
+		return m, cursorBlink()
+
+	case tea.QuitMsg:
+		// Ignore QuitMsg - shell uses explicit exit handling
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -106,10 +162,16 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = msg.Height - 3
 
 	case tea.MouseMsg:
-		// Forward mouse events to viewport for scrolling
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
+
+	case editorReadyMsg:
+		// Editor model is ready, activate it
+		m.editorModel = msg.model
+		// Call the editor's Init to start its cursor blink timer
+		return m, m.editorModel.Init()
+
 	case commandResultMsg:
 		// Command finished executing, add output
 		m.commandExecuting = false
@@ -272,6 +334,11 @@ func (m *ShellModel) updateViewportContent() {
 }
 
 func (m *ShellModel) View() string {
+	// If editor is active, show editor view instead
+	if m.editorModel != nil {
+		return m.editorModel.View()
+	}
+
 	var sb strings.Builder
 
 	// Render viewport content (persistent buffer with scrolling)
@@ -292,14 +359,20 @@ func (m *ShellModel) View() string {
 			at := string(m.input[m.cursor])
 			after := m.input[m.cursor+1:]
 
-			cursorStyle := lipgloss.NewStyle().Reverse(true)
-			sb.WriteString(before)
-			sb.WriteString(cursorStyle.Render(at))
-			sb.WriteString(after)
+			if m.cursorVisible {
+				cursorStyle := lipgloss.NewStyle().Reverse(true)
+				sb.WriteString(before)
+				sb.WriteString(cursorStyle.Render(at))
+				sb.WriteString(after)
+			} else {
+				sb.WriteString(m.input)
+			}
 		} else {
 			sb.WriteString(m.input)
-			cursorStyle := lipgloss.NewStyle().Reverse(true)
-			sb.WriteString(cursorStyle.Render(" "))
+			if m.cursorVisible {
+				cursorStyle := lipgloss.NewStyle().Reverse(true)
+				sb.WriteString(cursorStyle.Render(" "))
+			}
 		}
 	}
 
@@ -331,20 +404,20 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			}
 		}
 
-		// Return a command that suspends the shell and launches editor
+		// Return a command that requests editor model from rosea
 		args := parts[1:]
 		return func() tea.Msg {
-			// Send message to trcshcmd/rosea and wait for editor completion
+			// Send message to trcshcmd/rosea to get editor model
 			id := fmt.Sprintf("rosea-%d", time.Now().UnixNano())
-			responseChan := make(chan string, 1)
+			responseChan := make(chan tea.Model, 1)
 
 			// Register hook for response
 			GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
 				if msg.RoutingId != nil && *msg.RoutingId == id {
-					if msg.Response != nil {
-						responseChan <- *msg.Response
-					} else {
-						responseChan <- ""
+					if msg.HookResponse != nil {
+						if editorModel, ok := msg.HookResponse.(tea.Model); ok {
+							responseChan <- editorModel
+						}
 					}
 					return true
 				}
@@ -363,18 +436,20 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			}
 			*m.chatSenderChan <- roseaMsg
 
-			// Wait for editor to complete (this blocks the tea program)
+			// Wait for editor model to be returned
+			var editorModel tea.Model
 			select {
-			case <-responseChan:
+			case editorModel = <-responseChan:
 				GetChatMsgHooks().Remove(id)
-			case <-time.After(30 * time.Minute):
+			case <-time.After(5 * time.Second):
 				GetChatMsgHooks().Remove(id)
+				return commandResultMsg{
+					output:     []string{errorStyle.Render("Error: timeout waiting for editor")},
+					shouldQuit: false,
+				}
 			}
 
-			return commandResultMsg{
-				output:     []string{},
-				shouldQuit: false,
-			}
+			return editorReadyMsg{model: editorModel}
 		}
 	}
 
@@ -386,6 +461,11 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			shouldQuit: shouldQuit,
 		}
 	}
+}
+
+// Message type sent when editor model is ready
+type editorReadyMsg struct {
+	model tea.Model
 }
 
 // executeCommand executes a command and returns the output lines and whether to quit
@@ -525,8 +605,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			for _, line := range lines {
 				output = append(output, line)
 			}
-		} else {
-			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "mkdir":
@@ -559,39 +637,35 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			for _, line := range lines {
 				output = append(output, line)
 			}
-		} else {
-			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
-	case "tpub":
-		// Only available in elevated mode
-		if !m.elevatedMode {
-			output = append(output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
-			output = append(output, "Run 'su' to obtain elevated access")
-			break
-		}
+	// case "tpub":
+	// 	// Only available in elevated mode
+	// 	if !m.elevatedMode {
+	// 		output = append(output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
+	// 		output = append(output, "Run 'su' to obtain elevated access")
+	// 		break
+	// 	}
 
-		if m.chatSenderChan == nil {
-			output = append(output, errorStyle.Render("Error: chat channel not available"))
-			break
-		}
+	// 	if m.chatSenderChan == nil {
+	// 		output = append(output, errorStyle.Render("Error: chat channel not available"))
+	// 		break
+	// 	}
 
-		// Call trcshcmd synchronously - let trcpub handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "tpub", args)
-		if response != "" {
-			// Split response by newlines and add each line
-			lines := strings.Split(strings.TrimSpace(response), "\n")
-			for _, line := range lines {
-				// Style authorization errors in red
-				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					output = append(output, errorStyle.Render(line))
-				} else {
-					output = append(output, line)
-				}
-			}
-		} else {
-			output = append(output, errorStyle.Render("Error: no response from command"))
-		}
+	// 	// Call trcshcmd synchronously - let trcpub handle its own usage validation
+	// 	response := callTrcshCmd(m.chatSenderChan, "tpub", args)
+	// 	if response != "" {
+	// 		// Split response by newlines and add each line
+	// 		lines := strings.Split(strings.TrimSpace(response), "\n")
+	// 		for _, line := range lines {
+	// 			// Style authorization errors in red
+	// 			if strings.Contains(line, "AUTHORIZATION ERROR") {
+	// 				output = append(output, errorStyle.Render(line))
+	// 			} else {
+	// 				output = append(output, line)
+	// 			}
+	// 		}
+	// 	}
 
 	case "su":
 		if m.chatSenderChan == nil {
@@ -649,8 +723,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 					output = append(output, line)
 				}
 			}
-		} else {
-			output = append(output, errorStyle.Render("Error: no response from command"))
+
 		}
 
 	case "tx":
@@ -679,8 +752,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 					output = append(output, line)
 				}
 			}
-		} else {
-			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tconfig":
@@ -697,8 +768,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			for _, line := range lines {
 				output = append(output, line)
 			}
-		} else {
-			output = append(output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "help":
@@ -721,7 +790,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		} else {
 			output = append(output, "  rosea    - Edit files with rosea editor (elevated mode only)")
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
-			output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
+			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 			output = append(output, "  tx       - Run trcx commands (elevated mode only)")
 		}
 		output = append(output, "  exit     - Exit shell (or press Ctrl+C)")

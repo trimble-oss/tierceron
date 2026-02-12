@@ -18,21 +18,6 @@ var (
 	roseaMemFs    trcshio.MemoryFileSystem
 )
 
-// Rosea editor context
-var (
-	roseaMemFs    interface{}
-	roseaFilename string
-)
-
-func SetRoseaContext(memfs interface{}, filename string) {
-	roseaMemFs = memfs
-	roseaFilename = filename
-}
-
-func GetRoseaContext() (interface{}, string) {
-	return roseaMemFs, roseaFilename
-}
-
 func SetRoseaMemFs(rsf string, rmFs trcshio.MemoryFileSystem) {
 	roseaSeedFile = rsf
 	roseaMemFs = rmFs

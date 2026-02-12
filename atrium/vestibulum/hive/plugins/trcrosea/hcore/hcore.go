@@ -12,6 +12,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/hcore/flowutil"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea"
 	roseacore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/core"
@@ -132,33 +133,29 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 					configContext.Log.Printf("Opening rosea editor for file: %s\n", filename)
 
 					// Launch editor with the file content
-					// Store memfs and filename for save operation
-					roseacore.SetRoseaContext(memfs, filename)
-
-					// Initialize and run editor synchronously
-					editorModel := editor.InitRoseaEditor(filename, &content)
-					editorErr := rosea.RunRoseaEditor(editorModel)
-
-					// Send completion message back to trcsh with original RoutingId
-					completionMsg := "Editor closed"
-					if editorErr != nil {
-						configContext.Log.Printf("Error running rosea editor: %v\n", editorErr)
-						completionMsg = fmt.Sprintf("Editor error: %v", editorErr)
+					// Type-assert memfs and store for save operation
+					if typedMemFs, ok := memfs.(trcshio.MemoryFileSystem); ok {
+						roseacore.SetRoseaMemFs(filename, typedMemFs)
+					} else {
+						configContext.Log.Printf("Warning: memfs type assertion failed\n")
 					}
 
-					// Send response back using the routing ID from the request
+					// Initialize editor model and return it to shell (don't run it here)
+					editorModel := editor.InitRoseaEditor(filename, &content)
+
+					// Send editor model back to shell via HookResponse
 					if event.RoutingId != nil && configContext.ChatSenderChan != nil {
 						pluginName := "rosea"
 						responseMsg := &tccore.ChatMsg{
-							Name:      &pluginName,
-							Query:     &[]string{"trcsh"},
-							RoutingId: event.RoutingId,
-							Response:  &completionMsg,
+							Name:         &pluginName,
+							Query:        &[]string{"trcsh"},
+							RoutingId:    event.RoutingId,
+							HookResponse: editorModel,
 						}
 						*configContext.ChatSenderChan <- responseMsg
 					}
 
-					configContext.Log.Println("rosea editor session completed")
+					configContext.Log.Println("rosea editor model sent to shell")
 				}
 			}
 		case (*event).ChatId != nil && *event.ChatId != "PROGRESS":
