@@ -1220,21 +1220,23 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 			// load last modified time from vault
 			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/%s", tfCtx.GetFlowHeader().TableName(), flow.TierceronControllerFlow.FlowName())
 			dataMap, readErr := mod.ReadData(flowPath)
-			if readErr == nil && len(dataMap) > 0 {
-				lastModifiedTime, err := time.Parse(time.RFC3339, dataMap["lastModified"].(string))
+			if readErr == nil && len(dataMap) > 0 && dataMap["lastModified"] != nil {
+				if tfCtx.GetLastRefreshedTime() == "" {
+					// If RefreshedTime is not set, set it and skip refresh to avoid unnecessary restarts on boot
+					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
+					continue
+				}
+				lastModifiedTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", dataMap["lastModified"].(string))
 				if err != nil {
 					tfmContext.Log(fmt.Sprintf("Error parsing last modified time for flow %s", tfCtx.GetFlowHeader().TableName()), err)
 					continue
 				}
-				flowLastModified, err := time.Parse(time.RFC3339, tfCtx.GetLastModifiedTime())
-				if tfCtx.GetLastModifiedTime() != "" && err != nil {
+				flowLastModified, err := time.Parse("2006-01-02 15:04:05 -0700 MST", tfCtx.GetLastRefreshedTime())
+				if tfCtx.GetLastRefreshedTime() != "" && err != nil {
 					tfmContext.Log(fmt.Sprintf("Error parsing existing last modified time for flow %s", tfCtx.GetFlowHeader().TableName()), err)
 					continue
 				}
-				if dataMap["lastModified"] != nil &&
-					(tfCtx.GetLastModifiedTime() == "" ||
-						lastModifiedTime.Before(flowLastModified)) {
-					tfCtx.SetLastModifiedTime(dataMap["lastModified"].(string))
+				if flowLastModified.Before(lastModifiedTime) {
 					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
 					// Need to refresh flow
 					tfmContext.LockFlow(tfCtx.GetFlowHeader().FlowNameType())

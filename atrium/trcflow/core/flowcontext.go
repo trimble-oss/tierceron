@@ -111,10 +111,10 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
 }
 
 func (tfContext *TrcFlowContext) NotifyFlowComponentNeedsRestart() {
-	currentFlowState := tfContext.GetFlowState().(flowcorehelper.CurrentFlowState)
-	if currentFlowState.State != 3 {
-		currentFlowState.State = 3
-		tfContext.SetFlowState(currentFlowState)
+	if tfContext.GetFlowStateState() != 3 {
+		tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("3", tfContext.GetFlowSyncMode()))
+	} else {
+		return
 	}
 	for {
 		if tfContext.GetFlowStateState() == 0 {
@@ -124,10 +124,8 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentNeedsRestart() {
 		}
 	}
 	// When state is set to 0, set state to 1 to trigger reload.
-	updateFlowState := tfContext.GetFlowState().(flowcorehelper.CurrentFlowState)
-	if updateFlowState.State != 3 {
-		updateFlowState.State = 1
-		tfContext.SetFlowState(updateFlowState)
+	if tfContext.GetFlowStateState() != 3 {
+		tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("1", tfContext.GetFlowSyncMode()))
 	}
 }
 
@@ -198,18 +196,6 @@ func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
 	tfContext.FlowState.SyncMode = syncMode
-}
-
-func (tfContext *TrcFlowContext) GetLastModifiedTime() string {
-	tfContext.FlowStateLock.RLock()
-	defer tfContext.FlowStateLock.RUnlock()
-	return tfContext.FlowState.LastModified
-}
-
-func (tfContext *TrcFlowContext) SetLastModifiedTime(lastModified string) {
-	tfContext.FlowStateLock.Lock()
-	defer tfContext.FlowStateLock.Unlock()
-	tfContext.FlowState.LastModified = lastModified
 }
 
 func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {

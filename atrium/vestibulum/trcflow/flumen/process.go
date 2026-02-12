@@ -515,7 +515,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 					tcfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
 				}
 				if dataMap["lastModified"] != nil {
-					tcfContext.SetLastModifiedTime(dataMap["lastModified"].(string))
 					tcfContext.SetLastRefreshedTime(dataMap["lastModified"].(string))
 				}
 			}
