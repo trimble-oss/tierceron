@@ -1,9 +1,11 @@
 package testr
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -33,6 +35,83 @@ func cursorBlink() tea.Cmd {
 	return tea.Tick(time.Millisecond*530, func(t time.Time) tea.Msg {
 		return cursorBlinkMsg{}
 	})
+}
+
+// getClipboardContent retrieves clipboard content on Linux and WSL
+func getClipboardContent() string {
+	// Try WSL first (PowerShell Get-Clipboard)
+	if content, err := tryWSLClipboard(); err == nil && content != "" {
+		return content
+	}
+
+	// Try Wayland (wl-paste)
+	if content, err := tryWaylandClipboard(); err == nil && content != "" {
+		return content
+	}
+
+	// Try X11 with xclip
+	if content, err := tryX11ClipboardXclip(); err == nil && content != "" {
+		return content
+	}
+
+	// Try X11 with xsel
+	if content, err := tryX11ClipboardXsel(); err == nil && content != "" {
+		return content
+	}
+
+	return ""
+}
+
+// tryWSLClipboard tries to get clipboard from WSL using PowerShell
+func tryWSLClipboard() (string, error) {
+	cmd := exec.Command("powershell.exe", "-command", "Get-Clipboard")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	content := out.String()
+	// Remove Windows line endings
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.TrimRight(content, "\n")
+	return content, nil
+}
+
+// tryWaylandClipboard tries to get clipboard from Wayland
+func tryWaylandClipboard() (string, error) {
+	cmd := exec.Command("wl-paste", "--no-newline")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryX11ClipboardXclip tries to get clipboard from X11 using xclip
+func tryX11ClipboardXclip() (string, error) {
+	cmd := exec.Command("xclip", "-selection", "clipboard", "-o")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryX11ClipboardXsel tries to get clipboard from X11 using xsel
+func tryX11ClipboardXsel() (string, error) {
+	cmd := exec.Command("xsel", "--clipboard", "--output")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
 }
 
 // Rosé Pine Moon styles
@@ -352,6 +431,17 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
+		case tea.KeyCtrlV: // Paste from clipboard
+			clipboardContent := getClipboardContent()
+			if clipboardContent != "" {
+				// Sanitize and insert at cursor
+				clipboardContent = roseacore.SanitizePaste(clipboardContent)
+				m.input = m.input[:m.cursor] + clipboardContent + m.input[m.cursor:]
+				m.cursor += len(clipboardContent)
+				m.modified = true
+			}
+			return m, nil
+
 		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
 			if m.roseaMode {
 				// Rosea mode: save directly to memfs without auth popup
@@ -449,6 +539,18 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		default:
 			s := msg.String()
+			// Check for Ctrl+Shift+V (alternative paste shortcut)
+			// This may come through as "ctrl+shift+v" or other variations depending on terminal
+			if strings.ToLower(s) == "ctrl+shift+v" || (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 22) {
+				clipboardContent := getClipboardContent()
+				if clipboardContent != "" {
+					clipboardContent = roseacore.SanitizePaste(clipboardContent)
+					m.input = m.input[:m.cursor] + clipboardContent + m.input[m.cursor:]
+					m.cursor += len(clipboardContent)
+					m.modified = true
+				}
+				return m, nil
+			}
 			if len(s) > 0 && msg.Type != tea.KeySpace {
 				s = roseacore.SanitizePaste(s)
 				// Accept multi-character paste
@@ -622,7 +724,9 @@ func (m *RoseaEditorModel) View() string {
 			b.WriteString(filenameLine + "\n" + controlLine)
 		} else {
 			// Show normal control bar with highlighted control keys
-			controlText := ctrlKeyStyle.Render("^X") + " Exit    " + ctrlKeyStyle.Render("^O") + " Write Out"
+			controlText := ctrlKeyStyle.Render("^X") + " Exit    " +
+				ctrlKeyStyle.Render("^O") + " Write Out    " +
+				ctrlKeyStyle.Render("^V") + " Paste"
 			b.WriteString(controlText)
 		}
 	}
