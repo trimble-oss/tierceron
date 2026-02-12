@@ -76,6 +76,10 @@ type RoseaEditorModel struct {
 	// Write Out confirmation
 	confirmingWrite bool // If true, showing confirmation prompt for Ctrl+O
 	confirmCursor   bool // Cursor visibility for confirmation prompt
+
+	// Modification tracking
+	modified       bool // If true, buffer has unsaved changes
+	confirmingExit bool // If true, showing exit confirmation for unsaved changes
 }
 
 func lines(b *[]byte) []string {
@@ -111,18 +115,20 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 		height = 24
 	}
 
+	initialContent := strings.Join(lines(data), "\n")
 	return &RoseaEditorModel{
 		title:         title,
 		width:         width,
 		height:        height,
 		lines:         []string{},
-		input:         strings.Join(lines(data), "\n"), // Initialize input with existing lines
+		input:         initialContent, // Initialize input with existing lines
 		cursor:        0,
 		cursorVisible: true,
 		historyIndex:  0,
 		draft:         "",
 		editorStyle:   baseStyle.Padding(1, 2).Width(width),
 		roseaMode:     true, // Enable rosea mode for direct memfs save
+		modified:      false,
 	}
 }
 
@@ -144,6 +150,38 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		// Handle exit confirmation state
+		if m.confirmingExit {
+			switch msg.Type {
+			case tea.KeyRunes:
+				key := msg.String()
+				if key == "y" || key == "Y" {
+					// Save and exit
+					filename, memfs := roseacore.GetRoseaMemFs()
+					if memfs != nil {
+						memfs.Remove(filename)
+						file, err := memfs.Create(filename)
+						if err == nil {
+							defer file.Close()
+							io.WriteString(file, m.input)
+						}
+					}
+					return m, CloseEditor()
+				} else if key == "n" || key == "N" {
+					// Exit without saving
+					return m, CloseEditor()
+				}
+			case tea.KeyCtrlC:
+				// Cancel and return to editor
+				m.confirmingExit = false
+				return m, nil
+			default:
+				// Ignore other keys
+				return m, nil
+			}
+			return m, nil
+		}
+
 		// Handle write confirmation state
 		if m.confirmingWrite {
 			switch msg.Type {
@@ -161,6 +199,9 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err == nil {
 						defer file.Close()
 						io.WriteString(file, m.input)
+						// Mark as saved
+						m.modified = false
+
 					}
 				}
 				return m, nil
@@ -285,21 +326,23 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			// Check for unsaved changes
+			if m.modified {
+				m.confirmingExit = true
+				return m, nil
+			}
 			return m, CloseEditor()
 
 		case tea.KeyCtrlX: // Exit
 			if m.roseaMode {
-				// In rosea mode, Ctrl+X quits without saving
+				// Check for unsaved changes before exiting
+				if m.modified {
+					m.confirmingExit = true
+					return m, nil
+				}
 				return m, CloseEditor()
 			}
 			return m, CloseEditor()
-
-		case tea.KeyEsc:
-			if m.roseaMode {
-				// In rosea mode, ESC quits without saving
-				return m, CloseEditor()
-			}
-			return roseacore.GetRoseaNavigationCtx(), nil
 
 		case tea.KeyCtrlO: // Write Out (save)
 			if m.roseaMode {
@@ -319,6 +362,9 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if err == nil {
 						defer file.Close()
 						io.WriteString(file, m.input)
+						// Mark as saved
+						m.modified = false
+
 						// Return to shell after save
 						return m, CloseEditor()
 					}
@@ -344,12 +390,14 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Insert newline at cursor
 			m.input = m.input[:m.cursor] + "\n" + m.input[m.cursor:]
 			m.cursor++
+			m.modified = true
 			return m, nil
 
 		case tea.KeyBackspace:
 			if m.cursor > 0 && len(m.input) > 0 {
 				m.input = m.input[:m.cursor-1] + m.input[m.cursor:]
 				m.cursor--
+				m.modified = true
 			}
 			return m, nil
 
@@ -410,6 +458,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.input = m.input[:m.cursor] + s + m.input[m.cursor:]
 					m.cursor += len(s)
+					m.modified = true
 				}
 			} else if msg.Type == tea.KeySpace {
 				if m.showAuthPopup {
@@ -418,6 +467,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.input = m.input[:m.cursor] + " " + m.input[m.cursor:]
 					m.cursor++
+					m.modified = true
 				}
 			}
 		}
@@ -472,7 +522,7 @@ func min(a, b int) int {
 func (m *RoseaEditorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to save, ESC to navigate"))
+	b.WriteString(roseStyle.Render("Roséa Multi-line Editor"))
 	b.WriteString("\n")
 
 	for _, line := range m.lines {
@@ -546,7 +596,15 @@ func (m *RoseaEditorModel) View() string {
 	// Add rosea-style control bar or confirmation prompt at the bottom
 	if m.roseaMode {
 		b.WriteString("\n\n")
-		if m.confirmingWrite {
+		if m.confirmingExit {
+			// Show exit confirmation prompt with highlighted text
+			promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff41")).Bold(true)
+			promptText := promptStyle.Render("Save modified buffer?") + "  "
+			optionsText := ctrlKeyStyle.Render(" Y ") + " Yes  " +
+				ctrlKeyStyle.Render(" N ") + " No  " +
+				ctrlKeyStyle.Render("^C") + " Cancel"
+			b.WriteString(promptText + optionsText)
+		} else if m.confirmingWrite {
 			// Show write confirmation, replacing the control bar
 			filename, _ := roseacore.GetRoseaMemFs()
 

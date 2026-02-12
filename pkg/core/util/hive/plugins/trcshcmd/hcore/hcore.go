@@ -239,7 +239,9 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for trcshcmd")
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Println("no config context initialized for trcshcmd")
+		}
 		return
 	}
 	// Initiate final plugin startup sequence.
@@ -273,9 +275,13 @@ func initPlugin(pluginName string, properties *map[string]any) {
 	// Get DriverConfig from properties
 	if dc, ok := (*properties)["driverConfig"].(*config.DriverConfig); ok {
 		driverConfig = dc
-		fmt.Printf("trcshcmd initPlugin: received driverConfig\n")
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("trcshcmd initPlugin: received driverConfig\n")
+		}
 	} else {
-		fmt.Printf("trcshcmd initPlugin: no driverConfig in properties\n")
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("trcshcmd initPlugin: no driverConfig in properties\n")
+		}
 	}
 
 	var err error
@@ -290,7 +296,9 @@ func initPlugin(pluginName string, properties *map[string]any) {
 		chat_receiver,
 	)
 	if err != nil {
-		fmt.Printf("Failure to init context for trcshcmd: %v\n", err)
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("Failure to init context for trcshcmd: %v\n", err)
+		}
 		return
 	}
 }
