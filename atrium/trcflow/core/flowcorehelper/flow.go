@@ -14,11 +14,10 @@ type FlowStateUpdate struct {
 }
 
 type CurrentFlowState struct {
-	State        int64
-	SyncMode     string
-	SyncFilter   string
-	FlowAlias    string
-	LastModified string
+	State      int64
+	SyncMode   string
+	SyncFilter string
+	FlowAlias  string
 }
 
 func UpdateTierceronFlowState(tfmContext flowcore.FlowMachineContext, flowName string, newState string, syncFilter string, syncMode string, flowAlias string) map[string]any {
