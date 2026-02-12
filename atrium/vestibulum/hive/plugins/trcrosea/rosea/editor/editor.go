@@ -37,16 +37,17 @@ func cursorBlink() tea.Cmd {
 
 // Rosé Pine Moon styles
 var (
-	baseStyle = lipgloss.NewStyle().Background(lipgloss.Color("#232136")).Foreground(lipgloss.Color("#e0def4"))
+	baseStyle = lipgloss.NewStyle().Background(lipgloss.Color("#000000")).Foreground(lipgloss.Color("#e0def4"))
 	roseStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#eb6f92"))
 	pineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ccfd8"))
 	foamStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#c4a7e7")).
-			Background(lipgloss.Color("#232136"))
+			Foreground(lipgloss.Color("#00ff41")).
+			Background(lipgloss.Color("#000000"))
 	editedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ebbcba")).
-			Background(lipgloss.Color("#232136"))
-	goldStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
+			Background(lipgloss.Color("#000000"))
+	goldStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
+	ctrlKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#00ff41")).Bold(true)
 )
 
 type RoseaEditorModel struct {
@@ -495,11 +496,11 @@ func (m *RoseaEditorModel) View() string {
 			b.WriteString(foamStyle.Render(line[:col]))
 			if m.cursorVisible {
 				if col < len(line) {
-					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#c4a7e7"))
+					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
 					b.WriteString(cursorStyle.Render(string(line[col])))
 					b.WriteString(foamStyle.Render(line[col+1:]))
 				} else {
-					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#c4a7e7"))
+					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
 					b.WriteString(cursorStyle.Render(" "))
 				}
 			} else {
@@ -518,7 +519,7 @@ func (m *RoseaEditorModel) View() string {
 			if m.authCursor < len(m.authInput) {
 				cursorChar = string(m.authInput[m.authCursor])
 			}
-			cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#f6c177"))
+			cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#f6c177"))
 			cursorBlock := ""
 			if m.cursorVisible {
 				cursorBlock = cursorStyle.Render(cursorChar)
@@ -552,24 +553,19 @@ func (m *RoseaEditorModel) View() string {
 			// Create cursor block for the filename
 			cursorChar := " "
 			if m.confirmCursor {
-				cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#c4a7e7"))
+				cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
 				cursorChar = cursorStyle.Render(" ")
 			}
 
 			// Render confirmation in place of control bar
 			filenameLine := "File Name to Write: " + filename + cursorChar
-			controlLine := "^C Cancel"
+			controlLine := ctrlKeyStyle.Render("^C") + " Cancel"
 
 			b.WriteString(filenameLine + "\n" + controlLine)
 		} else {
-			// Show normal control bar
-			controlBar := lipgloss.NewStyle().
-				Background(lipgloss.Color("#393552")).
-				Foreground(lipgloss.Color("#e0def4")).
-				Width(m.width).
-				Padding(0, 1).
-				Render("^X Exit    ^O Write Out")
-			b.WriteString(controlBar)
+			// Show normal control bar with highlighted control keys
+			controlText := ctrlKeyStyle.Render("^X") + " Exit    " + ctrlKeyStyle.Render("^O") + " Write Out"
+			b.WriteString(controlText)
 		}
 	}
 

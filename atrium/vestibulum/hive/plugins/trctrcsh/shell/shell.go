@@ -294,6 +294,12 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnd:
 			m.cursor = len(m.input)
 
+		case tea.KeyCtrlA:
+			m.cursor = 0
+
+		case tea.KeyCtrlE:
+			m.cursor = len(m.input)
+
 		case tea.KeyCtrlU:
 			// Clear line
 			m.input = ""
@@ -312,6 +318,21 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
 			return m, cmd
+
+		case tea.KeyTab:
+			// Perform tab completion
+			completed, options := m.tabComplete()
+			if completed != "" {
+				// Replace the path at cursor position with completed path
+				m.input = completed
+				m.cursor = len(m.input)
+			} else if len(options) > 0 {
+				// Multiple matches - show options to user
+				m.output = append(m.output, "")
+				m.output = append(m.output, strings.Join(options, "  "))
+				m.updateViewportContent()
+				m.viewport.GotoBottom()
+			}
 
 		default:
 			// Insert character
@@ -377,6 +398,145 @@ func (m *ShellModel) View() string {
 	}
 
 	return sb.String()
+}
+
+// tabComplete attempts to complete the current input with file/directory paths
+// Returns (completed input, options if multiple matches)
+func (m *ShellModel) tabComplete() (string, []string) {
+	// Parse the input to find the path to complete
+	beforeCursor := m.input[:m.cursor]
+	afterCursor := m.input[m.cursor:]
+
+	// Find the last word (potential path) before cursor
+	fields := strings.Fields(beforeCursor)
+	if len(fields) == 0 {
+		return "", nil
+	}
+
+	// Get the path to complete (last field)
+	pathToComplete := fields[len(fields)-1]
+
+	// Split into directory and prefix
+	lastSlash := strings.LastIndex(pathToComplete, "/")
+	var dir, prefix string
+	if lastSlash == -1 {
+		// No slash - completing in current directory
+		dir = "."
+		prefix = pathToComplete
+	} else if lastSlash == 0 {
+		// Root directory
+		dir = "/"
+		prefix = pathToComplete[1:]
+	} else {
+		// Some directory path
+		dir = pathToComplete[:lastSlash]
+		prefix = pathToComplete[lastSlash+1:]
+	}
+
+	// Find matching entries in the directory
+	matches := m.findMatches(dir, prefix)
+
+	if len(matches) == 0 {
+		return "", nil
+	} else if len(matches) == 1 {
+		// Single match - complete it
+		completed := matches[0]
+
+		// Construct the new input
+		beforePath := ""
+		if len(fields) > 1 {
+			beforePath = strings.Join(fields[:len(fields)-1], " ") + " "
+		}
+
+		// Build completed path
+		var completedPath string
+		if lastSlash == -1 {
+			completedPath = completed
+		} else {
+			completedPath = pathToComplete[:lastSlash+1] + completed
+		}
+
+		newInput := beforePath + completedPath + afterCursor
+		return newInput, nil
+	} else {
+		// Multiple matches - check for common prefix
+		commonPrefix := findCommonPrefix(matches)
+		if len(commonPrefix) > len(prefix) {
+			// Complete to common prefix
+			beforePath := ""
+			if len(fields) > 1 {
+				beforePath = strings.Join(fields[:len(fields)-1], " ") + " "
+			}
+
+			var completedPath string
+			if lastSlash == -1 {
+				completedPath = commonPrefix
+			} else {
+				completedPath = pathToComplete[:lastSlash+1] + commonPrefix
+			}
+
+			newInput := beforePath + completedPath + afterCursor
+			return newInput, nil
+		}
+		// No further completion possible - return options
+		return "", matches
+	}
+}
+
+// findCommonPrefix finds the longest common prefix among strings
+func findCommonPrefix(strs []string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	if len(strs) == 1 {
+		return strs[0]
+	}
+
+	prefix := strs[0]
+	for i := 1; i < len(strs); i++ {
+		// Find common prefix between current prefix and next string
+		j := 0
+		for j < len(prefix) && j < len(strs[i]) && prefix[j] == strs[i][j] {
+			j++
+		}
+		prefix = prefix[:j]
+		if len(prefix) == 0 {
+			break
+		}
+	}
+	return prefix
+}
+
+// findMatches finds all files/directories in dir that start with prefix
+func (m *ShellModel) findMatches(dir, prefix string) []string {
+	var matches []string
+
+	// Read directory entries
+	entries, err := m.memFs.ReadDir(dir)
+	if err != nil {
+		return matches
+	}
+
+	// Filter entries by prefix
+	for _, entry := range entries {
+		name := entry.Name()
+
+		// Skip io directory (internal)
+		if name == "io" {
+			continue
+		}
+
+		// Check if name starts with prefix
+		if strings.HasPrefix(name, prefix) {
+			// Add trailing slash for directories
+			if entry.IsDir() {
+				name += "/"
+			}
+			matches = append(matches, name)
+		}
+	}
+
+	return matches
 }
 
 // executeCommandAsync returns a tea.Cmd that executes the command asynchronously
