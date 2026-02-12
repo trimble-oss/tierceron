@@ -386,15 +386,6 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 
 	// Handle rosea command specially - it needs to suspend the tea program
 	if len(parts) > 0 && parts[0] == "rosea" {
-		if !m.elevatedMode {
-			return func() tea.Msg {
-				return commandResultMsg{
-					output:     []string{errorStyle.Render("Error: 'rosea' command requires elevated access"), "Run 'su' to obtain elevated access"},
-					shouldQuit: false,
-				}
-			}
-		}
-
 		if m.chatSenderChan == nil {
 			return func() tea.Msg {
 				return commandResultMsg{
@@ -727,13 +718,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 	case "tx":
-		// Only available in elevated mode
-		if !m.elevatedMode {
-			output = append(output, errorStyle.Render("Error: 'tx' command requires elevated access"))
-			output = append(output, "Run 'su' to obtain elevated access")
-			break
-		}
-
 		if m.chatSenderChan == nil {
 			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
@@ -783,15 +767,15 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		output = append(output, "  mv       - Move/rename files or directories")
 		output = append(output, "  clear    - Clear screen (or press Ctrl+L)")
 		output = append(output, "  history  - Show command history")
+		output = append(output, "  rosea    - Edit files with rosea editor")
 		output = append(output, "  tsub     - Run trcsub commands")
 		output = append(output, "  tconfig  - Run trcconfig commands")
+		output = append(output, "  tx       - Run trcx commands")
 		if !m.elevatedMode {
 			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
-			output = append(output, "  rosea    - Edit files with rosea editor (elevated mode only)")
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
-			output = append(output, "  tx       - Run trcx commands (elevated mode only)")
 		}
 		output = append(output, "  exit     - Exit shell (or press Ctrl+C)")
 		if m.elevatedMode {

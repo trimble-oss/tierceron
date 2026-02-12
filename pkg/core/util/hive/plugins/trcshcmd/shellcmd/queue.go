@@ -101,11 +101,6 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		driverConfig.EndDir = originalEndDir
 
 	case CmdTrcX:
-		// Require elevated access for trcx (write operations)
-		if !hasUnrestrictedAccess(driverConfig) {
-			err = errors.New("AUTHORIZATION ERROR: 'tx' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
-			break
-		}
 		// Save original values
 		originalStartDir := driverConfig.StartDir
 		originalEndDir := driverConfig.EndDir

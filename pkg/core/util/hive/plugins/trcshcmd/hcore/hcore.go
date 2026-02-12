@@ -159,8 +159,9 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 					continue
 				}
 
+				//                  Only tinit and tpub require elevation - tx (trcx) does not
 				// Authorization check: Block privileged commands without elevated access
-				if (cmdType == shellcmd.CmdTrcX || cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub) && !hasUnrestrictedAccess() {
+				if (cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub) && !hasUnrestrictedAccess() {
 					configContext.Log.Printf("AUTHORIZATION DENIED: Command %s requires elevated access\n", cmdType)
 
 					// Return authorization error immediately without executing command

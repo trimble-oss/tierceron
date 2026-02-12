@@ -71,6 +71,10 @@ type RoseaEditorModel struct {
 	scrollOffset int
 	height       int
 	roseaMode    bool // If true, save directly to memfs instead of trcdb
+
+	// Write Out confirmation
+	confirmingWrite bool // If true, showing confirmation prompt for Ctrl+O
+	confirmCursor   bool // Cursor visibility for confirmation prompt
 }
 
 func lines(b *[]byte) []string {
@@ -129,6 +133,9 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case cursorBlinkMsg:
 		m.cursorVisible = !m.cursorVisible
+		if m.confirmingWrite {
+			m.confirmCursor = !m.confirmCursor
+		}
 		return m, cursorBlink()
 
 	case tea.WindowSizeMsg:
@@ -136,6 +143,32 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		// Handle write confirmation state
+		if m.confirmingWrite {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				// Cancel write
+				m.confirmingWrite = false
+				return m, nil
+			case tea.KeyEnter:
+				// Confirm write
+				m.confirmingWrite = false
+				filename, memfs := roseacore.GetRoseaMemFs()
+				if memfs != nil {
+					memfs.Remove(filename)
+					file, err := memfs.Create(filename)
+					if err == nil {
+						defer file.Close()
+						io.WriteString(file, m.input)
+					}
+				}
+				return m, nil
+			default:
+				// Ignore other keys during confirmation
+				return m, nil
+			}
+		}
+
 		if m.showAuthPopup {
 			switch m.popupMode {
 			case "token":
@@ -269,17 +302,9 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyCtrlO: // Write Out (save)
 			if m.roseaMode {
-				// Rosea mode: save directly to memfs
-				filename, memfs := roseacore.GetRoseaMemFs()
-				if memfs != nil {
-					memfs.Remove(filename)
-					file, err := memfs.Create(filename)
-					if err == nil {
-						defer file.Close()
-						io.WriteString(file, m.input)
-						// Don't quit after save, continue editing
-					}
-				}
+				// Show confirmation prompt
+				m.confirmingWrite = true
+				m.confirmCursor = true
 			}
 			return m, nil
 
@@ -517,16 +542,35 @@ func (m *RoseaEditorModel) View() string {
 		b.WriteString("\n\n" + popup)
 	}
 
-	// Add rosea-style control bar at the bottom
+	// Add rosea-style control bar or confirmation prompt at the bottom
 	if m.roseaMode {
 		b.WriteString("\n\n")
-		controlBar := lipgloss.NewStyle().
-			Background(lipgloss.Color("#393552")).
-			Foreground(lipgloss.Color("#e0def4")).
-			Width(m.width).
-			Padding(0, 1).
-			Render("^X Exit    ^O Write Out")
-		b.WriteString(controlBar)
+		if m.confirmingWrite {
+			// Show write confirmation, replacing the control bar
+			filename, _ := roseacore.GetRoseaMemFs()
+
+			// Create cursor block for the filename
+			cursorChar := " "
+			if m.confirmCursor {
+				cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#232136")).Background(lipgloss.Color("#c4a7e7"))
+				cursorChar = cursorStyle.Render(" ")
+			}
+
+			// Render confirmation in place of control bar
+			filenameLine := "File Name to Write: " + filename + cursorChar
+			controlLine := "^C Cancel"
+
+			b.WriteString(filenameLine + "\n" + controlLine)
+		} else {
+			// Show normal control bar
+			controlBar := lipgloss.NewStyle().
+				Background(lipgloss.Color("#393552")).
+				Foreground(lipgloss.Color("#e0def4")).
+				Width(m.width).
+				Padding(0, 1).
+				Render("^X Exit    ^O Write Out")
+			b.WriteString(controlBar)
+		}
 	}
 
 	return m.editorStyle.Width(m.width).Render(b.String())
