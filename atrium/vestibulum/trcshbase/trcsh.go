@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -516,7 +517,17 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			// load via new properties and get config values
 			if configMap == nil || len(*configMap) == 0 {
 				configMap = &map[string]any{}
-				data, err := os.ReadFile("config.yml")
+				var data []byte
+				var err error
+				if kernelopts.BuildOptions.IsKernelZ() {
+					homeDir, homeErr := os.UserHomeDir()
+					if homeErr != nil {
+						eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Error getting home directory: %s", homeErr.Error()), -1)
+					}
+					data, err = os.ReadFile(homeDir + "/.trcshrc")
+				} else {
+					data, err = os.ReadFile("config.yml")
+				}
 				if err != nil {
 					eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Error reading YAML file: %s", err.Error()), -1)
 				}
@@ -537,9 +548,13 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 					driverConfigPtr.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
 				}
 			} else {
-				useRole = false
-				if !isShellRunner {
-					driverConfigPtr.CoreConfig.Log.Println("Error reading config value")
+				// For KernelZ, we still need to call AutoAuth (it will perform OAuth to obtain credentials)
+				// For other kernels, agent_role is required
+				if !kernelopts.BuildOptions.IsKernelZ() {
+					useRole = false
+					if !isShellRunner {
+						driverConfigPtr.CoreConfig.Log.Println("Error reading config value")
+					}
 				}
 			}
 			if region, ok := (*configMap)["region"].(string); ok {
@@ -632,7 +647,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 
-		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !isShellRunner && !driverConfigPtr.CoreConfig.IsEditor {
+		if !useRole && !eUtils.IsWindows() && kernelopts.BuildOptions.IsKernel() && !kernelopts.BuildOptions.IsKernelZ() && !isShellRunner && !driverConfigPtr.CoreConfig.IsEditor {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, "drone trcsh requires AGENT_ROLE", -1)
 		}
 
@@ -848,7 +863,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if eUtils.IsWindows() {
 			pluginConfig["plugin"] = "trcsh.exe"
 		} else if kernelopts.BuildOptions.IsKernel() && !isShellRunner {
-			pluginConfig["plugin"] = "trcshk"
+			if kernelopts.BuildOptions.IsKernelZ() {
+				pluginConfig["plugin"] = "trcshz"
+			} else {
+				pluginConfig["plugin"] = "trcshk"
+			}
 		} else {
 			if isShellRunner {
 				pluginConfig["plugin"] = (*configMap)["plugin_name"]
@@ -973,42 +992,48 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
-		// Prioritize healthcheck deployment - start it first
-		healthcheckIdx := -1
+		// Prioritize trcshcmd, rosea, and healthcheck deployments - start them first
+		priorityPlugins := []string{"trcshcmd", "rosea", "healthcheck"}
+		priorityIndices := []int{}
 		for i, deploymentConfig := range pluginDeployments {
 			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
-				if deploymentName, isString := trcPlugin.(string); isString && deploymentName == "healthcheck" {
-					healthcheckIdx = i
-					EnableDeployer(driverConfigPtr,
-						*gAgentConfig.Env,
-						*regionPtr,
-						"",
-						*trcPathPtr,
-						true,
-						kernelopts.BuildOptions.IsKernel(),
-						dronePtr,
-						deploymentConfig,
-						tracelessPtr,
-						projectServicePtr)
-					driverConfigPtr.CoreConfig.Log.Println("Healthcheck deployer started, waiting 5 seconds before starting other deployers...")
-					for {
-						if kernelPluginHandler != nil && kernelPluginHandler.Services != nil {
-							if healthcheckService, ok := (*kernelPluginHandler.Services)["healthcheck"]; ok {
-								if healthcheckService.State == 1 {
-									break
+				if deploymentName, isString := trcPlugin.(string); isString {
+					for _, priorityName := range priorityPlugins {
+						if deploymentName == priorityName {
+							priorityIndices = append(priorityIndices, i)
+							EnableDeployer(driverConfigPtr,
+								*gAgentConfig.Env,
+								*regionPtr,
+								"",
+								*trcPathPtr,
+								true,
+								kernelopts.BuildOptions.IsKernel(),
+								dronePtr,
+								deploymentConfig,
+								tracelessPtr,
+								projectServicePtr)
+							driverConfigPtr.CoreConfig.Log.Printf("%s deployer started, waiting for it to be ready...\n", deploymentName)
+							for {
+								if kernelPluginHandler != nil && kernelPluginHandler.Services != nil {
+									if service, ok := (*kernelPluginHandler.Services)[deploymentName]; ok {
+										if service.State == 1 {
+											break
+										}
+									}
 								}
+								time.Sleep(1 * time.Second)
 							}
+							break
 						}
-						time.Sleep(1 * time.Second)
 					}
-					break
 				}
 			}
 		}
 
-		// Remove healthcheck from pluginDeployments list if it was found
-		if healthcheckIdx >= 0 {
-			pluginDeployments = append(pluginDeployments[:healthcheckIdx], pluginDeployments[healthcheckIdx+1:]...)
+		// Remove priority plugins from pluginDeployments list
+		sort.Sort(sort.Reverse(sort.IntSlice(priorityIndices)))
+		for _, idx := range priorityIndices {
+			pluginDeployments = append(pluginDeployments[:idx], pluginDeployments[idx+1:]...)
 		}
 
 		for _, deploymentConfig := range pluginDeployments {

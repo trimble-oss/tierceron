@@ -132,6 +132,7 @@ func CommonMain(envDefaultPtr *string,
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
+	swPtr := flagset.String("sw", "", "Alias for -servicesWanted")
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	certDestPathPtr := flagset.String("certDestPath", "", "Override templated cert destination paths. Format of tmplFileName:certDirPath/file.pfx")
 	keyStorePtr := flagset.String("keystore", "", "Put certificates into this keystore file.")
@@ -142,6 +143,12 @@ func CommonMain(envDefaultPtr *string,
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
+
+	// Output file system flag - only available when IsKernelZ
+	var ofsPtr *bool
+	if kernelopts.BuildOptions.IsKernelZ() {
+		ofsPtr = flagset.Bool("ofs", false, "Output to file system: opens directory picker to select output directory (KernelZ only)")
+	}
 
 	var versionInfoPtr *bool
 	var diffPtr *bool
@@ -160,18 +167,13 @@ func CommonMain(envDefaultPtr *string,
 		var err error
 		// Check if io directory exists
 		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
-			// Directory exists, open file and seek to end for append
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
-			if err == nil {
-				if seeker, ok := stdioFile.(io.Seeker); ok {
-					seeker.Seek(0, io.SeekEnd)
-				}
-			}
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		} else {
 			// Directory doesn't exist, use WriteToMemFile to create it
 			emptyData := []byte{}
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		}
 		if err == nil {
 			outWriter = stdioFile
@@ -192,7 +194,19 @@ func CommonMain(envDefaultPtr *string,
 		}
 		diffPtr = flagset.Bool("diff", false, "Diff files")
 		versionInfoPtr = flagset.Bool("versions", false, "Version information about values")
-		flagset.Parse(argLines[1:])
+		parseErr := flagset.Parse(argLines[1:])
+		// If help flag was used, print usage and return early
+		if parseErr == flag.ErrHelp {
+			flagset.Usage()
+			return nil
+		}
+		if parseErr != nil {
+			return parseErr
+		}
+		// Handle -sw override for -servicesWanted
+		if len(*swPtr) > 0 {
+			*servicesWanted = *swPtr
+		}
 	} else {
 		versionInfo := false
 		versionInfoPtr = &versionInfo
@@ -200,7 +214,10 @@ func CommonMain(envDefaultPtr *string,
 		diffPtr = &diff
 		// TODO: rework to support standard arg parsing...
 		for _, args := range argLines {
-			if args == "-certs" {
+			if args == "-h" || args == "-help" || args == "--help" {
+				flagset.Usage()
+				return nil
+			} else if args == "-certs" {
 				driverConfig.CoreConfig.WantCerts = true
 			} else if strings.HasPrefix(args, "-keystore") {
 				storeArgs := strings.Split(args, "=")
@@ -217,6 +234,11 @@ func CommonMain(envDefaultPtr *string,
 				if len(servicesWantedArg) > 1 {
 					*servicesWanted = servicesWantedArg[1]
 				}
+			} else if strings.HasPrefix(args, "-sw") {
+				swArg := strings.Split(args, "=")
+				if len(swArg) > 1 {
+					*swPtr = swArg[1]
+				}
 			} else if strings.HasPrefix(args, "-certDestPath") {
 				certDestPath := strings.Split(args, "=")
 				if len(certDestPath) > 1 {
@@ -231,13 +253,27 @@ func CommonMain(envDefaultPtr *string,
 					}
 					*envPtr = envArgs[1]
 				}
+			} else if args == "-ofs" {
+				if kernelopts.BuildOptions.IsKernelZ() {
+					if ofsPtr == nil {
+						ofs := true
+						ofsPtr = &ofs
+					} else {
+						*ofsPtr = true
+					}
+				}
 			}
 		}
 		flagset.Parse(nil)
+		// Handle -sw override for -servicesWanted in shell mode
+		if len(*swPtr) > 0 {
+			*servicesWanted = *swPtr
+		}
 		if driverConfig.CoreConfig.WantCerts {
 			*wantCertsPtr = true
 		}
 	}
+
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
@@ -274,6 +310,21 @@ func CommonMain(envDefaultPtr *string,
 			// Bad inputs... use default.
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
+
+		// Handle -ofs flag if set (KernelZ only)
+		if ofsPtr != nil && *ofsPtr && kernelopts.BuildOptions.IsKernelZ() {
+			// Import directory picker dynamically to avoid issues in non-KernelZ builds
+			dirpicker := dirpickerImpl{}
+			selectedDir, err := dirpicker.PickDirectory("")
+			if err != nil {
+				fmt.Fprintf(outWriter, "Directory selection cancelled or failed: %v\n", err)
+				// Don't fail the command, just skip the file system output
+			} else {
+				driverConfigBase.OutputFileSystemDir = selectedDir
+				fmt.Fprintf(outWriter, "Will output files to: %s\n", selectedDir)
+			}
+		}
+
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 		currentRoleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		if driverConfigBase.FileFilter != nil {
@@ -541,22 +592,23 @@ func CommonMain(envDefaultPtr *string,
 					ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
 					Log:                 driverConfigBase.CoreConfig.Log,
 				},
-				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
-				SecretMode:        *secretMode,
-				ServicesWanted:    driverConfigBase.ServicesWanted,
-				StartDir:          driverConfigBase.StartDir,
-				EndDir:            driverConfigBase.EndDir,
-				WantKeystore:      *keyStorePtr,
-				ZeroConfig:        *zcPtr,
-				GenAuth:           false,
-				ReadMemCache:      driverConfigBase.ReadMemCache,
-				SubOutputMemCache: driverConfigBase.SubOutputMemCache,
-				OutputMemCache:    driverConfigBase.OutputMemCache,
-				MemFs:             driverConfigBase.MemFs,
-				CertPathOverrides: certOverrides,
-				Diff:              *diffPtr,
-				Update:            messenger,
-				FileFilter:        fileFilterSlice,
+				IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
+				SecretMode:          *secretMode,
+				ServicesWanted:      driverConfigBase.ServicesWanted,
+				StartDir:            driverConfigBase.StartDir,
+				EndDir:              driverConfigBase.EndDir,
+				WantKeystore:        *keyStorePtr,
+				ZeroConfig:          *zcPtr,
+				GenAuth:             false,
+				ReadMemCache:        driverConfigBase.ReadMemCache,
+				SubOutputMemCache:   driverConfigBase.SubOutputMemCache,
+				OutputMemCache:      driverConfigBase.OutputMemCache,
+				MemFs:               driverConfigBase.MemFs,
+				OutputFileSystemDir: driverConfig.OutputFileSystemDir,
+				CertPathOverrides:   certOverrides,
+				Diff:                *diffPtr,
+				Update:              messenger,
+				FileFilter:          fileFilterSlice,
 			}
 
 			configSlice = append(configSlice, driverConfig)
@@ -594,23 +646,24 @@ func CommonMain(envDefaultPtr *string,
 				ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
 				Log:                 driverConfigBase.CoreConfig.Log,
 			},
-			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
-			SecretMode:        *secretMode,
-			ServicesWanted:    driverConfigBase.ServicesWanted,
-			StartDir:          driverConfigBase.StartDir,
-			EndDir:            driverConfigBase.EndDir,
-			WantKeystore:      *keyStorePtr,
-			NoVault:           driverConfigBase.NoVault,
-			ZeroConfig:        driverConfigBase.ZeroConfig,
-			GenAuth:           false,
-			ReadMemCache:      driverConfigBase.ReadMemCache,
-			SubOutputMemCache: driverConfigBase.SubOutputMemCache,
-			OutputMemCache:    driverConfigBase.OutputMemCache,
-			MemFs:             driverConfigBase.MemFs,
-			CertPathOverrides: certOverrides,
-			Diff:              *diffPtr,
-			FileFilter:        fileFilterSlice,
-			VersionInfo:       eUtils.VersionHelper,
+			IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
+			SecretMode:          *secretMode,
+			ServicesWanted:      driverConfigBase.ServicesWanted,
+			StartDir:            driverConfigBase.StartDir,
+			EndDir:              driverConfigBase.EndDir,
+			WantKeystore:        *keyStorePtr,
+			NoVault:             driverConfigBase.NoVault,
+			ZeroConfig:          driverConfigBase.ZeroConfig,
+			GenAuth:             false,
+			ReadMemCache:        driverConfigBase.ReadMemCache,
+			SubOutputMemCache:   driverConfigBase.SubOutputMemCache,
+			OutputMemCache:      driverConfigBase.OutputMemCache,
+			MemFs:               driverConfigBase.MemFs,
+			OutputFileSystemDir: driverConfig.OutputFileSystemDir,
+			CertPathOverrides:   certOverrides,
+			Diff:                *diffPtr,
+			FileFilter:          fileFilterSlice,
+			VersionInfo:         eUtils.VersionHelper,
 		}
 
 		if *wantCertsPtr {

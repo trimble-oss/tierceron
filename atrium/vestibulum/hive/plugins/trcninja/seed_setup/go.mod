@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/seed_setup
 
-go 1.25.7
+go 1.26.0
 
 require (
 	github.com/google/uuid v1.6.0

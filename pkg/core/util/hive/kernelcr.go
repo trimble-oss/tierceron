@@ -630,10 +630,11 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
+	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 
-	// Security: KernelZ only allows procurator, trcshcmd, and trcsh plugins
+	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
 	if kernelopts.BuildOptions.IsKernelZ() {
-		if service != "trcshcmd" && service != "trcsh" {
+		if service != "trcshcmd" && service != "trcsh" && service != "rosea" {
 			driverConfig.CoreConfig.Log.Printf("Security: Plugin %s not allowed in KernelZ.", service)
 			return
 		}
@@ -649,7 +650,14 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	}
 	(*serviceConfig)["certify"] = pluginHandler.DeploymentConfig
 
-	go pluginHandler.receiver(driverConfig)
+	// Determine kernel plugin type before starting receiver to avoid race
+	var isKernelPlugin bool
+	if pluginHandler.DeploymentConfig != nil {
+		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+			isKernelPlugin = (trctype == "kernelplugin")
+		}
+	}
+	go pluginHandler.receiver(driverConfig, isKernelPlugin)
 	pluginHandler.Init(serviceConfig)
 
 	// Check if plugin refused to initialize
@@ -1021,6 +1029,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
+			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -1152,8 +1161,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							continue
 						}
 
+						var isKernelPlugin bool
+						if pluginHandler.DeploymentConfig != nil {
+							if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+								isKernelPlugin = (trctype == "kernelplugin")
+							}
+						}
+
 						go handler.handleDataflowStat(bootDriverConfig, statMod, nil)
-						go handler.receiver(bootDriverConfig)
+						go handler.receiver(bootDriverConfig, isKernelPlugin)
 					}
 				}()
 
@@ -1189,10 +1205,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				}
 
-				go pluginHandler.receiver(driverConfig)
-			}
+				// Determine if this is a kernel plugin BEFORE starting receiver to avoid race
+				var isKernelPlugin bool
+				if pluginHandler.DeploymentConfig != nil {
+					if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+						isKernelPlugin = (trctype == "kernelplugin")
+					}
+				}
 
-			if len(driverConfig.CoreConfig.Regions) > 0 {
+				go pluginHandler.receiver(driverConfig, isKernelPlugin)
 				serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
 			}
 
@@ -1249,15 +1270,7 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 	}
 }
 
-func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
-	// Check if this is a kernel-type plugin at receiver startup
-	var isKernelPlugin bool
-	if pluginHandler.DeploymentConfig != nil {
-		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
-			isKernelPlugin = (trctype == "kernelplugin")
-		}
-	}
-
+func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig, isKernelPlugin bool) {
 	for {
 		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
 		switch {

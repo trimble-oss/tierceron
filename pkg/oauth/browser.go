@@ -6,6 +6,7 @@ import (
 	"html"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -144,11 +145,17 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 	// Build authorization URL
 	authURL := client.AuthorizationURL(state, nonce, pkce)
 
-	// Open browser
-	fmt.Printf("Opening browser for authentication...\n")
-	fmt.Printf("If the browser doesn't open automatically, visit:\n%s\n\n", authURL)
+	// Open browser - suppress output if callback handler was externally registered
+	// (indicates this is running in a background service/kernel context)
+	// Output to stderr to avoid polluting command output/pipelines
+	if config.HandlerRegisterFunc == nil {
+		fmt.Fprintf(os.Stderr, "Opening browser for authentication...\n")
+		fmt.Fprintf(os.Stderr, "If the browser doesn't open automatically, visit:\n%s\n\n", authURL)
+	}
 	if err := openBrowser(authURL); err != nil {
-		fmt.Printf("Failed to open browser automatically: %v\n", err)
+		if config.HandlerRegisterFunc == nil {
+			fmt.Fprintf(os.Stderr, "Failed to open browser automatically: %v\n", err)
+		}
 	}
 
 	// Wait for callback or context cancellation
