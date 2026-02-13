@@ -253,7 +253,7 @@ func (m *DirPickerModel) View() string {
 // PickDirectory runs the directory picker and returns the selected path
 func PickDirectory(startPath string) (string, error) {
 	m := NewDirPicker(startPath)
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 
 	finalModel, err := p.Run()
 	if err != nil {
