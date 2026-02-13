@@ -463,9 +463,8 @@ retryVaultAccess:
 
 	// Add these variable declarations at the top of the function
 	var (
-		secret     *api.Secret
-		err        error
-		versionMap = make(map[string][]string)
+		secret *api.Secret
+		err    error
 	)
 
 	// Create a timeout context and channel for results
@@ -481,6 +480,7 @@ retryVaultAccess:
 	go func() {
 		var s *api.Secret
 		var e error
+		versionMap := make(map[string][]string) // Create new map per goroutine
 
 		s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
 
@@ -529,6 +529,7 @@ retryVaultAccess:
 			go func() {
 				var s *api.Secret
 				var e error
+				versionMap := make(map[string][]string) // Create new map per goroutine
 
 				s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
 

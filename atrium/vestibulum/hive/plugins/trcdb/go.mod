@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb
 go 1.25.7
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.10.2
+	github.com/trimble-oss/tierceron-core/v2 v2.10.4
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -11,6 +11,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/trimble-oss/tierceron v1.52.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	golang.org/x/net v0.47.0 // indirect

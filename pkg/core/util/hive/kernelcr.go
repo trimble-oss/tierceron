@@ -1173,7 +1173,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 				tfmContext.(flow.FlowMachineContext).SetFlowIDs()
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
-
+				// kick off reload process from vault
+				go reloadFlows(tfmContext.(flow.FlowMachineContext), mod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
 			} else {
 				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
@@ -1210,6 +1211,41 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
 			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 		}
+	}
+}
+
+func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
+	for {
+		for _, tfCtx := range tfmContext.GetFlows() {
+			// load last modified time from vault
+			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/%s", tfCtx.GetFlowHeader().TableName(), flow.TierceronControllerFlow.FlowName())
+			dataMap, readErr := mod.ReadData(flowPath)
+			if readErr == nil && len(dataMap) > 0 && dataMap["lastModified"] != nil {
+				if tfCtx.GetLastRefreshedTime() == "" {
+					// If RefreshedTime is not set, set it and skip refresh to avoid unnecessary restarts on boot
+					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
+					continue
+				}
+				lastModifiedTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", dataMap["lastModified"].(string))
+				if err != nil {
+					tfmContext.Log(fmt.Sprintf("Error parsing last modified time for flow %s", tfCtx.GetFlowHeader().TableName()), err)
+					continue
+				}
+				flowLastModified, err := time.Parse("2006-01-02 15:04:05 -0700 MST", tfCtx.GetLastRefreshedTime())
+				if tfCtx.GetLastRefreshedTime() != "" && err != nil {
+					tfmContext.Log(fmt.Sprintf("Error parsing existing last modified time for flow %s", tfCtx.GetFlowHeader().TableName()), err)
+					continue
+				}
+				if flowLastModified.Before(lastModifiedTime) {
+					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
+					// Need to refresh flow
+					tfmContext.LockFlow(tfCtx.GetFlowHeader().FlowNameType())
+					tfCtx.NotifyFlowComponentNeedsRestart()
+					tfmContext.UnlockFlow(tfCtx.GetFlowHeader().FlowNameType())
+				}
+			}
+		}
+		time.Sleep(5 * time.Minute)
 	}
 }
 
