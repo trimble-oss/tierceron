@@ -130,6 +130,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
+	outputDirPtr := flagset.String("outputDir", "", "Output directory for file system (specify to enable file system output)")
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
 	swPtr := flagset.String("sw", "", "Alias for -servicesWanted")
@@ -143,12 +144,6 @@ func CommonMain(envDefaultPtr *string,
 	templateInfoPtr := flagset.Bool("templateInfo", false, "Version information about templates")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	noVaultPtr := flagset.Bool("novault", false, "Don't pull configuration data from vault.")
-
-	// Output file system flag - only available when IsKernelZ
-	var ofsPtr *bool
-	if kernelopts.BuildOptions.IsKernelZ() {
-		ofsPtr = flagset.Bool("ofs", false, "Output to file system: opens directory picker to select output directory (KernelZ only)")
-	}
 
 	var versionInfoPtr *bool
 	var diffPtr *bool
@@ -253,14 +248,10 @@ func CommonMain(envDefaultPtr *string,
 					}
 					*envPtr = envArgs[1]
 				}
-			} else if args == "-ofs" {
-				if kernelopts.BuildOptions.IsKernelZ() {
-					if ofsPtr == nil {
-						ofs := true
-						ofsPtr = &ofs
-					} else {
-						*ofsPtr = true
-					}
+			} else if strings.HasPrefix(args, "-outputDir") {
+				outputDirArg := strings.Split(args, "=")
+				if len(outputDirArg) > 1 {
+					*outputDirPtr = outputDirArg[1]
 				}
 			}
 		}
@@ -311,18 +302,10 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
 
-		// Handle -ofs flag if set (KernelZ only)
-		if ofsPtr != nil && *ofsPtr && kernelopts.BuildOptions.IsKernelZ() {
-			// Import directory picker dynamically to avoid issues in non-KernelZ builds
-			dirpicker := dirpickerImpl{}
-			selectedDir, err := dirpicker.PickDirectory("")
-			if err != nil {
-				fmt.Fprintf(outWriter, "Directory selection cancelled or failed: %v\n", err)
-				// Don't fail the command, just skip the file system output
-			} else {
-				driverConfigBase.OutputFileSystemDir = selectedDir
-				fmt.Fprintf(outWriter, "Will output files to: %s\n", selectedDir)
-			}
+		// Handle -outputDir flag if set
+		if outputDirPtr != nil && len(*outputDirPtr) > 0 {
+			driverConfigBase.OutputFileSystemDir = *outputDirPtr
+			fmt.Fprintf(outWriter, "Will output files to: %s\n", *outputDirPtr)
 		}
 
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
@@ -435,6 +418,8 @@ func CommonMain(envDefaultPtr *string,
 
 		if !*noVaultPtr {
 			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
+			roleEntity := "bamboo"
+			currentRoleEntityPtr = &roleEntity
 			autoErr := eUtils.AutoAuth(driverConfigBase,
 				&wantedTokenName,
 				&tokenPtr,

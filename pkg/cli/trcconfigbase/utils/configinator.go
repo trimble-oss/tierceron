@@ -562,14 +562,26 @@ func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	// Ensure directory has been created
 	var newFile *os.File
 
+	// Write to MemFs if OutputMemCache is enabled
 	if driverConfig.OutputMemCache && !strings.HasPrefix(path, "Dockerfile") && !strings.HasPrefix(path, "./Dockerfile") && path != "go.mod" && path != "./go.mod" {
 		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, path)
-	} else {
-		dirPath := filepath.Dir(path)
+	}
+
+	// Write to filesystem if:
+	// 1. OutputFileSystemDir is set (dual output mode for KernelZ)
+	// 2. OR OutputMemCache is false (normal filesystem mode)
+	if driverConfig.OutputFileSystemDir != "" || !driverConfig.OutputMemCache {
+		outputPath := path
+		if driverConfig.OutputFileSystemDir != "" {
+			// Dual output mode: write to user-selected directory
+			outputPath = filepath.Join(driverConfig.OutputFileSystemDir, path)
+		}
+
+		dirPath := filepath.Dir(outputPath)
 		err := os.MkdirAll(dirPath, os.ModePerm)
 		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		// create new file
-		newFile, err = os.Create(path)
+		newFile, err = os.Create(outputPath)
 		eUtils.CheckError(driverConfig.CoreConfig, err, true)
 		defer newFile.Close()
 		// write to file

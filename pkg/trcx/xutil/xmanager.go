@@ -21,10 +21,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var templateResultChan = make(chan *extract.TemplateResultData, 5)
-
 func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, templateFromVault bool, templatePaths []string) ([]byte, bool, map[string]any, map[string]map[string]map[string]string, map[string]map[string]map[string]string, string, error) {
 	var wg sync.WaitGroup
+	// Create a local channel for this function call to avoid cross-contamination between multiple invocations
+	templateResultChan := make(chan *extract.TemplateResultData, 5)
+
 	// Initialize global variables
 	valueCombinedSection := map[string]map[string]map[string]string{}
 	valueCombinedSection["values"] = map[string]map[string]string{}
@@ -481,6 +482,10 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 		}(templatePath, multiService, driverConfig, commonPaths)
 	}
 	wg.Wait()
+
+	// Close the channel to signal the receiver goroutine that no more data is coming
+	// This allows the receiver's range loop to exit cleanly
+	close(templateResultChan)
 
 	// Combine values of slice
 	CombineSection(driverConfig.CoreConfig, sliceTemplateSection, maxDepth, templateCombinedSection)
