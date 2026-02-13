@@ -43,6 +43,42 @@ func hasUnrestrictedAccess(driverConfig *config.DriverConfig) bool {
 	return len(roleID) == 36 && len(secretID) == 36
 }
 
+// parseEnvFromArgs extracts the -env parameter value from args, defaulting to "dev" if not found
+//
+//	returns both env and envBasis
+//
+// env is the full environment value (e.g., "dev_1", "staging_2")
+// hasEnvFlag checks if -env flag was explicitly provided in the arguments
+func hasEnvFlag(args []string) bool {
+	for i, arg := range args {
+		if strings.HasPrefix(arg, "-env=") {
+			return true
+		} else if arg == "-env" && i+1 < len(args) {
+			return true
+		}
+	}
+	return false
+}
+
+// envBasis is just the environment name without version (e.g., "dev", "staging")
+// Defaults to ("dev", "dev") if not found
+func parseEnvFromArgs(args []string) (env string, envBasis string) {
+	for i, arg := range args {
+		if strings.HasPrefix(arg, "-env=") {
+			// Format: -env=dev or -env=staging_1
+			env = arg[5:] // Skip "-env="
+			envBasis = eUtils.GetEnvBasis(env)
+			return env, envBasis
+		} else if arg == "-env" && i+1 < len(args) {
+			// Format: -env dev or -env staging_1
+			env = args[i+1]
+			envBasis = eUtils.GetEnvBasis(env)
+			return env, envBasis
+		}
+	}
+	return "dev", "dev" // Default to dev if not specified
+}
+
 // ExecuteShellCommand executes a shell command based on the command type string from ChatMsg.Response
 // Returns the MemoryFileSystem where command output is written
 func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.DriverConfig) trcshio.MemoryFileSystem {
@@ -50,15 +86,34 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		return nil
 	}
 
-	// Clear CurrentTokenNamePtr if environment and token mismatch in either direction
+	// Parse -env parameter from incoming args and update EnvBasis
+	// If -env flag is explicitly provided, use that value
+	// If -env flag is not provided, always default to "dev" (not previous environment)
+	requestedEnv, requestedEnvBasis := parseEnvFromArgs(args)
+	driverConfig.CoreConfig.EnvBasis = requestedEnvBasis
+	driverConfig.CoreConfig.Env = requestedEnv
+
+	// Clear the cached "novault" token only if this command is not requesting -novault
+	// (this allows switching from -novault mode to vault-authenticated mode)
+	hasNoVault := false
+	for _, arg := range args {
+		if arg == "-novault" {
+			hasNoVault = true
+			break
+		}
+	}
+	if !hasNoVault && driverConfig.CoreConfig.TokenCache != nil {
+		tokenKey := fmt.Sprintf("config_token_%s", requestedEnvBasis)
+		if cachedToken := driverConfig.CoreConfig.TokenCache.GetToken(tokenKey); cachedToken != nil && *cachedToken == "novault" {
+			driverConfig.CoreConfig.TokenCache.RemoveToken(tokenKey)
+		}
+	}
+
 	if driverConfig.CoreConfig != nil {
 		currentEnv := driverConfig.CoreConfig.EnvBasis
 		if driverConfig.CoreConfig.CurrentTokenNamePtr != nil {
 			currentToken := *driverConfig.CoreConfig.CurrentTokenNamePtr
-			// Clear if switching from novault to real env, real env to novault, or between envs
-			if (strings.Contains(currentToken, "novault") && currentEnv != "novault") ||
-				(!strings.Contains(currentToken, currentEnv)) ||
-				(currentEnv == "novault" && !strings.Contains(currentToken, "novault")) {
+			if !strings.Contains(currentToken, currentEnv) {
 				driverConfig.CoreConfig.CurrentTokenNamePtr = nil
 			}
 		}

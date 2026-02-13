@@ -341,13 +341,14 @@ func CommonMain(ctx config.ProcessContext,
 		envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			roleEntityPtr := new(string)
+			roleEntity := "bamboo"
+			currentRoleEntityPtr := &roleEntity
 			autoErr := eUtils.AutoAuth(driverConfigBase,
 				tokenNamePtr,
 				&tokenPtr,
 				envPtr,
 				envCtxPtr,
-				roleEntityPtr, *pingPtr)
+				currentRoleEntityPtr, *pingPtr)
 
 			if autoErr != nil {
 				fmt.Fprintln(outWriter, "Auth failure: "+autoErr.Error())
