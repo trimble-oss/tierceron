@@ -341,8 +341,8 @@ func CommonMain(ctx config.ProcessContext,
 		envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			roleNeeded := "bamboo"
-			currentRoleEntityPtr := &roleNeeded
+			roleEntity := "bamboo"
+			currentRoleEntityPtr := &roleEntity
 			autoErr := eUtils.AutoAuth(driverConfigBase,
 				tokenNamePtr,
 				&tokenPtr,

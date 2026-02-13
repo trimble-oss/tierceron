@@ -16,6 +16,8 @@ import (
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	testr "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/editor"
+
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh/dirpicker"
 )
 
 var (
@@ -904,8 +906,62 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			break
 		}
 
+		// Check if -ofs flag is present for interactive directory picker
+		// Only available if -env flag is also present (dev/QA, not prod)
+		modifiedArgs := args
+		ofsIndex := -1
+		isDevQA := true // Default to dev if no -env flag specified
+
+		for i, arg := range args {
+			if arg == "-ofs" {
+				ofsIndex = i
+			}
+			// Only block if -env is explicitly set to prod
+			if strings.HasPrefix(arg, "-env=") {
+				env := strings.TrimPrefix(arg, "-env=")
+				if env == "prod" {
+					isDevQA = false
+				}
+			}
+		}
+
+		// If -ofs flag found, launch directory picker and replace it with -outputDir
+		if ofsIndex >= 0 {
+			// Only allow -ofs if -env flag is present and not prod
+			if !isDevQA {
+				output = append(output, errorStyle.Render("Error: -ofs flag is only available in dev/QA environments"))
+				break
+			}
+
+			// Get home directory as starting point
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				homeDir = "" // Will default to current directory in dirpicker
+			}
+
+			selectedDir, err := dirpicker.PickDirectory(homeDir)
+			if err != nil {
+				if strings.Contains(err.Error(), "cancelled") {
+					// User cancelled picker - just return to prompt with empty line
+					output = append(output, "")
+					break
+				}
+				output = append(output, errorStyle.Render(fmt.Sprintf("Error selecting directory: %v", err)))
+				break
+			}
+
+			// Remove -ofs and add -outputDir with selected path
+			modifiedArgs = make([]string, 0, len(args))
+			for i, arg := range args {
+				if i != ofsIndex {
+					modifiedArgs = append(modifiedArgs, arg)
+				}
+			}
+			modifiedArgs = append(modifiedArgs, fmt.Sprintf("-outputDir=%s", selectedDir))
+		}
+
 		// Call trcshcmd synchronously - let trcconfig handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "tconfig", args)
+		response := callTrcshCmd(m.chatSenderChan, "tconfig", modifiedArgs)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
