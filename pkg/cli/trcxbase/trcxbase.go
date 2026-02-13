@@ -146,6 +146,23 @@ func CommonMain(ctx config.ProcessContext,
 		return
 	}
 
+	// After parsing, retrieve the actual env flag value if it was explicitly provided by user
+	// Check if -env flag was actually present in argLines (not just using default)
+	envFlagProvided := false
+	for _, arg := range argLines {
+		if strings.HasPrefix(arg, "-env") {
+			envFlagProvided = true
+			break
+		}
+	}
+	if envFlagProvided {
+		if envFlag := flagset.Lookup("env"); envFlag != nil {
+			// Make a persistent copy of the parsed env value
+			parsedEnvValue := envFlag.Value.String()
+			envPtr = &parsedEnvValue
+		}
+	}
+
 	configCtx := &config.ConfigContext{
 		ResultMap:            make(map[string]*string),
 		EnvSlice:             make([]string, 0),
@@ -161,9 +178,17 @@ func CommonMain(ctx config.ProcessContext,
 	}
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
-	if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-		tokenName := fmt.Sprintf("config_token_%s", envBasis)
-		tokenNamePtr = &tokenName
+	// Update tokenNamePtr to match current environment
+	// This is needed when -env flag changes the environment from shell's default
+	if eUtils.RefLength(tokenNamePtr) == 0 {
+		// TokenName is empty - create one based on envBasis
+		tokenNameValue := fmt.Sprintf("config_token_%s", envBasis)
+		tokenNamePtr = &tokenNameValue
+	} else if envFlagProvided {
+		// When -env flag was explicitly provided and tokenName was already set,
+		// update tokenNamePtr to match the new environment
+		tokenNameValue := fmt.Sprintf("config_token_%s", envBasis)
+		tokenNamePtr = &tokenNameValue
 	}
 	var driverConfigBase *config.DriverConfig
 	if driverConfig == nil {
@@ -330,6 +355,8 @@ func CommonMain(ctx config.ProcessContext,
 			}
 		} else {
 			*tokenPtr = "novault"
+			// Add novault token to cache immediately for this environment
+			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), tokenPtr)
 		}
 
 		if len(envVersion) >= 2 { // Put back env+version together
@@ -833,10 +860,13 @@ skipDiff:
 							eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 						}
 					}
-				} else if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0 {
-					token := "novault"
-					envBasis := eUtils.GetEnvBasis(*envPtr)
-					driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), &token)
+				} else {
+					// Add novault token to cache for current environment in loop
+					currentEnvBasis := eUtils.GetEnvBasis(*envPtr)
+					if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", currentEnvBasis))) == 0 {
+						token := "novault"
+						driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", currentEnvBasis), &token)
+					}
 				}
 				if len(envVersion) >= 2 { // Put back env+version together
 					*envPtr = envVersion[0] + "_" + envVersion[1]

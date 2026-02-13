@@ -50,6 +50,20 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		return nil
 	}
 
+	// Clear CurrentTokenNamePtr if environment and token mismatch in either direction
+	if driverConfig.CoreConfig != nil {
+		currentEnv := driverConfig.CoreConfig.EnvBasis
+		if driverConfig.CoreConfig.CurrentTokenNamePtr != nil {
+			currentToken := *driverConfig.CoreConfig.CurrentTokenNamePtr
+			// Clear if switching from novault to real env, real env to novault, or between envs
+			if (strings.Contains(currentToken, "novault") && currentEnv != "novault") ||
+				(!strings.Contains(currentToken, currentEnv)) ||
+				(currentEnv == "novault" && !strings.Contains(currentToken, "novault")) {
+				driverConfig.CoreConfig.CurrentTokenNamePtr = nil
+			}
+		}
+	}
+
 	if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
 		driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: cmdType=%s, args=%v, IsShellCommand before=%v\n", cmdType, args, driverConfig.IsShellCommand)
 	}
@@ -205,7 +219,6 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		}
 	}
 
-	// Return the MemFs where command wrote its output
 	if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
 		driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: returning MemFs (nil=%v)\n", driverConfig.MemFs == nil)
 	}

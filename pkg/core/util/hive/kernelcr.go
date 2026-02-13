@@ -1270,15 +1270,7 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 	}
 }
 
-func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
-	// Check if this is a kernel-type plugin at receiver startup
-	var isKernelPlugin bool
-	if pluginHandler.DeploymentConfig != nil {
-		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
-			isKernelPlugin = (trctype == "kernelplugin")
-		}
-	}
-
+func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig, isKernelPlugin bool) {
 	for {
 		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
 		switch {

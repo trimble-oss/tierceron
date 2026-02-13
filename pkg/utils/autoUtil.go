@@ -518,6 +518,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 	}
 
 	if RefLength(tokenPtr) != 0 &&
+		!RefEquals(tokenPtr, "novault") &&
 		!RefEquals(addrPtr, "") &&
 		!RefEquals(roleEntityPtr, "deployauth") &&
 		!RefEquals(roleEntityPtr, "hivekernel") &&
