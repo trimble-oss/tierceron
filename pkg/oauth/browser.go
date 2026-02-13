@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -113,7 +114,12 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 			defer wg.Done()
 			listener, err := net.Listen("tcp", server.Addr)
 			if err != nil {
-				serverErr = fmt.Errorf("failed to start callback server: %w", err)
+				// Provide helpful error message for port collision
+				if strings.Contains(err.Error(), "address already in use") {
+					serverErr = fmt.Errorf("OAuth callback port %d already in use. Another OAuth authentication may be in progress, or the port is occupied. Please wait or use a different port in .trcshrc (oauth_callback_port)", config.Port)
+				} else {
+					serverErr = fmt.Errorf("failed to start callback server on port %d: %w", config.Port, err)
+				}
 				resultChan <- &BrowserLoginResult{Error: serverErr.Error()}
 				return
 			}
