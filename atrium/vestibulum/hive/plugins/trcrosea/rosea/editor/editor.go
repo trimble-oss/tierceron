@@ -1,10 +1,13 @@
 package testr
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -15,29 +18,127 @@ import (
 	"golang.org/x/term"
 )
 
+// EditorCloseMsg signals that the editor should be closed
+type EditorCloseMsg struct{}
+
+// CloseEditor returns a command that sends EditorCloseMsg
+func CloseEditor() tea.Cmd {
+	return func() tea.Msg {
+		return EditorCloseMsg{}
+	}
+}
+
+// cursorBlinkMsg triggers cursor blink in editor
+type cursorBlinkMsg struct{}
+
+func cursorBlink() tea.Cmd {
+	return tea.Tick(time.Millisecond*530, func(t time.Time) tea.Msg {
+		return cursorBlinkMsg{}
+	})
+}
+
+// getClipboardContent retrieves clipboard content on Linux and WSL
+func getClipboardContent() string {
+	// Try WSL first (PowerShell Get-Clipboard)
+	if content, err := tryWSLClipboard(); err == nil && content != "" {
+		return content
+	}
+
+	// Try Wayland (wl-paste)
+	if content, err := tryWaylandClipboard(); err == nil && content != "" {
+		return content
+	}
+
+	// Try X11 with xclip
+	if content, err := tryX11ClipboardXclip(); err == nil && content != "" {
+		return content
+	}
+
+	// Try X11 with xsel
+	if content, err := tryX11ClipboardXsel(); err == nil && content != "" {
+		return content
+	}
+
+	return ""
+}
+
+// tryWSLClipboard tries to get clipboard from WSL using PowerShell
+func tryWSLClipboard() (string, error) {
+	cmd := exec.Command("powershell.exe", "-command", "Get-Clipboard")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	content := out.String()
+	// Remove Windows line endings
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.TrimRight(content, "\n")
+	return content, nil
+}
+
+// tryWaylandClipboard tries to get clipboard from Wayland
+func tryWaylandClipboard() (string, error) {
+	cmd := exec.Command("wl-paste", "--no-newline")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryX11ClipboardXclip tries to get clipboard from X11 using xclip
+func tryX11ClipboardXclip() (string, error) {
+	cmd := exec.Command("xclip", "-selection", "clipboard", "-o")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryX11ClipboardXsel tries to get clipboard from X11 using xsel
+func tryX11ClipboardXsel() (string, error) {
+	cmd := exec.Command("xsel", "--clipboard", "--output")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
 // Rosé Pine Moon styles
 var (
-	baseStyle = lipgloss.NewStyle().Background(lipgloss.Color("#232136")).Foreground(lipgloss.Color("#e0def4"))
+	baseStyle = lipgloss.NewStyle().Background(lipgloss.Color("#000000")).Foreground(lipgloss.Color("#e0def4"))
 	roseStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#eb6f92"))
 	pineStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#9ccfd8"))
 	foamStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#c4a7e7")).
-			Background(lipgloss.Color("#232136"))
+			Foreground(lipgloss.Color("#00ff41")).
+			Background(lipgloss.Color("#000000"))
 	editedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#ebbcba")).
-			Background(lipgloss.Color("#232136"))
-	goldStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
+			Background(lipgloss.Color("#000000"))
+	goldStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
+	ctrlKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#00ff41")).Bold(true)
 )
 
 type RoseaEditorModel struct {
-	title        string
-	width        int      // terminal width
-	lines        []string // Committed lines
-	input        string   // Current input (multi-line)
-	cursor       int      // Cursor position in input
-	historyIndex int      // 0 = live input, 1 = last, 2 = second last, etc.
-	draft        string   // Saved live input when entering history mode
-	draftCursor  int
+	title         string
+	width         int      // terminal width
+	lines         []string // Committed lines
+	input         string   // Current input (multi-line)
+	cursor        int      // Cursor position in input
+	cursorVisible bool     // For blinking cursor
+	historyIndex  int      // 0 = live input, 1 = last, 2 = second last, etc.
+	draft         string   // Saved live input when entering history mode
+	draftCursor   int
 
 	// Authentication related fields
 	showAuthPopup bool
@@ -49,6 +150,15 @@ type RoseaEditorModel struct {
 
 	scrollOffset int
 	height       int
+	roseaMode    bool // If true, save directly to memfs instead of trcdb
+
+	// Write Out confirmation
+	confirmingWrite bool // If true, showing confirmation prompt for Ctrl+O
+	confirmCursor   bool // Cursor visibility for confirmation prompt
+
+	// Modification tracking
+	modified       bool // If true, buffer has unsaved changes
+	confirmingExit bool // If true, showing exit confirmation for unsaved changes
 }
 
 func lines(b *[]byte) []string {
@@ -84,30 +194,102 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 		height = 24
 	}
 
+	initialContent := strings.Join(lines(data), "\n")
 	return &RoseaEditorModel{
-		title:        title,
-		width:        width,
-		height:       height,
-		lines:        []string{},
-		input:        strings.Join(lines(data), "\n"), // Initialize input with existing lines
-		cursor:       0,
-		historyIndex: 0,
-		draft:        "",
-		editorStyle:  baseStyle.Padding(1, 2).Width(width),
+		title:         title,
+		width:         width,
+		height:        height,
+		lines:         []string{},
+		input:         initialContent, // Initialize input with existing lines
+		cursor:        0,
+		cursorVisible: true,
+		historyIndex:  0,
+		draft:         "",
+		editorStyle:   baseStyle.Padding(1, 2).Width(width),
+		roseaMode:     true, // Enable rosea mode for direct memfs save
+		modified:      false,
 	}
 }
 
 func (m *RoseaEditorModel) Init() tea.Cmd {
-	return nil
+	return cursorBlink()
 }
 
 func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case cursorBlinkMsg:
+		m.cursorVisible = !m.cursorVisible
+		if m.confirmingWrite {
+			m.confirmCursor = !m.confirmCursor
+		}
+		return m, cursorBlink()
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 
 	case tea.KeyMsg:
+		// Handle exit confirmation state
+		if m.confirmingExit {
+			switch msg.Type {
+			case tea.KeyRunes:
+				key := msg.String()
+				if key == "y" || key == "Y" {
+					// Save and exit
+					filename, memfs := roseacore.GetRoseaMemFs()
+					if memfs != nil {
+						memfs.Remove(filename)
+						file, err := memfs.Create(filename)
+						if err == nil {
+							defer file.Close()
+							io.WriteString(file, m.input)
+						}
+					}
+					return m, CloseEditor()
+				} else if key == "n" || key == "N" {
+					// Exit without saving
+					return m, CloseEditor()
+				}
+			case tea.KeyCtrlC:
+				// Cancel and return to editor
+				m.confirmingExit = false
+				return m, nil
+			default:
+				// Ignore other keys
+				return m, nil
+			}
+			return m, nil
+		}
+
+		// Handle write confirmation state
+		if m.confirmingWrite {
+			switch msg.Type {
+			case tea.KeyCtrlC:
+				// Cancel write
+				m.confirmingWrite = false
+				return m, nil
+			case tea.KeyEnter:
+				// Confirm write
+				m.confirmingWrite = false
+				filename, memfs := roseacore.GetRoseaMemFs()
+				if memfs != nil {
+					memfs.Remove(filename)
+					file, err := memfs.Create(filename)
+					if err == nil {
+						defer file.Close()
+						io.WriteString(file, m.input)
+						// Mark as saved
+						m.modified = false
+
+					}
+				}
+				return m, nil
+			default:
+				// Ignore other keys during confirmation
+				return m, nil
+			}
+		}
+
 		if m.showAuthPopup {
 			switch m.popupMode {
 			case "token":
@@ -223,42 +405,89 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			return m, tea.Quit
-		case tea.KeyEsc:
-			return roseacore.GetRoseaNavigationCtx(), nil
+			// Check for unsaved changes
+			if m.modified {
+				m.confirmingExit = true
+				return m, nil
+			}
+			return m, CloseEditor()
 
-		case tea.KeyCtrlS: // Submit on Ctrl+S
-			m.draft = m.input
-			m.draftCursor = m.cursor
-			m.input = ""
-			m.cursor = 0
-			m.scrollOffset = 0
-			m.showAuthPopup = true // <-- Add this line to trigger the popup
-			m.popupMode = "token"
-			// Optionally, reset popup fields:
-			m.authInput = ""
-			m.input = ""
-			m.authCursor = 0
-			m.authError = ""
-			// TODO: figure out how to handle and save...
-			// m.lines = append(m.lines, m.input)
-			// m.input = ""
-			// m.cursor = 0
-			// m.historyIndex = 0
-			// m.draft = ""
+		case tea.KeyCtrlX: // Exit
+			if m.roseaMode {
+				// Check for unsaved changes before exiting
+				if m.modified {
+					m.confirmingExit = true
+					return m, nil
+				}
+				return m, CloseEditor()
+			}
+			return m, CloseEditor()
 
+		case tea.KeyCtrlO: // Write Out (save)
+			if m.roseaMode {
+				// Show confirmation prompt
+				m.confirmingWrite = true
+				m.confirmCursor = true
+			}
+			return m, nil
+
+		case tea.KeyCtrlV: // Paste from clipboard
+			clipboardContent := getClipboardContent()
+			if clipboardContent != "" {
+				// Sanitize and insert at cursor
+				clipboardContent = roseacore.SanitizePaste(clipboardContent)
+				m.input = m.input[:m.cursor] + clipboardContent + m.input[m.cursor:]
+				m.cursor += len(clipboardContent)
+				m.modified = true
+			}
+			return m, nil
+
+		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
+			if m.roseaMode {
+				// Rosea mode: save directly to memfs without auth popup
+				filename, memfs := roseacore.GetRoseaMemFs()
+				if memfs != nil {
+					memfs.Remove(filename)
+					file, err := memfs.Create(filename)
+					if err == nil {
+						defer file.Close()
+						io.WriteString(file, m.input)
+						// Mark as saved
+						m.modified = false
+
+						// Return to shell after save
+						return m, CloseEditor()
+					}
+				}
+				return m, nil
+			} else {
+				// Original trcdb mode: show auth popup
+				m.draft = m.input
+				m.draftCursor = m.cursor
+				m.input = ""
+				m.cursor = 0
+				m.scrollOffset = 0
+				m.showAuthPopup = true
+				m.popupMode = "token"
+				m.authInput = ""
+				m.input = ""
+				m.authCursor = 0
+				m.authError = ""
+			}
 			return m, nil
 
 		case tea.KeyEnter:
 			// Insert newline at cursor
 			m.input = m.input[:m.cursor] + "\n" + m.input[m.cursor:]
 			m.cursor++
+			m.modified = true
 			return m, nil
 
 		case tea.KeyBackspace:
 			if m.cursor > 0 && len(m.input) > 0 {
 				m.input = m.input[:m.cursor-1] + m.input[m.cursor:]
 				m.cursor--
+				m.modified = true
 			}
 			return m, nil
 
@@ -310,6 +539,18 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		default:
 			s := msg.String()
+			// Check for Ctrl+Shift+V (alternative paste shortcut)
+			// This may come through as "ctrl+shift+v" or other variations depending on terminal
+			if strings.ToLower(s) == "ctrl+shift+v" || (msg.Type == tea.KeyRunes && len(msg.Runes) > 0 && msg.Runes[0] == 22) {
+				clipboardContent := getClipboardContent()
+				if clipboardContent != "" {
+					clipboardContent = roseacore.SanitizePaste(clipboardContent)
+					m.input = m.input[:m.cursor] + clipboardContent + m.input[m.cursor:]
+					m.cursor += len(clipboardContent)
+					m.modified = true
+				}
+				return m, nil
+			}
 			if len(s) > 0 && msg.Type != tea.KeySpace {
 				s = roseacore.SanitizePaste(s)
 				// Accept multi-character paste
@@ -319,6 +560,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.input = m.input[:m.cursor] + s + m.input[m.cursor:]
 					m.cursor += len(s)
+					m.modified = true
 				}
 			} else if msg.Type == tea.KeySpace {
 				if m.showAuthPopup {
@@ -327,6 +569,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.input = m.input[:m.cursor] + " " + m.input[m.cursor:]
 					m.cursor++
+					m.modified = true
 				}
 			}
 		}
@@ -381,7 +624,7 @@ func min(a, b int) int {
 func (m *RoseaEditorModel) View() string {
 	var b strings.Builder
 
-	b.WriteString(roseStyle.Render("Roséa Multi-line Editor — Ctrl+S to save, ESC to navigate"))
+	b.WriteString(roseStyle.Render("Roséa Multi-line Editor"))
 	b.WriteString("\n")
 
 	for _, line := range m.lines {
@@ -401,31 +644,19 @@ func (m *RoseaEditorModel) View() string {
 			b.WriteString("\n")
 		}
 		if i == row {
-			var orig string
-			if i < len(m.lines) {
-				orig = m.lines[i]
-			}
-			split := 0
-			maxCmp := min(len(line), len(orig))
-			for split < maxCmp && line[split] == orig[split] {
-				split++
-			}
-			left := foamStyle.Render(line[:split])
-			changed := editedStyle.Render(line[split:])
-			cursor := goldStyle.Render("|")
-			// Place cursor at the right spot
-			if col <= split {
-				// Cursor in unchanged part
-				b.WriteString(foamStyle.Render(line[:col]))
-				b.WriteString(cursor)
-				b.WriteString(foamStyle.Render(line[col:split]))
-				b.WriteString(changed)
+			// Current line with cursor - render with uniform styling
+			b.WriteString(foamStyle.Render(line[:col]))
+			if m.cursorVisible {
+				if col < len(line) {
+					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
+					b.WriteString(cursorStyle.Render(string(line[col])))
+					b.WriteString(foamStyle.Render(line[col+1:]))
+				} else {
+					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
+					b.WriteString(cursorStyle.Render(" "))
+				}
 			} else {
-				// Cursor in changed part
-				b.WriteString(left)
-				b.WriteString(editedStyle.Render(line[split:col]))
-				b.WriteString(cursor)
-				b.WriteString(editedStyle.Render(line[col:]))
+				b.WriteString(foamStyle.Render(line[col:]))
 			}
 		} else {
 			b.WriteString(foamStyle.Render(line))
@@ -436,8 +667,20 @@ func (m *RoseaEditorModel) View() string {
 		var popupContent string
 		switch m.popupMode {
 		case "token":
+			cursorChar := " "
+			if m.authCursor < len(m.authInput) {
+				cursorChar = string(m.authInput[m.authCursor])
+			}
+			cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#f6c177"))
+			cursorBlock := ""
+			if m.cursorVisible {
+				cursorBlock = cursorStyle.Render(cursorChar)
+			} else {
+				cursorBlock = cursorChar
+			}
+
 			popupContent = "Enter authentication token:\n\n" +
-				m.authInput[:m.authCursor] + goldStyle.Render("|") + m.authInput[m.authCursor:] +
+				m.authInput[:m.authCursor] + cursorBlock + m.authInput[min(m.authCursor+1, len(m.authInput)):] +
 				"\n\n" + m.authError + "\n\n[Enter=Submit, Esc=Cancel]"
 		case "confirm":
 			popupContent = "Are you sure you want to proceed?\n\n[Enter=Yes, Esc=Cancel]"
@@ -450,6 +693,42 @@ func (m *RoseaEditorModel) View() string {
 			Render(popupContent)
 		// Overlay the popup (simple version)
 		b.WriteString("\n\n" + popup)
+	}
+
+	// Add rosea-style control bar or confirmation prompt at the bottom
+	if m.roseaMode {
+		b.WriteString("\n\n")
+		if m.confirmingExit {
+			// Show exit confirmation prompt with highlighted text
+			promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#00ff41")).Bold(true)
+			promptText := promptStyle.Render("Save modified buffer?") + "  "
+			optionsText := ctrlKeyStyle.Render(" Y ") + " Yes  " +
+				ctrlKeyStyle.Render(" N ") + " No  " +
+				ctrlKeyStyle.Render("^C") + " Cancel"
+			b.WriteString(promptText + optionsText)
+		} else if m.confirmingWrite {
+			// Show write confirmation, replacing the control bar
+			filename, _ := roseacore.GetRoseaMemFs()
+
+			// Create cursor block for the filename
+			cursorChar := " "
+			if m.confirmCursor {
+				cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
+				cursorChar = cursorStyle.Render(" ")
+			}
+
+			// Render confirmation in place of control bar
+			filenameLine := "File Name to Write: " + filename + cursorChar
+			controlLine := ctrlKeyStyle.Render("^C") + " Cancel"
+
+			b.WriteString(filenameLine + "\n" + controlLine)
+		} else {
+			// Show normal control bar with highlighted control keys
+			controlText := ctrlKeyStyle.Render("^X") + " Exit    " +
+				ctrlKeyStyle.Render("^O") + " Write Out    " +
+				ctrlKeyStyle.Render("^V") + " Paste"
+			b.WriteString(controlText)
+		}
 	}
 
 	return m.editorStyle.Width(m.width).Render(b.String())

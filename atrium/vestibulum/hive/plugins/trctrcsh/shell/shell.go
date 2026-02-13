@@ -15,6 +15,7 @@ import (
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
+	testr "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea/rosea/editor"
 )
 
 var (
@@ -24,26 +25,38 @@ var (
 	chatMsgHooks = cmap.New[tccore.ChatHookFunc]()
 )
 
+// commandResultMsg is sent when a command completes execution
+type commandResultMsg struct {
+	output     []string
+	shouldQuit bool
+}
+
+// editorCloseMsg is sent when the editor wants to close
+type editorCloseMsg struct{}
+
 // GetChatMsgHooks returns the chat message hooks map
 func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 	return &chatMsgHooks
 }
 
 type ShellModel struct {
-	width          int
-	height         int
-	prompt         string
-	input          string
-	cursor         int
-	history        []string
-	historyIndex   int
-	draft          string
-	output         []string       // Persistent buffer - holds ALL output
-	viewport       viewport.Model // Viewport handles scrolling
-	memFs          trcshio.MemoryFileSystem
-	chatSenderChan *chan *tccore.ChatMsg
-	pendingExit    bool
-	elevatedMode   bool // Track if user has unrestricted write access
+	width            int
+	height           int
+	prompt           string
+	input            string
+	cursor           int
+	cursorVisible    bool // For blinking cursor
+	history          []string
+	historyIndex     int
+	draft            string
+	output           []string       // Persistent buffer - holds ALL output
+	viewport         viewport.Model // Viewport handles scrolling
+	memFs            trcshio.MemoryFileSystem
+	chatSenderChan   *chan *tccore.ChatMsg
+	pendingExit      bool
+	elevatedMode     bool      // Track if user has unrestricted write access
+	commandExecuting bool      // Track if a command is currently executing
+	editorModel      tea.Model // Active editor model (nil when not editing)
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -67,29 +80,80 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	vp.SetContent(strings.Join(initialOutput, "\n"))
 
 	return &ShellModel{
-		width:          width,
-		height:         height,
-		prompt:         "$",
-		input:          "",
-		cursor:         0,
-		history:        []string{},
-		historyIndex:   -1,
-		draft:          "",
-		output:         initialOutput,
-		viewport:       vp,
-		memFs:          memFileSystem,
-		chatSenderChan: chatSenderChan,
-		pendingExit:    false,
-		elevatedMode:   false,
+		width:            width,
+		height:           height,
+		prompt:           "$",
+		input:            "",
+		cursor:           0,
+		cursorVisible:    true,
+		history:          []string{},
+		historyIndex:     -1,
+		draft:            "",
+		output:           initialOutput,
+		viewport:         vp,
+		memFs:            memFileSystem,
+		chatSenderChan:   chatSenderChan,
+		pendingExit:      false,
+		elevatedMode:     false,
+		commandExecuting: false,
 	}
 }
 
+// cursorBlinkMsg triggers cursor blink
+type cursorBlinkMsg struct{}
+
+func cursorBlink() tea.Cmd {
+	return tea.Tick(time.Millisecond*530, func(t time.Time) tea.Msg {
+		return cursorBlinkMsg{}
+	})
+}
+
 func (m *ShellModel) Init() tea.Cmd {
-	return nil
+	return cursorBlink()
 }
 
 func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle editor close messages first
+	if _, ok := msg.(testr.EditorCloseMsg); ok {
+		// Editor requested to close - follow same pattern as commandResultMsg
+		m.editorModel = nil
+		m.commandExecuting = false
+		wasAtBottom := m.viewport.AtBottom()
+		m.updateViewportContent()
+		if wasAtBottom {
+			m.viewport.GotoBottom()
+		}
+		return m, cursorBlink()
+	}
+	if _, ok := msg.(editorCloseMsg); ok {
+		// Legacy - can remove later
+		m.editorModel = nil
+		m.commandExecuting = false
+		wasAtBottom := m.viewport.AtBottom()
+		m.updateViewportContent()
+		if wasAtBottom {
+			m.viewport.GotoBottom()
+		}
+		return m, cursorBlink()
+	}
+
+	// If editor is active, forward ALL messages to it
+	if m.editorModel != nil {
+		updated, cmd := m.editorModel.Update(msg)
+		m.editorModel = updated
+		return m, cmd
+	}
+
+	// Shell-only message handling (when editor is not active)
 	switch msg := msg.(type) {
+	case cursorBlinkMsg:
+		m.cursorVisible = !m.cursorVisible
+		return m, cursorBlink()
+
+	case tea.QuitMsg:
+		// Ignore QuitMsg - shell uses explicit exit handling
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -98,10 +162,30 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.Height = msg.Height - 3
 
 	case tea.MouseMsg:
-		// Forward mouse events to viewport for scrolling
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
+
+	case editorReadyMsg:
+		// Editor model is ready, activate it
+		m.editorModel = msg.model
+		// Call the editor's Init to start its cursor blink timer
+		return m, m.editorModel.Init()
+
+	case commandResultMsg:
+		// Command finished executing, add output
+		m.commandExecuting = false
+		wasAtBottom := m.viewport.AtBottom()
+		m.output = append(m.output, msg.output...)
+		m.updateViewportContent()
+		if wasAtBottom {
+			m.viewport.GotoBottom()
+		}
+		if msg.shouldQuit {
+			return m, tea.Quit
+		}
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -132,27 +216,26 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Execute command
 			if len(strings.TrimSpace(m.input)) > 0 {
-				// Check if we're at bottom before executing (for auto-scroll decision)
-				wasAtBottom := m.viewport.AtBottom()
-
-				shouldQuit := m.executeCommand(m.input)
+				cmdToExecute := m.input
 				m.history = append(m.history, m.input)
+
+				// Add command echo and newline to output immediately
+				m.output = append(m.output, promptStyle.Render(m.prompt+" ")+cmdToExecute)
+				m.output = append(m.output, "")
+
+				// Clear input and mark command as executing
 				m.input = ""
 				m.cursor = 0
 				m.historyIndex = -1
 				m.draft = ""
+				m.commandExecuting = true
 
-				// Update viewport with new output
+				// Update viewport to show the command echo and newline immediately
 				m.updateViewportContent()
+				m.viewport.GotoBottom()
 
-				// Auto-scroll to bottom only if we were already at bottom
-				if wasAtBottom {
-					m.viewport.GotoBottom()
-				}
-
-				if shouldQuit {
-					return m, tea.Quit
-				}
+				// Return a command that executes asynchronously
+				return m, m.executeCommandAsync(cmdToExecute)
 			} else {
 				m.output = append(m.output, "")
 				m.updateViewportContent()
@@ -211,6 +294,12 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnd:
 			m.cursor = len(m.input)
 
+		case tea.KeyCtrlA:
+			m.cursor = 0
+
+		case tea.KeyCtrlE:
+			m.cursor = len(m.input)
+
 		case tea.KeyCtrlU:
 			// Clear line
 			m.input = ""
@@ -229,6 +318,21 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var cmd tea.Cmd
 			m.viewport, cmd = m.viewport.Update(msg)
 			return m, cmd
+
+		case tea.KeyTab:
+			// Perform tab completion
+			completed, options := m.tabComplete()
+			if completed != "" {
+				// Replace the path at cursor position with completed path
+				m.input = completed
+				m.cursor = len(m.input)
+			} else if len(options) > 0 {
+				// Multiple matches - show options to user
+				m.output = append(m.output, "")
+				m.output = append(m.output, strings.Join(options, "  "))
+				m.updateViewportContent()
+				m.viewport.GotoBottom()
+			}
 
 		default:
 			// Insert character
@@ -251,48 +355,279 @@ func (m *ShellModel) updateViewportContent() {
 }
 
 func (m *ShellModel) View() string {
+	// If editor is active, show editor view instead
+	if m.editorModel != nil {
+		return m.editorModel.View()
+	}
+
 	var sb strings.Builder
 
 	// Render viewport content (persistent buffer with scrolling)
 	sb.WriteString(m.viewport.View())
 
-	// Display prompt and input
-	sb.WriteString("\n")
-	if m.pendingExit {
-		sb.WriteString(promptStyle.Render("(y/n) "))
-	} else {
-		sb.WriteString(promptStyle.Render(m.prompt + " "))
-	}
+	// Display prompt and input only if not executing a command
+	if !m.commandExecuting {
+		sb.WriteString("\n")
+		if m.pendingExit {
+			sb.WriteString(promptStyle.Render("(y/n) "))
+		} else {
+			sb.WriteString(promptStyle.Render(m.prompt + " "))
+		}
 
-	// Render input with cursor
-	if m.cursor < len(m.input) {
-		before := m.input[:m.cursor]
-		at := string(m.input[m.cursor])
-		after := m.input[m.cursor+1:]
+		// Render input with cursor
+		if m.cursor < len(m.input) {
+			before := m.input[:m.cursor]
+			at := string(m.input[m.cursor])
+			after := m.input[m.cursor+1:]
 
-		cursorStyle := lipgloss.NewStyle().Reverse(true)
-		sb.WriteString(before)
-		sb.WriteString(cursorStyle.Render(at))
-		sb.WriteString(after)
-	} else {
-		sb.WriteString(m.input)
-		cursorStyle := lipgloss.NewStyle().Reverse(true)
-		sb.WriteString(cursorStyle.Render(" "))
+			if m.cursorVisible {
+				cursorStyle := lipgloss.NewStyle().Reverse(true)
+				sb.WriteString(before)
+				sb.WriteString(cursorStyle.Render(at))
+				sb.WriteString(after)
+			} else {
+				sb.WriteString(m.input)
+			}
+		} else {
+			sb.WriteString(m.input)
+			if m.cursorVisible {
+				cursorStyle := lipgloss.NewStyle().Reverse(true)
+				sb.WriteString(cursorStyle.Render(" "))
+			}
+		}
 	}
 
 	return sb.String()
 }
 
-func (m *ShellModel) executeCommand(cmd string) bool {
-	trimmedCmd := strings.TrimSpace(cmd)
+// tabComplete attempts to complete the current input with file/directory paths
+// Returns (completed input, options if multiple matches)
+func (m *ShellModel) tabComplete() (string, []string) {
+	// Parse the input to find the path to complete
+	beforeCursor := m.input[:m.cursor]
+	afterCursor := m.input[m.cursor:]
 
-	// Add command to output
-	m.output = append(m.output, promptStyle.Render(m.prompt+" ")+cmd)
+	// Find the last word (potential path) before cursor
+	fields := strings.Fields(beforeCursor)
+	if len(fields) == 0 {
+		return "", nil
+	}
+
+	// Get the path to complete (last field)
+	pathToComplete := fields[len(fields)-1]
+
+	// Split into directory and prefix
+	lastSlash := strings.LastIndex(pathToComplete, "/")
+	var dir, prefix string
+	if lastSlash == -1 {
+		// No slash - completing in current directory
+		dir = "."
+		prefix = pathToComplete
+	} else if lastSlash == 0 {
+		// Root directory
+		dir = "/"
+		prefix = pathToComplete[1:]
+	} else {
+		// Some directory path
+		dir = pathToComplete[:lastSlash]
+		prefix = pathToComplete[lastSlash+1:]
+	}
+
+	// Find matching entries in the directory
+	matches := m.findMatches(dir, prefix)
+
+	if len(matches) == 0 {
+		return "", nil
+	} else if len(matches) == 1 {
+		// Single match - complete it
+		completed := matches[0]
+
+		// Construct the new input
+		beforePath := ""
+		if len(fields) > 1 {
+			beforePath = strings.Join(fields[:len(fields)-1], " ") + " "
+		}
+
+		// Build completed path
+		var completedPath string
+		if lastSlash == -1 {
+			completedPath = completed
+		} else {
+			completedPath = pathToComplete[:lastSlash+1] + completed
+		}
+
+		newInput := beforePath + completedPath + afterCursor
+		return newInput, nil
+	} else {
+		// Multiple matches - check for common prefix
+		commonPrefix := findCommonPrefix(matches)
+		if len(commonPrefix) > len(prefix) {
+			// Complete to common prefix
+			beforePath := ""
+			if len(fields) > 1 {
+				beforePath = strings.Join(fields[:len(fields)-1], " ") + " "
+			}
+
+			var completedPath string
+			if lastSlash == -1 {
+				completedPath = commonPrefix
+			} else {
+				completedPath = pathToComplete[:lastSlash+1] + commonPrefix
+			}
+
+			newInput := beforePath + completedPath + afterCursor
+			return newInput, nil
+		}
+		// No further completion possible - return options
+		return "", matches
+	}
+}
+
+// findCommonPrefix finds the longest common prefix among strings
+func findCommonPrefix(strs []string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	if len(strs) == 1 {
+		return strs[0]
+	}
+
+	prefix := strs[0]
+	for i := 1; i < len(strs); i++ {
+		// Find common prefix between current prefix and next string
+		j := 0
+		for j < len(prefix) && j < len(strs[i]) && prefix[j] == strs[i][j] {
+			j++
+		}
+		prefix = prefix[:j]
+		if len(prefix) == 0 {
+			break
+		}
+	}
+	return prefix
+}
+
+// findMatches finds all files/directories in dir that start with prefix
+func (m *ShellModel) findMatches(dir, prefix string) []string {
+	var matches []string
+
+	// Read directory entries
+	entries, err := m.memFs.ReadDir(dir)
+	if err != nil {
+		return matches
+	}
+
+	// Filter entries by prefix
+	for _, entry := range entries {
+		name := entry.Name()
+
+		// Skip io directory (internal)
+		if name == "io" {
+			continue
+		}
+
+		// Check if name starts with prefix
+		if strings.HasPrefix(name, prefix) {
+			// Add trailing slash for directories
+			if entry.IsDir() {
+				name += "/"
+			}
+			matches = append(matches, name)
+		}
+	}
+
+	return matches
+}
+
+// executeCommandAsync returns a tea.Cmd that executes the command asynchronously
+func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
+	trimmedCmd := strings.TrimSpace(cmd)
+	parts := strings.Fields(trimmedCmd)
+
+	// Handle rosea command specially - it needs to suspend the tea program
+	if len(parts) > 0 && parts[0] == "rosea" {
+		if m.chatSenderChan == nil {
+			return func() tea.Msg {
+				return commandResultMsg{
+					output:     []string{errorStyle.Render("Error: chat channel not available")},
+					shouldQuit: false,
+				}
+			}
+		}
+
+		// Return a command that requests editor model from rosea
+		args := parts[1:]
+		return func() tea.Msg {
+			// Send message to trcshcmd/rosea to get editor model
+			id := fmt.Sprintf("rosea-%d", time.Now().UnixNano())
+			responseChan := make(chan tea.Model, 1)
+
+			// Register hook for response
+			GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
+				if msg.RoutingId != nil && *msg.RoutingId == id {
+					if msg.HookResponse != nil {
+						if editorModel, ok := msg.HookResponse.(tea.Model); ok {
+							responseChan <- editorModel
+						}
+					}
+					return true
+				}
+				return false
+			})
+
+			// Send request to launch editor
+			pluginName := "trcsh"
+			chatId := "rosea"
+			roseaMsg := &tccore.ChatMsg{
+				Name:         &pluginName,
+				Query:        &[]string{"trcshcmd"},
+				ChatId:       &chatId,
+				RoutingId:    &id,
+				HookResponse: args,
+			}
+			*m.chatSenderChan <- roseaMsg
+
+			// Wait for editor model to be returned
+			var editorModel tea.Model
+			select {
+			case editorModel = <-responseChan:
+				GetChatMsgHooks().Remove(id)
+			case <-time.After(5 * time.Second):
+				GetChatMsgHooks().Remove(id)
+				return commandResultMsg{
+					output:     []string{errorStyle.Render("Error: timeout waiting for editor")},
+					shouldQuit: false,
+				}
+			}
+
+			return editorReadyMsg{model: editorModel}
+		}
+	}
+
+	// For all other commands, use normal async execution
+	return func() tea.Msg {
+		output, shouldQuit := m.executeCommand(cmd)
+		return commandResultMsg{
+			output:     output,
+			shouldQuit: shouldQuit,
+		}
+	}
+}
+
+// Message type sent when editor model is ready
+type editorReadyMsg struct {
+	model tea.Model
+}
+
+// executeCommand executes a command and returns the output lines and whether to quit
+func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
+	trimmedCmd := strings.TrimSpace(cmd)
+	var output []string
 
 	// Parse and execute command
 	parts := strings.Fields(trimmedCmd)
 	if len(parts) == 0 {
-		return false
+		return output, false
 	}
 
 	command := parts[0]
@@ -304,14 +639,14 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 		if m.elevatedMode {
 			m.elevatedMode = false
 			m.prompt = "$"
-			m.output = append(m.output, "Exited elevated mode. Returned to normal access.")
-			return false
+			output = append(output, "Exited elevated mode. Returned to normal access.")
+			return output, false
 		}
 		// Otherwise, exit the shell
-		m.output = append(m.output, "All uncommitted changes will be lost. Are you sure?")
+		output = append(output, "All uncommitted changes will be lost. Are you sure?")
 		m.pendingExit = true
 		// Don't add the normal empty line at the end for exit
-		return false
+		return output, false
 
 	case "ls":
 		// Determine which directory to list
@@ -333,28 +668,29 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 				if entry.IsDir() {
 					name += "/"
 				}
-				m.output = append(m.output, name)
+				output = append(output, name)
 			}
 			if visibleCount == 0 {
-				m.output = append(m.output, ".")
+				output = append(output, ".")
 			}
 		} else {
-			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
+			output = append(output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
 		}
 
 	case "tree":
-		m.output = append(m.output, ".")
-		dirCount, fileCount, err := m.printTree(".", "")
+		output = append(output, ".")
+		treeOutput, dirCount, fileCount, err := m.printTree(".", "")
 		if err != nil {
-			m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
+			output = append(output, errorStyle.Render(fmt.Sprintf("Error reading directory: %v", err)))
 		} else {
-			m.output = append(m.output, "")
-			m.output = append(m.output, fmt.Sprintf("%d directories, %d files", dirCount, fileCount))
+			output = append(output, treeOutput...)
+			output = append(output, "")
+			output = append(output, fmt.Sprintf("%d directories, %d files", dirCount, fileCount))
 		}
 
 	case "rm":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -364,15 +700,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Files removed successfully")
+			output = append(output, "Files removed successfully")
 		}
 
 	case "cp":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -382,15 +718,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Files copied successfully")
+			output = append(output, "Files copied successfully")
 		}
 
 	case "mv":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -400,15 +736,15 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
 		} else {
-			m.output = append(m.output, "Files moved successfully")
+			output = append(output, "Files moved successfully")
 		}
 
 	case "cat":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
@@ -418,68 +754,78 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
-		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+		}
+
+	case "mkdir":
+		if m.chatSenderChan == nil {
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		// Call trcshcmd for mkdir command with args
+		response := callTrcshCmd(m.chatSenderChan, "mkdir", args)
+		if response != "" {
+			// Split response by newlines and add each line
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				output = append(output, line)
+			}
 		}
 
 	case "tsub":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
 		// Call trcshcmd synchronously - let trcsub handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcsub", args)
+		response := callTrcshCmd(m.chatSenderChan, "tsub", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
-		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
 		}
 
-	case "tpub":
-		// Only available in elevated mode
-		if !m.elevatedMode {
-			m.output = append(m.output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
-			m.output = append(m.output, "Run 'su' to obtain elevated access")
-			break
-		}
+	// case "tpub":
+	// 	// Only available in elevated mode
+	// 	if !m.elevatedMode {
+	// 		output = append(output, errorStyle.Render("Error: 'tpub' command requires elevated access"))
+	// 		output = append(output, "Run 'su' to obtain elevated access")
+	// 		break
+	// 	}
 
-		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
-			break
-		}
+	// 	if m.chatSenderChan == nil {
+	// 		output = append(output, errorStyle.Render("Error: chat channel not available"))
+	// 		break
+	// 	}
 
-		// Call trcshcmd synchronously - let trcpub handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcpub", args)
-		if response != "" {
-			// Split response by newlines and add each line
-			lines := strings.Split(strings.TrimSpace(response), "\n")
-			for _, line := range lines {
-				// Style authorization errors in red
-				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					m.output = append(m.output, errorStyle.Render(line))
-				} else {
-					m.output = append(m.output, line)
-				}
-			}
-		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
-		}
+	// 	// Call trcshcmd synchronously - let trcpub handle its own usage validation
+	// 	response := callTrcshCmd(m.chatSenderChan, "tpub", args)
+	// 	if response != "" {
+	// 		// Split response by newlines and add each line
+	// 		lines := strings.Split(strings.TrimSpace(response), "\n")
+	// 		for _, line := range lines {
+	// 			// Style authorization errors in red
+	// 			if strings.Contains(line, "AUTHORIZATION ERROR") {
+	// 				output = append(output, errorStyle.Render(line))
+	// 			} else {
+	// 				output = append(output, line)
+	// 			}
+	// 		}
+	// 	}
 
 	case "su":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
 		// Call trcshcmd to perform OAuth authentication for unrestricted access
-		m.output = append(m.output, "Requesting elevated access...")
+		output = append(output, "Requesting elevated access...")
 		response := callTrcshCmd(m.chatSenderChan, "su", args)
 		if response != "" && strings.Contains(response, "success") {
 			m.elevatedMode = true
@@ -487,161 +833,155 @@ func (m *ShellModel) executeCommand(cmd string) bool {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
-			m.output = append(m.output, "")
-			m.output = append(m.output, "Elevated mode activated. Additional commands available:")
-			m.output = append(m.output, "  tinit    - Run trcinit commands (write access)")
-			m.output = append(m.output, "  tx       - Run trcx commands (write access)")
-			m.output = append(m.output, "Type 'exit' to return to normal mode.")
+			output = append(output, "")
+			output = append(output, "Elevated mode activated. Additional commands available:")
+			output = append(output, "  tinit    - Run trcinit commands (write access)")
+			output = append(output, "  tx       - Run trcx commands (write access)")
+			output = append(output, "Type 'exit' to return to normal mode.")
 		} else {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, errorStyle.Render(line))
+				output = append(output, errorStyle.Render(line))
 			}
 		}
 
 	case "tinit":
 		// Only available in elevated mode
 		if !m.elevatedMode {
-			m.output = append(m.output, errorStyle.Render("Error: 'tinit' command requires elevated access"))
-			m.output = append(m.output, "Run 'su' to obtain elevated access")
+			output = append(output, errorStyle.Render("Error: 'tinit' command requires elevated access"))
+			output = append(output, "Run 'su' to obtain elevated access")
 			break
 		}
 
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
 		// Call trcshcmd synchronously - let trcinit handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcinit", args)
+		response := callTrcshCmd(m.chatSenderChan, "tinit", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
 				// Style authorization errors in red
 				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					m.output = append(m.output, errorStyle.Render(line))
+					output = append(output, errorStyle.Render(line))
 				} else {
-					m.output = append(m.output, line)
+					output = append(output, line)
 				}
 			}
-		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
+
 		}
 
 	case "tx":
-		// Only available in elevated mode
-		if !m.elevatedMode {
-			m.output = append(m.output, errorStyle.Render("Error: 'tx' command requires elevated access"))
-			m.output = append(m.output, "Run 'su' to obtain elevated access")
-			break
-		}
-
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
 		// Call trcshcmd synchronously - let trcx handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcx", args)
+		response := callTrcshCmd(m.chatSenderChan, "tx", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
 				// Style authorization errors in red
 				if strings.Contains(line, "AUTHORIZATION ERROR") {
-					m.output = append(m.output, errorStyle.Render(line))
+					output = append(output, errorStyle.Render(line))
 				} else {
-					m.output = append(m.output, line)
+					output = append(output, line)
 				}
 			}
-		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "tconfig":
 		if m.chatSenderChan == nil {
-			m.output = append(m.output, errorStyle.Render("Error: chat channel not available"))
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
 			break
 		}
 
 		// Call trcshcmd synchronously - let trcconfig handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "trcconfig", args)
+		response := callTrcshCmd(m.chatSenderChan, "tconfig", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
-				m.output = append(m.output, line)
+				output = append(output, line)
 			}
-		} else {
-			m.output = append(m.output, errorStyle.Render("Error: no response from command"))
 		}
 
 	case "help":
-		m.output = append(m.output, "Available commands:")
-		m.output = append(m.output, "  help     - Show this help message")
-		m.output = append(m.output, "  echo     - Echo arguments")
-		m.output = append(m.output, "  ls       - List directory contents")
-		m.output = append(m.output, "  tree     - Display directory tree structure")
-		m.output = append(m.output, "  cat      - Display file contents")
-		m.output = append(m.output, "  rm       - Remove files or directories (use -r for recursive)")
-		m.output = append(m.output, "  cp       - Copy files or directories (use -r for recursive)")
-		m.output = append(m.output, "  mv       - Move/rename files or directories")
-		m.output = append(m.output, "  clear    - Clear screen (or press Ctrl+L)")
-		m.output = append(m.output, "  history  - Show command history")
-		m.output = append(m.output, "  tsub     - Run trcsub commands")
-		m.output = append(m.output, "  tconfig  - Run trcconfig commands")
+		output = append(output, "Available commands:")
+		output = append(output, "  help     - Show this help message")
+		output = append(output, "  echo     - Echo arguments")
+		output = append(output, "  ls       - List directory contents")
+		output = append(output, "  tree     - Display directory tree structure")
+		output = append(output, "  cat      - Display file contents")
+		output = append(output, "  mkdir    - Create directories (use -p for parent directories)")
+		output = append(output, "  rm       - Remove files or directories (use -r for recursive)")
+		output = append(output, "  cp       - Copy files or directories (use -r for recursive)")
+		output = append(output, "  mv       - Move/rename files or directories")
+		output = append(output, "  clear    - Clear screen (or press Ctrl+L)")
+		output = append(output, "  history  - Show command history")
+		output = append(output, "  rosea    - Edit files with rosea editor")
+		output = append(output, "  tsub     - Run trcsub commands")
+		output = append(output, "  tconfig  - Run trcconfig commands")
+		output = append(output, "  tx       - Run trcx commands")
 		if !m.elevatedMode {
-			m.output = append(m.output, "  su       - Obtain elevated access for write operations")
+			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
-			m.output = append(m.output, "  tinit    - Run trcinit commands (elevated mode only)")
-			m.output = append(m.output, "  tpub     - Run trcpub commands (elevated mode only)")
-			m.output = append(m.output, "  tx       - Run trcx commands (elevated mode only)")
+			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
+			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}
-		m.output = append(m.output, "  exit     - Exit shell (or press Ctrl+C)")
+		output = append(output, "  exit     - Exit shell (or press Ctrl+C)")
 		if m.elevatedMode {
-			m.output = append(m.output, "")
-			m.output = append(m.output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")
+			output = append(output, "")
+			output = append(output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")
 		}
 
 	case "echo":
-		m.output = append(m.output, strings.Join(args, " "))
+		output = append(output, strings.Join(args, " "))
 
 	case "clear":
+		// Clear command needs immediate effect, bypass async pattern
 		m.output = []string{}
 		m.updateViewportContent()
 		m.viewport.GotoTop()
+		return output, false
 
 	case "history":
 		if len(m.history) == 0 {
-			m.output = append(m.output, "No command history")
+			output = append(output, "No command history")
 		} else {
 			for i, h := range m.history {
-				m.output = append(m.output, fmt.Sprintf("%4d  %s", i+1, h))
+				output = append(output, fmt.Sprintf("%4d  %s", i+1, h))
 			}
 		}
 
 	default:
-		m.output = append(m.output, errorStyle.Render(fmt.Sprintf("Unknown command: %s", command)))
-		m.output = append(m.output, "Type 'help' for available commands")
+		output = append(output, errorStyle.Render(fmt.Sprintf("Unknown command: %s", command)))
+		output = append(output, "Type 'help' for available commands")
 	}
 
 	// Don't add empty line if waiting for exit confirmation
 	if !m.pendingExit {
-		m.output = append(m.output, "")
+		output = append(output, "")
 	}
-	return false
+	return output, false
 }
 
 // printTree recursively prints the directory tree structure
-// Returns (dirCount, fileCount, error)
-func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
+// Returns (output lines, dirCount, fileCount, error)
+func (m *ShellModel) printTree(path string, prefix string) ([]string, int, int, error) {
+	var treeOutput []string
+
 	entries, err := m.memFs.ReadDir(path)
 	if err != nil {
-		return 0, 0, err
+		return treeOutput, 0, 0, err
 	}
 
 	// Filter out io directory
@@ -670,7 +1010,7 @@ func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
 		name := entry.Name()
 		if entry.IsDir() {
 			dirCount++
-			m.output = append(m.output, linePrefix+name+"/")
+			treeOutput = append(treeOutput, linePrefix+name+"/")
 			// Recursively print subdirectory
 			subPath := path
 			if path == "." {
@@ -678,20 +1018,21 @@ func (m *ShellModel) printTree(path string, prefix string) (int, int, error) {
 			} else {
 				subPath = path + "/" + name
 			}
-			subDirCount, subFileCount, err := m.printTree(subPath, childPrefix)
+			subOutput, subDirCount, subFileCount, err := m.printTree(subPath, childPrefix)
 			if err != nil {
-				m.output = append(m.output, childPrefix+errorStyle.Render(fmt.Sprintf("Error: %v", err)))
+				treeOutput = append(treeOutput, childPrefix+errorStyle.Render(fmt.Sprintf("Error: %v", err)))
 			} else {
+				treeOutput = append(treeOutput, subOutput...)
 				dirCount += subDirCount
 				fileCount += subFileCount
 			}
 		} else {
 			fileCount++
-			m.output = append(m.output, linePrefix+name)
+			treeOutput = append(treeOutput, linePrefix+name)
 		}
 	}
 
-	return dirCount, fileCount, nil
+	return treeOutput, dirCount, fileCount, nil
 }
 
 var globalShellModel *ShellModel

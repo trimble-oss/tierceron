@@ -45,7 +45,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 		service = driverConfig.ServiceFilter[0]
 	}
 
-	//This checks whether indexed section is available in current directory.
+	// This checks whether indexed section is available in current directory.
 	if len(driverConfig.SectionKey) > 0 && len(driverConfig.ProjectSections) > 0 {
 		projectFound := false
 		for _, projectSection := range driverConfig.ProjectSections {
@@ -130,10 +130,10 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 		}
 	}
 
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") && mod != nil && mod.Version != "0" { //If version isn't latest or is a flag
+	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") && mod != nil && mod.Version != "0" { // If version isn't latest or is a flag
 		var noCertPaths []string
 		var certPaths []string
-		for _, templatePath := range templatePaths { //Separate cert vs normal paths
+		for _, templatePath := range templatePaths { // Separate cert vs normal paths
 			if !strings.Contains(templatePath, "Common") {
 				noCertPaths = append(noCertPaths, templatePath)
 			} else {
@@ -141,7 +141,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			}
 		}
 
-		if driverConfig.CoreConfig.WantCerts { //Remove unneeded template paths
+		if driverConfig.CoreConfig.WantCerts { // Remove unneeded template paths
 			templatePaths = certPaths
 		} else {
 			templatePaths = noCertPaths
@@ -152,12 +152,12 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			project = driverConfig.VersionFilter[0]
 		}
 		for _, templatePath := range templatePaths {
-			_, service, _, _ := eUtils.GetProjectService(nil, templatePath) //This checks for nested project names
+			_, service, _, _ := eUtils.GetProjectService(nil, templatePath) // This checks for nested project names
 
-			driverConfig.VersionFilter = append(driverConfig.VersionFilter, service) //Adds nested project name to filter otherwise it will be not found.
+			driverConfig.VersionFilter = append(driverConfig.VersionFilter, service) // Adds nested project name to filter otherwise it will be not found.
 		}
 
-		if driverConfig.CoreConfig.WantCerts { //For cert version history
+		if driverConfig.CoreConfig.WantCerts { // For cert version history
 			driverConfig.VersionFilter = append(driverConfig.VersionFilter, "Common")
 		}
 
@@ -167,7 +167,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 		if versionMetadataMap == nil {
 			return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(driverConfig.CoreConfig, fmt.Sprintf("No version data found - this filter was applied during search: %v\n", driverConfig.VersionFilter), 1)
-		} else if version == "versionInfo" { //Version flag
+		} else if version == "versionInfo" { // Version flag
 			var masterKey string
 			first := true
 			for key := range versionMetadataMap {
@@ -192,7 +192,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 				}
 			}
 			return nil, false, nil, nil, nil, "", eUtils.LogAndSafeExit(driverConfig.CoreConfig, "Version info provided.", 1)
-		} else { //Version bound check
+		} else { // Version bound check
 			if version != "0" {
 				versionNumbers := eUtils.GetProjectVersions(driverConfig, versionMetadataMap)
 				eUtils.BoundCheck(driverConfig, versionNumbers, version)
@@ -200,7 +200,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 		}
 	}
 
-	//Receiver for configs
+	// Receiver for configs
 	go func(dc *config.DriverConfig) {
 		for tResult := range templateResultChan {
 			if dc.CoreConfig.Env == tResult.Env && dc.SubSectionValue == tResult.SubSectionValue {
@@ -211,7 +211,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 				if tResult.TemplateDepth > maxDepth {
 					maxDepth = tResult.TemplateDepth
-					//templateCombinedSection = interfaceTemplateSection
+					// templateCombinedSection = interfaceTemplateSection
 				}
 				wg.Done()
 			} else {
@@ -241,13 +241,13 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			for _, templatePath := range templatePaths {
 				_, _, _, templatePath = eUtils.GetProjectService(driverConfig, templatePath)
 				_, _, indexed, _ := helperkv.PreCheckEnvironment(mod.Env)
-				//This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
+				// This checks whether a enterprise env has the relevant project otherwise env gets skipped when generating seed files.
 				if (strings.Contains(mod.Env, ".") || len(driverConfig.ProjectSections) > 0) && !serviceFound {
 					var listValues *api.Secret
 					var err error
 					if driverConfig.SectionKey == "/Index/" && len(driverConfig.ProjectSections) > 0 {
 						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.CoreConfig.EnvBasis, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0]+"/"+driverConfig.SectionName+"/"+driverConfig.SubSectionValue+"/", driverConfig.CoreConfig.Log)
-					} else if len(driverConfig.ProjectSections) > 0 { //If eid -> look inside Index and grab all environments
+					} else if len(driverConfig.ProjectSections) > 0 { // If eid -> look inside Index and grab all environments
 						listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.CoreConfig.EnvBasis, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0]+"/"+driverConfig.SectionName, driverConfig.CoreConfig.Log)
 						if listValues == nil {
 							listValues, err = mod.ListEnv("super-secrets/"+strings.Split(driverConfig.CoreConfig.EnvBasis, ".")[0]+driverConfig.SectionKey+driverConfig.ProjectSections[0], driverConfig.CoreConfig.Log)
@@ -255,12 +255,12 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 					} else if indexed {
 						listValues, err = mod.ListEnv("super-secrets/"+mod.Env+"/", driverConfig.CoreConfig.Log)
 					} else {
-						listValues, err = mod.ListEnv("values/"+mod.Env+"/", driverConfig.CoreConfig.Log) //Fix values to add to project to directory
+						listValues, err = mod.ListEnv("values/"+mod.Env+"/", driverConfig.CoreConfig.Log) // Fix values to add to project to directory
 					}
 					if err != nil {
 						eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 					} else if listValues == nil {
-						//eUtils.LogInfo(config, "No values were returned under values/.")
+						// eUtils.LogInfo(config, "No values were returned under values/.")
 					} else {
 						serviceSlice := make([]string, 0)
 						for _, valuesPath := range listValues.Data {
@@ -283,14 +283,14 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 						}
 					}
 				}
-				if serviceFound { //Exit for irrelevant enterprises
+				if serviceFound { // Exit for irrelevant enterprises
 					acceptedTemplatePaths = append(acceptedTemplatePaths, templatePath)
 					anyServiceFound = true
 					serviceFound = false
 				}
 			}
 
-			if !anyServiceFound { //Exit for irrelevant enterprises
+			if !anyServiceFound { // Exit for irrelevant enterprises
 				var errmsg error
 				if driverConfig.SubSectionValue != "" {
 					errmsg = errors.New("No relevant services were found for this environment: " + mod.Env + " for this value: " + driverConfig.SubSectionValue)
@@ -350,7 +350,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			envVersion := eUtils.SplitEnv(dc.CoreConfig.Env)
 			env = envVersion[0]
 			version = envVersion[1]
-			//check for template_files directory here
+			// check for template_files directory here
 			project, service, _, tp = eUtils.GetProjectService(dc, tp)
 			useCache := true
 
@@ -397,7 +397,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 						case "/Index/":
 							goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + goMod.SectionName + "/" + goMod.SubSectionValue + "/" + service + dc.SubSectionName
 						case "/Restricted/":
-							if service != dc.SectionName { //TODO: Revisit why we need this comparison
+							if service != dc.SectionName { // TODO: Revisit why we need this comparison
 								goMod.SectionPath = "super-secrets" + goMod.SectionKey + service + "/" + dc.SectionName
 							} else {
 								goMod.SectionPath = "super-secrets" + goMod.SectionKey + project + "/" + dc.SectionName
@@ -534,7 +534,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 // GenerateSeedsFromVaultRaw configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool, templatePaths []string) (string, bool, string, error) {
-	var projectSectionTemp []string //Used for seed file pathing; errors for -novault generation if not empty
+	var projectSectionTemp []string // Used for seed file pathing; errors for -novault generation if not empty
 	if len(driverConfig.Trcxe) > 2 {
 		projectSectionTemp = driverConfig.ProjectSections
 		driverConfig.ProjectSections = []string{}
@@ -545,7 +545,7 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 		return "", false, "", nil
 	}
 
-	if len(driverConfig.Trcxe) > 1 { //Validate first then replace fields
+	if len(driverConfig.Trcxe) > 1 { // Validate first then replace fields
 		if len(projectSectionTemp) > 0 {
 			driverConfig.ProjectSections = projectSectionTemp
 		}
@@ -609,14 +609,13 @@ func GenerateSeedsFromVaultRaw(driverConfig *config.DriverConfig, fromVault bool
 
 // GenerateSeedsFromVault configures the templates in trc_templates and writes them to trcx
 func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigContext, driverConfig *config.DriverConfig) (any, error) {
-	if driverConfig.Clean { //Clean flag in trcx
+	if driverConfig.Clean { // Clean flag in trcx
 		if strings.HasSuffix(driverConfig.CoreConfig.Env, "_0") {
 			envVersion := eUtils.SplitEnv(driverConfig.CoreConfig.Env)
 			driverConfig.CoreConfig.Env = envVersion[0]
 		}
 		_, err1 := os.Stat(driverConfig.EndDir + driverConfig.CoreConfig.Env)
 		err := os.RemoveAll(driverConfig.EndDir + driverConfig.CoreConfig.Env)
-
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 			eUtils.LogAndSafeExit(driverConfig.CoreConfig, "", 1)
@@ -632,8 +631,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 
 	// Get files from directory
 	if driverConfig.ReadMemCache &&
-		driverConfig.MemFs != nil &&
-		driverConfig.CoreConfig.IsEditor {
+		driverConfig.MemFs != nil {
 		templateRoot := coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_templates"
 		driverConfig.MemFs.Walk(templateRoot, func(p string, isDir bool) error {
 			if !isDir && strings.HasSuffix(p, ".tmpl") {
@@ -643,7 +641,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 		})
 	} else {
 		for _, startDir := range driverConfig.StartDir {
-			//get files from directory
+			// get files from directory
 			tp := GetDirFiles(startDir)
 			templatePathsUniq = append(templatePathsUniq, tp...)
 		}
@@ -652,7 +650,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, "No files found in "+coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates", true)
 		}
 
-		//Duplicate path remover
+		// Duplicate path remover
 		keys := make(map[string]bool)
 		for _, path := range templatePathsUniq {
 			if _, value := keys[path]; !value {
@@ -661,7 +659,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			}
 		}
 
-		if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") { //Filter unneeded templates
+		if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") { // Filter unneeded templates
 			var err error
 			// TODO: Redo/deleted the indexedEnv work...
 			// Get filtered using mod and templates.
@@ -749,7 +747,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			endPath = driverConfig.EndDir + envBasePath + "/" + driverConfig.CoreConfig.Env + "_seed.yml"
 		}
 	}
-	//generate template or certificate
+	// generate template or certificate
 	if driverConfig.CoreConfig.WantCerts {
 		var certData map[int]string
 		certLoaded := false
@@ -762,7 +760,6 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 
 			tokenName := fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)
 			certMod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, true)
-
 			if err != nil {
 				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 			}
@@ -817,7 +814,12 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 
 			certDestination := driverConfig.EndDir + "/" + certPath
 			certDestination = strings.ReplaceAll(certDestination, "//", "/")
-			writeToFile(driverConfig.CoreConfig, certData[1], certDestination)
+			if driverConfig.OutputMemCache {
+				byteData := []byte(certData[1])
+				driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, certDestination)
+			} else {
+				writeToFile(driverConfig, certData[1], certDestination)
+			}
 			eUtils.LogInfo(driverConfig.CoreConfig, "certificate written to "+certDestination)
 		}
 		return nil, nil
@@ -833,7 +835,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			byteData := []byte(seedData)
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, endPath)
 		} else {
-			writeToFile(driverConfig.CoreConfig, seedData, endPath)
+			writeToFile(driverConfig, seedData, endPath)
 		}
 		// Print that we're done
 		if strings.Contains(driverConfig.CoreConfig.Env, "_0") {
@@ -846,33 +848,39 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 	return nil, nil
 }
 
-func writeToFile(config *coreconfig.CoreConfig, data string, path string) {
+func writeToFile(driverConfig *config.DriverConfig, data string, path string) {
 	byteData := []byte(data)
-	//Ensure directory has been created
+	// Check if we should write to memfs
+	if driverConfig != nil && driverConfig.OutputMemCache && driverConfig.MemFs != nil {
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &byteData, path)
+		return
+	}
+	// Write to actual filesystem
+	// Ensure directory has been created
 	dirPath := filepath.Dir(path)
 	err := os.MkdirAll(dirPath, os.ModePerm)
-	eUtils.CheckError(config, err, true)
-	//create new file
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
+	// create new file
 	newFile, err := os.Create(path)
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	defer newFile.Close()
-	//write to file
+	// write to file
 	_, err = newFile.Write(byteData)
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	err = newFile.Sync()
-	eUtils.CheckError(config, err, true)
+	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 }
 
 func GetDirFiles(dir string) []string {
 	files, err := os.ReadDir(dir)
 	filePaths := []string{}
-	//endPaths := []string{}
+	// endPaths := []string{}
 	if err != nil {
-		//this is a file
+		// this is a file
 		return []string{dir}
 	}
 	for _, file := range files {
-		//add this directory to path names
+		// add this directory to path names
 		filename := file.Name()
 		if strings.HasSuffix(filename, ".DS_Store") {
 			continue
@@ -883,10 +891,10 @@ func GetDirFiles(dir string) []string {
 			filePath = dir + "/" + file.Name()
 		}
 		if extension == "" {
-			//if subfolder add /
+			// if subfolder add /
 			filePath += "/"
 		}
-		//recurse to next level
+		// recurse to next level
 		newPaths := GetDirFiles(filePath)
 		filePaths = append(filePaths, newPaths...)
 	}

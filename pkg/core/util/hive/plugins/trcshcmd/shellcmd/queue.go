@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
+	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
@@ -47,6 +48,20 @@ func hasUnrestrictedAccess(driverConfig *config.DriverConfig) bool {
 func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.DriverConfig) trcshio.MemoryFileSystem {
 	if driverConfig == nil {
 		return nil
+	}
+
+	// Clear CurrentTokenNamePtr if environment and token mismatch in either direction
+	if driverConfig.CoreConfig != nil {
+		currentEnv := driverConfig.CoreConfig.EnvBasis
+		if driverConfig.CoreConfig.CurrentTokenNamePtr != nil {
+			currentToken := *driverConfig.CoreConfig.CurrentTokenNamePtr
+			// Clear if switching from novault to real env, real env to novault, or between envs
+			if (strings.Contains(currentToken, "novault") && currentEnv != "novault") ||
+				(!strings.Contains(currentToken, currentEnv)) ||
+				(currentEnv == "novault" && !strings.Contains(currentToken, "novault")) {
+				driverConfig.CoreConfig.CurrentTokenNamePtr = nil
+			}
+		}
 	}
 
 	if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
@@ -100,12 +115,20 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		driverConfig.EndDir = originalEndDir
 
 	case CmdTrcX:
-		// Require elevated access for trcx (write operations)
-		if !hasUnrestrictedAccess(driverConfig) {
-			err = errors.New("AUTHORIZATION ERROR: 'tx' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
-			break
+		// Save original values
+		originalStartDir := driverConfig.StartDir
+		originalEndDir := driverConfig.EndDir
+		// Set StartDir and EndDir defaults for tx command if not already set
+		if len(driverConfig.StartDir) == 0 {
+			driverConfig.StartDir = []string{"trc_templates"}
 		}
-		trcxbase.CommonMain(nil, nil, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)
+		if driverConfig.EndDir == "" {
+			driverConfig.EndDir = "./trc_seeds/"
+		}
+		trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, &envDefaultPtr, nil, &envCtx, nil, nil, argLines, driverConfig)
+		// Restore original values
+		driverConfig.StartDir = originalStartDir
+		driverConfig.EndDir = originalEndDir
 
 	case CmdTrcInit:
 		// Require elevated access for trcinit (write operations)
@@ -113,10 +136,9 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 			err = errors.New("AUTHORIZATION ERROR: 'tinit' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
 			break
 		}
-		pubTokenName := fmt.Sprintf("vault_pub_token_%s", driverConfig.CoreConfig.EnvBasis)
 		pubEnv := driverConfig.CoreConfig.Env
 		uploadCert := driverConfig.CoreConfig.WantCerts
-		trcinitbase.CommonMain(&pubEnv, &envCtx, &pubTokenName, &uploadCert, nil, args, driverConfig)
+		trcinitbase.CommonMain(&pubEnv, &envCtx, nil, &uploadCert, nil, args, driverConfig)
 
 	case CmdTrcPlgtool:
 		env := driverConfig.CoreConfig.Env
@@ -157,6 +179,9 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 	case CmdCat:
 		err = ExecuteCat(args, driverConfig)
 
+	case CmdMkdir:
+		err = ExecuteMkdir(args, driverConfig)
+
 	case CmdSu:
 		// Perform OAuth authentication for unrestricted write access
 		err = ExecuteSu(driverConfig)
@@ -194,7 +219,6 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 		}
 	}
 
-	// Return the MemFs where command wrote its output
 	if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
 		driverConfig.CoreConfig.Log.Printf("ExecuteShellCommand: returning MemFs (nil=%v)\n", driverConfig.MemFs == nil)
 	}
@@ -320,6 +344,123 @@ func removePath(driverConfig *config.DriverConfig, path string, recursive bool) 
 
 	// It's a file, remove it directly
 	return driverConfig.MemFs.Remove(path)
+}
+
+// ExecuteMkdir creates directories in memfs
+// Supports -p flag for creating parent directories
+func ExecuteMkdir(args []string, driverConfig *config.DriverConfig) error {
+	if driverConfig == nil || driverConfig.MemFs == nil {
+		return errors.New("driver config or memfs is nil")
+	}
+
+	if len(args) == 0 {
+		errMsg := "mkdir: missing operand"
+		outputBytes := []byte(errMsg)
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputBytes, "io/STDIO")
+		return errors.New(errMsg)
+	}
+
+	createParents := false
+	var paths []string
+
+	// Parse arguments
+	for _, arg := range args {
+		if arg == "-p" || arg == "--parents" {
+			createParents = true
+		} else if !strings.HasPrefix(arg, "-") {
+			paths = append(paths, arg)
+		}
+	}
+
+	if len(paths) == 0 {
+		errMsg := "mkdir: missing directory operand"
+		outputBytes := []byte(errMsg)
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputBytes, "io/STDIO")
+		return errors.New(errMsg)
+	}
+
+	var output strings.Builder
+	var hasError bool
+
+	// Create each directory
+	for _, path := range paths {
+		if err := createDirectory(driverConfig, path, createParents); err != nil {
+			if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+				driverConfig.CoreConfig.Log.Printf("mkdir: %v\n", err)
+			}
+			output.WriteString(fmt.Sprintf("mkdir: %v\n", err))
+			hasError = true
+		}
+	}
+
+	// Write output to io/STDIO
+	var outputData []byte
+	if output.Len() > 0 {
+		outputData = []byte(output.String())
+	} else {
+		outputData = []byte("")
+	}
+
+	// Check if io directory exists
+	if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+		// Directory exists, open file for append
+		if stdioFile, err := driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644); err == nil {
+			stdioFile.Write(outputData)
+			stdioFile.Close()
+		} else {
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+		}
+	} else {
+		// Directory doesn't exist, use WriteToMemFile to create it
+		driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &outputData, "io/STDIO")
+	}
+
+	if hasError {
+		return errors.New("mkdir encountered errors")
+	}
+	return nil
+}
+
+// createDirectory creates a single directory
+func createDirectory(driverConfig *config.DriverConfig, dirPath string, createParents bool) error {
+	// Clean the path
+	if strings.HasPrefix(dirPath, "./") {
+		dirPath = strings.TrimPrefix(dirPath, "./")
+	}
+
+	// Check if path already exists
+	if _, err := driverConfig.MemFs.Stat(dirPath); err == nil {
+		return fmt.Errorf("cannot create directory '%s': File exists", dirPath)
+	}
+
+	if !createParents {
+		// Check if parent directory exists
+		parentPath := path.Dir(dirPath)
+		if parentPath != "." && parentPath != dirPath {
+			if _, err := driverConfig.MemFs.Stat(parentPath); err != nil {
+				return fmt.Errorf("cannot create directory '%s': No such file or directory", dirPath)
+			}
+		}
+	} else {
+		// Create all parent directories if needed
+		parentPath := path.Dir(dirPath)
+		if parentPath != "." && parentPath != dirPath {
+			// Recursively create parent directories
+			if _, err := driverConfig.MemFs.Stat(parentPath); err != nil {
+				if err := createDirectory(driverConfig, parentPath, true); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Create the directory by writing a marker file inside it
+	// This is a workaround since MemoryFileSystem interface doesn't provide mkdir
+	emptyData := []byte{}
+	markerPath := dirPath + "/.trc.keep"
+	driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, markerPath)
+
+	return nil
 }
 
 // ExecuteCp copies files or directories from source to destination
@@ -776,16 +917,16 @@ func ExecuteSu(driverConfig *config.DriverConfig) error {
 		return errors.New("driver config or memfs is nil")
 	}
 
-	fmt.Printf("ExecuteSu: received driverConfig=%p\n", driverConfig)
+	fmt.Printf("ExecuteSu: received driverConfig\n")
 
 	var output strings.Builder
 
 	// Perform OAuth authentication for unrestricted access
 	err := eUtils.GetUnrestrictedAccess(driverConfig)
 	if err != nil {
-		errMsg := fmt.Sprintf("su: authentication failed: %v\n", err)
+		errMsg := "su: authentication failed\n"
 		if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
-			driverConfig.CoreConfig.Log.Print(errMsg)
+			driverConfig.CoreConfig.Log.Printf("su: authentication failed: %v", err)
 		}
 		output.WriteString(errMsg)
 	} else {

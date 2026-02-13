@@ -96,14 +96,72 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				cmdType == shellcmd.CmdKubectl || cmdType == shellcmd.CmdTrcBoot ||
 				cmdType == shellcmd.CmdRm || cmdType == shellcmd.CmdCp ||
 				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat ||
+				cmdType == shellcmd.CmdMkdir || cmdType == shellcmd.CmdNano ||
 				cmdType == shellcmd.CmdSu {
 
 				if configContext != nil {
 					configContext.Log.Printf("Received shell command request: %s\n", cmdType)
 				}
 
+				// Handle rosea command specially - forward to rosea
+				if cmdType == shellcmd.CmdNano {
+					// Extract args from HookResponse field
+					var args []string
+					if event.HookResponse != nil {
+						if argsList, ok := event.HookResponse.([]string); ok {
+							args = argsList
+						}
+					}
+
+					// Validate args
+					if len(args) == 0 {
+						errorMsg := "rosea: missing file operand"
+						event.Response = &errorMsg
+						event.HookResponse = nil
+						if configContext != nil && configContext.ChatSenderChan != nil {
+							*configContext.ChatSenderChan <- event
+						}
+						continue
+					}
+
+					filename := args[0]
+
+					// Read file from memfs
+					var fileContent []byte
+					if driverConfig != nil && driverConfig.MemFs != nil {
+						if file, err := driverConfig.MemFs.Open(filename); err == nil {
+							defer file.Close()
+							fileContent, _ = io.ReadAll(file)
+						} else {
+							// File doesn't exist - create empty content
+							fileContent = []byte{}
+						}
+					}
+
+					// Forward to rosea plugin via ChatMsg
+					pluginName := "trcshcmd"
+					roseaMsg := &tccore.ChatMsg{
+						Name:      &pluginName,
+						Query:     &[]string{"rosea"},
+						ChatId:    &cmdType,        // "rosea"
+						RoutingId: event.RoutingId, // Preserve original routing ID for response
+						HookResponse: map[string]interface{}{
+							"memfs":    driverConfig.MemFs,
+							"filename": filename,
+							"content":  fileContent,
+						},
+					}
+
+					// Send to rosea - rosea will send response when editor completes
+					if configContext != nil && configContext.ChatSenderChan != nil {
+						*configContext.ChatSenderChan <- roseaMsg
+					}
+					continue
+				}
+
+				//                  Only tinit and tpub require elevation - tx (trcx) does not
 				// Authorization check: Block privileged commands without elevated access
-				if (cmdType == shellcmd.CmdTrcX || cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub) && !hasUnrestrictedAccess() {
+				if (cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub) && !hasUnrestrictedAccess() {
 					configContext.Log.Printf("AUTHORIZATION DENIED: Command %s requires elevated access\n", cmdType)
 
 					// Return authorization error immediately without executing command
@@ -130,7 +188,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				result := shellcmd.ExecuteShellCommand(cmdType, args, driverConfig)
 
 				// Read output from io/STDIO if it exists
-				responseMsg := "Command completed"
+				responseMsg := ""
 				if result != nil {
 					if stdioFile, err := result.Open("io/STDIO"); err == nil {
 						defer stdioFile.Close()
@@ -181,7 +239,9 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 
 func start(pluginName string) {
 	if configContext == nil {
-		fmt.Println("no config context initialized for trcshcmd")
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Println("no config context initialized for trcshcmd")
+		}
 		return
 	}
 	// Initiate final plugin startup sequence.
@@ -215,9 +275,13 @@ func initPlugin(pluginName string, properties *map[string]any) {
 	// Get DriverConfig from properties
 	if dc, ok := (*properties)["driverConfig"].(*config.DriverConfig); ok {
 		driverConfig = dc
-		fmt.Printf("trcshcmd initPlugin: received driverConfig=%p\n", driverConfig)
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("trcshcmd initPlugin: received driverConfig\n")
+		}
 	} else {
-		fmt.Printf("trcshcmd initPlugin: no driverConfig in properties\n")
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("trcshcmd initPlugin: no driverConfig in properties\n")
+		}
 	}
 
 	var err error
@@ -232,7 +296,9 @@ func initPlugin(pluginName string, properties *map[string]any) {
 		chat_receiver,
 	)
 	if err != nil {
-		fmt.Printf("Failure to init context for trcshcmd: %v\n", err)
+		if driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+			driverConfig.CoreConfig.Log.Printf("Failure to init context for trcshcmd: %v\n", err)
+		}
 		return
 	}
 }

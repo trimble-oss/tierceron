@@ -49,34 +49,35 @@ func checkInitFlagHelper() {
 	}
 }
 
-func CheckInitFlags(flagset *flag.FlagSet, arguments []string) {
+func CheckInitFlags(flagset *flag.FlagSet, arguments []string) error {
 	filtered := false
 	initglobals(flagset)
-	flagset.Parse(arguments)
+	parseErr := flagset.Parse(arguments)
+
+	// If help flag was used, return early
+	if parseErr != nil {
+		return parseErr
+	}
 
 	// Cannot specify a pathed indexed/restricted seed file while specifying a restricted/indexed section.
 	if len(*IndexNameFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 {
 		filtered = true
 	}
 	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 && filtered {
-		fmt.Fprintln(os.Stderr, "Cannot use -restricted and -indexed at the same time while trying to specify a seed file.")
-		os.Exit(1)
+		return fmt.Errorf("cannot use -restricted and -indexed at the same time while trying to specify a seed file")
 	}
 
 	// Same reason as above, but with protected.
 	if len(*ProtectedPtr) > 0 && len(*IndexedPtr) > 0 {
-		fmt.Fprintln(os.Stderr, "Cannot use -protected with -indexed.")
-		os.Exit(1)
+		return fmt.Errorf("cannot use -protected with -indexed")
 	}
 
 	if len(*RestrictedPtr) > 0 && len(*ProtectedPtr) > 0 && filtered {
-		fmt.Fprintln(os.Stderr, "Cannot use -restricted and -protected at the same time while trying to specify a seed file.")
-		os.Exit(1)
+		return fmt.Errorf("cannot use -restricted and -protected at the same time while trying to specify a seed file")
 	}
 
 	if (len(*RestrictedPtr) > 0 || len(*IndexedPtr) > 0) && filtered && (strings.Contains(*RestrictedPtr, ",") || strings.Contains(*IndexedPtr, ",")) {
-		fmt.Fprintln(os.Stderr, "Cannot use comma delimited lists with filters.")
-		os.Exit(1)
+		return fmt.Errorf("cannot use comma delimited lists with filters")
 	}
 
 	if len(*RestrictedPtr) > 0 || len(*IndexedPtr) > 0 {
@@ -99,4 +100,6 @@ func CheckInitFlags(flagset *flag.FlagSet, arguments []string) {
 		*ServiceNameFilterPtr = *IndexValueFilterPtr
 		*IndexValueFilterPtr = ""
 	}
+
+	return nil
 }

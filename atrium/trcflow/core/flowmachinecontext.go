@@ -149,6 +149,24 @@ func (tfmContext *TrcFlowMachineContext) SetFlowIDs() {
 	}
 }
 
+func (tfmContext *TrcFlowMachineContext) LockFlow(flowName flowcore.FlowNameType) {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
+	if tfmContext.FlowLockMap == nil || !tfmContext.FlowLockMap.Has(flowName.FlowName()) {
+		return
+	}
+	tfmContext.BitLock.Lock(tfmContext.FlowIDMap[flowName.FlowName()])
+}
+
+func (tfmContext *TrcFlowMachineContext) UnlockFlow(flowName flowcore.FlowNameType) {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
+	if tfmContext.FlowLockMap == nil || !tfmContext.FlowLockMap.Has(flowName.FlowName()) {
+		return
+	}
+	tfmContext.BitLock.Unlock(tfmContext.FlowIDMap[flowName.FlowName()])
+}
+
 func (tfmContext *TrcFlowMachineContext) SetFlumeDbType(flumeDBType flowcore.FlumeDbType) {
 	tfmContext.FlumeDbType = flumeDBType
 }

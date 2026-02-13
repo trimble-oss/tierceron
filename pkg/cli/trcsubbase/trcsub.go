@@ -95,6 +95,7 @@ func CommonMain(envDefaultPtr *string,
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
+	swPtr := flagset.String("sw", "", "Alias for -templateFilter")
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
 	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
@@ -104,18 +105,13 @@ func CommonMain(envDefaultPtr *string,
 		var err error
 		// Check if io directory exists
 		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
-			// Directory exists, open file and seek to end for append
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
-			if err == nil {
-				if seeker, ok := stdioFile.(io.Seeker); ok {
-					seeker.Seek(0, io.SeekEnd)
-				}
-			}
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		} else {
 			// Directory doesn't exist, use WriteToMemFile to create it
 			emptyData := []byte{}
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
-			stdioFile, err = driverConfig.MemFs.Open("io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
 		}
 		if err == nil {
 			outWriter = stdioFile
@@ -132,9 +128,15 @@ func CommonMain(envDefaultPtr *string,
 		parseErr = flagset.Parse([]string{})
 	}
 
-	// If help flag was used, return early (help output already written)
+	// If help flag was used, print usage and return early
 	if parseErr == flag.ErrHelp {
+		flagset.Usage()
 		return nil
+	}
+
+	// Handle -sw override for -templateFilter
+	if len(*swPtr) > 0 {
+		*filterTemplatePtr = *swPtr
 	}
 
 	if envPtr == nil {

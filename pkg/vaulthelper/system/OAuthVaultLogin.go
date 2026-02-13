@@ -168,13 +168,15 @@ func (v *Vault) GetAppRoleCredentialsWithOAuth(ctx context.Context, config *OAut
 	// Get AppRole role-id
 	roleID, _, err = v.GetRoleID(appRoleName)
 	if err != nil {
-		return "", "", result, fmt.Errorf("failed to get role-id: %w", err)
+		// Return simple error without verbose HTTP details
+		return "", "", result, fmt.Errorf("role not found or not authorized")
 	}
 
 	// Generate a new secret-id
 	secretID, err = v.GetSecretID(appRoleName)
 	if err != nil {
-		return "", "", result, fmt.Errorf("failed to get secret-id: %w", err)
+		// Return simple error without verbose HTTP details
+		return "", "", result, fmt.Errorf("unable to generate credentials")
 	}
 
 	return roleID, secretID, result, nil

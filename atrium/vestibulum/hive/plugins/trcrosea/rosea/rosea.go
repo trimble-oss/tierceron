@@ -23,6 +23,12 @@ var roseaMemFs trcshio.MemoryFileSystem
 
 func GetRoseaMemFs() trcshio.MemoryFileSystem { return roseaMemFs }
 
+func RunRoseaEditor(editorModel *editor.RoseaEditorModel) error {
+	p := tea.NewProgram(editorModel, tea.WithAltScreen())
+	_, err := p.Run()
+	return err
+}
+
 var projectServiceMatrix [][]any
 var (
 	boldStyle    = lipgloss.NewStyle().Bold(true)
