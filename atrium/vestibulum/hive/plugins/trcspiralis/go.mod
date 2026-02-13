@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiral
 go 1.26.0
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.10.2
+	github.com/trimble-oss/tierceron-core/v2 v2.10.4
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20250907153032-8764a0aa515b
 	gopkg.in/yaml.v2 v2.4.0
 )

@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/trimble-oss/tierceron v1.51.0
-	github.com/trimble-oss/tierceron-core/v2 v2.10.2
+	github.com/trimble-oss/tierceron-core/v2 v2.10.4
 	github.com/trimble-oss/tierceron-nute v1.0.10
 	github.com/trimble-oss/tierceron-nute-core v1.0.3
 	google.golang.org/api v0.226.0
