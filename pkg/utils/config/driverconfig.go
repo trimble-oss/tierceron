@@ -67,13 +67,14 @@ type DriverConfig struct {
 
 	SecretMode bool
 	// Tierceron source and destination I/O
-	StartDir          []string // Starting directory. possibly multiple
-	EndDir            string
-	SubOutputMemCache bool
-	ReadMemCache      bool
-	OutputMemCache    bool
-	MemFs             trcshio.MemoryFileSystem
-	CertPathOverrides map[string]string // certFileName -> certDest
+	StartDir            []string // Starting directory. possibly multiple
+	EndDir              string
+	SubOutputMemCache   bool
+	ReadMemCache        bool
+	OutputMemCache      bool
+	MemFs               trcshio.MemoryFileSystem
+	CertPathOverrides   map[string]string // certFileName -> certDest
+	OutputFileSystemDir string            // Optional: output to filesystem in addition to MemFs (KernelZ only)
 
 	// Config modes....
 	NoVault     bool // Working straight from seed files
