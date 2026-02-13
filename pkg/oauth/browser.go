@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -22,10 +23,11 @@ type BrowserLoginResult struct {
 
 // LocalServerConfig configures the local callback server
 type LocalServerConfig struct {
-	Port         int           // Port to listen on (0 for random)
-	Path         string        // Callback path (default: "/callback")
-	ReadTimeout  time.Duration // HTTP read timeout
-	WriteTimeout time.Duration // HTTP write timeout
+	Port             int           // Port to listen on (0 for random)
+	Path             string        // Callback path (default: "/callback")
+	ReadTimeout      time.Duration // HTTP read timeout
+	WriteTimeout     time.Duration // HTTP write timeout
+	ForceLoginPrompt bool          // Force login prompt even if session exists
 	// HandlerRegisterFunc allows external registration of the callback handler
 	// If provided, LoginWithBrowser will not create its own HTTP server
 	// Instead, it calls this function to register the handler and waits for callback
@@ -55,8 +57,8 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 		config = &LocalServerConfig{
 			Port:         8080,
 			Path:         "/callback",
-			ReadTimeout:  10 * time.Second,
-			WriteTimeout: 10 * time.Second,
+			ReadTimeout:  3 * time.Minute,
+			WriteTimeout: 3 * time.Minute,
 		}
 	}
 	if config.Path == "" {
@@ -113,7 +115,12 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 			defer wg.Done()
 			listener, err := net.Listen("tcp", server.Addr)
 			if err != nil {
-				serverErr = fmt.Errorf("failed to start callback server: %w", err)
+				// Provide helpful error message for port collision
+				if strings.Contains(err.Error(), "address already in use") {
+					serverErr = fmt.Errorf("OAuth callback port %d already in use. Another OAuth authentication may be in progress, or the port is occupied. Please wait or use a different port in .trcshrc (oauth_callback_port)", config.Port)
+				} else {
+					serverErr = fmt.Errorf("failed to start callback server on port %d: %w", config.Port, err)
+				}
 				resultChan <- &BrowserLoginResult{Error: serverErr.Error()}
 				return
 			}
@@ -142,8 +149,8 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 		}()
 	}
 
-	// Build authorization URL
-	authURL := client.AuthorizationURL(state, nonce, pkce)
+	// Build authorization URL with conditional login prompt based on config
+	authURL := client.AuthorizationURLWithPrompt(state, nonce, pkce, config.ForceLoginPrompt)
 
 	// Open browser - suppress output if callback handler was externally registered
 	// (indicates this is running in a background service/kernel context)
@@ -164,7 +171,7 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 	case result = <-resultChan:
 	case <-ctx.Done():
 		return nil, fmt.Errorf("login cancelled: %w", ctx.Err())
-	case <-time.After(5 * time.Minute):
+	case <-time.After(3 * time.Minute):
 		return nil, fmt.Errorf("login timeout")
 	}
 

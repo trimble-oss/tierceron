@@ -60,12 +60,22 @@ func NewClientFromDiscovery(discoveryURL, clientID, clientSecret, redirectURL st
 
 // AuthorizationURL builds the authorization URL for the OAuth flow
 func (c *Client) AuthorizationURL(state, nonce string, pkce *PKCEChallenge) string {
+	return c.AuthorizationURLWithPrompt(state, nonce, pkce, false)
+}
+
+// AuthorizationURLWithPrompt builds the authorization URL with optional login prompt
+// Set forceLoginPrompt to true to force a new login even if a session exists
+func (c *Client) AuthorizationURLWithPrompt(state, nonce string, pkce *PKCEChallenge, forceLoginPrompt bool) string {
 	params := url.Values{}
 	params.Set("client_id", c.config.ClientID)
 	params.Set("response_type", "code")
 	params.Set("redirect_uri", c.config.RedirectURL)
 	params.Set("scope", strings.Join(c.config.Scopes, " "))
 	params.Set("state", state)
+
+	if forceLoginPrompt {
+		params.Set("prompt", "login")
+	}
 
 	if nonce != "" {
 		params.Set("nonce", nonce)

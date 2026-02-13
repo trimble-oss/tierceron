@@ -15,7 +15,7 @@ func GetUnrestrictedAccess(driverConfig *config.DriverConfig) error {
 	fmt.Fprintf(os.Stderr, "This will authenticate you for write access to configuration tokens.\n")
 	fmt.Fprintf(os.Stderr, "You must be authorized in the trcshunrestricted Vault JWT role.\n\n")
 
-	err := KernelZOAuthForRole(driverConfig, "trcshunrestricted")
+	err := KernelZOAuthForRole(driverConfig, "trcshunrestricted", false, false)
 	if err != nil {
 		// Return simple error without wrapping to avoid verbose error chains
 		return err
@@ -34,7 +34,7 @@ func GetReadAccess(driverConfig *config.DriverConfig) error {
 	fmt.Fprintf(os.Stderr, "\n=== Obtaining Read Access ===\n")
 	fmt.Fprintf(os.Stderr, "This will authenticate you for read access to configuration tokens.\n\n")
 
-	err := KernelZOAuthForRole(driverConfig, "trcshhivez")
+	err := KernelZOAuthForRole(driverConfig, "trcshhivez", true, true)
 	if err != nil {
 		return fmt.Errorf("failed to obtain read access: %w", err)
 	}
