@@ -1,5 +1,5 @@
-//go:build !trcshkernel
-// +build !trcshkernel
+//go:build !trcshkernel && !trcshkernelz
+// +build !trcshkernel,!trcshkernelz
 
 package kernelopts
 

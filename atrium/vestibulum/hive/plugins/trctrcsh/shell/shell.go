@@ -828,7 +828,8 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 
 		// Call trcshcmd to perform OAuth authentication for unrestricted access
 		output = append(output, "Requesting elevated access...")
-		response := callTrcshCmd(m.chatSenderChan, "su", args)
+		output = append(output, "Waiting for authentication to complete...")
+		response := callTrcshCmdWait(m.chatSenderChan, "su", args)
 		if response != "" && strings.Contains(response, "success") {
 			m.elevatedMode = true
 			m.prompt = "#"
@@ -842,8 +843,12 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "  tinit    - Run trcinit commands (write access)")
 			output = append(output, "  tx       - Run trcx commands (write access)")
 			output = append(output, "Type 'exit' to return to normal mode.")
+		} else if response == "" {
+			// Timeout - return to prompt
+			output = append(output, errorStyle.Render("Authentication timeout (15 seconds)"))
+			output = append(output, errorStyle.Render("Try again or check your browser."))
 		} else {
-			// Split response by newlines and add each line
+			// Authentication failed - return to prompt
 			lines := strings.Split(strings.TrimSpace(response), "\n")
 			for _, line := range lines {
 				output = append(output, errorStyle.Render(line))
@@ -1135,6 +1140,55 @@ func callTrcshCmd(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []s
 		GetChatMsgHooks().Remove(id)
 		return response
 	case <-time.After(11 * time.Second):
+		GetChatMsgHooks().Remove(id)
+		return ""
+	}
+}
+
+// callTrcshCmdWait sends a command to trcshcmd and waits for the response with a 15-second timeout
+// Used for commands like 'su' that need to wait for user authentication
+// Returns empty string on timeout
+func callTrcshCmdWait(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []string) string {
+	id := fmt.Sprintf("%s-%d", cmdType, time.Now().UnixNano())
+	responseChan := make(chan string, 1)
+
+	// Register hook for response
+	GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
+		if msg.RoutingId != nil && *msg.RoutingId == id {
+			if msg.Response != nil {
+				go func() {
+					responseChan <- *msg.Response
+				}()
+			} else {
+				go func() {
+					responseChan <- ""
+				}()
+			}
+			return true
+		}
+		return false
+	})
+
+	// Send request
+	pluginName := "trcsh"
+	msg := &tccore.ChatMsg{
+		Name:         &pluginName,
+		Query:        &[]string{"trcshcmd"},
+		ChatId:       &cmdType,
+		RoutingId:    &id,
+		HookResponse: args,
+	}
+
+	go func() {
+		*chatSenderChan <- msg
+	}()
+
+	// Wait for response with 15-second timeout
+	select {
+	case response := <-responseChan:
+		GetChatMsgHooks().Remove(id)
+		return response
+	case <-time.After(15 * time.Second):
 		GetChatMsgHooks().Remove(id)
 		return ""
 	}

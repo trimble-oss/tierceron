@@ -986,7 +986,6 @@ func ExecuteSu(driverConfig *config.DriverConfig) error {
 		output.WriteString(errMsg)
 	} else {
 		output.WriteString("success: Elevated access granted.\n")
-		output.WriteString("You now have write access to configuration tokens.\n")
 	}
 
 	// Write output to io/STDIO so it can be read as response

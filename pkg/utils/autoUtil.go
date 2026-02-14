@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
@@ -229,58 +227,11 @@ func GetSetEnvContext(env string, envContext string) (string, string, error) {
 	return env, envContext, nil
 }
 
-// acquireOAuthLock acquires a file-based lock to serialize OAuth authentication across processes
-// Returns the lock file descriptor and error. Caller must call releaseOAuthLock when done.
-func acquireOAuthLock(logger *log.Logger) (*os.File, error) {
-	userHome, err := userHome(logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user home: %w", err)
-	}
-
-	lockDir := filepath.Join(userHome, ".tierceron")
-	if err := os.MkdirAll(lockDir, 0o700); err != nil {
-		return nil, fmt.Errorf("failed to create lock directory: %w", err)
-	}
-
-	lockFile := filepath.Join(lockDir, ".oauth_lock")
-	fmt.Fprintf(os.Stderr, "Acquiring OAuth lock...\n")
-
-	// Open or create lock file
-	f, err := os.OpenFile(lockFile, os.O_CREATE|os.O_RDWR, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open lock file: %w", err)
-	}
-
-	// Try to acquire exclusive lock with timeout
-	for i := 0; i < 60; i++ { // Wait up to 60 seconds
-		err = syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
-		if err == nil {
-			fmt.Fprintf(os.Stderr, "OAuth lock acquired\n")
-			return f, nil
-		}
-		if i == 0 {
-			fmt.Fprintf(os.Stderr, "Waiting for another process to complete OAuth authentication...\n")
-		}
-		time.Sleep(1 * time.Second)
-	}
-
-	f.Close()
-	return nil, fmt.Errorf("failed to acquire OAuth lock after 60 seconds")
-}
-
-// releaseOAuthLock releases the OAuth file lock
-func releaseOAuthLock(f *os.File) {
-	if f != nil {
-		syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-		f.Close()
-		fmt.Fprintf(os.Stderr, "OAuth lock released\n")
-	}
-}
-
 // oauthKernelZAuth handles OAuth/JWT authentication for KernelZ builds
 // roleName parameter allows specifying which role to authenticate (e.g., "trcshhivez" or "trcshunrestricted")
+// forceLoginPrompt: if true, adds prompt=login to force authentication even if browser has session
 // Returns: (roleID, secretID, vaultAddress, error)
-func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig, roleName string) (string, string, string, error) {
+func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig, roleName string, forceLoginPrompt bool) (string, string, string, error) {
 	// Check if OAuth configuration is present
 	if kzConfig.OAuthDiscoveryURL == "" || kzConfig.OAuthClientID == "" {
 		return "", "", "", fmt.Errorf("OAuth configuration incomplete in config.yml - need oauth_discovery_url and oauth_client_id")
@@ -294,6 +245,13 @@ func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig
 
 	// KernelZ: Always perform OAuth authentication (no disk caching)
 	// Credentials are stored only in-memory in TokenCache for the session
+	fmt.Fprintf(os.Stdout, "\n")
+	fmt.Fprintf(os.Stdout, "=== Starting Authentication ===\n")
+	fmt.Fprintf(os.Stdout, "Authenticating for trcshell access...\n")
+	fmt.Fprintf(os.Stdout, "Opening browser for Identity provider login...\n")
+	fmt.Fprintf(os.Stdout, "If your browser doesn't open, check your default browser preferences.\n")
+	fmt.Fprintf(os.Stdout, "\n")
+
 	fmt.Fprintf(os.Stderr, "Performing OAuth authentication for %s...\n", targetRole)
 	fmt.Fprintf(os.Stderr, "Opening browser for Identity login...\n")
 
@@ -327,21 +285,30 @@ func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig
 		CallbackPort:     callbackPort,
 		JWTRole:          targetRole,
 		LocalServerConfig: &oauth.LocalServerConfig{
-			Port: callbackPort,
-			Path: callbackPath,
+			Port:             callbackPort,
+			Path:             callbackPath,
+			ForceLoginPrompt: forceLoginPrompt,
 		},
 	}
 
 	// Perform OAuth login and get AppRole credentials
-	ctx := context.Background()
-	roleID, secretID, userInfo, err := vault.GetAppRoleCredentialsWithOAuth(ctx, oauthConfig, targetRole)
+	// Use a context with timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	roleID, secretID, _, err := vault.GetAppRoleCredentialsWithOAuth(ctx, oauthConfig, targetRole)
 	if err != nil {
 		// Return simple error message without verbose HTTP details
-		return "", "", "", fmt.Errorf("authentication failed - check role authorization")
+		fmt.Fprintf(os.Stdout, "Authentication failed\n")
+		return "", "", "", fmt.Errorf("authentication failed")
 	}
 
-	fmt.Fprintf(os.Stderr, "Successfully authenticated as: %s (%s)\n", userInfo.UserName, userInfo.UserEmail)
-	fmt.Fprintf(os.Stderr, "Retrieved %s AppRole credentials\n", targetRole)
+	fmt.Fprintf(os.Stdout, "=== Authentication Successful ===\n")
+	fmt.Fprintf(os.Stdout, "\n")
+
+	// Ensure all output is flushed before returning
+	os.Stderr.Sync()
+	os.Stdout.Sync()
 
 	// KernelZ: Store credentials ONLY in-memory TokenCache, never write to disk
 	// This maintains security by not persisting credentials to ~/.tierceron/config.yml
@@ -352,7 +319,9 @@ func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig
 
 // KernelZOAuthForRole performs OAuth authentication for a specific role at runtime
 // This can be called at any point to get credentials for a different role (e.g., unrestricted write access)
-func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) error {
+// forceLoginPrompt: if true, adds prompt=login to force authentication even if browser has session
+// alwaysReauth: if true, skips cache and always performs fresh authentication (used for initial shell startup)
+func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string, forceLoginPrompt bool, alwaysReauth bool) error {
 	if kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernelZ() {
 		return fmt.Errorf("KernelZ OAuth is only available in KernelZ builds")
 	}
@@ -369,12 +338,15 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) err
 	cacheKey := "hivekernel:" + targetRole
 
 	// Check if we already have valid credentials for THIS SPECIFIC role
-	existingCreds := driverConfig.CoreConfig.TokenCache.GetRole(cacheKey)
-	if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
-		fmt.Fprintf(os.Stderr, "Using existing credentials from cache for role: %s\n", targetRole)
-		// Also ensure "hivekernel" points to these credentials for backward compatibility
-		driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", existingCreds)
-		return nil
+	// Skip cache check if alwaysReauth is true (initial shell startup must always prompt)
+	if !alwaysReauth {
+		existingCreds := driverConfig.CoreConfig.TokenCache.GetRole(cacheKey)
+		if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
+			fmt.Fprintf(os.Stderr, "Using existing credentials from cache for role\n")
+			// Also ensure "hivekernel" points to these credentials for backward compatibility
+			driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", existingCreds)
+			return nil
+		}
 	}
 
 	// Read config file (cached)
@@ -388,7 +360,7 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string) err
 	}
 
 	// Perform OAuth authentication for the specified role
-	roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, kzConfig, roleName)
+	roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, kzConfig, roleName, forceLoginPrompt)
 	if oauthErr != nil {
 		// Return simple error without extra wrapping
 		return oauthErr
@@ -446,58 +418,37 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			// Need credentials - read config and potentially do OAuth
 			kzConfig, configErr := getKernelZConfig(driverConfig.CoreConfig.Log)
 			if configErr == nil && kzConfig.OAuthDiscoveryURL != "" && kzConfig.OAuthClientID != "" {
-				// Acquire lock for OAuth flow
-				lockFile, lockErr := acquireOAuthLock(driverConfig.CoreConfig.Log)
-				if lockErr != nil {
-					return fmt.Errorf("failed to acquire OAuth lock: %w", lockErr)
+				// Perform OAuth/JWT authentication for KernelZ
+				// Note: If multiple processes attempt OAuth simultaneously, the OAuth server
+				// will handle port collision ("address already in use" error)
+				roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, kzConfig, "", true)
+				if oauthErr != nil {
+					return fmt.Errorf("KernelZ OAuth authentication failed: %w", oauthErr)
 				}
-				defer releaseOAuthLock(lockFile)
 
-				// Double-check: another process might have completed OAuth while we waited for lock
-				var existingCreds *[]string
-				if roleEntityPtr != nil && *roleEntityPtr != "" {
-					existingCreds = driverConfig.CoreConfig.TokenCache.GetRole(*roleEntityPtr)
+				// Store under "hivekernel" key so OAuth-obtained credentials can be found by kernel code
+				hivekernelRole := "hivekernel"
+				roleEntityPtr = &hivekernelRole
+
+				// Set AppRole credentials
+				(*appRoleSecret)[0] = roleID
+				(*appRoleSecret)[1] = secretID
+
+				// Update token cache with hivekernel key (OAuth retrieved trcshhivez role)
+				driverConfig.CoreConfig.TokenCache.AddRole(hivekernelRole, appRoleSecret)
+
+				// Set vault address
+				if vaultHost != "" {
+					addrPtr = &vaultHost
+					driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
 				}
-				if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
-					roleStr := "requested role"
-					if roleEntityPtr != nil && *roleEntityPtr != "" {
-						roleStr = *roleEntityPtr
-					}
-					fmt.Fprintf(os.Stderr, "Using %s credentials from cache (populated while waiting)\n", roleStr)
-					appRoleSecret = existingCreds
-					if kzConfig.VaultHost != "" {
-						addrPtr = &kzConfig.VaultHost
-						driverConfig.CoreConfig.TokenCache.SetVaultAddress(&kzConfig.VaultHost)
-					}
-				} else {
-					// Still need auth - perform OAuth/JWT authentication for KernelZ
-					roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, kzConfig, "")
-					if oauthErr != nil {
-						return fmt.Errorf("KernelZ OAuth authentication failed: %w", oauthErr)
-					}
 
-					// Store under "hivekernel" key so OAuth-obtained credentials can be found by kernel code
-					hivekernelRole := "hivekernel"
-					roleEntityPtr = &hivekernelRole
-
-					// Set AppRole credentials
-					(*appRoleSecret)[0] = roleID
-					(*appRoleSecret)[1] = secretID
-
-					// Update token cache with hivekernel key (OAuth retrieved trcshhivez role)
-					driverConfig.CoreConfig.TokenCache.AddRole(hivekernelRole, appRoleSecret)
-
-					// Set vault address
-					if vaultHost != "" {
-						addrPtr = &vaultHost
-						driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
-					}
-
-					fmt.Fprintf(os.Stderr, "Using trcshhivez AppRole stored as hivekernel\n")
-				}
+				fmt.Fprintf(os.Stderr, "Using trcshhivez AppRole stored as hivekernel\n")
 			}
 		}
 	}
+
+	fmt.Fprintf(os.Stderr, "AutoAuth: After OAuth block, vault addr: %s, credentials ready\n", *addrPtr)
 
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
@@ -570,8 +521,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	} else {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			fmt.Fprintf(os.Stderr, "No override auth connecting to vault @ %s\n", *addrPtr)
+			fmt.Fprintf(os.Stderr, "No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell)
 		}
+		fmt.Fprintf(os.Stderr, "AutoAuth: Creating vault connection to %s\n", *addrPtr)
 		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 
 		if v != nil {
@@ -582,8 +534,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 		}
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "AutoAuth: Vault connection error: %v\n", err)
 			return err
 		}
+		fmt.Fprintf(os.Stderr, "AutoAuth: Vault connection established successfully\n")
 	}
 
 	if len((*appRoleSecret)[0]) == 0 || len((*appRoleSecret)[1]) == 0 {
@@ -681,6 +635,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			return fmt.Errorf("unexpected approle len = %d and secret len = %d --> expecting 36", len((*appRoleSecret)[0]), len((*appRoleSecret)[1]))
 		}
 
+		fmt.Fprintf(os.Stderr, "AutoAuth: Logging in with AppRole to get vault token...\n")
 		roleToken, err := v.AppRoleLogin((*appRoleSecret)[0], (*appRoleSecret)[1])
 		if err != nil {
 			return err
@@ -720,6 +675,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.Env = "rattan"
 		}
 		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
+		fmt.Fprintf(os.Stderr, "AutoAuth: obtaining access\n")
 		token, err := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
