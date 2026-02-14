@@ -1,5 +1,5 @@
 # Introduction 
-You have found the installation folder for trcdb templates and secrets.
+You have found the installation folder for trcdb templates and secrets.  The trcdb cache plugin can auto refresh now under some conditions.
 
 # Prerequisites
 This assumes the existence of a vault with tokens.  You'll need a root or unrestricted token to initialize data from here on out.  If you're a security purist, you'll already have deleted the root token at this point and will just operate with the unrestricted dev token for the steps below.

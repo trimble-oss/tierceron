@@ -134,14 +134,19 @@ func CommonMain(envPtr *string,
 	isGetCommand := false
 	repoName := ""
 	isRunnableKernelPlugin := false
+	isInternalKernelPlugin := false
 	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		isRunnableKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
-				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "kernelplugin" ||
-				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin" ||
 				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
+
+		isInternalKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
+			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
+			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
+			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "kernelplugin" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin")
 
 		args := argLines[1:]
 		argOffset := 1
@@ -538,9 +543,9 @@ func CommonMain(envPtr *string,
 	var pluginToolConfig map[string]any
 	var plcErr error
 
-	// For kernel plugins with hardcoded config, use DeploymentConfig directly
-	if isRunnableKernelPlugin && trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
-		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Using hardcoded DeploymentConfig for kernel plugin")
+	// For internal kernel plugins, that provide their own DeploymentConfig directly
+	if isInternalKernelPlugin && trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Using hardcoded DeploymentConfig for internal kernel plugin")
 		pluginToolConfig = *trcshDriverConfigBase.DriverConfig.DeploymentConfig
 	} else {
 		pluginToolConfig, plcErr = trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
