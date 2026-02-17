@@ -38,6 +38,11 @@ func GetTrusts() map[string][]string {
 			"/etc/opt/vault/plugins/trcsh-cursor-k", // vault plugin path.
 			"root",                                  // Group ownership of vault plugin.
 		},
+		"trcsh-cursor-z": {
+			"trcsh-cursor-z",                        // Certify pluginName,
+			"/etc/opt/vault/plugins/trcsh-cursor-z", // vault plugin path.
+			"root",                                  // Group ownership of vault plugin.
+		},
 	}
 }
 
