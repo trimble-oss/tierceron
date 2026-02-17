@@ -73,7 +73,6 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 }
 
 func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) (*FeatherAuth, error) {
-
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
 	tapMap := map[string]string{}
 	tapGroup := "azuredeploy"
@@ -90,22 +89,26 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 		}
 	}
 
-	go func() {
-		retryCap := 0
-		for retryCap < 5 {
-			//err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
-			//err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
+	if len(cursoropts.BuildOptions.GetCapPath()) > 0 {
+		go func() {
+			retryCap := 0
+			for retryCap < 5 {
+				// err := cap.Tap("/home/jrieke/workspace/Github/tierceron/plugins/deploy/target/trcsh", certifyMap["trcsha256"].(string), "azuredeploy", true)
+				// err := tap.Tap("/home/jrieke/workspace/Github/tierceron/trcsh/__debug_bin", certifyMap["trcsha256"].(string), "azuredeploy", true)
 
-			err := tap.Tap(cursoropts.BuildOptions.GetCapPath(), tapMap, tapGroup, false)
-			if err != nil {
-				logger.Println("Cap failure with error: " + err.Error())
-				retryCap++
-			} else {
-				retryCap = 0
+				err := tap.Tap(cursoropts.BuildOptions.GetCapPath(), tapMap, tapGroup, false)
+				if err != nil {
+					logger.Println("Cap failure with error: " + err.Error())
+					retryCap++
+				} else {
+					retryCap = 0
+				}
 			}
-		}
-		logger.Println("Mad hat cap failure.")
-	}()
+			logger.Println("Mad hat cap failure.")
+		}()
+	} else {
+		logger.Println("Skipping cap init.  No cap path provided.")
+	}
 
 	if !wantsFeathering {
 		// Feathering not supported in staging/prod non messenger at this time.
@@ -134,7 +137,8 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 			"trcHatEncryptSalt",
 			"trcHatHandshakePort",
 			"trcHatHandshakeCode",
-			"trcHatSecretsPort"} {
+			"trcHatSecretsPort",
+		} {
 			if keyI, ok := featherMap[key]; ok {
 				if _, ok := keyI.(string); !ok {
 					logger.Printf("Bad %s\n", key)
