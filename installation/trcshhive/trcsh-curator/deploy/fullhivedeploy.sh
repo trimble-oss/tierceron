@@ -278,9 +278,7 @@ function registerCursors() {
 # Deploy curator only for dev and staging (skip 'z' since trcshqz runs locally)
 if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
     for cursorType in ${CURSOR_TYPES[@]}; do
-        if [ "$cursorType" != 'z' ]; then
-            curatorDeployHive $cursorType
-        fi
+        curatorDeployHive $cursorType
     done
 
     echo "Hive deployed successfully? trcshqx and trcsh-cursor-x must at least have deployed by this point Y/n: "
@@ -294,9 +292,7 @@ fi
 # Register cursors only for dev and staging (skip 'z' since trcsh-cursor-z runs locally)
 if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
     for cursorType in ${CURSOR_TYPES[@]}; do
-        if [ "$cursorType" != 'z' ]; then
-            registerCursors $cursorType
-        fi
+        registerCursors $cursorType
     done
 fi
 

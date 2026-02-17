@@ -17,8 +17,9 @@ func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
 func TapInit() {
 }
 
+// trcshz does not utilize cap.
 func GetCapPath() string {
-	return "/tmp/trcshzaw/"
+	return ""
 }
 
 func GetCapCuratorPath() string {
