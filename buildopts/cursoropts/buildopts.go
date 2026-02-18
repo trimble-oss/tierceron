@@ -1,9 +1,11 @@
 package cursoropts
 
+import "log"
+
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	TapInit             func()
+	TapInit             func(map[string]any, *log.Logger, func(map[string]any, *log.Logger) error)
 	GetCapPath          func() string
 	GetCapCuratorPath   func() string
 	GetPluginName       func(bool) string

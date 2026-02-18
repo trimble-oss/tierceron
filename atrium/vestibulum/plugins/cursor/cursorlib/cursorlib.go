@@ -276,8 +276,6 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				}
 				logger.Println("Plugin config complete.")
 
-				cursoropts.BuildOptions.TapInit()
-
 				// Clean up tap
 				e := os.Remove(fmt.Sprintf("%strcsnap.sock", cursoropts.BuildOptions.GetCapPath()))
 				if e != nil {

@@ -3,7 +3,10 @@
 
 package cursoropts
 
-func TapInit() {
+import "log"
+
+func TapInit(config map[string]any, logger *log.Logger, initCapAuthFunc func(map[string]any, *log.Logger) error) {
+	// No-op for non-curator builds
 }
 
 func GetCapPath() string {

@@ -3,7 +3,27 @@
 
 package cursoropts
 
-func TapInit() {
+import (
+	"log"
+	"sync"
+)
+
+var capAuthInitOnce sync.Once
+
+func TapInit(config map[string]any, logger *log.Logger, initCapAuthFunc func(map[string]any, *log.Logger) error) {
+	// Only initialize when called with valid config and logger and callback
+	if config == nil || logger == nil || initCapAuthFunc == nil {
+		return
+	}
+
+	// Initialize capauth once on first environment with valid credentials
+	capAuthInitOnce.Do(func() {
+		if err := initCapAuthFunc(config, logger); err != nil {
+			logger.Printf("Warning: Failed to initialize capauth on first env: %v\n", err)
+		} else {
+			logger.Println("Capauth initialized successfully on first env")
+		}
+	})
 }
 
 func GetCapPath() string {
