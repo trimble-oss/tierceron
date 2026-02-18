@@ -3,7 +3,12 @@
 
 package cursoropts
 
-import "log"
+import (
+	"fmt"
+	"log"
+
+	"github.com/trimble-oss/tierceron-core/v2/prod"
+)
 
 func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
 	return map[string]any{
@@ -45,7 +50,18 @@ func GetCursorConfigPath() string {
 }
 
 func GetTrusts() map[string][]string {
-	return map[string][]string{}
+	prodSuffix := ""
+	if prod.IsProd() {
+		prodSuffix = "-prod"
+	}
+
+	return map[string][]string{
+		fmt.Sprintf("trcsh-cursor-z%s", prodSuffix): {
+			fmt.Sprintf("trcsh-cursor-z%s", prodSuffix),                        // Certify pluginName,
+			fmt.Sprintf("/etc/opt/vault/plugins/trcsh-cursor-z%s", prodSuffix), // vault plugin path.
+			"root", // Group ownership of vault plugin.
+		},
+	}
 }
 
 func GetCursorFields() map[string]CursorFieldAttributes {

@@ -35,13 +35,19 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
 	logger.Printf("Validating %d trusts\n", len(trustsMap))
 
+	// If no trusts configured, skip validation
+	if len(trustsMap) == 0 {
+		logger.Printf("ValidateTrcshPathSha completing with no trusts to validate\n")
+		return true, nil
+	}
+
 	for _, trustData := range trustsMap {
 		logger.Printf("Validating %s\n", trustData[0])
 
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
 		if err != nil {
 			logger.Printf("Validating Certification failure for %s %s\n", trustData[0], err)
-			continue
+			return false, fmt.Errorf("missing certification for required trust %s: %v", trustData[0], err)
 		}
 
 		if _, ok := certifyMap["trcsha256"]; ok {
