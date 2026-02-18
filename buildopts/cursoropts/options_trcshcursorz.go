@@ -8,7 +8,7 @@ func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
 		"env":            "dev",
 		"exitOnFailure":  false,
 		"regions":        []string{"west"},
-		"pluginNameList": []string{""},
+		"pluginNameList": []string{},
 		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
 		"logNamespace":   "trcshcursorz",
 	}
