@@ -60,7 +60,6 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 	} else {
 		logger.Println("Plugin Init begun.")
 	}
-	cursoropts.BuildOptions.TapInit()
 
 	var configCompleteChan chan bool = nil
 	if !headless {
@@ -81,6 +80,17 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 			logger.Println("Waiting for plugin env input....")
 			pluginEnvConfig := <-tokenEnvChan
 			logger.Println("Received new config for env: " + pluginEnvConfig["env"].(string))
+
+			// Initialize capauth once on first environment with valid credentials
+			// Pass closure that handles capauth init
+			initCapAuthFunc := func(config map[string]any, log *log.Logger) error {
+				if !pluginutil.IsCapInitted() {
+					config["pluginName"] = "trcsh-curator"
+					return deploy.PluginDeployEnvFlow(nil, config, log)
+				}
+				return nil
+			}
+			cursoropts.BuildOptions.TapInit(pluginEnvConfig, logger, initCapAuthFunc)
 
 			if _, pluginNameOk := pluginEnvConfig["trcplugin"]; !pluginNameOk {
 				environmentConfigs[pluginEnvConfig["env"].(string)] = pluginEnvConfig
@@ -589,6 +599,15 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 			if _, ok := tokenMap["tokenptr"]; ok {
 				tokenMap["env"] = env
 				tokenMap["syncOnce"] = &sync.Once{}
+
+				// Initialize capauth on startup if not already initialized
+				if !pluginutil.IsCapInitted() {
+					tokenMap["pluginName"] = "trcsh-curator"
+					deployEnvFlowErr := deploy.PluginDeployEnvFlow(nil, tokenMap, logger)
+					if deployEnvFlowErr != nil {
+						logger.Printf("Warning: Failed to initialize capauth on startup for env %s: %v\n", env, deployEnvFlowErr)
+					}
+				}
 
 				logger.Println("Initialize Pushing env: " + env)
 				go PushEnv(tokenMap) // Startup is async queued.
