@@ -819,7 +819,7 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Fprintf(os.Stderr, "Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
-		if isRunnableKernelPlugin && plugincoreopts.BuildOptions.IsPluginHardwired() {
+		if isInternalKernelPlugin || (isRunnableKernelPlugin && plugincoreopts.BuildOptions.IsPluginHardwired()) {
 			var deployRoot string
 			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
 				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
