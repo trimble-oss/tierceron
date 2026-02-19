@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	ServCertLocal = "./serv_cert.pem"
+	ServCertLocal       = "./serv_cert.pem"
+	ServCertLocalTrcshz = "/usr/local/trcshz/serv_cert.pem"
 )
 
 var (
@@ -39,6 +40,11 @@ func InitRoot() {
 func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 	var err error
 	if len(certName) == 0 {
+		if kernelopts.BuildOptions.IsKernelZ() {
+			if _, err = os.Stat(ServCertLocalTrcshz); err == nil {
+				return os.ReadFile(ServCertLocalTrcshz)
+			}
+		}
 		if _, err = os.Stat(ServCertLocal); err == nil && (utils.IsWindows() || (len(drone) > 0 && *drone[0])) {
 			return os.ReadFile(ServCertLocal)
 		}

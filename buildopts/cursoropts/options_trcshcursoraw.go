@@ -3,20 +3,24 @@
 
 package cursoropts
 
-import "runtime"
+import (
+	"log"
+	"runtime"
+)
 
 func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
 	return map[string]any{
 		"env":            "dev",
 		"exitOnFailure":  false,
 		"regions":        []string{"west"},
-		"pluginNameList": []string{""},
+		"pluginNameList": []string{},
 		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
 		"logNamespace":   "trcshcursoraw",
 	}
 }
 
-func TapInit() {
+func TapInit(config map[string]any, logger *log.Logger, initCapAuthFunc func(map[string]any, *log.Logger) error) {
+	// No-op for cursoraw
 }
 
 func GetCapPath() string {
