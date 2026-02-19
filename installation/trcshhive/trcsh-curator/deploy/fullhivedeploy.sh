@@ -275,7 +275,7 @@ function registerCursors() {
     echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT successful"
 }
 
-# Deploy curator only for dev and staging (skip 'z' since trcshqz runs locally)
+# Deploy curator only for dev and staging (skip 'z' since trcshz runs locally)
 if [[ "$VAULT_ENV" == "dev" || "$VAULT_ENV" == "staging" ]]; then
     for cursorType in ${CURSOR_TYPES[@]}; do
         curatorDeployHive $cursorType
