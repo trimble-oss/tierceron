@@ -116,7 +116,7 @@ func (m *DirPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			m.cancelled = true
-			return m, tea.Quit
+			return m, nil
 
 		case "enter":
 			if len(m.entries) == 0 {
@@ -147,7 +147,7 @@ func (m *DirPickerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "s":
 			// 's' key to select current directory
 			m.selected = true
-			return m, tea.Quit
+			return m, nil
 
 		case "up", "k":
 			if m.cursor > 0 {
@@ -266,4 +266,19 @@ func PickDirectory(startPath string) (string, error) {
 	}
 
 	return final.currentPath, nil
+}
+
+// Selected returns whether a directory was selected
+func (m *DirPickerModel) Selected() bool {
+	return m.selected
+}
+
+// Cancelled returns whether the picker was cancelled
+func (m *DirPickerModel) Cancelled() bool {
+	return m.cancelled
+}
+
+// CurrentPath returns the current directory path
+func (m *DirPickerModel) CurrentPath() string {
+	return m.currentPath
 }
