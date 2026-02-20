@@ -1588,7 +1588,12 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				}
 				go safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
 			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
-				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State != 1 {
+				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State == 1 {
+					// Plugin is ready - forward the message
+					if plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
+						go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "direct service message", driverConfig.CoreConfig.Log)
+					}
+				} else if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State != 1 {
 					responseError := "Service unavailable"
 					if (*pluginHandler.Services)[*msg.Name].State == 0 {
 						responseError = "Service initializing"
