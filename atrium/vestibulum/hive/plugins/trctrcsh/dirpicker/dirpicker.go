@@ -267,3 +267,18 @@ func PickDirectory(startPath string) (string, error) {
 
 	return final.currentPath, nil
 }
+
+// Selected returns whether a directory was selected
+func (m *DirPickerModel) Selected() bool {
+	return m.selected
+}
+
+// Cancelled returns whether the picker was cancelled
+func (m *DirPickerModel) Cancelled() bool {
+	return m.cancelled
+}
+
+// CurrentPath returns the current directory path
+func (m *DirPickerModel) CurrentPath() string {
+	return m.currentPath
+}
