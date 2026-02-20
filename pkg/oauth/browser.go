@@ -154,14 +154,14 @@ func LoginWithBrowser(ctx context.Context, client *Client, config *LocalServerCo
 
 	// Open browser - suppress output if callback handler was externally registered
 	// (indicates this is running in a background service/kernel context)
-	// Output to stderr to avoid polluting command output/pipelines
+	// Output to stdout to avoid getting captured by log file redirection
 	if config.HandlerRegisterFunc == nil {
-		fmt.Fprintf(os.Stderr, "Opening browser for authentication...\n")
-		fmt.Fprintf(os.Stderr, "If the browser doesn't open automatically, visit:\n%s\n\n", authURL)
+		fmt.Fprintf(os.Stdout, "Opening browser for authentication...\n")
+		fmt.Fprintf(os.Stdout, "If the browser doesn't open automatically, please check your browser.\n\n")
 	}
 	if err := openBrowser(authURL); err != nil {
 		if config.HandlerRegisterFunc == nil {
-			fmt.Fprintf(os.Stderr, "Failed to open browser automatically: %v\n", err)
+			fmt.Fprintf(os.Stdout, "Failed to open browser automatically: %v\n", err)
 		}
 	}
 
