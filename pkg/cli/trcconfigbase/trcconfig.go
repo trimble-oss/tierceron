@@ -108,13 +108,17 @@ func CommonMain(envDefaultPtr *string,
 		}
 		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
 		errorHandling := flag.ExitOnError
-		if driverConfig != nil && (driverConfig.IsShellCommand || kernelopts.BuildOptions.IsKernelZ()) {
+		if driverConfig != nil && (driverConfig.IsShellCommand || (kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernelZ())) {
 			errorHandling = flag.ContinueOnError
 		}
 		flagset = flag.NewFlagSet(argLines[0], errorHandling)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
+			// Add -ofs option to help when building for trcshz
+			if kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernelZ() {
+				fmt.Fprintf(flagset.Output(), "  -ofs\n\t\tOpen file selector to choose output directory (trcshz only)\n")
+			}
 		}
 
 		envPtr = flagset.String("env", "", "Environment to configure")

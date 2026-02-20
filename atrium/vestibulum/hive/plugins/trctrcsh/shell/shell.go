@@ -36,6 +36,12 @@ type commandResultMsg struct {
 // editorCloseMsg is sent when the editor wants to close
 type editorCloseMsg struct{}
 
+// dirPickerCompleteMsg is sent when dirpicker completes with a selection
+type dirPickerCompleteMsg struct {
+	selectedPath string
+	cancelled    bool
+}
+
 // GetChatMsgHooks returns the chat message hooks map
 func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 	return &chatMsgHooks
@@ -56,9 +62,12 @@ type ShellModel struct {
 	memFs            trcshio.MemoryFileSystem
 	chatSenderChan   *chan *tccore.ChatMsg
 	pendingExit      bool
-	elevatedMode     bool      // Track if user has unrestricted write access
-	commandExecuting bool      // Track if a command is currently executing
-	editorModel      tea.Model // Active editor model (nil when not editing)
+	elevatedMode     bool                      // Track if user has unrestricted write access
+	commandExecuting bool                      // Track if a command is currently executing
+	editorModel      tea.Model                 // Active editor model (nil when not editing)
+	dirPickerMode    bool                      // Track if dirpicker is active
+	dirPicker        *dirpicker.DirPickerModel // Active dirpicker instance
+	pendingCommand   string                    // Command waiting for dirpicker selection
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -98,6 +107,10 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		pendingExit:      false,
 		elevatedMode:     false,
 		commandExecuting: false,
+		editorModel:      nil,
+		dirPickerMode:    false,
+		dirPicker:        nil,
+		pendingCommand:   "",
 	}
 }
 
@@ -115,6 +128,69 @@ func (m *ShellModel) Init() tea.Cmd {
 }
 
 func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Handle dirpicker complete messages
+	if dirMsg, ok := msg.(dirPickerCompleteMsg); ok {
+		m.dirPickerMode = false
+		m.dirPicker = nil
+
+		if dirMsg.cancelled {
+			// User cancelled - just return to prompt
+			m.pendingCommand = ""
+			return m, nil
+		}
+
+		// User selected a directory - modify the pending command to replace -ofs with -outputDir=path
+		if m.pendingCommand != "" {
+			parts := strings.Fields(m.pendingCommand)
+			modifiedArgs := make([]string, 0, len(parts))
+
+			// Keep all parts except -ofs
+			for _, part := range parts {
+				if part != "-ofs" {
+					modifiedArgs = append(modifiedArgs, part)
+				}
+			}
+
+			// Add -outputDir with selected path
+			modifiedArgs = append(modifiedArgs, fmt.Sprintf("-outputDir=%s", dirMsg.selectedPath))
+
+			// Create modified command string and execute it
+			modifiedCmd := strings.Join(modifiedArgs, " ")
+			m.pendingCommand = ""
+
+			// Add output line showing what we're executing
+			m.output = append(m.output, promptStyle.Render(m.prompt+" ")+modifiedCmd)
+			m.updateViewportContent()
+			m.viewport.GotoBottom()
+
+			return m, m.executeCommandAsync(modifiedCmd)
+		}
+		return m, nil
+	}
+
+	// If dirpicker is active, forward ALL messages to it
+	if m.dirPickerMode && m.dirPicker != nil {
+		updated, cmd := m.dirPicker.Update(msg)
+		m.dirPicker = updated.(*dirpicker.DirPickerModel)
+
+		// Check if dirpicker is done
+		if m.dirPicker.Selected() || m.dirPicker.Cancelled() {
+			selectedPath := ""
+			if m.dirPicker.Selected() {
+				selectedPath = m.dirPicker.CurrentPath()
+			}
+			return m, func() tea.Msg {
+				return dirPickerCompleteMsg{
+					selectedPath: selectedPath,
+					cancelled:    m.dirPicker.Cancelled(),
+				}
+			}
+		}
+
+		// Still picking - return dirpicker's command
+		return m, cmd
+	}
+
 	// Handle editor close messages first
 	if _, ok := msg.(testr.EditorCloseMsg); ok {
 		// Editor requested to close - follow same pattern as commandResultMsg
@@ -357,6 +433,11 @@ func (m *ShellModel) updateViewportContent() {
 }
 
 func (m *ShellModel) View() string {
+	// If dirpicker is active, show dirpicker view instead
+	if m.dirPickerMode && m.dirPicker != nil {
+		return m.dirPicker.View()
+	}
+
 	// If editor is active, show editor view instead
 	if m.editorModel != nil {
 		return m.editorModel.View()
@@ -545,6 +626,51 @@ func (m *ShellModel) findMatches(dir, prefix string) []string {
 func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 	trimmedCmd := strings.TrimSpace(cmd)
 	parts := strings.Fields(trimmedCmd)
+
+	// Check if this is a tconfig command with -ofs flag (directory picker)
+	if len(parts) > 0 && parts[0] == "tconfig" {
+		// Check if -ofs flag is present
+		hasOFS := false
+		isDevQA := true // Default to dev if no -env flag specified
+
+		for _, arg := range parts {
+			if arg == "-ofs" {
+				hasOFS = true
+			}
+			if strings.HasPrefix(arg, "-env=") {
+				env := strings.TrimPrefix(arg, "-env=")
+				if env == "prod" {
+					isDevQA = false
+				}
+			}
+		}
+
+		if hasOFS {
+			if !isDevQA {
+				return func() tea.Msg {
+					return commandResultMsg{
+						output:     []string{errorStyle.Render("Error: -ofs flag is only available in dev/QA environments")},
+						shouldQuit: false,
+					}
+				}
+			}
+
+			// Enter dirpicker mode
+			return func() tea.Msg {
+				homeDir, err := os.UserHomeDir()
+				if err != nil {
+					homeDir = ""
+				}
+
+				m.dirPickerMode = true
+				m.dirPicker = dirpicker.NewDirPicker(homeDir)
+				m.pendingCommand = trimmedCmd
+
+				// Request first render of dirpicker
+				return nil
+			}
+		}
+	}
 
 	// Handle rosea command specially - it needs to suspend the tea program
 	if len(parts) > 0 && parts[0] == "rosea" {
@@ -911,62 +1037,8 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			break
 		}
 
-		// Check if -ofs flag is present for interactive directory picker
-		// Only available if -env flag is also present (dev/QA, not prod)
-		modifiedArgs := args
-		ofsIndex := -1
-		isDevQA := true // Default to dev if no -env flag specified
-
-		for i, arg := range args {
-			if arg == "-ofs" {
-				ofsIndex = i
-			}
-			// Only block if -env is explicitly set to prod
-			if strings.HasPrefix(arg, "-env=") {
-				env := strings.TrimPrefix(arg, "-env=")
-				if env == "prod" {
-					isDevQA = false
-				}
-			}
-		}
-
-		// If -ofs flag found, launch directory picker and replace it with -outputDir
-		if ofsIndex >= 0 {
-			// Only allow -ofs if -env flag is present and not prod
-			if !isDevQA {
-				output = append(output, errorStyle.Render("Error: -ofs flag is only available in dev/QA environments"))
-				break
-			}
-
-			// Get home directory as starting point
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				homeDir = "" // Will default to current directory in dirpicker
-			}
-
-			selectedDir, err := dirpicker.PickDirectory(homeDir)
-			if err != nil {
-				if strings.Contains(err.Error(), "cancelled") {
-					// User cancelled picker - just return to prompt with empty line
-					output = append(output, "")
-					break
-				}
-				output = append(output, errorStyle.Render(fmt.Sprintf("Error selecting directory: %v", err)))
-				break
-			}
-
-			// Remove -ofs and add -outputDir with selected path
-			modifiedArgs = make([]string, 0, len(args))
-			for i, arg := range args {
-				if i != ofsIndex {
-					modifiedArgs = append(modifiedArgs, arg)
-				}
-			}
-			modifiedArgs = append(modifiedArgs, fmt.Sprintf("-outputDir=%s", selectedDir))
-		}
-
-		// Call trcshcmd synchronously - let trcconfig handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "tconfig", modifiedArgs)
+		// Call trcshcmd with args (and no -ofs handling here since it's now in executeCommandAsync)
+		response := callTrcshCmd(m.chatSenderChan, "tconfig", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
