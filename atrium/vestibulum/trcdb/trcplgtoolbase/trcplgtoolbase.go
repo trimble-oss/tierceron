@@ -233,7 +233,7 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
 	}
 
-	if !isRunnableKernelPlugin {
+	if !isRunnableKernelPlugin && !isInternalKernelPlugin {
 		if eUtils.RefLength(addrPtr) == 0 {
 			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
 		} else {
@@ -470,7 +470,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if isRunnableKernelPlugin {
+	if isRunnableKernelPlugin || isInternalKernelPlugin {
 		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
 			kernelPluginHandler = mainPluginHandler[0]
 			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
@@ -819,7 +819,7 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Fprintf(os.Stderr, "Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
-		if isInternalKernelPlugin || (isRunnableKernelPlugin && plugincoreopts.BuildOptions.IsPluginHardwired()) {
+		if (isRunnableKernelPlugin || isInternalKernelPlugin) && plugincoreopts.BuildOptions.IsPluginHardwired() {
 			var deployRoot string
 			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
 				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
@@ -1293,7 +1293,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintln(os.Stderr, "Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pluginservicestartPtr && isRunnableKernelPlugin {
+	} else if *pluginservicestartPtr && (isRunnableKernelPlugin || isInternalKernelPlugin) {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
 			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
 				fmt.Fprintf(os.Stderr, "Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
@@ -1306,7 +1306,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintf(os.Stderr, "Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 		}
-	} else if *pluginservicestopPtr && isRunnableKernelPlugin {
+	} else if *pluginservicestopPtr && (isRunnableKernelPlugin || isInternalKernelPlugin) {
 		if pluginHandler != nil && pluginHandler.State != 2 {
 			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {

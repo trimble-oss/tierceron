@@ -445,6 +445,15 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		interruptChan <- x
 	}()
 
+	if kernelopts.BuildOptions.IsKernelZ() {
+		kernelzSignals := make(chan os.Signal, 1)
+		signal.Notify(kernelzSignals, syscall.SIGINT)
+		go func() {
+			<-kernelzSignals
+			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, "Interrupted", 128)
+		}()
+	}
+
 	flagset.Parse(argLines[1:])
 	driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
