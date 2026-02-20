@@ -42,6 +42,12 @@ type dirPickerCompleteMsg struct {
 	cancelled    bool
 }
 
+// dirPickerStartMsg is sent to enter dirpicker mode
+type dirPickerStartMsg struct {
+	startPath  string
+	pendingCmd string
+}
+
 // GetChatMsgHooks returns the chat message hooks map
 func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 	return &chatMsgHooks
@@ -128,43 +134,11 @@ func (m *ShellModel) Init() tea.Cmd {
 }
 
 func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle dirpicker complete messages
-	if dirMsg, ok := msg.(dirPickerCompleteMsg); ok {
-		m.dirPickerMode = false
-		m.dirPicker = nil
-
-		if dirMsg.cancelled {
-			// User cancelled - just return to prompt
-			m.pendingCommand = ""
-			return m, nil
-		}
-
-		// User selected a directory - modify the pending command to replace -ofs with -outputDir=path
-		if m.pendingCommand != "" {
-			parts := strings.Fields(m.pendingCommand)
-			modifiedArgs := make([]string, 0, len(parts))
-
-			// Keep all parts except -ofs
-			for _, part := range parts {
-				if part != "-ofs" {
-					modifiedArgs = append(modifiedArgs, part)
-				}
-			}
-
-			// Add -outputDir with selected path
-			modifiedArgs = append(modifiedArgs, fmt.Sprintf("-outputDir=%s", dirMsg.selectedPath))
-
-			// Create modified command string and execute it
-			modifiedCmd := strings.Join(modifiedArgs, " ")
-			m.pendingCommand = ""
-
-			// Add output line showing what we're executing
-			m.output = append(m.output, promptStyle.Render(m.prompt+" ")+modifiedCmd)
-			m.updateViewportContent()
-			m.viewport.GotoBottom()
-
-			return m, m.executeCommandAsync(modifiedCmd)
-		}
+	// Handle dirpicker start messages - enter dirpicker mode
+	if startMsg, ok := msg.(dirPickerStartMsg); ok {
+		m.dirPickerMode = true
+		m.dirPicker = dirpicker.NewDirPicker(startMsg.startPath)
+		m.pendingCommand = startMsg.pendingCmd
 		return m, nil
 	}
 
@@ -175,16 +149,46 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Check if dirpicker is done
 		if m.dirPicker.Selected() || m.dirPicker.Cancelled() {
-			selectedPath := ""
-			if m.dirPicker.Selected() {
-				selectedPath = m.dirPicker.CurrentPath()
+			m.dirPickerMode = false
+
+			if m.dirPicker.Cancelled() {
+				// User cancelled - just return to prompt
+				m.pendingCommand = ""
+				m.dirPicker = nil
+				m.commandExecuting = false
+				return m, nil
 			}
-			return m, func() tea.Msg {
-				return dirPickerCompleteMsg{
-					selectedPath: selectedPath,
-					cancelled:    m.dirPicker.Cancelled(),
+
+			// User selected a directory - modify the pending command to replace -ofs with -outputDir=path
+			selectedPath := m.dirPicker.CurrentPath()
+			if m.pendingCommand != "" {
+				parts := strings.Fields(m.pendingCommand)
+				modifiedArgs := make([]string, 0, len(parts))
+
+				// Keep all parts except -ofs
+				for _, part := range parts {
+					if part != "-ofs" {
+						modifiedArgs = append(modifiedArgs, part)
+					}
 				}
+
+				// Add -outputDir with selected path
+				modifiedArgs = append(modifiedArgs, fmt.Sprintf("-outputDir=%s", selectedPath))
+
+				// Create modified command string and execute it
+				modifiedCmd := strings.Join(modifiedArgs, " ")
+				m.pendingCommand = ""
+
+				// Add output line showing what we're executing
+				m.output = append(m.output, promptStyle.Render(m.prompt+" ")+modifiedCmd)
+				m.updateViewportContent()
+				m.viewport.GotoBottom()
+
+				m.dirPicker = nil
+				return m, m.executeCommandAsync(modifiedCmd)
 			}
+			m.dirPicker = nil
+			return m, nil
 		}
 
 		// Still picking - return dirpicker's command
@@ -661,13 +665,10 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 				if err != nil {
 					homeDir = ""
 				}
-
-				m.dirPickerMode = true
-				m.dirPicker = dirpicker.NewDirPicker(homeDir)
-				m.pendingCommand = trimmedCmd
-
-				// Request first render of dirpicker
-				return nil
+				return dirPickerStartMsg{
+					startPath:  homeDir,
+					pendingCmd: trimmedCmd,
+				}
 			}
 		}
 	}
