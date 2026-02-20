@@ -15,8 +15,12 @@ trcx -env=QA -token=$VAULT_TOKEN -restricted=PluginTool -serviceFilter=config -i
 trcx -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
 trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcDeploy -serviceFilter=setup -indexFilter=setup
 trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshCursorAW -serviceFilter=config -indexFilter=config
+trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshCursorK -serviceFilter=config -indexFilter=config
+trcx -env=dev -token=$VAULT_TOKEN -restricted=TrcshCursorZ -serviceFilter=config -indexFilter=config
 
 # Initialize
 trcinit -env=QA -token=$VAULT_TOKEN -restricted=VaultDatabase -serviceFilter=config -indexFilter=config
 trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/VaultDatabase/config
 trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/TrcshCursorAW/config
+trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/TrcshCursorK/config
+trcinit -env=dev -token=$VAULT_TOKEN_DEV -dynamicPath=Restricted/TrcshCursorZ/config
