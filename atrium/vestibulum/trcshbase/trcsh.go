@@ -146,6 +146,11 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 	}
 
+	// Default to 'west' region if empty
+	if len(regions) == 0 {
+		regions = []string{"west"}
+	}
+
 	// Check if logger passed in - if not call create log method that does following below...
 	var providedLogger *log.Logger
 	var err error
