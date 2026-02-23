@@ -446,9 +446,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				fmt.Fprintf(os.Stderr, "Using trcshhivez AppRole stored as hivekernel\n")
 			}
 		}
+		fmt.Fprintf(os.Stderr, "AutoAuth: After OAuth block, vault addr: %s, credentials ready\n", *addrPtr)
+	} else {
+		fmt.Fprintf(os.Stderr, "AutoAuth: vault addr: %s, credentials ready\n", *addrPtr)
 	}
-
-	fmt.Fprintf(os.Stderr, "AutoAuth: After OAuth block, vault addr: %s, credentials ready\n", *addrPtr)
 
 	var tokenPtr *string
 	if RefLength(wantedTokenNamePtr) > 0 {
