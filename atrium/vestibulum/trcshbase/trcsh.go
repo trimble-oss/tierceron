@@ -1929,15 +1929,12 @@ func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
 			time.Sleep(1 * time.Second)
 		} else {
 			if waitCtr == 10 {
+			drainLoop:
 				for {
-					if len(trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan) > 0 {
-						select {
-						case <-trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan:
-						default:
-							break
-						}
-					} else {
-						time.Sleep(1 * time.Second)
+					select {
+					case <-trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan:
+					case <-time.After(120 * time.Second):
+						break drainLoop
 					}
 				}
 			} else {
