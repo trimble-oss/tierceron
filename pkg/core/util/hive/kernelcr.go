@@ -1214,7 +1214,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 
 				go pluginHandler.receiver(driverConfig, isKernelPlugin)
-				serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
+				if len(driverConfig.CoreConfig.Regions) > 0 {
+					serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Warning: No regions configured for plugin %s", pluginHandler.Name)
+				}
 			}
 
 			pluginHandler.Init(&serviceConfig)
