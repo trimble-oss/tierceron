@@ -129,6 +129,7 @@ func IsRegionSupported(driverConfig *config.DriverConfig, region string) bool {
 	}
 
 	if len(driverConfig.CoreConfig.Regions) == 0 && region == coreopts.BuildOptions.GetDefaultRegion() {
+		driverConfig.CoreConfig.Log.Printf("No regions specified in config, using default region: %s", region)
 		return true
 	}
 	for _, supportedRegion := range driverConfig.CoreConfig.Regions {
