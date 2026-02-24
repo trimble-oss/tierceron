@@ -12,6 +12,7 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/prod"
+	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/oauth"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -127,8 +128,12 @@ func IsRegionSupported(driverConfig *config.DriverConfig, region string) bool {
 		}
 	}
 
+	if len(driverConfig.CoreConfig.Regions) == 0 && region == coreopts.BuildOptions.GetDefaultRegion() {
+		return true
+	}
 	for _, supportedRegion := range driverConfig.CoreConfig.Regions {
-		if strings.HasSuffix(region, supportedRegion) {
+		if (supportedRegion == "" && region == coreopts.BuildOptions.GetDefaultRegion()) ||
+			(len(supportedRegion) > 0 && strings.HasSuffix(region, supportedRegion)) {
 			return true
 		}
 	}
