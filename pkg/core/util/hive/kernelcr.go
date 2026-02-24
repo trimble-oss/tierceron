@@ -1189,6 +1189,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 				tfmContext.(flow.FlowMachineContext).SetFlowIDs()
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
+				// Signal that flows are loaded with a specific "-flowsloaded" signal so other plugins can wait for it
+				pluginsync.SignalPluginReady(pluginHandler.Name + "-flowsloaded")
+				driverConfig.CoreConfig.Log.Printf("Plugin %s flows loaded and ready\n", pluginHandler.Name)
 				// kick off reload process from vault
 				go reloadFlows(tfmContext.(flow.FlowMachineContext), mod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
