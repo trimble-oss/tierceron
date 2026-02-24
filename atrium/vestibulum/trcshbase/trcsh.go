@@ -25,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
-	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	trcshmemfs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
@@ -964,9 +963,6 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			// Register trcshcmd plugin if trcsh is deployed and not in Kubernetes
 			if trcshDeployed && !hive.IsRunningInKubernetes() && kernelPluginHandler != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Registering trcshcmd kernel plugin for shell command execution")
-
-				// Create a ready channel for trcshcmd so trcsh can wait for it
-				pluginsync.CreatePluginReadyChannel("trcshcmd")
 
 				// Create a deployment config for trcshcmd with template path
 				trcshcmdConfig := map[string]interface{}{

@@ -508,6 +508,7 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 				PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
 			},
 		}
+		pluginsync.CreatePluginReadyChannel(service)
 	}
 }
 
