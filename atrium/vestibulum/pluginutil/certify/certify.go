@@ -72,7 +72,7 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 		return errors.New("could not find hostname")
 	}
 
-	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
+	hostRegion := coreopts.BuildOptions.GetRegionByHost(hostName)
 	if hostRegion == "" {
 		logger.Println("PluginDeployedUpdate self certification not provided on base region deployers")
 		return nil
