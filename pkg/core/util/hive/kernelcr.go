@@ -1189,6 +1189,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 				tfmContext.(flow.FlowMachineContext).SetFlowIDs()
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
+				// Signal that flows are loaded with a specific "-flowsloaded" signal so other plugins can wait for it
+				pluginsync.SignalPluginReady(pluginHandler.Name + "-flowsloaded")
+				driverConfig.CoreConfig.Log.Printf("Plugin %s flows loaded and ready\n", pluginHandler.Name)
 				// kick off reload process from vault
 				go reloadFlows(tfmContext.(flow.FlowMachineContext), mod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
@@ -1593,13 +1596,9 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				go safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
 			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State == 1 {
-					// Plugin is ready - forward the message
-					if plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
-						go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "direct service message", driverConfig.CoreConfig.Log)
-					}
-				} else if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State != 1 {
+					// Querying plugin is running - forward the message
 					responseError := "Service unavailable"
-					if (*pluginHandler.Services)[*msg.Name].State == 0 {
+					if (*pluginHandler.Services)[queryPlugin[0]].State == 0 {
 						responseError = "Service initializing"
 						driverConfig.CoreConfig.Log.Printf("Service initializing while processessing query from %s\n", *msg.Name)
 					} else {
@@ -1611,7 +1610,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 						go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
 					}
 				} else {
-					driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
+					driverConfig.CoreConfig.Log.Printf("Service unavailable to send response: %s\n", *msg.Name)
 				}
 				continue
 			} else {
