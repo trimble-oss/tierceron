@@ -146,9 +146,21 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		}
 	}
 
-	// Default to 'west' region if empty
+	// Default to the configured default region if empty
+	defaultRegion := ""
+	if coreopts.BuildOptions != nil && coreopts.BuildOptions.GetDefaultRegion != nil {
+		defaultRegion = coreopts.BuildOptions.GetDefaultRegion()
+	}
+
 	if len(regions) == 0 {
-		regions = []string{"west"}
+		regions = []string{defaultRegion}
+	}
+
+	// Replace any default region with empty string
+	if len(defaultRegion) > 0 {
+		for i, r := range regions {
+			regions[i] = strings.ReplaceAll(r, defaultRegion, "")
+		}
 	}
 
 	// Check if logger passed in - if not call create log method that does following below...

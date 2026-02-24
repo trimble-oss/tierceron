@@ -86,8 +86,14 @@ func GetLocalHost() string {
 	return "https://tierceron.test:1234"
 }
 
-// GetRegion - return the region.  Override this function to provide default region given a host name.
-func GetRegion(hostName string) string {
+// GetRegionByHost - return the region for a given host name.  Override this function to provide region mapping by host name.
+func GetRegionByHost(hostName string) string {
+	return "west"
+}
+
+// GetDefaultRegion - return the default region.  Override this function to provide a custom default region.
+// Any time this region is specified, it will initiate loading of default configurations
+func GetDefaultRegion() string {
 	return "west"
 }
 

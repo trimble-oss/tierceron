@@ -16,7 +16,8 @@ type OptionsBuilder struct {
 	GetSupportedDomains         func(bool) []string
 	GetSupportedEndpoints       func(bool) [][]string
 	GetLocalHost                func() string
-	GetRegion                   func(hostName string) string
+	GetRegionByHost             func(hostName string) string
+	GetDefaultRegion            func() string
 	GetVaultHost                func() string
 	GetVaultHostPort            func() string
 	GetUserNameField            func() string
@@ -47,7 +48,8 @@ func LoadOptions() Option {
 		optionsBuilder.GetSupportedDomains = GetSupportedDomains
 		optionsBuilder.GetSupportedEndpoints = GetSupportedEndpoints
 		optionsBuilder.GetLocalHost = GetLocalHost
-		optionsBuilder.GetRegion = GetRegion
+		optionsBuilder.GetRegionByHost = GetRegionByHost
+		optionsBuilder.GetDefaultRegion = GetDefaultRegion
 		optionsBuilder.GetVaultHost = GetVaultHost
 		optionsBuilder.GetVaultHostPort = GetVaultHostPort
 		optionsBuilder.GetUserNameField = GetUserNameField

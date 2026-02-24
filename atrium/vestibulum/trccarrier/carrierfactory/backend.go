@@ -794,7 +794,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 				logger.Println("Error: " + errors.New("Found empty hostname").Error())
 				return logical.ErrorResponse("Found empty hostname"), nil
 			}
-			hostRegion := coreopts.BuildOptions.GetRegion(hostName)
+			hostRegion := coreopts.BuildOptions.GetRegionByHost(hostName)
 
 			pluginConfig["env"] = req.Path
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
