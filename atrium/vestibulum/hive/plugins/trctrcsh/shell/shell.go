@@ -1,8 +1,11 @@
 package shell
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -74,6 +77,12 @@ type ShellModel struct {
 	dirPickerMode    bool                      // Track if dirpicker is active
 	dirPicker        *dirpicker.DirPickerModel // Active dirpicker instance
 	pendingCommand   string                    // Command waiting for dirpicker selection
+	selectionStart   int                       // Start position for text selection
+	selectionEnd     int                       // End position for text selection
+	isSelecting      bool                      // Flag to track if user is selecting
+	lastMemClipTime  time.Time                 // Timestamp of last memFs clipboard update
+	lastSysClipTime  time.Time                 // Timestamp when system clipboard content was detected
+	lastSysClipContent string                  // Last system clipboard content we saw
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -117,6 +126,12 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		dirPickerMode:    false,
 		dirPicker:        nil,
 		pendingCommand:   "",
+		selectionStart:   -1,
+		selectionEnd:       -1,
+		isSelecting:        false,
+		lastMemClipTime:    time.Now(),
+		lastSysClipTime:    time.Time{}, // Start with zero time
+		lastSysClipContent: "",          // Start empty
 	}
 }
 
@@ -131,6 +146,176 @@ func cursorBlink() tea.Cmd {
 
 func (m *ShellModel) Init() tea.Cmd {
 	return cursorBlink()
+}
+
+// copyToMemFsClipboard stores content in memFs clipboard
+func (m *ShellModel) copyToMemFsClipboard(content string) {
+	if m.memFs == nil {
+		return
+	}
+	// Remove old clipboard file if it exists
+	m.memFs.Remove("/.clipboard")
+	// Create new clipboard file and write content
+	file, err := m.memFs.Create("/.clipboard")
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	_, _ = file.Write([]byte(content))
+	// Update timestamp
+	m.lastMemClipTime = time.Now()
+}
+
+// readMemFsClipboard retrieves content from memFs clipboard
+func (m *ShellModel) readMemFsClipboard() (string, time.Time) {
+	if m.memFs == nil {
+		return "", m.lastMemClipTime
+	}
+	file, err := m.memFs.Open("/.clipboard")
+	if err != nil {
+		return "", m.lastMemClipTime
+	}
+	defer file.Close()
+
+	// Read file content
+	var buf strings.Builder
+	_, err = io.Copy(&buf, file)
+	if err != nil {
+		return "", m.lastMemClipTime
+	}
+	return buf.String(), m.lastMemClipTime
+}
+
+// readSystemClipboard attempts to read from system clipboard using native tools
+// Only updates timestamp when content actually changes (not every read)
+// Tries xclip, xsel, wl-paste, and WSL powershell depending on what's available
+// Returns empty string if not available
+func (m *ShellModel) readSystemClipboard() (string, time.Time) {
+	var content string
+
+	// Try X11 with xclip
+	if c, err := tryX11ClipboardXclip(); err == nil && c != "" {
+		content = c
+	} else if c, err := tryX11ClipboardXsel(); err == nil && c != "" {
+		// Try X11 with xsel
+		content = c
+	} else if c, err := tryWaylandClipboard(); err == nil && c != "" {
+		// Try Wayland (wl-paste)
+		content = c
+	} else if c, err := tryWSLClipboard(); err == nil && c != "" {
+		// Try WSL (PowerShell Get-Clipboard)
+		content = c
+	}
+
+	// Only update timestamp if content is new (different from what we last saw)
+	if content != "" && content != m.lastSysClipContent {
+		m.lastSysClipTime = time.Now()
+		m.lastSysClipContent = content
+	}
+
+	return content, m.lastSysClipTime
+}
+
+// tryX11ClipboardXclip tries to get clipboard from X11 using xclip
+func tryX11ClipboardXclip() (string, error) {
+	cmd := exec.Command("xclip", "-selection", "clipboard", "-o")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryX11ClipboardXsel tries to get clipboard from X11 using xsel
+func tryX11ClipboardXsel() (string, error) {
+	cmd := exec.Command("xsel", "--clipboard", "--output")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryWaylandClipboard tries to get clipboard from Wayland
+func tryWaylandClipboard() (string, error) {
+	cmd := exec.Command("wl-paste", "--no-newline")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
+// tryWSLClipboard tries to get clipboard from WSL using PowerShell
+func tryWSLClipboard() (string, error) {
+	cmd := exec.Command("powershell.exe", "-command", "Get-Clipboard")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	content := out.String()
+	// Remove Windows line endings
+	content = strings.ReplaceAll(content, "\r\n", "\n")
+	content = strings.TrimRight(content, "\n")
+	return content, nil
+}
+
+// getClipboardToUse returns content from the most recently updated clipboard
+// Prefers memFs if it's newer, otherwise tries system clipboard
+func (m *ShellModel) getClipboardToUse() string {
+	memContent, memTime := m.readMemFsClipboard()
+	sysContent, sysTime := m.readSystemClipboard()
+
+	// If system clipboard is empty, use memFs
+	if sysContent == "" {
+		return memContent
+	}
+	// If memFs is empty, use system
+	if memContent == "" {
+		return sysContent
+	}
+	// Both have content - use newer one
+	if memTime.After(sysTime) {
+		return memContent
+	}
+	return sysContent
+}
+
+// getSelectedText returns the text that is currently selected
+func (m *ShellModel) getSelectedText() string {
+	if m.selectionStart < 0 || m.selectionEnd < 0 {
+		return ""
+	}
+
+	// Flatten output to single string with newlines
+	fullText := strings.Join(m.output, "\n")
+
+	start := m.selectionStart
+	end := m.selectionEnd
+	if start > end {
+		start, end = end, start
+	}
+
+	if start < 0 || end > len(fullText) {
+		return ""
+	}
+
+	return fullText[start:end]
+}
+
+// clearSelection resets selection
+func (m *ShellModel) clearSelection() {
+	m.selectionStart = -1
+	m.selectionEnd = -1
+	m.isSelecting = false
 }
 
 func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -245,6 +430,61 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseMsg:
+		// Handle text selection via mouse
+		if msg.Type == tea.MouseLeft {
+			// Get position adjusted for viewport scrolling
+			fullText := strings.Join(m.output, "\n")
+			lines := strings.Split(fullText, "\n")
+
+			// Account for viewport's YOffset (scrolling)
+			adjustedY := msg.Y + m.viewport.YOffset
+			x := msg.X
+
+			if adjustedY >= 0 && adjustedY < len(lines) {
+				line := lines[adjustedY]
+				if x >= 0 && x <= len(line) {
+					// Calculate position in flattened string
+					pos := 0
+					for i := 0; i < adjustedY; i++ {
+						pos += len(lines[i]) + 1 // +1 for newline
+					}
+					pos += x
+
+					// If not already selecting, start selection
+					if !m.isSelecting {
+						m.selectionStart = pos
+						m.isSelecting = true
+					} else {
+						// Update end position while dragging
+						m.selectionEnd = pos
+						m.updateViewportContent()
+					}
+				}
+			}
+		} else if msg.Type == tea.MouseMotion && m.isSelecting {
+			// Update selection end while dragging
+			fullText := strings.Join(m.output, "\n")
+			lines := strings.Split(fullText, "\n")
+
+			adjustedY := msg.Y + m.viewport.YOffset
+			x := msg.X
+
+			if adjustedY >= 0 && adjustedY < len(lines) {
+				line := lines[adjustedY]
+				if x >= 0 && x <= len(line) {
+					// Calculate position in flattened string
+					pos := 0
+					for i := 0; i < adjustedY; i++ {
+						pos += len(lines[i]) + 1
+					}
+					pos += x
+
+					m.selectionEnd = pos
+					m.updateViewportContent()
+				}
+			}
+		}
+
 		var cmd tea.Cmd
 		m.viewport, cmd = m.viewport.Update(msg)
 		return m, cmd
@@ -272,7 +512,35 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			// Context-aware: if text is selected, copy instead of exit
+			if m.selectionStart >= 0 && m.selectionEnd >= 0 {
+				selected := m.getSelectedText()
+				if selected != "" {
+					m.clearSelection()
+					m.copyToMemFsClipboard(selected)
+					m.updateViewportContent()
+					m.viewport.GotoBottom()
+					return m, nil
+				}
+			}
+			// No selection - standard exit behavior
 			return m, tea.Quit
+
+		case tea.KeyCtrlV:
+			// Paste from smart clipboard fallback
+			clipboard := m.getClipboardToUse()
+			if clipboard != "" {
+				m.input = m.input[:m.cursor] + clipboard + m.input[m.cursor:]
+				m.cursor += len(clipboard)
+				m.viewport.GotoBottom()
+			}
+			return m, nil
+
+		case tea.KeyEsc:
+			// Clear any selection
+			m.clearSelection()
+			m.updateViewportContent()
+			return m, nil
 
 		case tea.KeyEnter:
 			// Handle exit confirmation if pending
@@ -434,7 +702,32 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // updateViewportContent updates the viewport with all output from the persistent buffer
 func (m *ShellModel) updateViewportContent() {
-	m.viewport.SetContent(strings.Join(m.output, "\n"))
+	// If there's a selection, highlight it
+	if m.selectionStart >= 0 && m.selectionEnd >= 0 {
+		fullText := strings.Join(m.output, "\n")
+
+		start := m.selectionStart
+		end := m.selectionEnd
+		if start > end {
+			start, end = end, start
+		}
+
+		if start < 0 || end > len(fullText) {
+			m.viewport.SetContent(strings.Join(m.output, "\n"))
+			return
+		}
+
+		// Build highlighted version using reverse video (robust with existing ANSI codes)
+		before := fullText[:start]
+		selected := fullText[start:end]
+		after := fullText[end:]
+
+		highlightStyle := lipgloss.NewStyle().Reverse(true)
+		highlighted := before + highlightStyle.Render(selected) + after
+		m.viewport.SetContent(highlighted)
+	} else {
+		m.viewport.SetContent(strings.Join(m.output, "\n"))
+	}
 }
 
 func (m *ShellModel) View() string {
@@ -1072,7 +1365,12 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}
-		output = append(output, "  exit     - Exit shell (or press Ctrl+C)")
+		output = append(output, "  exit     - Exit shell (or press Ctrl+C when no text selected)")
+		output = append(output, "")
+		output = append(output, "Clipboard (isolated from system):")
+		output = append(output, "  Ctrl+C   - Copy selected text to clipboard (if text selected), or exit shell")
+		output = append(output, "  Ctrl+V   - Paste from internal clipboard (or system if newer)")
+		output = append(output, "  Click+Drag - Select text by clicking and dragging")
 		if m.elevatedMode {
 			output = append(output, "")
 			output = append(output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")

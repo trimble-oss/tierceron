@@ -37,29 +37,83 @@ func cursorBlink() tea.Cmd {
 	})
 }
 
-// getClipboardContent retrieves clipboard content on Linux and WSL
+// readMemFsClipboard tries to read from trcsh's memory filesystem clipboard
+func readMemFsClipboard() (string, time.Time) {
+	_, memfs := roseacore.GetRoseaMemFs()
+	if memfs == nil {
+		return "", time.Time{}
+	}
+
+	file, err := memfs.Open("/.clipboard")
+	if err != nil {
+		return "", time.Time{}
+	}
+	defer file.Close()
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, file)
+	if err != nil {
+		return "", time.Time{}
+	}
+
+	return buf.String(), time.Now()
+}
+
+// getClipboardContent retrieves clipboard content, checking memFs first, then system
+// This allows rosea to be aware of trcsh's clipboard
 func getClipboardContent() string {
+	// First check trcsh's memory filesystem clipboard
+	memfsContent, memfsTime := readMemFsClipboard()
+
+	// Then try system clipboard
+	var sysContent string
+	var sysTime time.Time
+
 	// Try WSL first (PowerShell Get-Clipboard)
 	if content, err := tryWSLClipboard(); err == nil && content != "" {
-		return content
+		sysContent = content
+	} else if content, err := tryWaylandClipboard(); err == nil && content != "" {
+		// Try Wayland (wl-paste)
+		sysContent = content
+	} else if content, err := tryX11ClipboardXclip(); err == nil && content != "" {
+		// Try X11 with xclip
+		sysContent = content
+	} else if content, err := tryX11ClipboardXsel(); err == nil && content != "" {
+		// Try X11 with xsel
+		sysContent = content
 	}
 
-	// Try Wayland (wl-paste)
-	if content, err := tryWaylandClipboard(); err == nil && content != "" {
-		return content
+	// Update system clipboard tracking only if content is new
+	if sysContent != "" && sysContent != lastSysClipContent {
+		lastSysClipTime = time.Now()
+		lastSysClipContent = sysContent
+		sysTime = lastSysClipTime
+	} else {
+		sysTime = lastSysClipTime
 	}
 
-	// Try X11 with xclip
-	if content, err := tryX11ClipboardXclip(); err == nil && content != "" {
-		return content
+	// Update memfs clipboard tracking only if content is new
+	if memfsContent != "" && memfsContent != lastMemFsClipContent {
+		lastMemFsClipTime = time.Now()
+		lastMemFsClipContent = memfsContent
+		memfsTime = lastMemFsClipTime
+	} else {
+		memfsTime = lastMemFsClipTime
 	}
 
-	// Try X11 with xsel
-	if content, err := tryX11ClipboardXsel(); err == nil && content != "" {
-		return content
+	// Return whichever is newer
+	if memfsContent == "" {
+		return sysContent
+	}
+	if sysContent == "" {
+		return memfsContent
 	}
 
-	return ""
+	// Both have content - use newer one
+	if memfsTime.After(sysTime) {
+		return memfsContent
+	}
+	return sysContent
 }
 
 // tryWSLClipboard tries to get clipboard from WSL using PowerShell
@@ -127,6 +181,14 @@ var (
 			Background(lipgloss.Color("#000000"))
 	goldStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f6c177"))
 	ctrlKeyStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#00ff41")).Bold(true)
+)
+
+// Global tracking for memory filesystem clipboard changes (shared across instances)
+var (
+	lastMemFsClipContent string
+	lastMemFsClipTime    time.Time
+	lastSysClipContent   string
+	lastSysClipTime      time.Time
 )
 
 type RoseaEditorModel struct {
