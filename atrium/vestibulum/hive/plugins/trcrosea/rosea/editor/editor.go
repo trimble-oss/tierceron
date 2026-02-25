@@ -2,6 +2,7 @@ package testr
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,7 @@ func readMemFsClipboard() (string, time.Time) {
 }
 
 // getClipboardContent retrieves clipboard content, checking memFs first, then system
+// Prefers clipboard with different content (user's latest action), otherwise prefers newer
 // This allows rosea to be aware of trcsh's clipboard
 func getClipboardContent() string {
 	// First check trcsh's memory filesystem clipboard
@@ -83,11 +85,17 @@ func getClipboardContent() string {
 		sysContent = content
 	}
 
-	// Update system clipboard tracking only if content is new
-	if sysContent != "" && sysContent != lastSysClipContent {
-		lastSysClipTime = time.Now()
-		lastSysClipContent = sysContent
-		sysTime = lastSysClipTime
+	// Update system clipboard tracking only if content is new (using hash comparison)
+	// Use hash instead of storing full content to avoid memory bloat
+	if sysContent != "" {
+		contentHash := hashContent(sysContent)
+		if contentHash != lastSysClipHash {
+			lastSysClipTime = time.Now()
+			lastSysClipHash = contentHash
+			sysTime = lastSysClipTime
+		} else {
+			sysTime = lastSysClipTime
+		}
 	} else {
 		sysTime = lastSysClipTime
 	}
@@ -109,23 +117,21 @@ func getClipboardContent() string {
 		return memfsContent
 	}
 
-	// Both have content - use newer one
-	if memfsTime.After(sysTime) {
-		return memfsContent
+	// Both have content
+	// Use the one that was updated more recently
+	if sysTime.After(memfsTime) {
+		return sysContent
 	}
-	return sysContent
+	return memfsContent
 }
 
 // tryWSLClipboard tries to get clipboard from WSL using PowerShell
 func tryWSLClipboard() (string, error) {
 	cmd := exec.Command("powershell.exe", "-command", "Get-Clipboard")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
+	content, err := readClipboardWithSize(cmd)
 	if err != nil {
 		return "", err
 	}
-	content := out.String()
 	// Remove Windows line endings
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	content = strings.TrimRight(content, "\n")
@@ -135,37 +141,19 @@ func tryWSLClipboard() (string, error) {
 // tryWaylandClipboard tries to get clipboard from Wayland
 func tryWaylandClipboard() (string, error) {
 	cmd := exec.Command("wl-paste", "--no-newline")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryX11ClipboardXclip tries to get clipboard from X11 using xclip
 func tryX11ClipboardXclip() (string, error) {
 	cmd := exec.Command("xclip", "-selection", "clipboard", "-o")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryX11ClipboardXsel tries to get clipboard from X11 using xsel
 func tryX11ClipboardXsel() (string, error) {
 	cmd := exec.Command("xsel", "--clipboard", "--output")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // Rosé Pine Moon styles
@@ -187,9 +175,36 @@ var (
 var (
 	lastMemFsClipContent string
 	lastMemFsClipTime    time.Time
-	lastSysClipContent   string
+	lastSysClipHash      string // Hash of system clipboard (not full content)
 	lastSysClipTime      time.Time
 )
+
+// Maximum clipboard size (10MB) - prevents OOM from malicious/accidental huge pastes
+const maxClipboardSize = 10 * 1024 * 1024
+
+// readClipboardWithSize reads clipboard output and truncates if over maxClipboardSize
+func readClipboardWithSize(cmd *exec.Cmd) (string, error) {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	content := out.String()
+	if len(content) > maxClipboardSize {
+		// Truncate to max size
+		return content[:maxClipboardSize], nil
+	}
+	return content, nil
+}
+
+// hashContent returns the MD5 hash of content as a hex string
+// Used for detecting clipboard changes without storing full content
+func hashContent(content string) string {
+	hash := md5.Sum([]byte(content))
+	return fmt.Sprintf("%x", hash)
+}
 
 type RoseaEditorModel struct {
 	title         string
@@ -285,6 +300,10 @@ func (m *RoseaEditorModel) copyToMemFsClipboard(content string) {
 		return
 	}
 
+	// Update global tracking with the new content
+	lastMemFsClipContent = content
+	lastMemFsClipTime = time.Now()
+
 	// Retry up to 3 times to write to clipboard
 	for attempt := 0; attempt < 3; attempt++ {
 		// Only remove if file exists (skip on attempt 0 since it won't exist)
@@ -315,6 +334,18 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 	if err != nil {
 		width = 80
 		height = 24
+	}
+
+	// Initialize system clipboard hash at startup
+	// This prevents treating stale pre-existing content as "newly changed"
+	if sysContent, err := tryWSLClipboard(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	} else if sysContent, err := tryWaylandClipboard(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	} else if sysContent, err := tryX11ClipboardXclip(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	} else if sysContent, err := tryX11ClipboardXsel(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
 	}
 
 	initialContent := strings.Join(lines(data), "\n")
