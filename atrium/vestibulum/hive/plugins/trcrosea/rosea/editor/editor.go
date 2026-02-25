@@ -221,6 +221,10 @@ type RoseaEditorModel struct {
 	// Modification tracking
 	modified       bool // If true, buffer has unsaved changes
 	confirmingExit bool // If true, showing exit confirmation for unsaved changes
+
+	// Text selection for copy/paste
+	selectionStart int // Start position for text selection (-1 = no selection)
+	selectionEnd   int // End position for text selection
 }
 
 func lines(b *[]byte) []string {
@@ -249,6 +253,63 @@ func lines(b *[]byte) []string {
 	return lines
 }
 
+// getSelectedText returns the currently selected text
+func (m *RoseaEditorModel) getSelectedText() string {
+	if m.selectionStart < 0 || m.selectionEnd < 0 {
+		return ""
+	}
+
+	start := m.selectionStart
+	end := m.selectionEnd
+	if start > end {
+		start, end = end, start
+	}
+
+	if start < 0 || end > len(m.input) {
+		return ""
+	}
+
+	return m.input[start:end]
+}
+
+// clearSelection resets the selection
+func (m *RoseaEditorModel) clearSelection() {
+	m.selectionStart = -1
+	m.selectionEnd = -1
+}
+
+// copyToMemFsClipboard stores content in memFs clipboard with retry logic
+func (m *RoseaEditorModel) copyToMemFsClipboard(content string) {
+	_, memfs := roseacore.GetRoseaMemFs()
+	if memfs == nil {
+		return
+	}
+
+	// Retry up to 3 times to write to clipboard
+	for attempt := 0; attempt < 3; attempt++ {
+		// Only remove if file exists (skip on attempt 0 since it won't exist)
+		if attempt > 0 {
+			memfs.Remove("/.clipboard")
+		}
+
+		// Create new clipboard file and write content
+		file, err := memfs.Create("/.clipboard")
+		if err != nil {
+			// Retry on error
+			continue
+		}
+
+		_, err = file.Write([]byte(content))
+		file.Close()
+
+		if err == nil {
+			// Success
+			return
+		}
+		// Retry on write error
+	}
+}
+
 func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
 	if err != nil {
@@ -258,18 +319,20 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 
 	initialContent := strings.Join(lines(data), "\n")
 	return &RoseaEditorModel{
-		title:         title,
-		width:         width,
-		height:        height,
-		lines:         []string{},
-		input:         initialContent, // Initialize input with existing lines
-		cursor:        0,
-		cursorVisible: true,
-		historyIndex:  0,
-		draft:         "",
-		editorStyle:   baseStyle.Padding(1, 2).Width(width),
-		roseaMode:     true, // Enable rosea mode for direct memfs save
-		modified:      false,
+		title:          title,
+		width:          width,
+		height:         height,
+		lines:          []string{},
+		input:          initialContent, // Initialize input with existing lines
+		cursor:         0,
+		cursorVisible:  true,
+		historyIndex:   0,
+		draft:          "",
+		editorStyle:    baseStyle.Padding(1, 2).Width(width),
+		roseaMode:      true, // Enable rosea mode for direct memfs save
+		modified:       false,
+		selectionStart: -1,
+		selectionEnd:   -1,
 	}
 }
 
@@ -289,6 +352,22 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+
+	case tea.MouseMsg:
+		// Handle mouse events for selection and cursor positioning
+		if msg.Type == tea.MouseLeft {
+			// Convert mouse position to cursor position in text
+			cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+			if cursorPos >= 0 && cursorPos <= len(m.input) {
+				// Start or extend selection
+				if m.selectionStart < 0 {
+					// Start new selection
+					m.selectionStart = cursorPos
+				}
+				m.selectionEnd = cursorPos
+			}
+		}
+		return m, nil
 
 	case tea.KeyMsg:
 		// Handle exit confirmation state
@@ -475,6 +554,23 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			// If text is selected, copy to clipboard instead of exiting
+			selected := m.getSelectedText()
+			if selected != "" {
+				// Copy to system clipboard using xclip or xsel
+				cmd := exec.Command("xclip", "-selection", "clipboard")
+				cmd.Stdin = strings.NewReader(selected)
+				if err := cmd.Run(); err != nil {
+					cmd := exec.Command("xsel", "-b", "-i")
+					cmd.Stdin = strings.NewReader(selected)
+					cmd.Run()
+				}
+				// Always copy to memfs clipboard for paste functionality
+				m.copyToMemFsClipboard(selected)
+				m.clearSelection()
+				return m, nil
+			}
+			// No selection - normal Ctrl+C behavior (exit)
 			// Check for unsaved changes
 			if m.modified {
 				m.confirmingExit = true
@@ -510,6 +606,12 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor += len(clipboardContent)
 				m.modified = true
 			}
+			m.clearSelection()
+			return m, nil
+
+		case tea.KeyCtrlA: // Select all
+			m.selectionStart = 0
+			m.selectionEnd = len(m.input)
 			return m, nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
@@ -554,6 +656,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.input = m.input[:m.cursor] + "\n" + m.input[m.cursor:]
 			m.cursor++
 			m.modified = true
+			m.clearSelection()
 			return m, nil
 
 		case tea.KeyBackspace:
@@ -562,18 +665,21 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 				m.modified = true
 			}
+			m.clearSelection()
 			return m, nil
 
 		case tea.KeyLeft:
 			if m.cursor > 0 {
 				m.cursor--
 			}
+			m.clearSelection()
 			return m, nil
 
 		case tea.KeyRight:
 			if m.cursor < len(m.input) {
 				m.cursor++
 			}
+			m.clearSelection()
 			return m, nil
 
 		case tea.KeyUp:
@@ -634,6 +740,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.input = m.input[:m.cursor] + s + m.input[m.cursor:]
 					m.cursor += len(s)
 					m.modified = true
+					m.clearSelection()
 				}
 			} else if msg.Type == tea.KeySpace {
 				if m.showAuthPopup {
@@ -643,6 +750,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.input = m.input[:m.cursor] + " " + m.input[m.cursor:]
 					m.cursor++
 					m.modified = true
+					m.clearSelection()
 				}
 			}
 		}
@@ -694,6 +802,108 @@ func min(a, b int) int {
 	return b
 }
 
+// mousePosToCursorPos converts mouse coordinates to a position in the input text
+func (m *RoseaEditorModel) mousePosToCursorPos(mouseX, mouseY int) int {
+	// Account for header (1 line) and committed lines
+	committedLinesCount := len(m.lines)
+	headerAndCommittedHeight := 1 + committedLinesCount // 1 for "Roséa Multi-line Editor"
+
+	// Check if click is in the input area
+	if mouseY < headerAndCommittedHeight {
+		return -1 // Click is in the header or committed lines area
+	}
+
+	// Calculate the row in the input area (0-indexed)
+	inputRow := mouseY - headerAndCommittedHeight
+
+	// Split input into lines
+	inputLines := strings.Split(m.input, "\n")
+	visibleHeight := m.height - 4 // Same calculation as View()
+	startLine := m.scrollOffset
+	endLine := min(len(inputLines), startLine+visibleHeight)
+
+	// Check if click is within visible input area
+	if inputRow >= endLine-startLine {
+		return -1
+	}
+
+	// The actual line index
+	actualLineIdx := startLine + inputRow
+
+	// Calculate the absolute position at the start of this line
+	lineStartPos := 0
+	for i := 0; i < actualLineIdx; i++ {
+		lineStartPos += len(inputLines[i]) + 1 // +1 for newline
+	}
+
+	// Get the line content
+	if actualLineIdx >= len(inputLines) {
+		return -1
+	}
+	line := inputLines[actualLineIdx]
+
+	// The column is the mouse X position, but we need to account for the left margin
+	// In the View() function, content starts at column 0
+	col := mouseX
+	if col > len(line) {
+		col = len(line)
+	}
+	if col < 0 {
+		col = 0
+	}
+
+	return lineStartPos + col
+}
+
+// renderLineWithSelection renders a line with both cursor and selection highlighting
+func renderLineWithSelection(line string, cursorCol int, cursorVisible bool, lineStartPos int, lineEndPos int, selStart int, selEnd int) string {
+	var result strings.Builder
+	selectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#96c7a2"))
+	cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
+
+	for i := 0; i < len(line); i++ {
+		posInInput := lineStartPos + i
+		isSelected := selStart >= 0 && posInInput >= selStart && posInInput < selEnd
+		isCursor := i == cursorCol
+		char := string(line[i])
+
+		if isSelected {
+			result.WriteString(selectionStyle.Render(char))
+		} else if isCursor && cursorVisible {
+			result.WriteString(cursorStyle.Render(char))
+		} else {
+			result.WriteString(foamStyle.Render(char))
+		}
+	}
+
+	// Handle cursor at end of line
+	if cursorCol == len(line) && cursorVisible {
+		result.WriteString(cursorStyle.Render(" "))
+	}
+
+	return result.String()
+}
+
+// renderLineWithOnlySelection renders a line with just selection highlighting (no cursor)
+func renderLineWithOnlySelection(line string, lineStartPos int, lineEndPos int, selStart int, selEnd int) string {
+	var result strings.Builder
+	selectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#96c7a2"))
+
+	for i := 0; i < len(line); i++ {
+		posInInput := lineStartPos + i
+		isSelected := selStart >= 0 && posInInput >= selStart && posInInput < selEnd
+		char := string(line[i])
+
+		if isSelected {
+			result.WriteString(selectionStyle.Render(char))
+		} else {
+			result.WriteString(foamStyle.Render(char))
+		}
+	}
+
+	return result.String()
+}
+
 func (m *RoseaEditorModel) View() string {
 	var b strings.Builder
 
@@ -704,35 +914,45 @@ func (m *RoseaEditorModel) View() string {
 		b.WriteString(pineStyle.Render(line) + "\n")
 	}
 
-	// Render input with cursor
+	// Render input with cursor and selection
 	lines := strings.Split(m.input, "\n")
 	visibleHeight := m.height - 4
 	start := m.scrollOffset
 	end := min(len(lines), start+visibleHeight)
 
 	row, col := cursorRowCol(m.input, m.cursor)
+
+	// Calculate selection range (if any)
+	var selStart, selEnd int
+	if m.selectionStart >= 0 && m.selectionEnd >= 0 {
+		selStart = m.selectionStart
+		selEnd = m.selectionEnd
+		if selStart > selEnd {
+			selStart, selEnd = selEnd, selStart
+		}
+	} else {
+		selStart, selEnd = -1, -1
+	}
+
 	for i := start; i < end; i++ {
 		line := lines[i]
 		if i > start {
 			b.WriteString("\n")
 		}
+
+		// Calculate the absolute position of the start and end of this line in the input
+		lineStartPos := 0
+		for j := 0; j < i; j++ {
+			lineStartPos += len(lines[j]) + 1 // +1 for newline
+		}
+		lineEndPos := lineStartPos + len(line)
+
 		if i == row {
-			// Current line with cursor - render with uniform styling
-			b.WriteString(foamStyle.Render(line[:col]))
-			if m.cursorVisible {
-				if col < len(line) {
-					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
-					b.WriteString(cursorStyle.Render(string(line[col])))
-					b.WriteString(foamStyle.Render(line[col+1:]))
-				} else {
-					cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#000000")).Background(lipgloss.Color("#c4a7e7"))
-					b.WriteString(cursorStyle.Render(" "))
-				}
-			} else {
-				b.WriteString(foamStyle.Render(line[col:]))
-			}
+			// Current line with cursor and optional selection
+			b.WriteString(renderLineWithSelection(line, col, m.cursorVisible, lineStartPos, lineEndPos, selStart, selEnd))
 		} else {
-			b.WriteString(foamStyle.Render(line))
+			// Other lines with optional selection
+			b.WriteString(renderLineWithOnlySelection(line, lineStartPos, lineEndPos, selStart, selEnd))
 		}
 	}
 
@@ -804,7 +1024,13 @@ func (m *RoseaEditorModel) View() string {
 		}
 	}
 
-	return m.editorStyle.Width(m.width).Render(b.String())
+	// Add status line with help text
+	b.WriteString("\n")
+	helpText := "Ctrl+A: Select all | Ctrl+C: Copy | Ctrl+V: Paste | Ctrl+S: Save | Ctrl+X: Exit"
+	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#908caa"))
+	b.WriteString(helpStyle.Render(helpText))
+
+	return b.String()
 }
 
 // func main() {

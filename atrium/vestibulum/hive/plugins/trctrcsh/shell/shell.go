@@ -148,22 +148,36 @@ func (m *ShellModel) Init() tea.Cmd {
 	return cursorBlink()
 }
 
-// copyToMemFsClipboard stores content in memFs clipboard
+// copyToMemFsClipboard stores content in memFs clipboard with retry logic
 func (m *ShellModel) copyToMemFsClipboard(content string) {
 	if m.memFs == nil {
 		return
 	}
-	// Remove old clipboard file if it exists
-	m.memFs.Remove("/.clipboard")
-	// Create new clipboard file and write content
-	file, err := m.memFs.Create("/.clipboard")
-	if err != nil {
-		return
+
+	// Retry up to 3 times to write to clipboard
+	for attempt := 0; attempt < 3; attempt++ {
+		// Only remove if file exists (skip on attempt 0 since it won't exist)
+		if attempt > 0 {
+			m.memFs.Remove("/.clipboard")
+		}
+
+		// Create new clipboard file and write content
+		file, err := m.memFs.Create("/.clipboard")
+		if err != nil {
+			// Retry on error
+			continue
+		}
+
+		_, err = file.Write([]byte(content))
+		file.Close()
+
+		if err == nil {
+			// Success - update timestamp
+			m.lastMemClipTime = time.Now()
+			return
+		}
+		// Retry on write error
 	}
-	defer file.Close()
-	_, _ = file.Write([]byte(content))
-	// Update timestamp
-	m.lastMemClipTime = time.Now()
 }
 
 // readMemFsClipboard retrieves content from memFs clipboard
