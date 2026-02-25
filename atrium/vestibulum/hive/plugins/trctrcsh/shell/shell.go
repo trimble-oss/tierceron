@@ -57,32 +57,32 @@ func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 }
 
 type ShellModel struct {
-	width            int
-	height           int
-	prompt           string
-	input            string
-	cursor           int
-	cursorVisible    bool // For blinking cursor
-	history          []string
-	historyIndex     int
-	draft            string
-	output           []string       // Persistent buffer - holds ALL output
-	viewport         viewport.Model // Viewport handles scrolling
-	memFs            trcshio.MemoryFileSystem
-	chatSenderChan   *chan *tccore.ChatMsg
-	pendingExit      bool
-	elevatedMode     bool                      // Track if user has unrestricted write access
-	commandExecuting bool                      // Track if a command is currently executing
-	editorModel      tea.Model                 // Active editor model (nil when not editing)
-	dirPickerMode    bool                      // Track if dirpicker is active
-	dirPicker        *dirpicker.DirPickerModel // Active dirpicker instance
-	pendingCommand   string                    // Command waiting for dirpicker selection
-	selectionStart   int                       // Start position for text selection
-	selectionEnd     int                       // End position for text selection
-	isSelecting      bool                      // Flag to track if user is selecting
-	lastMemClipTime  time.Time                 // Timestamp of last memFs clipboard update
-	lastSysClipTime  time.Time                 // Timestamp when system clipboard content was detected
-	lastSysClipContent string                  // Last system clipboard content we saw
+	width              int
+	height             int
+	prompt             string
+	input              string
+	cursor             int
+	cursorVisible      bool // For blinking cursor
+	history            []string
+	historyIndex       int
+	draft              string
+	output             []string       // Persistent buffer - holds ALL output
+	viewport           viewport.Model // Viewport handles scrolling
+	memFs              trcshio.MemoryFileSystem
+	chatSenderChan     *chan *tccore.ChatMsg
+	pendingExit        bool
+	elevatedMode       bool                      // Track if user has unrestricted write access
+	commandExecuting   bool                      // Track if a command is currently executing
+	editorModel        tea.Model                 // Active editor model (nil when not editing)
+	dirPickerMode      bool                      // Track if dirpicker is active
+	dirPicker          *dirpicker.DirPickerModel // Active dirpicker instance
+	pendingCommand     string                    // Command waiting for dirpicker selection
+	selectionStart     int                       // Start position for text selection
+	selectionEnd       int                       // End position for text selection
+	isSelecting        bool                      // Flag to track if user is selecting
+	lastMemClipTime    time.Time                 // Timestamp of last memFs clipboard update
+	lastSysClipTime    time.Time                 // Timestamp when system clipboard content was detected
+	lastSysClipContent string                    // Last system clipboard content we saw
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -106,27 +106,27 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	vp.SetContent(strings.Join(initialOutput, "\n"))
 
 	return &ShellModel{
-		width:            width,
-		height:           height,
-		prompt:           "$",
-		input:            "",
-		cursor:           0,
-		cursorVisible:    true,
-		history:          []string{},
-		historyIndex:     -1,
-		draft:            "",
-		output:           initialOutput,
-		viewport:         vp,
-		memFs:            memFileSystem,
-		chatSenderChan:   chatSenderChan,
-		pendingExit:      false,
-		elevatedMode:     false,
-		commandExecuting: false,
-		editorModel:      nil,
-		dirPickerMode:    false,
-		dirPicker:        nil,
-		pendingCommand:   "",
-		selectionStart:   -1,
+		width:              width,
+		height:             height,
+		prompt:             "$",
+		input:              "",
+		cursor:             0,
+		cursorVisible:      true,
+		history:            []string{},
+		historyIndex:       -1,
+		draft:              "",
+		output:             initialOutput,
+		viewport:           vp,
+		memFs:              memFileSystem,
+		chatSenderChan:     chatSenderChan,
+		pendingExit:        false,
+		elevatedMode:       false,
+		commandExecuting:   false,
+		editorModel:        nil,
+		dirPickerMode:      false,
+		dirPicker:          nil,
+		pendingCommand:     "",
+		selectionStart:     -1,
 		selectionEnd:       -1,
 		isSelecting:        false,
 		lastMemClipTime:    time.Now(),
@@ -1079,12 +1079,12 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		if entries, err := m.memFs.ReadDir(dir); err == nil {
-			// Filter out io directory and count visible entries
+			// Filter out io directory and .clipboard file, and count visible entries
 			visibleCount := 0
 			for _, entry := range entries {
 				name := entry.Name()
-				// Skip io directory
-				if name == "io" {
+				// Skip io directory and .clipboard file
+				if name == "io" || name == ".clipboard" {
 					continue
 				}
 				visibleCount++
@@ -1417,10 +1417,10 @@ func (m *ShellModel) printTree(path string, prefix string) ([]string, int, int, 
 		return treeOutput, 0, 0, err
 	}
 
-	// Filter out io directory
+	// Filter out io directory and .clipboard file
 	filteredEntries := []os.FileInfo{}
 	for _, entry := range entries {
-		if entry.Name() != "io" {
+		if entry.Name() != "io" && entry.Name() != ".clipboard" {
 			filteredEntries = append(filteredEntries, entry)
 		}
 	}

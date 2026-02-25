@@ -300,6 +300,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Save and exit
 					filename, memfs := roseacore.GetRoseaMemFs()
 					if memfs != nil {
+						// Prevent editing .clipboard file
+						if filename == ".clipboard" || filename == "/.clipboard" {
+							return m, CloseEditor()
+						}
 						memfs.Remove(filename)
 						file, err := memfs.Create(filename)
 						if err == nil {
@@ -335,6 +339,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.confirmingWrite = false
 				filename, memfs := roseacore.GetRoseaMemFs()
 				if memfs != nil {
+					// Prevent editing .clipboard file
+					if filename == ".clipboard" || filename == "/.clipboard" {
+						return m, nil
+					}
 					memfs.Remove(filename)
 					file, err := memfs.Create(filename)
 					if err == nil {
@@ -509,16 +517,19 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Rosea mode: save directly to memfs without auth popup
 				filename, memfs := roseacore.GetRoseaMemFs()
 				if memfs != nil {
-					memfs.Remove(filename)
-					file, err := memfs.Create(filename)
-					if err == nil {
-						defer file.Close()
-						io.WriteString(file, m.input)
-						// Mark as saved
-						m.modified = false
+					// Prevent editing .clipboard file
+					if filename != ".clipboard" && filename != "/.clipboard" {
+						memfs.Remove(filename)
+						file, err := memfs.Create(filename)
+						if err == nil {
+							defer file.Close()
+							io.WriteString(file, m.input)
+							// Mark as saved
+							m.modified = false
 
-						// Return to shell after save
-						return m, CloseEditor()
+							// Return to shell after save
+							return m, CloseEditor()
+						}
 					}
 				}
 				return m, nil
