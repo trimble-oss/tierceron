@@ -242,6 +242,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update viewport size (reserve 3 lines for prompt area)
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height - 3
+		return m, nil
 
 	case tea.MouseMsg:
 		var cmd tea.Cmd
@@ -824,7 +825,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd for rm command with args
-		response := callTrcshCmd(m.chatSenderChan, "rm", args)
+		response := CallTrcshCmd(m.chatSenderChan, "rm", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -842,7 +843,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd for cp command with args
-		response := callTrcshCmd(m.chatSenderChan, "cp", args)
+		response := CallTrcshCmd(m.chatSenderChan, "cp", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -860,7 +861,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd for mv command with args
-		response := callTrcshCmd(m.chatSenderChan, "mv", args)
+		response := CallTrcshCmd(m.chatSenderChan, "mv", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -878,7 +879,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd for cat command with args
-		response := callTrcshCmd(m.chatSenderChan, "cat", args)
+		response := CallTrcshCmd(m.chatSenderChan, "cat", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -894,7 +895,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd for mkdir command with args
-		response := callTrcshCmd(m.chatSenderChan, "mkdir", args)
+		response := CallTrcshCmd(m.chatSenderChan, "mkdir", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -910,7 +911,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd synchronously - let trcsub handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "tsub", args)
+		response := CallTrcshCmd(m.chatSenderChan, "tsub", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -996,7 +997,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd synchronously - let trcinit handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "tinit", args)
+		response := CallTrcshCmd(m.chatSenderChan, "tinit", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -1018,7 +1019,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd synchronously - let trcx handle its own usage validation
-		response := callTrcshCmd(m.chatSenderChan, "tx", args)
+		response := CallTrcshCmd(m.chatSenderChan, "tx", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -1039,7 +1040,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		}
 
 		// Call trcshcmd with args (and no -ofs handling here since it's now in executeCommandAsync)
-		response := callTrcshCmd(m.chatSenderChan, "tconfig", args)
+		response := CallTrcshCmd(m.chatSenderChan, "tconfig", args)
 		if response != "" {
 			// Split response by newlines and add each line
 			lines := strings.Split(strings.TrimSpace(response), "\n")
@@ -1171,8 +1172,8 @@ func (m *ShellModel) printTree(path string, prefix string) ([]string, int, int, 
 
 var globalShellModel *ShellModel
 
-// callTrcshCmd sends a command to trcshcmd and waits for the response
-func callTrcshCmd(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []string) string {
+// CallTrcshCmd sends a command to trcshcmd and waits for the response
+func CallTrcshCmd(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args []string) string {
 	id := fmt.Sprintf("%s-%d", cmdType, time.Now().UnixNano())
 	responseChan := make(chan string, 1)
 

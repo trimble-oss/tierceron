@@ -223,6 +223,9 @@ func start(pluginName string) {
 	<-memFsReady
 	configContext.Log.Println("MemoryFileSystem received, launching shell")
 
+	// Create trc_seeds folder immediately after boot
+	shell.CallTrcshCmd(configContext.ChatSenderChan, "mkdir", []string{"trc_seeds"})
+
 	// Launch interactive shell with bubbletea
 	configContext.Log.Println("Starting interactive shell UI...")
 	var err error

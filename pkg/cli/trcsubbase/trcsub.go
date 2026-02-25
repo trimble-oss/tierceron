@@ -90,7 +90,7 @@ func CommonMain(envDefaultPtr *string,
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
-	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
+	saPtr := flagset.Bool("sa", false, "Lists all projects and services available")
 	pluginInfoPtr := flagset.Bool("pluginInfo", false, "Lists all plugins")
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 
@@ -149,9 +149,9 @@ func CommonMain(envDefaultPtr *string,
 	}
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
-	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*projectInfoPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
-		fmt.Fprintf(outWriter, "Must specify either -projectInfo, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
-		return errors.New("must specify either -projectInfo or -templateFilter flag")
+	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*saPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
+		fmt.Fprintf(outWriter, "Must specify either -sa, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
+		return errors.New("must specify either -sa or -templateFilter flag")
 	}
 	var driverConfigBase *config.DriverConfig
 	var currentRoleEntityPtr *string
@@ -263,24 +263,52 @@ func CommonMain(envDefaultPtr *string,
 			}
 		}
 
-	} else if *projectInfoPtr {
+	} else if *saPtr {
 		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
 			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
 		if driverConfigBase.CoreConfig.IsEditor {
-			driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
+			driverConfigBase.CoreConfig.Log.Printf("\nProjects and Services available:\n")
 		} else {
-			fmt.Fprintf(outWriter, "\nProjects available:\n")
+			fmt.Fprintf(outWriter, "\nProjects and Services available:\n")
 		}
 		for _, templatePath := range templateList.Data {
 			for _, projectInterface := range templatePath.([]any) {
-				project := projectInterface.(string)
-				if driverConfigBase.CoreConfig.IsEditor {
-					driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
-				} else {
-					fmt.Fprintln(outWriter, strings.TrimRight(project, "/"))
+				project := strings.TrimRight(projectInterface.(string), "/")
+
+				// List services under this project
+				servicePath := "templates/" + project + "/"
+				serviceList, err := mod.List(servicePath, driverConfigBase.CoreConfig.Log)
+				if err != nil {
+					// Log error but continue with next project
+					driverConfigBase.CoreConfig.Log.Printf("Warning: unable to read services for project %s\n", project)
+					continue
+				}
+
+				// Output each service under this project
+				hasServices := false
+				for _, servicePathData := range serviceList.Data {
+					for _, serviceInterface := range servicePathData.([]any) {
+						service := strings.TrimRight(serviceInterface.(string), "/")
+						output := fmt.Sprintf("%s/%s", project, service)
+						hasServices = true
+						if driverConfigBase.CoreConfig.IsEditor {
+							driverConfigBase.CoreConfig.Log.Println(output)
+						} else {
+							fmt.Fprintln(outWriter, output)
+						}
+					}
+				}
+
+				// If project has no services, still show the project alone
+				if !hasServices {
+					if driverConfigBase.CoreConfig.IsEditor {
+						driverConfigBase.CoreConfig.Log.Println(project)
+					} else {
+						fmt.Fprintln(outWriter, project)
+					}
 				}
 			}
 		}
