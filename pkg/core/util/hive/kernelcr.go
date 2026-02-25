@@ -1597,9 +1597,13 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State == 1 {
 					// Querying plugin is running - forward the message
 					responseError := "Service unavailable"
-					if (*pluginHandler.Services)[queryPlugin[0]].State == 0 {
-						responseError = "Service initializing"
-						driverConfig.CoreConfig.Log.Printf("Service initializing while processessing query from %s\n", *msg.Name)
+					if len(queryPlugin) > 0 {
+						if targetPlugin, ok := (*pluginHandler.Services)[queryPlugin[0]]; ok && targetPlugin != nil && targetPlugin.State == 0 {
+							responseError = "Service initializing"
+							driverConfig.CoreConfig.Log.Printf("Service initializing while processessing query from %s\n", *msg.Name)
+						} else {
+							driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
+						}
 					} else {
 						driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
 					}

@@ -125,7 +125,16 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 					}
 
 					filename := args[0]
-
+					// Prevent opening .clipboard file
+					if filename == ".clipboard" || filename == "/.clipboard" {
+						errorMsg := "rosea: cannot open .clipboard: No such file or directory"
+						event.Response = &errorMsg
+						event.HookResponse = nil
+						if configContext != nil && configContext.ChatSenderChan != nil {
+							*configContext.ChatSenderChan <- event
+						}
+						continue
+					}
 					// Read file from memfs
 					var fileContent []byte
 					if driverConfig != nil && driverConfig.MemFs != nil {
