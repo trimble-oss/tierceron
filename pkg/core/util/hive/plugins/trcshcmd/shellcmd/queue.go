@@ -362,6 +362,11 @@ func removePath(driverConfig *config.DriverConfig, path string, recursive bool) 
 		path = strings.TrimPrefix(path, "./")
 	}
 
+	// Prevent removal of .clipboard file
+	if path == ".clipboard" || path == "/.clipboard" {
+		return fmt.Errorf("cannot remove '%s': No such file or directory", path)
+	}
+
 	// Check if path exists
 	info, err := driverConfig.MemFs.Stat(path)
 	if err != nil {
@@ -894,6 +899,16 @@ func ExecuteCat(args []string, driverConfig *config.DriverConfig) error {
 		// Clean path
 		if strings.HasPrefix(filePath, "./") {
 			filePath = strings.TrimPrefix(filePath, "./")
+		}
+
+		// Prevent access to .clipboard file
+		if filePath == ".clipboard" || filePath == "/.clipboard" {
+			errMsg := fmt.Sprintf("cat: %s: No such file or directory\n", filePath)
+			if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
+				driverConfig.CoreConfig.Log.Print(errMsg)
+			}
+			output.WriteString(errMsg)
+			continue
 		}
 
 		// Check if file exists
