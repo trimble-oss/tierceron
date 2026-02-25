@@ -364,7 +364,7 @@ func removePath(driverConfig *config.DriverConfig, path string, recursive bool) 
 
 	// Prevent removal of .clipboard file
 	if path == ".clipboard" || path == "/.clipboard" {
-		return fmt.Errorf("cannot remove '%s': permission denied", path)
+		return fmt.Errorf("cannot remove '%s': No such file or directory", path)
 	}
 
 	// Check if path exists
@@ -903,7 +903,7 @@ func ExecuteCat(args []string, driverConfig *config.DriverConfig) error {
 
 		// Prevent access to .clipboard file
 		if filePath == ".clipboard" || filePath == "/.clipboard" {
-			errMsg := fmt.Sprintf("cat: cannot read %s: permission denied\n", filePath)
+			errMsg := fmt.Sprintf("cat: %s: No such file or directory\n", filePath)
 			if driverConfig.CoreConfig != nil && driverConfig.CoreConfig.Log != nil {
 				driverConfig.CoreConfig.Log.Print(errMsg)
 			}

@@ -902,8 +902,8 @@ func (m *ShellModel) findMatches(dir, prefix string) []string {
 	for _, entry := range entries {
 		name := entry.Name()
 
-		// Skip io directory (internal)
-		if name == "io" {
+		// Skip io directory (internal) and .clipboard file
+		if name == "io" || name == ".clipboard" {
 			continue
 		}
 
@@ -978,8 +978,18 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			}
 		}
 
-		// Return a command that requests editor model from rosea
+		// Check if trying to open .clipboard file
 		args := parts[1:]
+		if len(args) > 0 && (args[0] == ".clipboard" || args[0] == "/.clipboard") {
+			return func() tea.Msg {
+				return commandResultMsg{
+					output:     []string{errorStyle.Render("Error: cannot open .clipboard: No such file or directory")},
+					shouldQuit: false,
+				}
+			}
+		}
+
+		// Return a command that requests editor model from rosea
 		return func() tea.Msg {
 			// Send message to trcshcmd/rosea to get editor model
 			id := fmt.Sprintf("rosea-%d", time.Now().UnixNano())
