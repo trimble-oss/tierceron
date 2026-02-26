@@ -2,6 +2,7 @@ package testr
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
@@ -60,6 +61,7 @@ func readMemFsClipboard() (string, time.Time) {
 }
 
 // getClipboardContent retrieves clipboard content, checking memFs first, then system
+// Prefers clipboard with different content (user's latest action), otherwise prefers newer
 // This allows rosea to be aware of trcsh's clipboard
 func getClipboardContent() string {
 	// First check trcsh's memory filesystem clipboard
@@ -83,11 +85,17 @@ func getClipboardContent() string {
 		sysContent = content
 	}
 
-	// Update system clipboard tracking only if content is new
-	if sysContent != "" && sysContent != lastSysClipContent {
-		lastSysClipTime = time.Now()
-		lastSysClipContent = sysContent
-		sysTime = lastSysClipTime
+	// Update system clipboard tracking only if content is new (using hash comparison)
+	// Use hash instead of storing full content to avoid memory bloat
+	if sysContent != "" {
+		contentHash := hashContent(sysContent)
+		if contentHash != lastSysClipHash {
+			lastSysClipTime = time.Now()
+			lastSysClipHash = contentHash
+			sysTime = lastSysClipTime
+		} else {
+			sysTime = lastSysClipTime
+		}
 	} else {
 		sysTime = lastSysClipTime
 	}
@@ -109,23 +117,21 @@ func getClipboardContent() string {
 		return memfsContent
 	}
 
-	// Both have content - use newer one
-	if memfsTime.After(sysTime) {
-		return memfsContent
+	// Both have content
+	// Use the one that was updated more recently
+	if sysTime.After(memfsTime) {
+		return sysContent
 	}
-	return sysContent
+	return memfsContent
 }
 
 // tryWSLClipboard tries to get clipboard from WSL using PowerShell
 func tryWSLClipboard() (string, error) {
 	cmd := exec.Command("powershell.exe", "-command", "Get-Clipboard")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
+	content, err := readClipboardWithSize(cmd)
 	if err != nil {
 		return "", err
 	}
-	content := out.String()
 	// Remove Windows line endings
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	content = strings.TrimRight(content, "\n")
@@ -135,37 +141,19 @@ func tryWSLClipboard() (string, error) {
 // tryWaylandClipboard tries to get clipboard from Wayland
 func tryWaylandClipboard() (string, error) {
 	cmd := exec.Command("wl-paste", "--no-newline")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryX11ClipboardXclip tries to get clipboard from X11 using xclip
 func tryX11ClipboardXclip() (string, error) {
 	cmd := exec.Command("xclip", "-selection", "clipboard", "-o")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryX11ClipboardXsel tries to get clipboard from X11 using xsel
 func tryX11ClipboardXsel() (string, error) {
 	cmd := exec.Command("xsel", "--clipboard", "--output")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // Rosé Pine Moon styles
@@ -187,9 +175,36 @@ var (
 var (
 	lastMemFsClipContent string
 	lastMemFsClipTime    time.Time
-	lastSysClipContent   string
+	lastSysClipHash      string // Hash of system clipboard (not full content)
 	lastSysClipTime      time.Time
 )
+
+// Maximum clipboard size (10MB) - prevents OOM from malicious/accidental huge pastes
+const maxClipboardSize = 10 * 1024 * 1024
+
+// readClipboardWithSize reads clipboard output and truncates if over maxClipboardSize
+func readClipboardWithSize(cmd *exec.Cmd) (string, error) {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	content := out.String()
+	if len(content) > maxClipboardSize {
+		// Truncate to max size
+		return content[:maxClipboardSize], nil
+	}
+	return content, nil
+}
+
+// hashContent returns the MD5 hash of content as a hex string
+// Used for detecting clipboard changes without storing full content
+func hashContent(content string) string {
+	hash := md5.Sum([]byte(content))
+	return fmt.Sprintf("%x", hash)
+}
 
 type RoseaEditorModel struct {
 	title         string
@@ -223,8 +238,16 @@ type RoseaEditorModel struct {
 	confirmingExit bool // If true, showing exit confirmation for unsaved changes
 
 	// Text selection for copy/paste
-	selectionStart int // Start position for text selection (-1 = no selection)
-	selectionEnd   int // End position for text selection
+	selectionStart int  // Start position for text selection (-1 = no selection)
+	selectionEnd   int  // End position for text selection
+	isSelecting    bool // Flag to track if user is currently selecting/dragging
+
+	// Multi-click tracking
+	lastClickTime time.Time // Time of last click for multi-click detection
+	lastClickX    int       // X position of last click
+	lastClickY    int       // Y position of last click
+	clickCount    int       // Click counter for multi-click detection
+	hadMotion     bool      // Flag to track if mouse moved since click
 }
 
 func lines(b *[]byte) []string {
@@ -285,6 +308,10 @@ func (m *RoseaEditorModel) copyToMemFsClipboard(content string) {
 		return
 	}
 
+	// Update global tracking with the new content
+	lastMemFsClipContent = content
+	lastMemFsClipTime = time.Now()
+
 	// Retry up to 3 times to write to clipboard
 	for attempt := 0; attempt < 3; attempt++ {
 		// Only remove if file exists (skip on attempt 0 since it won't exist)
@@ -317,6 +344,18 @@ func InitRoseaEditor(title string, data *[]byte) *RoseaEditorModel {
 		height = 24
 	}
 
+	// Initialize system clipboard hash at startup
+	// This prevents treating stale pre-existing content as "newly changed"
+	if sysContent, err := tryWSLClipboard(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	} else if sysContent, err := tryWaylandClipboard(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	} else if sysContent, err := tryX11ClipboardXclip(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	} else if sysContent, err := tryX11ClipboardXsel(); err == nil && sysContent != "" {
+		lastSysClipHash = hashContent(sysContent)
+	}
+
 	initialContent := strings.Join(lines(data), "\n")
 	return &RoseaEditorModel{
 		title:          title,
@@ -340,6 +379,60 @@ func (m *RoseaEditorModel) Init() tea.Cmd {
 	return cursorBlink()
 }
 
+// isWordChar checks if a character is part of a word (alphanumeric or underscore)
+func isWordChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+// findWordBoundaries returns the start and end of the word at position pos
+func findWordBoundaries(text string, pos int) (start, end int) {
+	if pos < 0 || pos >= len(text) {
+		return pos, pos
+	}
+
+	// If clicking on whitespace, select the whitespace
+	if !isWordChar(text[pos]) {
+		start = pos
+		end = pos + 1
+		return
+	}
+
+	// Find word start
+	start = pos
+	for start > 0 && isWordChar(text[start-1]) {
+		start--
+	}
+
+	// Find word end
+	end = pos + 1
+	for end < len(text) && isWordChar(text[end]) {
+		end++
+	}
+
+	return
+}
+
+// selectLine returns the start and end of the line containing pos
+func (m *RoseaEditorModel) selectLine(text string, pos int) (start, end int) {
+	if pos < 0 || pos > len(text) {
+		return 0, 0
+	}
+
+	// Find line start
+	start = pos
+	for start > 0 && text[start-1] != '\n' {
+		start--
+	}
+
+	// Find line end
+	end = pos
+	for end < len(text) && text[end] != '\n' {
+		end++
+	}
+
+	return
+}
+
 func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case cursorBlinkMsg:
@@ -354,18 +447,78 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.MouseMsg:
-		// Handle mouse events for selection and cursor positioning
-		if msg.Type == tea.MouseLeft {
-			// Convert mouse position to cursor position in text
-			cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
-			if cursorPos >= 0 && cursorPos <= len(m.input) {
-				// Start or extend selection
-				if m.selectionStart < 0 {
-					// Start new selection
-					m.selectionStart = cursorPos
-				}
-				m.selectionEnd = cursorPos
+		// Handle mouse events for selection with deferred multi-click detection
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+			// Record click information for multi-click detection
+			now := time.Now()
+			const doubleClickThreshold = 300 * time.Millisecond
+			const clickProximity = 5
+
+			timeSinceLastClick := now.Sub(m.lastClickTime)
+			proximityOK := (msg.X >= m.lastClickX-clickProximity && msg.X <= m.lastClickX+clickProximity) &&
+				(msg.Y >= m.lastClickY-clickProximity && msg.Y <= m.lastClickY+clickProximity)
+
+			// Increment click count if within threshold, proximity, and no motion since last click
+			if timeSinceLastClick <= doubleClickThreshold && proximityOK && !m.hadMotion {
+				m.clickCount++
+			} else {
+				m.clickCount = 1    // Reset for new click sequence
+				m.hadMotion = false // Reset motion flag for new click sequence
 			}
+
+			// Record this click
+			m.lastClickTime = now
+			m.lastClickX = msg.X
+			m.lastClickY = msg.Y
+
+			// Get cursor position
+			cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+
+			// Only process position change if not already selecting (first click)
+			if !m.isSelecting {
+				m.isSelecting = true
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					m.selectionStart = cursorPos
+					m.selectionEnd = cursorPos
+				}
+			} else {
+				// Already selecting - this is a continued drag, update end position
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					m.selectionEnd = cursorPos
+				}
+			}
+		} else if msg.Action == tea.MouseActionMotion {
+			// Mouse is moving while button held - mark that we had motion and update selection end
+			m.hadMotion = true
+			if m.isSelecting {
+				cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					m.selectionEnd = cursorPos
+				}
+			}
+		} else if msg.Action == tea.MouseActionRelease {
+			// Mouse button released - apply multi-click logic if no motion occurred
+			if !m.hadMotion {
+				// No motion - apply multi-click selection
+				cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					if m.clickCount == 2 {
+						// Double-click: select word
+						start, end := findWordBoundaries(m.input, cursorPos)
+						m.selectionStart = start
+						m.selectionEnd = end
+					} else if m.clickCount >= 3 {
+						// Triple-click: select entire line
+						start, end := m.selectLine(m.input, cursorPos)
+						m.selectionStart = start
+						m.selectionEnd = end
+					}
+					// For single click, selection already set during MouseLeft
+				}
+			}
+			// For motion-based selection, the end was already set during MouseMotion
+			m.isSelecting = false
+			// Don't reset hadMotion here - it will be reset on the next MouseLeft when a new sequence starts
 		}
 		return m, nil
 
@@ -612,6 +765,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlA: // Select all
 			m.selectionStart = 0
 			m.selectionEnd = len(m.input)
+			return m, nil
+
+		case tea.KeyEsc: // Clear selection on Escape
+			m.clearSelection()
 			return m, nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
