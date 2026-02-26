@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"io"
 	"os"
@@ -30,6 +31,16 @@ var (
 	chatMsgHooks = cmap.New[tccore.ChatHookFunc]()
 )
 
+// Maximum clipboard size (10MB) - prevents OOM from malicious/accidental huge pastes
+const maxClipboardSize = 10 * 1024 * 1024
+
+// hashContent returns the MD5 hash of content as a hex string
+// Used for detecting clipboard changes without storing full content
+func hashContent(content string) string {
+	hash := md5.Sum([]byte(content))
+	return fmt.Sprintf("%x", hash)
+}
+
 // commandResultMsg is sent when a command completes execution
 type commandResultMsg struct {
 	output     []string
@@ -57,32 +68,39 @@ func GetChatMsgHooks() *cmap.ConcurrentMap[string, tccore.ChatHookFunc] {
 }
 
 type ShellModel struct {
-	width              int
-	height             int
-	prompt             string
-	input              string
-	cursor             int
-	cursorVisible      bool // For blinking cursor
-	history            []string
-	historyIndex       int
-	draft              string
-	output             []string       // Persistent buffer - holds ALL output
-	viewport           viewport.Model // Viewport handles scrolling
-	memFs              trcshio.MemoryFileSystem
-	chatSenderChan     *chan *tccore.ChatMsg
-	pendingExit        bool
-	elevatedMode       bool                      // Track if user has unrestricted write access
-	commandExecuting   bool                      // Track if a command is currently executing
-	editorModel        tea.Model                 // Active editor model (nil when not editing)
-	dirPickerMode      bool                      // Track if dirpicker is active
-	dirPicker          *dirpicker.DirPickerModel // Active dirpicker instance
-	pendingCommand     string                    // Command waiting for dirpicker selection
-	selectionStart     int                       // Start position for text selection
-	selectionEnd       int                       // End position for text selection
-	isSelecting        bool                      // Flag to track if user is selecting
-	lastMemClipTime    time.Time                 // Timestamp of last memFs clipboard update
-	lastSysClipTime    time.Time                 // Timestamp when system clipboard content was detected
-	lastSysClipContent string                    // Last system clipboard content we saw
+	width               int
+	height              int
+	prompt              string
+	input               string
+	cursor              int
+	cursorVisible       bool // For blinking cursor
+	history             []string
+	historyIndex        int
+	draft               string
+	output              []string       // Persistent buffer - holds ALL output
+	viewport            viewport.Model // Viewport handles scrolling
+	memFs               trcshio.MemoryFileSystem
+	chatSenderChan      *chan *tccore.ChatMsg
+	pendingExit         bool
+	elevatedMode        bool                      // Track if user has unrestricted write access
+	commandExecuting    bool                      // Track if a command is currently executing
+	editorModel         tea.Model                 // Active editor model (nil when not editing)
+	dirPickerMode       bool                      // Track if dirpicker is active
+	dirPicker           *dirpicker.DirPickerModel // Active dirpicker instance
+	pendingCommand      string                    // Command waiting for dirpicker selection
+	selectionStart      int                       // Start position for text selection
+	selectionEnd        int                       // End position for text selection
+	isSelecting         bool                      // Flag to track if user is selecting
+	lastClickTime       time.Time                 // Time of last click for multi-click detection
+	lastClickX          int                       // X position of last click
+	lastClickY          int                       // Y position of last click
+	clickCount          int                       // Click counter for multi-click detection
+	hadMotionSinceClick bool                      // Flag to track if mouse moved since click
+	lastMemClipTime     time.Time                 // Timestamp of last memFs clipboard update
+	lastMemClipContent  string                    // Cached memFs clipboard content
+	lastSysClipTime     time.Time                 // Timestamp when system clipboard content was detected
+	lastSysClipHash     string                    // Hash of last system clipboard content (for change detection)
+	lastSysCheckTime    time.Time                 // Timestamp when we last checked system clipboard
 }
 
 func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFileSystem) *ShellModel {
@@ -105,7 +123,7 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	initialOutput := []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""}
 	vp.SetContent(strings.Join(initialOutput, "\n"))
 
-	return &ShellModel{
+	m := &ShellModel{
 		width:              width,
 		height:             height,
 		prompt:             "$",
@@ -130,9 +148,19 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 		selectionEnd:       -1,
 		isSelecting:        false,
 		lastMemClipTime:    time.Now(),
-		lastSysClipTime:    time.Time{}, // Start with zero time
-		lastSysClipContent: "",          // Start empty
+		lastMemClipContent: "",
+		lastSysClipTime:    time.Now(),
+		lastSysClipHash:    "", // Will be initialized below
+		lastSysCheckTime:   time.Now(),
 	}
+
+	// Initialize system clipboard hash to what's currently there
+	// This prevents treating stale pre-existing content as "newly changed"
+	if sysContent, _ := m.readSystemClipboard(); sysContent != "" {
+		m.lastSysClipHash = hashContent(sysContent)
+	}
+
+	return m
 }
 
 // cursorBlinkMsg triggers cursor blink
@@ -154,7 +182,12 @@ func (m *ShellModel) copyToMemFsClipboard(content string) {
 		return
 	}
 
-	// Retry up to 3 times to write to clipboard
+	// Cache the content and update timestamp immediately
+	// This ensures getClipboardToUse() will return this content even if file write fails
+	m.lastMemClipContent = content
+	m.lastMemClipTime = time.Now()
+
+	// Try to write to clipboard file (best effort, but cached content is reliable)
 	for attempt := 0; attempt < 3; attempt++ {
 		// Only remove if file exists (skip on attempt 0 since it won't exist)
 		if attempt > 0 {
@@ -172,8 +205,7 @@ func (m *ShellModel) copyToMemFsClipboard(content string) {
 		file.Close()
 
 		if err == nil {
-			// Success - update timestamp
-			m.lastMemClipTime = time.Now()
+			// Success
 			return
 		}
 		// Retry on write error
@@ -183,10 +215,18 @@ func (m *ShellModel) copyToMemFsClipboard(content string) {
 // readMemFsClipboard retrieves content from memFs clipboard
 func (m *ShellModel) readMemFsClipboard() (string, time.Time) {
 	if m.memFs == nil {
+		// Return cached content if file system unavailable
+		if m.lastMemClipContent != "" {
+			return m.lastMemClipContent, m.lastMemClipTime
+		}
 		return "", m.lastMemClipTime
 	}
 	file, err := m.memFs.Open("/.clipboard")
 	if err != nil {
+		// File doesn't exist, return cached content if available
+		if m.lastMemClipContent != "" {
+			return m.lastMemClipContent, m.lastMemClipTime
+		}
 		return "", m.lastMemClipTime
 	}
 	defer file.Close()
@@ -195,13 +235,20 @@ func (m *ShellModel) readMemFsClipboard() (string, time.Time) {
 	var buf strings.Builder
 	_, err = io.Copy(&buf, file)
 	if err != nil {
+		// Read error, return cached content if available
+		if m.lastMemClipContent != "" {
+			return m.lastMemClipContent, m.lastMemClipTime
+		}
 		return "", m.lastMemClipTime
 	}
+
+	// Update cache with file contents
+	m.lastMemClipContent = buf.String()
 	return buf.String(), m.lastMemClipTime
 }
 
 // readSystemClipboard attempts to read from system clipboard using native tools
-// Only updates timestamp when content actually changes (not every read)
+// Detects when content changes using hash comparison (not storing full content)
 // Tries xclip, xsel, wl-paste, and WSL powershell depending on what's available
 // Returns empty string if not available
 func (m *ShellModel) readSystemClipboard() (string, time.Time) {
@@ -221,61 +268,63 @@ func (m *ShellModel) readSystemClipboard() (string, time.Time) {
 		content = c
 	}
 
-	// Only update timestamp if content is new (different from what we last saw)
-	if content != "" && content != m.lastSysClipContent {
-		m.lastSysClipTime = time.Now()
-		m.lastSysClipContent = content
+	// If we got content and its hash is different from what we last saw, it's been changed
+	// Use hash comparison to avoid storing large clipboard content in memory
+	if content != "" {
+		contentHash := hashContent(content)
+		if contentHash != m.lastSysClipHash {
+			m.lastSysClipTime = time.Now()
+			m.lastSysClipHash = contentHash
+		}
 	}
 
+	m.lastSysCheckTime = time.Now()
+
 	return content, m.lastSysClipTime
+}
+
+// readClipboardWithSize reads clipboard output and truncates if over maxClipboardSize
+func readClipboardWithSize(cmd *exec.Cmd) (string, error) {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	content := out.String()
+	if len(content) > maxClipboardSize {
+		// Truncate to max size
+		return content[:maxClipboardSize], nil
+	}
+	return content, nil
 }
 
 // tryX11ClipboardXclip tries to get clipboard from X11 using xclip
 func tryX11ClipboardXclip() (string, error) {
 	cmd := exec.Command("xclip", "-selection", "clipboard", "-o")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryX11ClipboardXsel tries to get clipboard from X11 using xsel
 func tryX11ClipboardXsel() (string, error) {
 	cmd := exec.Command("xsel", "--clipboard", "--output")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryWaylandClipboard tries to get clipboard from Wayland
 func tryWaylandClipboard() (string, error) {
 	cmd := exec.Command("wl-paste", "--no-newline")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return out.String(), nil
+	return readClipboardWithSize(cmd)
 }
 
 // tryWSLClipboard tries to get clipboard from WSL using PowerShell
 func tryWSLClipboard() (string, error) {
 	cmd := exec.Command("powershell.exe", "-command", "Get-Clipboard")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
+	content, err := readClipboardWithSize(cmd)
 	if err != nil {
 		return "", err
 	}
-	content := out.String()
 	// Remove Windows line endings
 	content = strings.ReplaceAll(content, "\r\n", "\n")
 	content = strings.TrimRight(content, "\n")
@@ -283,7 +332,7 @@ func tryWSLClipboard() (string, error) {
 }
 
 // getClipboardToUse returns content from the most recently updated clipboard
-// Prefers memFs if it's newer, otherwise tries system clipboard
+// Uses timestamps to determine which was updated most recently
 func (m *ShellModel) getClipboardToUse() string {
 	memContent, memTime := m.readMemFsClipboard()
 	sysContent, sysTime := m.readSystemClipboard()
@@ -296,11 +345,12 @@ func (m *ShellModel) getClipboardToUse() string {
 	if memContent == "" {
 		return sysContent
 	}
-	// Both have content - use newer one
-	if memTime.After(sysTime) {
-		return memContent
+
+	// Both have content - prefer whichever was updated more recently
+	if sysTime.After(memTime) {
+		return sysContent
 	}
-	return sysContent
+	return memContent
 }
 
 // getSelectedText returns the text that is currently selected
@@ -309,15 +359,25 @@ func (m *ShellModel) getSelectedText() string {
 		return ""
 	}
 
-	// Flatten output to single string with newlines
-	fullText := strings.Join(m.output, "\n")
-
 	start := m.selectionStart
 	end := m.selectionEnd
 	if start > end {
 		start, end = end, start
 	}
 
+	// Check if selection is within the current input line
+	if start >= -1 && end <= len(m.input) && start >= 0 && end >= 0 {
+		if start < 0 {
+			start = 0
+		}
+		if end > len(m.input) {
+			end = len(m.input)
+		}
+		return m.input[start:end]
+	}
+
+	// Otherwise, selection is in the output history
+	fullText := strings.Join(m.output, "\n")
 	if start < 0 || end > len(fullText) {
 		return ""
 	}
@@ -330,6 +390,60 @@ func (m *ShellModel) clearSelection() {
 	m.selectionStart = -1
 	m.selectionEnd = -1
 	m.isSelecting = false
+}
+
+// isWordChar checks if a character is part of a word (alphanumeric or underscore)
+func isWordChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+// findWordBoundaries returns the start and end of the word at position pos
+func findWordBoundaries(text string, pos int) (start, end int) {
+	if pos < 0 || pos >= len(text) {
+		return pos, pos
+	}
+
+	// If clicking on whitespace, select the whitespace
+	if !isWordChar(text[pos]) {
+		start = pos
+		end = pos + 1
+		return
+	}
+
+	// Find word start
+	start = pos
+	for start > 0 && isWordChar(text[start-1]) {
+		start--
+	}
+
+	// Find word end
+	end = pos + 1
+	for end < len(text) && isWordChar(text[end]) {
+		end++
+	}
+
+	return
+}
+
+// selectLine returns the start and end of the line containing pos
+func (m *ShellModel) selectLine(text string, pos int) (start, end int) {
+	if pos < 0 || pos > len(text) {
+		return 0, 0
+	}
+
+	// Find line start
+	start = pos
+	for start > 0 && text[start-1] != '\n' {
+		start--
+	}
+
+	// Find line end
+	end = pos
+	for end < len(text) && text[end] != '\n' {
+		end++
+	}
+
+	return
 }
 
 func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -444,59 +558,208 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.MouseMsg:
-		// Handle text selection via mouse
-		if msg.Type == tea.MouseLeft {
-			// Get position adjusted for viewport scrolling
-			fullText := strings.Join(m.output, "\n")
-			lines := strings.Split(fullText, "\n")
+		// Handle text selection via mouse with deferred multi-click detection
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
+			// Record click information for multi-click detection
+			now := time.Now()
+			inputLineY := m.height - 1
 
-			// Account for viewport's YOffset (scrolling)
-			adjustedY := msg.Y + m.viewport.YOffset
-			x := msg.X
+			// Check if this is a multi-click
+			const doubleClickThreshold = 300 * time.Millisecond
+			const clickProximity = 5
 
-			if adjustedY >= 0 && adjustedY < len(lines) {
-				line := lines[adjustedY]
-				if x >= 0 && x <= len(line) {
-					// Calculate position in flattened string
-					pos := 0
-					for i := 0; i < adjustedY; i++ {
-						pos += len(lines[i]) + 1 // +1 for newline
+			timeSinceLastClick := now.Sub(m.lastClickTime)
+			proximityOK := (msg.X >= m.lastClickX-clickProximity && msg.X <= m.lastClickX+clickProximity) &&
+				(msg.Y >= m.lastClickY-clickProximity && msg.Y <= m.lastClickY+clickProximity)
+
+			// Increment click count if within threshold and proximity, and no motion since last click
+			if timeSinceLastClick <= doubleClickThreshold && proximityOK && !m.hadMotionSinceClick {
+				m.clickCount++
+			} else {
+				m.clickCount = 1              // Reset for new click sequence
+				m.hadMotionSinceClick = false // Reset motion flag for new click sequence
+			}
+
+			// Record this click
+			m.lastClickTime = now
+			m.lastClickX = msg.X
+			m.lastClickY = msg.Y
+
+			// Only process click if not already selecting (original behavior for drag)
+			if !m.isSelecting {
+				m.isSelecting = true
+
+				if msg.Y == inputLineY {
+					// Clicking on the input line
+					promptWidth := len(m.prompt) + 1 // "$ "
+					if msg.X >= promptWidth {
+						posInInput := msg.X - promptWidth
+						if posInInput > len(m.input) {
+							posInInput = len(m.input)
+						}
+						m.selectionStart = posInInput
+						m.selectionEnd = posInInput
 					}
-					pos += x
+				} else if msg.Y < inputLineY {
+					// Clicking on the output/viewport area
+					fullText := strings.Join(m.output, "\n")
+					lines := strings.Split(fullText, "\n")
 
-					// If not already selecting, start selection
-					if !m.isSelecting {
-						m.selectionStart = pos
-						m.isSelecting = true
-					} else {
-						// Update end position while dragging
+					adjustedY := msg.Y + m.viewport.YOffset
+					x := msg.X
+
+					if adjustedY >= 0 && adjustedY < len(lines) {
+						line := lines[adjustedY]
+						if x >= 0 && x <= len(line) {
+							// Calculate position in flattened string
+							pos := 0
+							for i := 0; i < adjustedY; i++ {
+								pos += len(lines[i]) + 1
+							}
+							pos += x
+							m.selectionStart = pos
+							m.selectionEnd = pos
+						}
+					}
+				}
+			} else {
+				// Already selecting - this is a continued drag, update end position
+				if msg.Y == inputLineY {
+					// Dragging on the input line
+					promptWidth := len(m.prompt) + 1 // "$ "
+					if msg.X >= promptWidth {
+						posInInput := msg.X - promptWidth
+						if posInInput > len(m.input) {
+							posInInput = len(m.input)
+						}
+						m.selectionEnd = posInInput
+						m.updateViewportContent()
+					}
+				} else if msg.Y < inputLineY {
+					// Dragging on the output/viewport area
+					fullText := strings.Join(m.output, "\n")
+					lines := strings.Split(fullText, "\n")
+
+					adjustedY := msg.Y + m.viewport.YOffset
+					x := msg.X
+
+					if adjustedY >= 0 && adjustedY < len(lines) {
+						line := lines[adjustedY]
+						if x >= 0 && x <= len(line) {
+							// Calculate position in flattened string
+							pos := 0
+							for i := 0; i < adjustedY; i++ {
+								pos += len(lines[i]) + 1
+							}
+							pos += x
+							m.selectionEnd = pos
+							m.updateViewportContent()
+						}
+					}
+				}
+			}
+		} else if msg.Action == tea.MouseActionMotion && m.isSelecting {
+			// Mouse is moving - mark that we had motion and update selection end
+			m.hadMotionSinceClick = true
+			inputLineY := m.height - 1
+
+			if msg.Y == inputLineY {
+				// Dragging on the input line
+				promptWidth := len(m.prompt) + 1 // "$ "
+				if msg.X >= promptWidth {
+					posInInput := msg.X - promptWidth
+					if posInInput > len(m.input) {
+						posInInput = len(m.input)
+					}
+					m.selectionEnd = posInInput
+					m.updateViewportContent()
+				}
+			} else if msg.Y < inputLineY {
+				// Dragging on the output/viewport area
+				fullText := strings.Join(m.output, "\n")
+				lines := strings.Split(fullText, "\n")
+
+				adjustedY := msg.Y + m.viewport.YOffset
+				x := msg.X
+
+				if adjustedY >= 0 && adjustedY < len(lines) {
+					line := lines[adjustedY]
+					if x >= 0 && x <= len(line) {
+						// Calculate position in flattened string
+						pos := 0
+						for i := 0; i < adjustedY; i++ {
+							pos += len(lines[i]) + 1
+						}
+						pos += x
+
 						m.selectionEnd = pos
 						m.updateViewportContent()
 					}
 				}
 			}
-		} else if msg.Type == tea.MouseMotion && m.isSelecting {
-			// Update selection end while dragging
-			fullText := strings.Join(m.output, "\n")
-			lines := strings.Split(fullText, "\n")
-
-			adjustedY := msg.Y + m.viewport.YOffset
-			x := msg.X
-
-			if adjustedY >= 0 && adjustedY < len(lines) {
-				line := lines[adjustedY]
-				if x >= 0 && x <= len(line) {
-					// Calculate position in flattened string
-					pos := 0
-					for i := 0; i < adjustedY; i++ {
-						pos += len(lines[i]) + 1
+		} else if msg.Action == tea.MouseActionRelease {
+			// Mouse released - apply multi-click logic if no motion occurred
+			if !m.hadMotionSinceClick {
+				// No motion - apply multi-click selection
+				inputLineY := m.height - 1
+				// Get the current position based on msg.X and msg.Y
+				if msg.Y == inputLineY {
+					// On input line
+					promptWidth := len(m.prompt) + 1
+					if msg.X >= promptWidth {
+						posInInput := msg.X - promptWidth
+						if posInInput > len(m.input) {
+							posInInput = len(m.input)
+						}
+						if m.clickCount == 2 {
+							// Double-click: select word
+							start, end := findWordBoundaries(m.input, posInInput)
+							m.selectionStart = start
+							m.selectionEnd = end
+						} else if m.clickCount >= 3 {
+							// Triple-click: select entire input
+							m.selectionStart = 0
+							m.selectionEnd = len(m.input)
+						}
+						// Single click already set selection start/end during MouseLeft
 					}
-					pos += x
+				} else if msg.Y < inputLineY {
+					// On output area
+					fullText := strings.Join(m.output, "\n")
+					lines := strings.Split(fullText, "\n")
 
-					m.selectionEnd = pos
-					m.updateViewportContent()
+					adjustedY := msg.Y + m.viewport.YOffset
+					x := msg.X
+
+					if adjustedY >= 0 && adjustedY < len(lines) {
+						line := lines[adjustedY]
+						if x >= 0 && x <= len(line) {
+							// Calculate position in flattened string
+							pos := 0
+							for i := 0; i < adjustedY; i++ {
+								pos += len(lines[i]) + 1
+							}
+							pos += x
+
+							if m.clickCount == 2 {
+								// Double-click: select word
+								start, end := findWordBoundaries(fullText, pos)
+								m.selectionStart = start
+								m.selectionEnd = end
+							} else if m.clickCount >= 3 {
+								// Triple-click: select entire line
+								start, end := m.selectLine(fullText, pos)
+								m.selectionStart = start
+								m.selectionEnd = end
+							}
+							// Single click already set selection start/end during MouseLeft
+						}
+					}
 				}
 			}
+			m.isSelecting = false
+			// Don't reset hadMotionSinceClick here - it will be reset on the next MouseLeft when a new sequence starts
+			m.updateViewportContent()
 		}
 
 		var cmd tea.Cmd
@@ -769,25 +1032,65 @@ func (m *ShellModel) View() string {
 			sb.WriteString(promptStyle.Render(m.prompt + " "))
 		}
 
-		// Render input with cursor
-		if m.cursor < len(m.input) {
-			before := m.input[:m.cursor]
-			at := string(m.input[m.cursor])
-			after := m.input[m.cursor+1:]
+		// Render input with cursor and/or selection
+		selStart := m.selectionStart
+		selEnd := m.selectionEnd
+		if selStart > selEnd {
+			selStart, selEnd = selEnd, selStart
+		}
 
-			if m.cursorVisible {
-				cursorStyle := lipgloss.NewStyle().Reverse(true)
-				sb.WriteString(before)
-				sb.WriteString(cursorStyle.Render(at))
-				sb.WriteString(after)
+		// Check if we have a selection in the input
+		hasSelection := selStart >= 0 && selEnd >= 0 && selStart < len(m.input) && selEnd <= len(m.input)
+
+		if hasSelection {
+			// Render with selection highlighting
+			selectionStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#96c7a2")).Bold(true)
+			cursorStyle := lipgloss.NewStyle().Reverse(true)
+
+			// Build the input with selection and cursor
+			var inputRendered string
+			for i := 0; i < len(m.input); i++ {
+				char := string(m.input[i])
+
+				if i >= selStart && i < selEnd {
+					// In selection
+					inputRendered += selectionStyle.Render(char)
+				} else if i == m.cursor && m.cursorVisible {
+					// At cursor
+					inputRendered += cursorStyle.Render(char)
+				} else {
+					// Normal character
+					inputRendered += char
+				}
+			}
+
+			// Add cursor at end if needed
+			if m.cursor == len(m.input) && m.cursorVisible {
+				inputRendered += cursorStyle.Render(" ")
+			}
+
+			sb.WriteString(inputRendered)
+		} else {
+			// Original rendering (cursor only, no selection)
+			if m.cursor < len(m.input) {
+				before := m.input[:m.cursor]
+				at := string(m.input[m.cursor])
+				after := m.input[m.cursor+1:]
+
+				if m.cursorVisible {
+					cursorStyle := lipgloss.NewStyle().Reverse(true)
+					sb.WriteString(before)
+					sb.WriteString(cursorStyle.Render(at))
+					sb.WriteString(after)
+				} else {
+					sb.WriteString(m.input)
+				}
 			} else {
 				sb.WriteString(m.input)
-			}
-		} else {
-			sb.WriteString(m.input)
-			if m.cursorVisible {
-				cursorStyle := lipgloss.NewStyle().Reverse(true)
-				sb.WriteString(cursorStyle.Render(" "))
+				if m.cursorVisible {
+					cursorStyle := lipgloss.NewStyle().Reverse(true)
+					sb.WriteString(cursorStyle.Render(" "))
+				}
 			}
 		}
 	}
