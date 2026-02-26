@@ -238,8 +238,16 @@ type RoseaEditorModel struct {
 	confirmingExit bool // If true, showing exit confirmation for unsaved changes
 
 	// Text selection for copy/paste
-	selectionStart int // Start position for text selection (-1 = no selection)
-	selectionEnd   int // End position for text selection
+	selectionStart int  // Start position for text selection (-1 = no selection)
+	selectionEnd   int  // End position for text selection
+	isSelecting    bool // Flag to track if user is currently selecting/dragging
+
+	// Multi-click tracking
+	lastClickTime time.Time // Time of last click for multi-click detection
+	lastClickX    int       // X position of last click
+	lastClickY    int       // Y position of last click
+	clickCount    int       // Click counter for multi-click detection
+	hadMotion     bool      // Flag to track if mouse moved since click
 }
 
 func lines(b *[]byte) []string {
@@ -371,6 +379,60 @@ func (m *RoseaEditorModel) Init() tea.Cmd {
 	return cursorBlink()
 }
 
+// isWordChar checks if a character is part of a word (alphanumeric or underscore)
+func isWordChar(c byte) bool {
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'
+}
+
+// findWordBoundaries returns the start and end of the word at position pos
+func findWordBoundaries(text string, pos int) (start, end int) {
+	if pos < 0 || pos >= len(text) {
+		return pos, pos
+	}
+
+	// If clicking on whitespace, select the whitespace
+	if !isWordChar(text[pos]) {
+		start = pos
+		end = pos + 1
+		return
+	}
+
+	// Find word start
+	start = pos
+	for start > 0 && isWordChar(text[start-1]) {
+		start--
+	}
+
+	// Find word end
+	end = pos + 1
+	for end < len(text) && isWordChar(text[end]) {
+		end++
+	}
+
+	return
+}
+
+// selectLine returns the start and end of the line containing pos
+func (m *RoseaEditorModel) selectLine(text string, pos int) (start, end int) {
+	if pos < 0 || pos > len(text) {
+		return 0, 0
+	}
+
+	// Find line start
+	start = pos
+	for start > 0 && text[start-1] != '\n' {
+		start--
+	}
+
+	// Find line end
+	end = pos
+	for end < len(text) && text[end] != '\n' {
+		end++
+	}
+
+	return
+}
+
 func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case cursorBlinkMsg:
@@ -385,18 +447,77 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	case tea.MouseMsg:
-		// Handle mouse events for selection and cursor positioning
+		// Handle mouse events for selection with deferred multi-click detection
 		if msg.Type == tea.MouseLeft {
-			// Convert mouse position to cursor position in text
-			cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
-			if cursorPos >= 0 && cursorPos <= len(m.input) {
-				// Start or extend selection
-				if m.selectionStart < 0 {
-					// Start new selection
-					m.selectionStart = cursorPos
-				}
-				m.selectionEnd = cursorPos
+			// Record click information for multi-click detection
+			now := time.Now()
+			const doubleClickThreshold = 300 * time.Millisecond
+			const clickProximity = 5
+
+			timeSinceLastClick := now.Sub(m.lastClickTime)
+			proximityOK := (msg.X >= m.lastClickX-clickProximity && msg.X <= m.lastClickX+clickProximity) &&
+				(msg.Y >= m.lastClickY-clickProximity && msg.Y <= m.lastClickY+clickProximity)
+
+			// Increment click count if within threshold, proximity, and no motion since last click
+			if timeSinceLastClick <= doubleClickThreshold && proximityOK && !m.hadMotion {
+				m.clickCount++
+			} else {
+				m.clickCount = 1 // Reset for new click sequence
 			}
+
+			// Record this click
+			m.lastClickTime = now
+			m.lastClickX = msg.X
+			m.lastClickY = msg.Y
+
+			// Get cursor position
+			cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+
+			// Only process position change if not already selecting (first click)
+			if !m.isSelecting {
+				m.isSelecting = true
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					m.selectionStart = cursorPos
+					m.selectionEnd = cursorPos
+				}
+			} else {
+				// Already selecting - this is a continued drag, update end position
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					m.selectionEnd = cursorPos
+				}
+			}
+		} else if msg.Type == tea.MouseMotion {
+			// Mouse is moving while button held - mark that we had motion and update selection end
+			m.hadMotion = true
+			if m.isSelecting {
+				cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					m.selectionEnd = cursorPos
+				}
+			}
+		} else if msg.Type == tea.MouseRelease {
+			// Mouse button released - apply multi-click logic if no motion occurred
+			if !m.hadMotion {
+				// No motion - apply multi-click selection
+				cursorPos := m.mousePosToCursorPos(msg.X, msg.Y)
+				if cursorPos >= 0 && cursorPos <= len(m.input) {
+					if m.clickCount == 2 {
+						// Double-click: select word
+						start, end := findWordBoundaries(m.input, cursorPos)
+						m.selectionStart = start
+						m.selectionEnd = end
+					} else if m.clickCount >= 3 {
+						// Triple-click: select entire line
+						start, end := m.selectLine(m.input, cursorPos)
+						m.selectionStart = start
+						m.selectionEnd = end
+					}
+					// For single click, selection already set during MouseLeft
+				}
+			}
+			// For motion-based selection, the end was already set during MouseMotion
+			m.isSelecting = false
+			m.hadMotion = false // Reset for next click sequence only after decision is made
 		}
 		return m, nil
 
@@ -643,6 +764,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlA: // Select all
 			m.selectionStart = 0
 			m.selectionEnd = len(m.input)
+			return m, nil
+
+		case tea.KeyEsc: // Clear selection on Escape
+			m.clearSelection()
 			return m, nil
 
 		case tea.KeyCtrlS: // Submit on Ctrl+S (also saves)
