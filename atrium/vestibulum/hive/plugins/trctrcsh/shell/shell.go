@@ -559,7 +559,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		// Handle text selection via mouse with deferred multi-click detection
-		if msg.Type == tea.MouseLeft {
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
 			// Record click information for multi-click detection
 			now := time.Now()
 			inputLineY := m.height - 1
@@ -576,7 +576,8 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if timeSinceLastClick <= doubleClickThreshold && proximityOK && !m.hadMotionSinceClick {
 				m.clickCount++
 			} else {
-				m.clickCount = 1 // Reset for new click sequence
+				m.clickCount = 1              // Reset for new click sequence
+				m.hadMotionSinceClick = false // Reset motion flag for new click sequence
 			}
 
 			// Record this click
@@ -657,7 +658,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		} else if msg.Type == tea.MouseMotion && m.isSelecting {
+		} else if msg.Action == tea.MouseActionMotion && m.isSelecting {
 			// Mouse is moving - mark that we had motion and update selection end
 			m.hadMotionSinceClick = true
 			inputLineY := m.height - 1
@@ -696,7 +697,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-		} else if msg.Type == tea.MouseRelease {
+		} else if msg.Action == tea.MouseActionRelease {
 			// Mouse released - apply multi-click logic if no motion occurred
 			if !m.hadMotionSinceClick {
 				// No motion - apply multi-click selection
@@ -757,7 +758,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.isSelecting = false
-			m.hadMotionSinceClick = false // Reset for next click sequence only after decision is made
+			// Don't reset hadMotionSinceClick here - it will be reset on the next MouseLeft when a new sequence starts
 			m.updateViewportContent()
 		}
 

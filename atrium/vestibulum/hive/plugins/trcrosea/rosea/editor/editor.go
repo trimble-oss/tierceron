@@ -448,7 +448,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		// Handle mouse events for selection with deferred multi-click detection
-		if msg.Type == tea.MouseLeft {
+		if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
 			// Record click information for multi-click detection
 			now := time.Now()
 			const doubleClickThreshold = 300 * time.Millisecond
@@ -462,7 +462,8 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if timeSinceLastClick <= doubleClickThreshold && proximityOK && !m.hadMotion {
 				m.clickCount++
 			} else {
-				m.clickCount = 1 // Reset for new click sequence
+				m.clickCount = 1    // Reset for new click sequence
+				m.hadMotion = false // Reset motion flag for new click sequence
 			}
 
 			// Record this click
@@ -486,7 +487,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectionEnd = cursorPos
 				}
 			}
-		} else if msg.Type == tea.MouseMotion {
+		} else if msg.Action == tea.MouseActionMotion {
 			// Mouse is moving while button held - mark that we had motion and update selection end
 			m.hadMotion = true
 			if m.isSelecting {
@@ -495,7 +496,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.selectionEnd = cursorPos
 				}
 			}
-		} else if msg.Type == tea.MouseRelease {
+		} else if msg.Action == tea.MouseActionRelease {
 			// Mouse button released - apply multi-click logic if no motion occurred
 			if !m.hadMotion {
 				// No motion - apply multi-click selection
@@ -517,7 +518,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// For motion-based selection, the end was already set during MouseMotion
 			m.isSelecting = false
-			m.hadMotion = false // Reset for next click sequence only after decision is made
+			// Don't reset hadMotion here - it will be reset on the next MouseLeft when a new sequence starts
 		}
 		return m, nil
 
