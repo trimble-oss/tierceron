@@ -955,6 +955,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.GotoBottom()
 			}
 
+		case tea.KeyDelete:
+			if m.cursor < len(m.input) {
+				m.input = m.input[:m.cursor] + m.input[m.cursor+1:]
+				// Scroll to bottom when user starts editing
+				m.viewport.GotoBottom()
+			}
+
 		case tea.KeyLeft:
 			if m.cursor > 0 {
 				m.cursor--
