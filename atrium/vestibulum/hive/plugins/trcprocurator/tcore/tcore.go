@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -188,56 +189,12 @@ func (h *localhostOnlyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	h.handler.ServeHTTP(w, r)
 }
 
-func start(pluginName string) {
-	if configContext == nil {
-		fmt.Fprintln(os.Stderr, "no config context initialized for procurator")
-		return
-	}
-
-	// Get configuration values
-	var listenPort, targetPort int
-	var err error
-
-	if portInterface, ok := (*configContext.Config)["listen_port"]; ok {
-		if port, ok := portInterface.(int); ok {
-			listenPort = port
-		} else {
-			listenPort, err = strconv.Atoi(portInterface.(string))
-			if err != nil {
-				configContext.Log.Printf("Failed to process listen port: %v", err)
-				send_err(err)
-				return
-			}
-		}
-	} else {
-		configContext.Log.Println("Missing config: listen_port")
-		send_err(errors.New("missing config: listen_port"))
-		return
-	}
-
-	if portInterface, ok := (*configContext.Config)["target_port"]; ok {
-		if port, ok := portInterface.(int); ok {
-			targetPort = port
-		} else {
-			targetPort, err = strconv.Atoi(portInterface.(string))
-			if err != nil {
-				configContext.Log.Printf("Failed to process target port: %v", err)
-				send_err(err)
-				return
-			}
-		}
-	} else {
-		configContext.Log.Println("Missing config: target_port")
-		send_err(errors.New("missing config: target_port"))
-		return
-	}
-
+func setUpProxy(listenPort int, targetPort int) (*http.Server, error) {
 	// Validate ports
 	if listenPort == targetPort {
 		err := errors.New("listen_port and target_port must be different")
 		configContext.Log.Println(err.Error())
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	// Exclude well-known ports (0-1023) and ephemeral port ranges (49152+).
@@ -245,8 +202,7 @@ func start(pluginName string) {
 	if listenPort < 1024 || listenPort > 49151 || targetPort < 1024 || targetPort > 49151 {
 		err := errors.New("ports must be between 1024 and 49151 (excludes system and ephemeral ports)")
 		configContext.Log.Println(err.Error())
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	configContext.Log.Printf("Starting Procurator proxy: HTTPS :%d -> HTTPS 127.0.0.1:%d\n", listenPort, targetPort)
@@ -257,8 +213,7 @@ func start(pluginName string) {
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
 	if err != nil {
 		configContext.Log.Printf("Failed to load TLS certificate: %v", err)
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	tlsConfig := &tls.Config{
@@ -276,8 +231,7 @@ func start(pluginName string) {
 	targetURL, err := url.Parse(fmt.Sprintf("https://127.0.0.1:%d", targetPort))
 	if err != nil {
 		configContext.Log.Printf("Failed to parse target URL: %v", err)
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	// Create reverse proxy with HTTPS transport
@@ -289,7 +243,22 @@ func start(pluginName string) {
 			InsecureSkipVerify: true, // Required for 127.0.0.1 backend
 		},
 	}
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		if resp != nil && resp.Body != nil {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				configContext.Log.Printf("Failed reading backend response body: %v", err)
+				return nil
+			}
+			_ = resp.Body.Close()
 
+			updatedBody := strings.ReplaceAll(string(bodyBytes), "hello", "hi")
+			resp.Body = io.NopCloser(strings.NewReader(updatedBody))
+			resp.ContentLength = int64(len(updatedBody))
+			resp.Header.Set("Content-Length", strconv.Itoa(len(updatedBody)))
+		}
+		return nil
+	}
 	// Wrap with localhost-only middleware
 	handler := &localhostOnlyHandler{
 		handler: proxy,
@@ -317,6 +286,113 @@ func start(pluginName string) {
 			send_err(err)
 		}
 	}()
+	return proxyServer, nil
+}
+
+func start(pluginName string) {
+	if configContext == nil {
+		fmt.Fprintln(os.Stderr, "no config context initialized for procurator")
+		return
+	}
+
+	// Get configuration values
+	var listenPorts, targetPorts []int
+
+	if portInterface, ok := (*configContext.Config)["listen_port"]; ok {
+		if port, ok := portInterface.(string); ok {
+			ports := strings.Split(port, ",")
+			for _, p := range ports {
+				lp, err := strconv.Atoi(strings.TrimSpace(p))
+				if err != nil {
+					configContext.Log.Printf("Failed to process listen ports: %v", err)
+					send_err(err)
+					return
+				}
+				listenPorts = append(listenPorts, lp)
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret listen ports")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: listen_port")
+		send_err(errors.New("missing config: listen_port"))
+		return
+	}
+
+	if portInterface, ok := (*configContext.Config)["target_port"]; ok {
+		if port, ok := portInterface.(string); ok {
+			ports := strings.Split(port, ",")
+			for _, p := range ports {
+				tp, err := strconv.Atoi(strings.TrimSpace(p))
+				if err != nil {
+					configContext.Log.Printf("Failed to process target ports: %v", err)
+					send_err(err)
+					return
+				}
+				targetPorts = append(targetPorts, tp)
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret target ports")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: target_port")
+		send_err(errors.New("missing config: target_port"))
+		return
+	}
+
+	if targetTextInterface, ok := (*configContext.Config)["target_text"]; ok {
+		if targetTxt, ok := targetTextInterface.(string); ok {
+			ports := strings.Split(targetTxt, ",")
+			for _, p := range ports {
+				tp, err := strconv.Atoi(strings.TrimSpace(p))
+				if err != nil {
+					configContext.Log.Printf("Failed to process target text: %v", err)
+					send_err(err)
+					return
+				}
+				targetPorts = append(targetPorts, tp)
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret target text")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: target_text")
+		send_err(errors.New("missing config: target_text"))
+		return
+	}
+
+	if listenTextInterface, ok := (*configContext.Config)["listen_text"]; ok {
+		if listenTxt, ok := listenTextInterface.(string); ok {
+			ports := strings.Split(listenTxt, ",")
+			for _, p := range ports {
+				tp, err := strconv.Atoi(strings.TrimSpace(p))
+				if err != nil {
+					configContext.Log.Printf("Failed to process listen text: %v", err)
+					send_err(err)
+					return
+				}
+				listenPorts = append(listenPorts, tp)
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret listen text")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: listen_text")
+		send_err(errors.New("missing config: listen_text"))
+		return
+	}
+
+	for i := 0; i < len(listenPorts) && i < len(targetPorts); i++ {
+		if _, err := setUpProxy(listenPorts[i], targetPorts[i]); err != nil {
+			configContext.Log.Printf("Failed to set up proxy for listen port %d and target port %d: %v", listenPorts[i], targetPorts[i], err)
+			send_err(err)
+			return
+		}
+	}
 
 	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
 	dfstat.UpdateDataFlowStatistic("System",
