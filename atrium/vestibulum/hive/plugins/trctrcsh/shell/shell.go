@@ -7,12 +7,15 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-runewidth"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"golang.org/x/term"
 
@@ -29,6 +32,7 @@ var (
 	outputStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 	errorStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
 	chatMsgHooks = cmap.New[tccore.ChatHookFunc]()
+	ansiRegexp   = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
 )
 
 // Maximum clipboard size (10MB) - prevents OOM from malicious/accidental huge pastes
@@ -174,6 +178,47 @@ func cursorBlink() tea.Cmd {
 
 func (m *ShellModel) Init() tea.Cmd {
 	return cursorBlink()
+}
+
+func stripANSI(text string) string {
+	return ansiRegexp.ReplaceAllString(text, "")
+}
+
+func (m *ShellModel) getPlainOutputText() string {
+	if len(m.output) == 0 {
+		return ""
+	}
+
+	plain := make([]string, len(m.output))
+	for i, line := range m.output {
+		plain[i] = stripANSI(line)
+	}
+
+	return strings.Join(plain, "\n")
+}
+
+func displayCellWidth(text string) int {
+	return runewidth.StringWidth(text)
+}
+
+func byteIndexAtCell(text string, targetCell int) int {
+	if targetCell <= 0 {
+		return 0
+	}
+
+	currentCell := 0
+	for byteIndex, r := range text {
+		runeWidth := runewidth.RuneWidth(r)
+		if runeWidth < 0 {
+			runeWidth = 0
+		}
+		if currentCell+runeWidth > targetCell {
+			return byteIndex
+		}
+		currentCell += runeWidth
+	}
+
+	return len(text)
 }
 
 // copyToMemFsClipboard stores content in memFs clipboard with retry logic
@@ -377,7 +422,7 @@ func (m *ShellModel) getSelectedText() string {
 	}
 
 	// Otherwise, selection is in the output history
-	fullText := strings.Join(m.output, "\n")
+	fullText := m.getPlainOutputText()
 	if start < 0 || end > len(fullText) {
 		return ""
 	}
@@ -593,16 +638,17 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Clicking on the input line
 					promptWidth := len(m.prompt) + 1 // "$ "
 					if msg.X >= promptWidth {
-						posInInput := msg.X - promptWidth
-						if posInInput > len(m.input) {
-							posInInput = len(m.input)
+						inputX := msg.X - promptWidth
+						if inputX > displayCellWidth(m.input) {
+							inputX = displayCellWidth(m.input)
 						}
+						posInInput := byteIndexAtCell(m.input, inputX)
 						m.selectionStart = posInInput
 						m.selectionEnd = posInInput
 					}
 				} else if msg.Y < inputLineY {
 					// Clicking on the output/viewport area
-					fullText := strings.Join(m.output, "\n")
+					fullText := m.getPlainOutputText()
 					lines := strings.Split(fullText, "\n")
 
 					adjustedY := msg.Y + m.viewport.YOffset
@@ -610,13 +656,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					if adjustedY >= 0 && adjustedY < len(lines) {
 						line := lines[adjustedY]
-						if x >= 0 && x <= len(line) {
+						if x >= 0 && x <= displayCellWidth(line) {
 							// Calculate position in flattened string
 							pos := 0
 							for i := 0; i < adjustedY; i++ {
 								pos += len(lines[i]) + 1
 							}
-							pos += x
+							pos += byteIndexAtCell(line, x)
 							m.selectionStart = pos
 							m.selectionEnd = pos
 						}
@@ -628,16 +674,17 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Dragging on the input line
 					promptWidth := len(m.prompt) + 1 // "$ "
 					if msg.X >= promptWidth {
-						posInInput := msg.X - promptWidth
-						if posInInput > len(m.input) {
-							posInInput = len(m.input)
+						inputX := msg.X - promptWidth
+						if inputX > displayCellWidth(m.input) {
+							inputX = displayCellWidth(m.input)
 						}
+						posInInput := byteIndexAtCell(m.input, inputX)
 						m.selectionEnd = posInInput
 						m.updateViewportContent()
 					}
 				} else if msg.Y < inputLineY {
 					// Dragging on the output/viewport area
-					fullText := strings.Join(m.output, "\n")
+					fullText := m.getPlainOutputText()
 					lines := strings.Split(fullText, "\n")
 
 					adjustedY := msg.Y + m.viewport.YOffset
@@ -645,13 +692,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					if adjustedY >= 0 && adjustedY < len(lines) {
 						line := lines[adjustedY]
-						if x >= 0 && x <= len(line) {
+						if x >= 0 && x <= displayCellWidth(line) {
 							// Calculate position in flattened string
 							pos := 0
 							for i := 0; i < adjustedY; i++ {
 								pos += len(lines[i]) + 1
 							}
-							pos += x
+							pos += byteIndexAtCell(line, x)
 							m.selectionEnd = pos
 							m.updateViewportContent()
 						}
@@ -667,16 +714,17 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Dragging on the input line
 				promptWidth := len(m.prompt) + 1 // "$ "
 				if msg.X >= promptWidth {
-					posInInput := msg.X - promptWidth
-					if posInInput > len(m.input) {
-						posInInput = len(m.input)
+					inputX := msg.X - promptWidth
+					if inputX > displayCellWidth(m.input) {
+						inputX = displayCellWidth(m.input)
 					}
+					posInInput := byteIndexAtCell(m.input, inputX)
 					m.selectionEnd = posInInput
 					m.updateViewportContent()
 				}
 			} else if msg.Y < inputLineY {
 				// Dragging on the output/viewport area
-				fullText := strings.Join(m.output, "\n")
+				fullText := m.getPlainOutputText()
 				lines := strings.Split(fullText, "\n")
 
 				adjustedY := msg.Y + m.viewport.YOffset
@@ -684,13 +732,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				if adjustedY >= 0 && adjustedY < len(lines) {
 					line := lines[adjustedY]
-					if x >= 0 && x <= len(line) {
+					if x >= 0 && x <= displayCellWidth(line) {
 						// Calculate position in flattened string
 						pos := 0
 						for i := 0; i < adjustedY; i++ {
 							pos += len(lines[i]) + 1
 						}
-						pos += x
+						pos += byteIndexAtCell(line, x)
 
 						m.selectionEnd = pos
 						m.updateViewportContent()
@@ -707,10 +755,11 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// On input line
 					promptWidth := len(m.prompt) + 1
 					if msg.X >= promptWidth {
-						posInInput := msg.X - promptWidth
-						if posInInput > len(m.input) {
-							posInInput = len(m.input)
+						inputX := msg.X - promptWidth
+						if inputX > displayCellWidth(m.input) {
+							inputX = displayCellWidth(m.input)
 						}
+						posInInput := byteIndexAtCell(m.input, inputX)
 						if m.clickCount == 2 {
 							// Double-click: select word
 							start, end := findWordBoundaries(m.input, posInInput)
@@ -725,7 +774,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				} else if msg.Y < inputLineY {
 					// On output area
-					fullText := strings.Join(m.output, "\n")
+					fullText := m.getPlainOutputText()
 					lines := strings.Split(fullText, "\n")
 
 					adjustedY := msg.Y + m.viewport.YOffset
@@ -733,13 +782,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					if adjustedY >= 0 && adjustedY < len(lines) {
 						line := lines[adjustedY]
-						if x >= 0 && x <= len(line) {
+						if x >= 0 && x <= displayCellWidth(line) {
 							// Calculate position in flattened string
 							pos := 0
 							for i := 0; i < adjustedY; i++ {
 								pos += len(lines[i]) + 1
 							}
-							pos += x
+							pos += byteIndexAtCell(line, x)
 
 							if m.clickCount == 2 {
 								// Double-click: select word
@@ -906,6 +955,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewport.GotoBottom()
 			}
 
+		case tea.KeyDelete:
+			if m.cursor < len(m.input) {
+				m.input = m.input[:m.cursor] + m.input[m.cursor+1:]
+				// Scroll to bottom when user starts editing
+				m.viewport.GotoBottom()
+			}
+
 		case tea.KeyLeft:
 			if m.cursor > 0 {
 				m.cursor--
@@ -981,7 +1037,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *ShellModel) updateViewportContent() {
 	// If there's a selection, highlight it
 	if m.selectionStart >= 0 && m.selectionEnd >= 0 {
-		fullText := strings.Join(m.output, "\n")
+		fullText := m.getPlainOutputText()
 
 		start := m.selectionStart
 		end := m.selectionEnd
@@ -990,17 +1046,21 @@ func (m *ShellModel) updateViewportContent() {
 		}
 
 		if start < 0 || end > len(fullText) {
-			m.viewport.SetContent(strings.Join(m.output, "\n"))
+			m.viewport.SetContent(fullText)
 			return
 		}
 
-		// Build highlighted version using reverse video (robust with existing ANSI codes)
+		if start == end {
+			m.viewport.SetContent(fullText)
+			return
+		}
+
+		// Build highlighted version using raw ANSI reverse video to avoid multiline padding artifacts
 		before := fullText[:start]
 		selected := fullText[start:end]
 		after := fullText[end:]
 
-		highlightStyle := lipgloss.NewStyle().Reverse(true)
-		highlighted := before + highlightStyle.Render(selected) + after
+		highlighted := before + "\x1b[7m" + selected + "\x1b[0m" + after
 		m.viewport.SetContent(highlighted)
 	} else {
 		m.viewport.SetContent(strings.Join(m.output, "\n"))
@@ -1049,10 +1109,15 @@ func (m *ShellModel) View() string {
 
 			// Build the input with selection and cursor
 			var inputRendered string
-			for i := 0; i < len(m.input); i++ {
-				char := string(m.input[i])
+			for i := 0; i < len(m.input); {
+				r, runeSize := utf8.DecodeRuneInString(m.input[i:])
+				if r == utf8.RuneError && runeSize == 1 {
+					runeSize = 1
+				}
+				char := m.input[i : i+runeSize]
+				next := i + runeSize
 
-				if i >= selStart && i < selEnd {
+				if i >= selStart && next <= selEnd {
 					// In selection
 					inputRendered += selectionStyle.Render(char)
 				} else if i == m.cursor && m.cursorVisible {
@@ -1062,6 +1127,8 @@ func (m *ShellModel) View() string {
 					// Normal character
 					inputRendered += char
 				}
+
+				i = next
 			}
 
 			// Add cursor at end if needed

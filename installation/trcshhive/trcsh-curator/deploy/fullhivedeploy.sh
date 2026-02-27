@@ -248,6 +248,7 @@ function certifyKernelWorker() {
             echo "Installing trcshz to /usr/local/trcshz/"
             sudo mkdir -p /usr/local/trcshz
             sudo cp target/trcshz /usr/local/trcshz/
+	    sudo setcap cap_ipc_lock=+ep /usr/local/trcshz/trcshz
             echo "Creating symlink /usr/local/bin/trcshz"
             sudo ln -sf /usr/local/trcshz/trcshz /usr/local/bin/trcshz
             echo "trcshz installed and symlinked successfully"

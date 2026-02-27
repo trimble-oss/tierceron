@@ -661,6 +661,10 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.authInput = m.authInput[:m.authCursor-1] + m.authInput[m.authCursor:]
 						m.authCursor--
 					}
+				case tea.KeyDelete:
+					if m.authCursor < len(m.authInput) {
+						m.authInput = m.authInput[:m.authCursor] + m.authInput[m.authCursor+1:]
+					}
 				case tea.KeyLeft:
 					if m.authCursor > 0 {
 						m.authCursor--
@@ -671,7 +675,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				default:
 					s := msg.String()
-					if len(s) > 0 && msg.Type != tea.KeySpace {
+					if msg.Type == tea.KeyRunes && len(s) > 0 {
 						s = roseacore.SanitizePaste(s)
 						// Accept multi-character paste
 						if m.showAuthPopup {
@@ -825,6 +829,14 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.clearSelection()
 			return m, nil
 
+		case tea.KeyDelete:
+			if m.cursor < len(m.input) {
+				m.input = m.input[:m.cursor] + m.input[m.cursor+1:]
+				m.modified = true
+			}
+			m.clearSelection()
+			return m, nil
+
 		case tea.KeyLeft:
 			if m.cursor > 0 {
 				m.cursor--
@@ -887,7 +899,7 @@ func (m *RoseaEditorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			if len(s) > 0 && msg.Type != tea.KeySpace {
+			if msg.Type == tea.KeyRunes && len(s) > 0 {
 				s = roseacore.SanitizePaste(s)
 				// Accept multi-character paste
 				if m.showAuthPopup {
