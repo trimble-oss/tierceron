@@ -463,7 +463,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 	if kernelopts.BuildOptions.IsKernelZ() {
 		kernelzSignals := make(chan os.Signal, 1)
-		signal.Notify(kernelzSignals, syscall.SIGINT)
+		signal.Notify(kernelzSignals, syscall.SIGTERM)
 		go func() {
 			<-kernelzSignals
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, "Interrupted", 128)

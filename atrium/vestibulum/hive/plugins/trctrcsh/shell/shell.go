@@ -124,7 +124,7 @@ func InitShell(chatSenderChan *chan *tccore.ChatMsg, memFs ...trcshio.MemoryFile
 	// Initialize viewport for scrolling
 	// Reserve 3 lines: 1 for blank line, 1 for prompt, 1 for input
 	vp := viewport.New(width, height-3)
-	initialOutput := []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' or Ctrl+C to quit", ""}
+	initialOutput := []string{"Welcome to trcsh interactive shell", "Type 'help' for available commands, 'exit' to exit", ""}
 	vp.SetContent(strings.Join(initialOutput, "\n"))
 
 	m := &ShellModel{
@@ -838,7 +838,7 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			// Context-aware: if text is selected, copy instead of exit
+			// Context-aware: if text is selected, copy to clipboard
 			if m.selectionStart >= 0 && m.selectionEnd >= 0 {
 				selected := m.getSelectedText()
 				if selected != "" {
@@ -849,9 +849,8 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			// No selection - standard exit behavior
-			return m, tea.Quit
-
+			// No selection - Ctrl+C is now only for copying, not exiting
+			return m, nil
 		case tea.KeyCtrlV:
 			// Paste from smart clipboard fallback
 			clipboard := m.getClipboardToUse()
@@ -1451,7 +1450,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 	args := parts[1:]
 
 	switch command {
-	case "exit", "quit":
+	case "exit":
 		// If in elevated mode, exit just reverts to normal mode
 		if m.elevatedMode {
 			m.elevatedMode = false
@@ -1759,10 +1758,10 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}
-		output = append(output, "  exit     - Exit shell (or press Ctrl+C when no text selected)")
+		output = append(output, "  exit     - Exit shell")
 		output = append(output, "")
 		output = append(output, "Clipboard (isolated from system):")
-		output = append(output, "  Ctrl+C   - Copy selected text to clipboard (if text selected), or exit shell")
+		output = append(output, "  Ctrl+C   - Copy selected text to clipboard")
 		output = append(output, "  Ctrl+V   - Paste from internal clipboard (or system if newer)")
 		output = append(output, "  Click+Drag - Select text by clicking and dragging")
 		if m.elevatedMode {
