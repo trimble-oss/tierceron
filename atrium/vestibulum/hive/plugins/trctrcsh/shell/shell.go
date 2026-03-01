@@ -1759,11 +1759,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}
 		output = append(output, "  exit     - Exit shell")
-		output = append(output, "")
-		output = append(output, "Clipboard (isolated from system):")
-		output = append(output, "  Ctrl+C   - Copy selected text to clipboard")
-		output = append(output, "  Ctrl+V   - Paste from internal clipboard (or system if newer)")
-		output = append(output, "  Click+Drag - Select text by clicking and dragging")
 		if m.elevatedMode {
 			output = append(output, "")
 			output = append(output, "Currently in elevated mode (#). Type 'exit' to return to normal mode.")
