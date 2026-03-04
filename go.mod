@@ -57,9 +57,7 @@ require (
 	github.com/lafriks/go-shamir v1.2.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
-	github.com/templexxx/cpu v0.1.1 // indirect
-	github.com/templexxx/xorsimd v0.4.3 // indirect
-	github.com/xtaci/kcp-go/v5 v5.6.16 // indirect
+	github.com/xtaci/kcp-go/v5 v5.6.70 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 )
 
@@ -266,7 +264,7 @@ require (
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/term v0.37.0
 	golang.org/x/text v0.31.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
 )
