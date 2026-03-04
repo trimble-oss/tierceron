@@ -3,20 +3,17 @@ package validator
 import (
 	"bytes"
 	"fmt"
-	"os"
 
 	"github.com/ProtonMail/go-crypto/openpgp"
 	"github.com/ProtonMail/go-crypto/openpgp/armor"
 )
 
-func ValidateASCKeyFile(path string) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read file: %w", err)
-	}
-
+func ValidateASCKeyFile(certData *[]byte) error {
 	// 1) Check ASCII armor envelope
-	block, err := armor.Decode(bytes.NewReader(data))
+	if certData == nil {
+		return fmt.Errorf("no data provided")
+	}
+	block, err := armor.Decode(bytes.NewReader(*certData))
 	if err != nil {
 		return fmt.Errorf("not valid ASCII-armored OpenPGP data: %w", err)
 	}
@@ -29,7 +26,7 @@ func ValidateASCKeyFile(path string) error {
 	}
 
 	// 2) Parse key material
-	entities, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(data))
+	entities, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(*certData))
 	if err != nil {
 		return fmt.Errorf("invalid OpenPGP key data: %w", err)
 	}

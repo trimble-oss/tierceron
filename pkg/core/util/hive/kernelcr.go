@@ -429,6 +429,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
 	certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
 	certPath = strings.TrimSuffix(certPath, ".pem.mf.tmpl")
+	certPath = strings.TrimSuffix(certPath, ".asc.mf.tmpl")
 	metadata, err := mod.ReadMetadata(fmt.Sprintf("values/%s", certPath), driverConfig.CoreConfig.Log)
 	if err != nil {
 		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)

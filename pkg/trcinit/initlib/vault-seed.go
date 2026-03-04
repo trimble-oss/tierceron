@@ -588,7 +588,7 @@ func seedVaultWithCertsFromEntry(driverConfig *config.DriverConfig, mod *helperk
 			isValidCert = true
 		} else if strings.HasSuffix(certPath, ".asc") {
 			eUtils.LogInfo(driverConfig.CoreConfig, "Inspecting pgp key: "+certPath+".")
-			err := validator.ValidateASCKeyFile(certPath)
+			err := validator.ValidateASCKeyFile(&cert)
 			if err != nil {
 				eUtils.LogInfo(driverConfig.CoreConfig, "failed to verify PGP key: "+err.Error())
 			} else {
