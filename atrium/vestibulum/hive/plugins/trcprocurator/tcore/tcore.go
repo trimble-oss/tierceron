@@ -189,7 +189,7 @@ func (h *localhostOnlyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	h.handler.ServeHTTP(w, r)
 }
 
-func setUpProxy(listenPort int, targetPort int) (*http.Server, error) {
+func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetTexts []string) (*http.Server, error) {
 	// Validate ports
 	if listenPort == targetPort {
 		err := errors.New("listen_port and target_port must be different")
@@ -252,7 +252,18 @@ func setUpProxy(listenPort int, targetPort int) (*http.Server, error) {
 			}
 			_ = resp.Body.Close()
 
-			updatedBody := strings.ReplaceAll(string(bodyBytes), "hello", "hi")
+			updatedBody := string(bodyBytes)
+			for i := 0; i < len(listenTexts) && i < len(targetTexts); i++ {
+				replacePort := ""
+				splitReplaceTxt := strings.Split(listenTexts[i], ":")
+				if len(splitReplaceTxt) > 1 {
+					replacePort = splitReplaceTxt[len(splitReplaceTxt)-1]
+				}
+				updatedBody = strings.ReplaceAll(updatedBody, listenTexts[i], targetTexts[i])
+				if replacePort != "" && strings.Contains(updatedBody, replacePort) {
+					configContext.Log.Printf("Warning: replaced listen text with target text but found occurrences of the original port '%s' in the response body. This may indicate some instances of the listen text were not properly replaced.", replacePort)
+				}
+			}
 			resp.Body = io.NopCloser(strings.NewReader(updatedBody))
 			resp.ContentLength = int64(len(updatedBody))
 			resp.Header.Set("Content-Length", strconv.Itoa(len(updatedBody)))
@@ -341,18 +352,12 @@ func start(pluginName string) {
 		send_err(errors.New("missing config: target_port"))
 		return
 	}
-
+	var targetTexts []string
 	if targetTextInterface, ok := (*configContext.Config)["target_text"]; ok {
 		if targetTxt, ok := targetTextInterface.(string); ok {
-			ports := strings.Split(targetTxt, ",")
-			for _, p := range ports {
-				tp, err := strconv.Atoi(strings.TrimSpace(p))
-				if err != nil {
-					configContext.Log.Printf("Failed to process target text: %v", err)
-					send_err(err)
-					return
-				}
-				targetPorts = append(targetPorts, tp)
+			targetTxts := strings.Split(targetTxt, ",")
+			for _, tt := range targetTxts {
+				targetTexts = append(targetTexts, strings.TrimSpace(tt))
 			}
 		} else {
 			configContext.Log.Println("Failed to interpret target text")
@@ -363,21 +368,15 @@ func start(pluginName string) {
 		send_err(errors.New("missing config: target_text"))
 		return
 	}
-
+	var listenTexts []string
 	if listenTextInterface, ok := (*configContext.Config)["listen_text"]; ok {
 		if listenTxt, ok := listenTextInterface.(string); ok {
-			ports := strings.Split(listenTxt, ",")
-			for _, p := range ports {
-				tp, err := strconv.Atoi(strings.TrimSpace(p))
-				if err != nil {
-					configContext.Log.Printf("Failed to process listen text: %v", err)
-					send_err(err)
-					return
-				}
-				listenPorts = append(listenPorts, tp)
+			listenTxts := strings.Split(listenTxt, ",")
+			for _, lt := range listenTxts {
+				listenTexts = append(listenTexts, strings.TrimSpace(lt))
 			}
 		} else {
-			configContext.Log.Println("Failed to interpret listen text")
+			configContext.Log.Println("Failed to interpret listen texts")
 			return
 		}
 	} else {
@@ -387,7 +386,7 @@ func start(pluginName string) {
 	}
 
 	for i := 0; i < len(listenPorts) && i < len(targetPorts); i++ {
-		if _, err := setUpProxy(listenPorts[i], targetPorts[i]); err != nil {
+		if _, err := setUpProxy(listenPorts[i], targetPorts[i], listenTexts, targetTexts); err != nil {
 			configContext.Log.Printf("Failed to set up proxy for listen port %d and target port %d: %v", listenPorts[i], targetPorts[i], err)
 			send_err(err)
 			return

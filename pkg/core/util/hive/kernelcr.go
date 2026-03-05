@@ -1242,6 +1242,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 }
 
 func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
+	tfmContext.LogInfo("Starting flow reload process")
 	for {
 		for _, tfCtx := range tfmContext.GetFlows() {
 			// load last modified time from vault
@@ -1250,6 +1251,7 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 			if readErr == nil && len(dataMap) > 0 && dataMap["lastModified"] != nil {
 				if tfCtx.GetLastRefreshedTime() == "" {
 					// If RefreshedTime is not set, set it and skip refresh to avoid unnecessary restarts on boot
+					tfmContext.LogInfo(fmt.Sprintf("Setting initial last refreshed time for flow %s", tfCtx.GetFlowHeader().FlowNameType()))
 					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
 					continue
 				}
@@ -1264,11 +1266,13 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 					continue
 				}
 				if flowLastModified.Before(lastModifiedTime) {
+					tfmContext.LogInfo(fmt.Sprintf("Flow %s has been modified since last refresh. Refreshing flow.", tfCtx.GetFlowHeader().FlowNameType()))
 					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
 					// Need to refresh flow
 					tfmContext.LockFlow(tfCtx.GetFlowHeader().FlowNameType())
 					tfCtx.NotifyFlowComponentNeedsRestart()
 					tfmContext.UnlockFlow(tfCtx.GetFlowHeader().FlowNameType())
+					tfmContext.LogInfo(fmt.Sprintf("Flow %s refresh complete.", tfCtx.GetFlowHeader().FlowNameType()))
 				}
 			}
 		}
