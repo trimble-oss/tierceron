@@ -253,7 +253,7 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 			_ = resp.Body.Close()
 
 			updatedBody := string(bodyBytes)
-			for i := 0; i < len(listenTexts) && i < len(targetTexts); i++ {
+			for i := 0; i < len(listenTexts); i++ {
 				replacePort := ""
 				splitReplaceTxt := strings.Split(listenTexts[i], ":")
 				if len(splitReplaceTxt) > 1 {
@@ -385,7 +385,14 @@ func start(pluginName string) {
 		return
 	}
 
-	for i := 0; i < len(listenPorts) && i < len(targetPorts); i++ {
+	if len(listenPorts) != len(targetPorts) || len(listenTexts) != len(targetTexts) {
+		err := errors.New("configuration error: number of listen ports, target ports, listen texts, and target texts must match")
+		configContext.Log.Println(err.Error())
+		send_err(err)
+		return
+	}
+
+	for i := 0; i < len(listenPorts); i++ {
 		if _, err := setUpProxy(listenPorts[i], targetPorts[i], listenTexts, targetTexts); err != nil {
 			configContext.Log.Printf("Failed to set up proxy for listen port %d and target port %d: %v", listenPorts[i], targetPorts[i], err)
 			send_err(err)
