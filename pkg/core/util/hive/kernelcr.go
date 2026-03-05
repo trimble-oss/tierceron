@@ -221,6 +221,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 				if t, ok := metadata["created_time"]; ok {
 					if t != v.CreatedTime {
 						// validate cert and restart kernel
+						driverConfig.CoreConfig.Log.Printf("Cert mismatch detected for %s - calling LoadCertComponent\n", k)
 						configuredCert, err := certutil.LoadCertComponent(driverConfig,
 							mod,
 							k)
@@ -250,6 +251,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							if certSha256 != v.sha256 {
 								if pluginHandler.Services == nil {
 									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
+									v.CreatedTime = t
+									globalCertCache.Set(k, v)
 									goto waitToReload
 								}
 								for s, sPluginHandler := range *pluginHandler.Services {
@@ -271,6 +274,9 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								// 2. Start each plugin
 								eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 							} else {
+								v.CreatedTime = t
+								globalCertCache.Set(k, v)
+								driverConfig.CoreConfig.Log.Printf("Cert %s validated, updating cached CreatedTime to %v\n", k, t)
 								continue
 							}
 						} else {

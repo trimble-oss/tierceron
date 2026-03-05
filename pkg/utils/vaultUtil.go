@@ -54,28 +54,6 @@ func isRetryable(err error) bool {
 	return false
 }
 
-// isTimout detects if the err is a timeout.
-// Deprecated: Use isRetryable instead for more comprehensive error handling.
-func isTimeout(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	var netErr net.Error
-	if errors.As(err, &netErr) && netErr.Timeout() {
-		return true
-	}
-
-	if errors.Is(err, context.DeadlineExceeded) {
-		return true
-	}
-
-	errStr := err.Error()
-	return strings.Contains(errStr, "timeout") ||
-		strings.Contains(errStr, "timed out") ||
-		strings.Contains(errStr, "deadline exceeded")
-}
-
 // InitVaultMod helps to easily initialize a vault and a modifier all at once.
 func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *helperkv.Modifier, *sys.Vault, error) {
 	if driverConfig == nil {
