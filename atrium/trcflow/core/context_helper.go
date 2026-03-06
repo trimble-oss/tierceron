@@ -7,10 +7,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/trcx/extract"
 

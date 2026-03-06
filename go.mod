@@ -6,16 +6,15 @@ require (
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dolthub/go-mysql-server v0.19.0
 	github.com/go-sql-driver/mysql v1.8.1
-	github.com/golang/protobuf v1.5.4
 	github.com/google/go-cmp v0.7.0
 	github.com/hashicorp/vault/api v1.12.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/rs/cors v1.7.0
 	github.com/sergi/go-diff v1.3.1
-	github.com/twitchtv/twirp v5.12.1+incompatible
+	github.com/twitchtv/twirp v8.1.3+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.45.0
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/crypto v0.48.0
+	golang.org/x/sys v0.41.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -33,8 +32,8 @@ require (
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.5
-	github.com/trimble-oss/tierceron-hat v1.2.10
+	github.com/trimble-oss/tierceron-core/v2 v2.10.6
+	github.com/trimble-oss/tierceron-hat v1.2.11
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20251204195016-a8311d409497
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20251103195122-175ade98adff
@@ -128,6 +127,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
@@ -200,8 +200,8 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.0.10 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
+	github.com/trimble-oss/tierceron-nute v1.0.11 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.4 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
@@ -210,19 +210,17 @@ require (
 	go.opentelemetry.io/otel v1.40.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.40.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.40.0 // indirect
 	go.opentelemetry.io/otel/trace v1.40.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
-	golang.org/x/exp/shiny v0.0.0-20240707233637-46b078467d37 // indirect
-	golang.org/x/image v0.21.0 // indirect
-	golang.org/x/mobile v0.0.0-20231127183840-76ac6878050a // indirect
-	golang.org/x/mod v0.29.0 // indirect
+	golang.org/x/exp/shiny v0.0.0-20250819193227-8b4c13bb791b // indirect
+	golang.org/x/image v0.31.0 // indirect
+	golang.org/x/mobile v0.0.0-20250911085028-6912353760cf // indirect
+	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
-	golang.org/x/sync v0.18.0 // indirect
-	golang.org/x/telemetry v0.0.0-20251008203120-078029d740a8 // indirect
-	golang.org/x/tools v0.38.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260109210033-bd525da824e2 // indirect
+	golang.org/x/tools v0.41.0 // indirect
 	gopkg.in/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
@@ -263,9 +261,9 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/term v0.37.0
-	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/term v0.40.0
+	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
@@ -312,3 +310,11 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb =>
 //replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
 //replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
+
+replace (
+	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.40.0
+	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.40.0
+	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.40.0
+	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.40.0
+	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.40.0
+)
