@@ -15,6 +15,7 @@ import (
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -24,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"

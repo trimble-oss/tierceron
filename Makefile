@@ -113,7 +113,11 @@ hivepluginrelease: hivepluginbuild
 	git push origin "$$TAG_PREFIX/$(VERSION)"
 
 gen:
-	protoc --proto_path=. --twirp_out=. --go_out=. rpc/apinator/service.proto
+	@echo "Installing protoc plugins for Twirp v8.1.3..."
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	go get github.com/twitchtv/twirp@v8.1.3
+	go install github.com/twitchtv/twirp/protoc-gen-twirp@v8.1.3
+	protoc --proto_path=. --go_opt=paths=source_relative --twirp_opt=paths=source_relative --go_out=. --twirp_out=. trcweb/rpc/apinator/service.proto
 
 cleancache:
 	go clean -cache
