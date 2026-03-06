@@ -30,12 +30,14 @@ func main() {
 	fmt.Fprintf(os.Stderr, "Vault: \n")
 	for _, env := range vault.Envs {
 		fmt.Fprintf(os.Stderr, "Env: %s\n", env.Name)
-		for _, service := range env.Services {
-			fmt.Fprintf(os.Stderr, "\tService: %s\n", service.Name)
-			for _, file := range service.Files {
-				fmt.Fprintf(os.Stderr, "\t\tFile: %s\n", file.Name)
-				for _, val := range file.Values {
-					fmt.Fprintf(os.Stderr, "\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
+		for _, project := range env.Projects {
+			for _, service := range project.Services {
+				fmt.Fprintf(os.Stderr, "\tService: %s\n", service.Name)
+				for _, file := range service.Files {
+					fmt.Fprintf(os.Stderr, "\t\tFile: %s\n", file.Name)
+					for _, val := range file.Values {
+						fmt.Fprintf(os.Stderr, "\t\t\tkey: %s\tvalue: %s\n", val.Key, val.Value)
+					}
 				}
 			}
 		}

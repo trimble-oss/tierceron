@@ -19,33 +19,33 @@ import (
 
 type VaultVals struct {
 	ID   string `json:"id"`
-	envs []Env  `json:"envs"`
+	Envs []Env  `json:"envs"`
 }
 type Env struct {
 	ID       int       `json:"id"`
-	name     string    `json:"name"`
-	services []Service `json:"services"`
+	Name     string    `json:"name"`
+	Services []Service `json:"services"`
 }
 type Service struct {
-	envID int    `json: "envID"`
+	EnvID int    `json:"envID"`
 	ID    int    `json:"id"`
-	name  string `json:"name"`
-	files []File `json:"files"`
+	Name  string `json:"name"`
+	Files []File `json:"files"`
 }
 type File struct {
-	envID  int     `json: "envID"`
-	servID int     `json: "servID"`
+	EnvID  int     `json:"envID"`
+	ServID int     `json:"servID"`
 	ID     int     `json:"id"`
-	name   string  `json:"name"`
-	values []Value `json:"values"`
+	Name   string  `json:"name"`
+	Values []Value `json:"values"`
 }
 type Value struct {
-	envID  int    `json: "envID"`
-	servID int    `json: "servID"`
-	fileID int    `json: "fileID"`
+	EnvID  int    `json:"envID"`
+	ServID int    `json:"servID"`
+	FileID int    `json:"fileID"`
 	ID     int    `json:"id"`
-	key    string `json:"name"`
-	value  string `json:"value"`
+	Key    string `json:"name"`
+	Value  string `json:"value"`
 }
 
 func main() {
@@ -67,25 +67,27 @@ func main() {
 	envList := []Env{}
 	for i, env := range vault.Envs {
 		serviceList := []Service{}
-		for j, service := range env.Services {
-			fileList := []File{}
-			for k, file := range service.Files {
-				valList := []Value{}
-				for l, val := range file.Values {
-					valQL := Value{ID: l, envID: i, servID: j, fileID: k, key: val.Key, value: val.Value}
-					valList = append(valList, valQL)
+		for _, project := range env.Projects {
+			for k, service := range project.Services {
+				fileList := []File{}
+				for l, file := range service.Files {
+					valList := []Value{}
+					for m, val := range file.Values {
+						valQL := Value{ID: m, EnvID: i, ServID: k, FileID: l, Key: val.Key, Value: val.Value}
+						valList = append(valList, valQL)
+					}
+					fileQL := File{ID: l, EnvID: i, ServID: k, Name: file.Name, Values: valList}
+					fileList = append(fileList, fileQL)
 				}
-				fileQL := File{ID: k, envID: i, servID: j, name: file.Name, values: valList}
-				fileList = append(fileList, fileQL)
+				serviceQL := Service{ID: k, EnvID: i, Name: service.Name, Files: fileList}
+				serviceList = append(serviceList, serviceQL)
 			}
-			serviceQL := Service{ID: j, envID: i, name: service.Name, files: fileList}
-			serviceList = append(serviceList, serviceQL)
 		}
-		envQL := Env{ID: i, name: env.Name, services: serviceList}
+		envQL := Env{ID: i, Name: env.Name, Services: serviceList}
 		envList = append(envList, envQL)
 	}
 
-	vaultQL := VaultVals{envs: envList}
+	vaultQL := VaultVals{Envs: envList}
 	ValueObject := graphql.NewObject(
 		graphql.ObjectConfig{
 			Name: "Value",
@@ -106,20 +108,20 @@ func main() {
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						val := params.Source.(Value).ID
-						file := params.Source.(Value).fileID
-						serv := params.Source.(Value).servID
-						env := params.Source.(Value).envID
-						return vaultQL.envs[env].services[serv].files[file].values[val].key, nil
+						file := params.Source.(Value).FileID
+						serv := params.Source.(Value).ServID
+						env := params.Source.(Value).EnvID
+						return vaultQL.Envs[env].Services[serv].Files[file].Values[val].Key, nil
 					},
 				},
 				"value": &graphql.Field{
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						val := params.Source.(Value).ID
-						file := params.Source.(Value).fileID
-						serv := params.Source.(Value).servID
-						env := params.Source.(Value).envID
-						return vaultQL.envs[env].services[serv].files[file].values[val].value, nil
+						file := params.Source.(Value).FileID
+						serv := params.Source.(Value).ServID
+						env := params.Source.(Value).EnvID
+						return vaultQL.Envs[env].Services[serv].Files[file].Values[val].Value, nil
 					},
 				},
 			},
@@ -141,9 +143,9 @@ func main() {
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						file := params.Source.(File).ID
-						serv := params.Source.(File).servID
-						env := params.Source.(File).envID
-						return vaultQL.envs[env].services[serv].files[file].name, nil
+						serv := params.Source.(File).ServID
+						env := params.Source.(File).EnvID
+						return vaultQL.Envs[env].Services[serv].Files[file].Name, nil
 					},
 				},
 				"values": &graphql.Field{
@@ -162,12 +164,12 @@ func main() {
 						// valStr, valOK := params.Args["valName"].(string)
 
 						file := params.Source.(File).ID
-						serv := params.Source.(File).servID
-						env := params.Source.(File).envID
+						serv := params.Source.(File).ServID
+						env := params.Source.(File).EnvID
 						if keyOK {
-							for i, v := range vaultQL.envs[env].services[serv].files[file].values {
-								if v.key == keyStr {
-									return []Value{vaultQL.envs[env].services[serv].files[file].values[i]}, nil
+							for i, v := range vaultQL.Envs[env].Services[serv].Files[file].Values {
+								if v.Key == keyStr {
+									return []Value{vaultQL.Envs[env].Services[serv].Files[file].Values[i]}, nil
 								}
 							}
 							return []Value{}, errors.New("keyName not found")
@@ -179,7 +181,7 @@ func main() {
 						// 	}
 						// 	return vaultQL.envs[env].services[serv].files[file].values, errors.New("valName not found")
 						// }
-						return vaultQL.envs[env].services[serv].files[file].values, nil
+						return vaultQL.Envs[env].Services[serv].Files[file].Values, nil
 						// return nil, nil
 					},
 				},
@@ -199,8 +201,8 @@ func main() {
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						serv := params.Source.(Service).ID
-						env := params.Source.(Service).envID
-						return vaultQL.envs[env].services[serv].name, nil
+						env := params.Source.(Service).EnvID
+						return vaultQL.Envs[env].Services[serv].Name, nil
 					},
 				},
 				"files": &graphql.Field{
@@ -213,16 +215,16 @@ func main() {
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						fileStr, isOK := params.Args["fileName"].(string)
 						serv := params.Source.(Service).ID
-						env := params.Source.(Service).envID
+						env := params.Source.(Service).EnvID
 						if isOK {
-							for i, f := range vaultQL.envs[env].services[serv].files {
-								if f.name == fileStr {
-									return []File{vaultQL.envs[env].services[serv].files[i]}, nil
+							for i, f := range vaultQL.Envs[env].Services[serv].Files {
+								if f.Name == fileStr {
+									return []File{vaultQL.Envs[env].Services[serv].Files[i]}, nil
 								}
 							}
 							return []File{}, errors.New("fileName not found")
 						}
-						return vaultQL.envs[env].services[serv].files, nil
+						return vaultQL.Envs[env].Services[serv].Files, nil
 					},
 				},
 			},
@@ -238,7 +240,7 @@ func main() {
 					Type: graphql.NewNonNull(graphql.String),
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						env := params.Source.(Env).ID
-						return vaultQL.envs[env].name, nil
+						return vaultQL.Envs[env].Name, nil
 					},
 				},
 				"services": &graphql.Field{
@@ -253,14 +255,14 @@ func main() {
 						servStr, isOK := params.Args["servName"].(string)
 						env := params.Source.(Env).ID
 						if isOK {
-							for i, s := range vaultQL.envs[env].services {
-								if s.name == servStr {
-									return []Service{vaultQL.envs[env].services[i]}, nil
+							for i, s := range vaultQL.Envs[env].Services {
+								if s.Name == servStr {
+									return []Service{vaultQL.Envs[env].Services[i]}, nil
 								}
 							}
 							return []Service{}, errors.New("servName not found")
 						}
-						return vaultQL.envs[env].services, nil
+						return vaultQL.Envs[env].Services, nil
 					},
 				},
 			},
@@ -280,14 +282,14 @@ func main() {
 					Resolve: func(params graphql.ResolveParams) (any, error) {
 						envStr, isOK := params.Args["envName"].(string)
 						if isOK {
-							for i, e := range vaultQL.envs {
-								if e.name == envStr {
-									return []Env{vaultQL.envs[i]}, nil
+							for i, e := range vaultQL.Envs {
+								if e.Name == envStr {
+									return []Env{vaultQL.Envs[i]}, nil
 								}
 							}
 							return []Env{}, errors.New("envName not found")
 						}
-						return vaultQL.envs, nil
+						return vaultQL.Envs, nil
 					},
 				},
 			},
