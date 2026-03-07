@@ -6,7 +6,7 @@ package cursoropts
 import (
 	"log"
 
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 )
 
 func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {

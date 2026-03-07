@@ -23,7 +23,7 @@ require (
 	github.com/trimble-oss/tierceron-nute-core v1.0.3 // indirect
 	github.com/wildbeavers/schema-registry v0.3.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/grpc v1.72.1 // indirect
@@ -33,3 +33,11 @@ require (
 replace github.com/linkedin/goavro => ../goavro
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdstream => ../
+
+replace (
+	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.40.0
+	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.40.0
+	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.40.0
+	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.40.0
+	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.40.0
+)

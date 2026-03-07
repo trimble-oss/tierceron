@@ -14,17 +14,16 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
-	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/data"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/fenestrabase"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib" // Update package path as needed
 	"gopkg.in/yaml.v2"
 )
 
 var (
 	configContext *tccore.ConfigContext
+	pluginNameVar string
 	sender        chan error
 	serverAddr    *string // another way to do this...
 	dfstat        *tccore.TTDINode
@@ -45,22 +44,22 @@ const (
 
 func templateIfy(configKey string) string {
 	if strings.Contains(HELLO_CERT, ".crt") || strings.Contains(HELLO_CERT, ".key") {
-		return fmt.Sprintf("Common/%s.mf.tmpl", configKey[2])
+		return fmt.Sprintf("Common/%s.mf.tmpl", string(configKey[2]))
 	} else {
 		commonBasis := strings.Split(configKey, ".")[1]
 		return commonBasis[1:]
 	}
 }
 
-func receiver(receive_chan *chan core.KernelCmd) {
+func receiverFenestra(receive_chan chan tccore.KernelCmd) {
 	for {
-		event := <-*receive_chan
+		event := <-receive_chan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
-			go start(event.PluginName)
+			go configContext.Start(event.PluginName)
 		case event.Command == tccore.PLUGIN_EVENT_STOP:
-			go stop(event.PluginName)
-			sender <- errors.New("hello shutting down")
+			go stop()
+			sender <- errors.New("fenestra shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			// TODO
@@ -68,6 +67,25 @@ func receiver(receive_chan *chan core.KernelCmd) {
 
 		default:
 			// TODO
+		}
+	}
+}
+
+func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+	for {
+		event := <-chat_receive_chan
+		switch {
+		case event == nil:
+			continue
+		case event.Name != nil && *event.Name == "SHUTDOWN":
+			if configContext != nil {
+				configContext.Log.Println("fenestra shutting down message receiver")
+			}
+			return
+		default:
+			if configContext != nil {
+				configContext.Log.Println("fenestra received chat message")
+			}
 		}
 	}
 }
@@ -105,7 +123,7 @@ func send_dfstat() {
 		send_err(err)
 		return
 	}
-	pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+	tccore.SendDfStat(configContext, dfsctx, dfstat)
 }
 
 func send_err(err error) {
@@ -127,7 +145,7 @@ func send_err(err error) {
 			func(msg string, err error) {
 				configContext.Log.Println(msg, err)
 			})
-		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+		tccore.SendDfStat(configContext, dfsctx, dfstat)
 	}
 	*configContext.ErrorChan <- err
 }
@@ -225,16 +243,16 @@ func start(pluginName string) {
 	}
 }
 
-func stop(pluginName string) {
+func stop() {
 	if configContext != nil {
-		configContext.Log.Println("Healthcheck received shutdown message from kernel.")
+		configContext.Log.Println("Fenestra received shutdown message from kernel.")
 		configContext.Log.Println("Stopping server")
 	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped server")
 		configContext.Log.Println("Stopped server for fenestra.")
 		dfstat.UpdateDataFlowStatistic("System",
-			pluginName,
+			pluginNameVar,
 			"Shutdown",
 			"0",
 			1, func(msg string, err error) {
@@ -245,7 +263,7 @@ func stop(pluginName string) {
 				}
 			})
 		send_dfstat()
-		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
+		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginNameVar, Command: tccore.PLUGIN_EVENT_STOP}
 	}
 	dfstat = nil
 }
@@ -263,7 +281,9 @@ func SetConfigContext(cc *tccore.ConfigContext) {
 	}
 }
 
-func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
+func GetConfigContext(pluginName string) *tccore.ConfigContext {
+	return configContext
+}
 
 func GetConfigPaths(pluginName string) []string {
 	return []string{
@@ -273,17 +293,26 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
-func PostInit(configContext *tccore.ConfigContext) {
+func PostInit(ctx *tccore.ConfigContext) {
+	configContext = ctx
 	configContext.Start = start
 	sender = *configContext.ErrorChan
-	go receiver(configContext.CmdReceiverChan)
+	go receiverFenestra(*configContext.CmdReceiverChan)
 }
 
 func Init(pluginName string, properties *map[string]any) {
 	var err error
-
-	configContext, err = pluginlib.Init(pluginName, properties, PostInit)
-	if err != nil {
+	pluginNameVar = pluginName
+	configContext, err = tccore.Init(properties,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
+		COMMON_PATH,
+		"hiveplugin",
+		start,
+		receiverFenestra,
+		chat_receiver,
+	)
+	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
@@ -293,7 +322,7 @@ func Init(pluginName string, properties *map[string]any) {
 		certbytes = cert
 		(*configContext.ConfigCerts)[HELLO_CERT] = certbytes
 	}
-	if key, ok := (*properties)[HELLO_CERT].([]byte); ok && len(key) > 0 {
+	if key, ok := (*properties)[HELLO_KEY].([]byte); ok && len(key) > 0 {
 		keybytes = key
 		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
 	}
