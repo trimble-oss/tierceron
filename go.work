@@ -22,6 +22,8 @@ use ./atrium/vestibulum/hive/plugins/trcviride
 
 use ./atrium/vestibulum/hive/plugins/trcdb
 
+use ./atrium/vestibulum/hive/plugins/trcninja
+
 use ./atrium/vestibulum/hive/plugins/trcpraevius
 
 use ./atrium/vestibulum/hive/plugins/trcprocurator

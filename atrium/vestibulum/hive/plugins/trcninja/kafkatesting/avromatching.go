@@ -26,7 +26,7 @@ func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) 
 
 	r.kafkaTestBundleLock.RUnlock()
 
-	if !plugin {
+	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("Current topic: %s has match test count: %d\n", r.TopicName, len(testKeys)))
 	}
 
@@ -96,7 +96,7 @@ func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey m
 		expectedAvroKey := kafkaTestBundle.ExpectedAvroKey
 		expectedLogicalKey := kafkaTestBundle.ExpectedLogicalKey
 
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("%v %s %v", kafkaKey[etlcore.SociiKeyField], messageTime.UTC().Format(time.UnixDate), kafkaLogicalKey["ErpKeyMapping"]))
 		}
 		for ek, ev := range expectedAvroKey {
@@ -233,7 +233,7 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 	kafkaTestBundle := r.FindByAvroKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
 		// EnterpriseId mismatch for tests we are running.
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("Couldn't find bundle for keyset: %v", kafkaKey))
 		}
 		return
