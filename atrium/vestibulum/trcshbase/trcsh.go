@@ -55,6 +55,7 @@ var (
 	gAgentConfig        *capauth.AgentConfigs = nil
 	gTrcshConfig        *capauth.TrcShConfig
 	kernelPluginHandler *hive.PluginHandler = nil
+	logEnvOnce          sync.Once
 )
 
 var MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
@@ -201,8 +202,10 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 		isDrone = driverConfigPtr.IsDrone
 	}
 	if !isEditor {
-		fmt.Fprintln(os.Stderr, "trcsh env: "+env)
-		fmt.Fprintf(os.Stderr, "trcsh regions: %s\n", strings.Join(regions, ", "))
+		logEnvOnce.Do(func() {
+			fmt.Fprintln(os.Stderr, "trcsh env: "+env)
+			fmt.Fprintf(os.Stderr, "trcsh regions: %s\n", strings.Join(regions, ", "))
+		})
 	}
 
 	if trcshMemFs == nil {
