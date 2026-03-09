@@ -22,7 +22,7 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 
 	r.kafkaTestBundleLock.RUnlock()
 
-	if !plugin {
+	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("Current topic: %s has match test count: %d\n", r.TopicName, len(testKeys)))
 	}
 
@@ -96,7 +96,7 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 		expectedAvroKey := kafkaTestBundle.ExpectedAvroKey
 		expectedLogicalKey := kafkaTestBundle.ExpectedLogicalKey
 
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("%v %s %v", kafkaKey[etlcore.SociiKeyField], messageTime.UTC().Format(time.UnixDate), kafkaLogicalKey["ErpKeyMapping"]))
 		}
 		for ek, ev := range expectedAvroKey {
@@ -199,7 +199,7 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 }
 
 func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
-	if !plugin {
+	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value)))
 	}
 	// TODO: Implement testExpected for JSON output.
@@ -227,7 +227,7 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 	kafkaTestBundle := r.FindByJsonKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
 		// sociiId mismatch for tests we are running.
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("Couldn't find bundle for keyset: %v", kafkaKey))
 		}
 		return
