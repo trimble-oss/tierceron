@@ -26,7 +26,7 @@ func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) 
 
 	r.kafkaTestBundleLock.RUnlock()
 
-	if !plugin {
+	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("Current topic: %s has match test count: %d\n", r.TopicName, len(testKeys)))
 	}
 
@@ -44,19 +44,38 @@ func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) 
 		expectedAvroKey := kafkaTestBundle.ExpectedAvroKey
 		for ek, ev := range expectedAvroKey {
 			if av, aok := kafkaKey[ek]; aok {
-				if i, err := strconv.ParseInt(ev.(string), 10, 32); err != nil {
-					etlcore.LogError(fmt.Sprintf("Unexpected non int32 expected key: %d\n", ev))
-					noMatch = true
-					break
-				} else {
+				// Handle both string and numeric keys
+				var evStr string
+				switch v := ev.(type) {
+				case string:
+					evStr = v
+				default:
+					evStr = fmt.Sprintf("%v", v)
+				}
+
+				// Try numeric comparison first (int32)
+				if i, err := strconv.ParseInt(evStr, 10, 32); err == nil {
 					if avInt32, avOk := av.(int32); avOk {
 						if avInt32 != int32(i) {
 							noMatch = true
 							break
 						}
-					} else {
-						etlcore.LogError(fmt.Sprintf("Unexpected non int32 expected key value: %v\n", av))
+						continue
 					}
+				}
+
+				// Fall back to string comparison
+				var avStr string
+				switch v := av.(type) {
+				case string:
+					avStr = v
+				default:
+					avStr = fmt.Sprintf("%v", v)
+				}
+
+				if evStr != avStr {
+					noMatch = true
+					break
 				}
 			} else {
 				noMatch = true
@@ -96,19 +115,43 @@ func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey m
 		expectedAvroKey := kafkaTestBundle.ExpectedAvroKey
 		expectedLogicalKey := kafkaTestBundle.ExpectedLogicalKey
 
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("%v %s %v", kafkaKey[etlcore.SociiKeyField], messageTime.UTC().Format(time.UnixDate), kafkaLogicalKey["ErpKeyMapping"]))
 		}
 		for ek, ev := range expectedAvroKey {
 			if av, aok := kafkaKey[ek]; aok {
-				if i, err := strconv.ParseInt(ev.(string), 10, 32); err != nil {
+				// Handle both string and numeric keys
+				var evStr string
+				switch v := ev.(type) {
+				case string:
+					evStr = v
+				default:
+					evStr = fmt.Sprintf("%v", v)
+				}
+
+				// Try numeric comparison first (int32)
+				if i, err := strconv.ParseInt(evStr, 10, 32); err == nil {
+					if avInt32, avOk := av.(int32); avOk {
+						if avInt32 != int32(i) {
+							noMatch = true
+							break
+						}
+						continue
+					}
+				}
+
+				// Fall back to string comparison
+				var avStr string
+				switch v := av.(type) {
+				case string:
+					avStr = v
+				default:
+					avStr = fmt.Sprintf("%v", v)
+				}
+
+				if evStr != avStr {
 					noMatch = true
 					break
-				} else {
-					if av.(int32) != int32(i) {
-						noMatch = true
-						break
-					}
 				}
 			} else {
 				noMatch = true
@@ -233,7 +276,7 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 	kafkaTestBundle := r.FindByAvroKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
 		// EnterpriseId mismatch for tests we are running.
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("Couldn't find bundle for keyset: %v", kafkaKey))
 		}
 		return

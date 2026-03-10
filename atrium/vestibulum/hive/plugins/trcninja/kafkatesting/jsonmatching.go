@@ -22,7 +22,7 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 
 	r.kafkaTestBundleLock.RUnlock()
 
-	if !plugin {
+	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("Current topic: %s has match test count: %d\n", r.TopicName, len(testKeys)))
 	}
 
@@ -40,23 +40,36 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 		expectedAvroKey := kafkaTestBundle.ExpectedAvroKey
 		for ek, ev := range expectedAvroKey {
 			if av, aok := kafkaKey[ek]; aok {
-				if i, err := strconv.ParseInt(ev.(string), 10, 32); err != nil {
-					etlcore.LogError(fmt.Sprintf("Unexpected non int32 expected key: %d\n", ev))
-					noMatch = true
-					break
-				} else {
-					if avi, err := strconv.ParseInt(av.(string), 10, 32); err != nil {
-						etlcore.LogError(fmt.Sprintf("Unexpected non int32 expected key: %d\n", ev))
-						noMatch = true
-						break
-					} else {
+				// Handle both string and numeric keys
+				var evStr, avStr string
+				switch v := ev.(type) {
+				case string:
+					evStr = v
+				default:
+					evStr = fmt.Sprintf("%v", v)
+				}
+				switch v := av.(type) {
+				case string:
+					avStr = v
+				default:
+					avStr = fmt.Sprintf("%v", v)
+				}
+
+				// Try numeric comparison first (int32)
+				if i, err := strconv.ParseInt(evStr, 10, 32); err == nil {
+					if avi, err := strconv.ParseInt(avStr, 10, 32); err == nil {
 						if int32(avi) != int32(i) {
-							// Enable for debugging
-							// etlcore.LogError(fmt.Sprintf("Unexpected match failure got %v: expected value: %v\n", av, i))
 							noMatch = true
 							break
 						}
+						continue
 					}
+				}
+
+				// Fall back to string comparison
+				if evStr != avStr {
+					noMatch = true
+					break
 				}
 			} else {
 				noMatch = true
@@ -96,24 +109,39 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 		expectedAvroKey := kafkaTestBundle.ExpectedAvroKey
 		expectedLogicalKey := kafkaTestBundle.ExpectedLogicalKey
 
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("%v %s %v", kafkaKey[etlcore.SociiKeyField], messageTime.UTC().Format(time.UnixDate), kafkaLogicalKey["ErpKeyMapping"]))
 		}
 		for ek, ev := range expectedAvroKey {
 			if av, aok := kafkaKey[ek]; aok {
-				var i, avi int64
-				var err error
-				if i, err = strconv.ParseInt(ev.(string), 10, 32); err != nil {
-					noMatch = true
-					break
+				// Handle both string and numeric keys
+				var evStr, avStr string
+				switch v := ev.(type) {
+				case string:
+					evStr = v
+				default:
+					evStr = fmt.Sprintf("%v", v)
+				}
+				switch v := av.(type) {
+				case string:
+					avStr = v
+				default:
+					avStr = fmt.Sprintf("%v", v)
 				}
 
-				if avi, err = strconv.ParseInt(av.(string), 10, 32); err != nil {
-					noMatch = true
-					break
+				// Try numeric comparison first (int64)
+				if i, err := strconv.ParseInt(evStr, 10, 64); err == nil {
+					if avi, err := strconv.ParseInt(avStr, 10, 64); err == nil {
+						if avi != i {
+							noMatch = true
+							break
+						}
+						continue
+					}
 				}
 
-				if int32(avi) != int32(i) {
+				// Fall back to string comparison
+				if evStr != avStr {
 					noMatch = true
 					break
 				}
@@ -199,7 +227,7 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 }
 
 func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
-	if !plugin {
+	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value)))
 	}
 	// TODO: Implement testExpected for JSON output.
@@ -216,8 +244,9 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 
 	if !r.FilterByKeyMap(kafkaKey) {
 		// sociiId mismatch for tests we are running.
-		// Enable for debugging
-		// etlcore.LogError(fmt.Sprintf("Mismatched socii: %v", kafkaKey))
+		if !GetPlugin() {
+			etlcore.LogError(fmt.Sprintf("FilterByKeyMap returned false for key: %v", kafkaKey))
+		}
 		return
 	}
 
@@ -227,7 +256,7 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 	kafkaTestBundle := r.FindByJsonKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
 		// sociiId mismatch for tests we are running.
-		if !plugin {
+		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("Couldn't find bundle for keyset: %v", kafkaKey))
 		}
 		return
