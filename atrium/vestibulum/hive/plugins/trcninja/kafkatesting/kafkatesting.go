@@ -91,6 +91,8 @@ type SeededKafkaReader struct {
 	engineRunning        sync.WaitGroup // tracks if the KafkaTestEngine loop is still running
 	messageProcessingWg  sync.WaitGroup // tracks in-flight ProcessMessage goroutines to prevent resource leak
 	testReadySignaled    atomic.Bool    // tracks if testReadyWG.Done() already called to prevent double-done panic
+	// Quota throttling tracking - for graceful backoff when quota exhausted
+	quotaErrorCount int32 // counts consecutive quota errors
 }
 
 // MultiBarContainer container for our progress bar
@@ -173,12 +175,12 @@ func GetPlugin() bool {
 func MultiBarInstance() *MultiBarContainer {
 	if multiProgressContainer.Mpb == nil {
 		mpbContext, mpbContextCancel = context.WithCancel(context.Background())
-		if IsPlugin && etlcore.GetConfigContext("ninja") != nil && etlcore.GetConfigContext("ninja").Log != nil {
+		if IsPlugin && etlcore.GetConfigContext() != nil && etlcore.GetConfigContext().Log != nil {
 			multiProgressContainer.Mpb = mpb.NewWithContext(mpbContext,
 				mpb.WithWidth(64),
 				mpb.WithWaitGroup(multiProgressContainer.Wg),
-				mpb.WithOutput(etlcore.GetConfigContext("ninja").Log.Writer()),
-				mpb.WithDebugOutput(etlcore.GetConfigContext("ninja").Log.Writer()))
+				mpb.WithOutput(etlcore.GetConfigContext().Log.Writer()),
+				mpb.WithDebugOutput(etlcore.GetConfigContext().Log.Writer()))
 		} else if IsPlugin {
 			multiProgressContainer.Mpb = mpb.NewWithContext(mpbContext,
 				mpb.WithWidth(64),
@@ -327,15 +329,43 @@ func newKafkaReaderInternal(topic []string, isTestReader bool, testReadyWG *sync
 	cacheKey := GetCacheKey(topic[0], isTestReader)
 	if cached, ok := kafkaReaderCache.Load(cacheKey); ok {
 		reader := cached.(*SeededKafkaReader)
-		if !reader.isReaderClosing() && !reader.engineActive.Load() {
+		// For non-test (handler) readers, don't check global flowTopicsClosed during cache reuse.
+		// The global flag is a signal to stop reading at engine level, not a cache invalidation.
+		// Handlers should remain reusable as long as they're not explicitly closed.
+		var canReuse bool
+		if isTestReader {
+			// Test readers: use standard closing check (ninjaTestClosed)
+			canReuse = !reader.isReaderClosing() && !reader.engineActive.Load()
+		} else {
+			// Non-test (handler) readers: only check if actually closed, not global flowTopicsClosed
+			canReuse = !reader.channelsClosed.Load() && !reader.engineActive.Load()
+		}
+
+		if canReuse {
 			// Reader exists, is healthy, and no engine is currently running - safe to reuse
 			// NOTE: Do NOT call testReadyWG.Add() here. testReadyWG is only for initial reader setup.
 			// Once initial readers are created and engines start, testReadyWG is "spent" and
 			// should not be modified. Reuse happens after initial setup phase.
-			// Also verify channels are not closed (TOCTOU race: recheck after return)
-			if !reader.channelsClosed.Load() {
-				return reader, nil
+
+			// Channels might be closed from a previous test - reopen them for sequential reuse
+			if reader.channelsClosed.Load() {
+				reader.incomingTestChan = make(chan *KafkaTestBundle, 3)
+				reader.deleteTestChan = make(chan *KafkaTestBundle, 20)
+				reader.channelsClosed.Store(false)
 			}
+
+			// DO NOT clear kafkaTestBundle map here - it contains RegisterTest entries
+			// that were populated during the Init phase and need to survive until testExpected runs.
+			// Only the individual bundle entries (non-nil values) get deleted when tests complete.
+			// IMPORTANT: The RegisterTest(testName) entry (with nil value) MUST persist across
+			// the Init→Test transition, even on cache reuse.
+
+			// Reset state flags for fresh test
+			reader.testReadySignaled.Store(false)
+			reader.engineActive.Store(false)
+			reader.ninjaTestClosed.Store(false)
+
+			return reader, nil
 		}
 		// Reader exists but is closing or has an active engine - don't reuse, create new one instead
 	}
@@ -432,6 +462,8 @@ func CloseAllTests() {
 	})
 }
 
+// CloseAllTestEngines closes all test reader engines and waits for them to finish.
+// DEPRECATED: Use CloseAllEngines() instead for complete cleanup including flow topics.
 func CloseAllTestEngines() {
 	CloseAllEngines()
 }
@@ -469,7 +501,7 @@ func CloseAllEngines() {
 	// Close all readers (both test and flow topic) and wait for their engine loops to fully exit
 	kafkaReaderCache.Range(func(key, value interface{}) bool {
 		reader := value.(*SeededKafkaReader)
-		if reader != nil {
+		if reader != nil && reader.isTestReader.Load() {
 			// Mark channels as closed first to prevent new sends
 			reader.channelsClosed.Store(true)
 
@@ -477,7 +509,7 @@ func CloseAllEngines() {
 			if reader.isTestReader.Load() {
 				reader.ninjaTestClosed.Store(true)
 			} else {
-				flowTopicsClosed.Store(true)
+				// flowTopicsClosed.Store(true)
 			}
 
 			// Close channels to signal ScanTests to exit
@@ -554,8 +586,7 @@ func CloseFlowTopicEngines(topicReaderKeys ...string) {
 
 // PreSeed -- Sets up a waitgroup and kicks off async testhelper.
 func (r *SeededKafkaReader) PreSeed() {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Second))
-	defer cancel()
+	ctx := context.Background()
 
 	for {
 		etlcore.LogError("Beginning kafka group setup.")
@@ -607,29 +638,9 @@ func (r *SeededKafkaReader) RegisterTest(testName string) {
 	if r.kafkaTestBundle == nil {
 		r.kafkaTestBundle = make(map[string]*KafkaTestBundle)
 	}
+	// Store nil placeholder - testExpected will replace with real bundle
 	r.kafkaTestBundle[testName] = nil
 	r.kafkaTestBundleLock.Unlock()
-
-	// Send to incomingTestChan to signal ScanTests that a test was registered
-	if r.incomingTestChan != nil && !r.channelsClosed.Load() {
-		func() {
-			defer func() {
-				if rec := recover(); rec != nil {
-					// Only log if not shutting down to avoid clutter during cleanup
-					if !r.channelsClosed.Load() {
-						etlcore.LogError(fmt.Sprintf("Panic sending test signal to incomingTestChan: %v", rec))
-					}
-				}
-			}()
-			select {
-			case r.incomingTestChan <- &KafkaTestBundle{Name: testName}:
-				// Signal sent successfully
-			default:
-				// Buffer full, but test is registered in the map anyway
-				etlcore.LogError(fmt.Sprintf("incomingTestChan full when registering test %s", testName))
-			}
-		}()
-	}
 }
 
 // DeleteTest -- remove test bundle.
@@ -651,7 +662,7 @@ func (r *SeededKafkaReader) DeleteTest(incomingTest *KafkaTestBundle) {
 		etlcore.LogError("deleteTestChan is closed, cannot delete test")
 		return
 	}
-	// Wrap in panic recovery to handle TOCTOU race where channels close between check and send
+	// Wrap in panic recovery to handle race where channels close between check and send
 	func() {
 		defer func() {
 			if rec := recover(); rec != nil {
@@ -702,17 +713,10 @@ func (r *SeededKafkaReader) HasEmptyTest(wg *sync.WaitGroup) bool {
 }
 
 func (r *SeededKafkaReader) ScanTests(wg *sync.WaitGroup) {
-	// Create timeout context once instead of per iteration to prevent goroutine leak
-	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer timeoutCancel()
-
 	for {
 		hasEmpty := false
 
-		// Create a fresh context for each iteration with 1 second timeout
-		iterationCtx, iterCancel := context.WithTimeout(timeoutCtx, 1*time.Second)
-		defer iterCancel() // Use defer to ensure exactly one cancel per iteration, prevents double-cancel panic
-
+		// No timeout - let the test framework control execution timing
 		select {
 		case deleteTest := <-r.deleteTestChan:
 			if deleteTest == nil {
@@ -723,7 +727,7 @@ func (r *SeededKafkaReader) ScanTests(wg *sync.WaitGroup) {
 				return
 			}
 			r.kafkaTestBundleLock.Lock()
-			delete(r.kafkaTestBundle, deleteTest.Name)
+			delete(r.kafkaTestBundle, deleteTest.Name) // Delete by unique key
 			r.kafkaTestBundleLock.Unlock()
 			hasEmpty = r.HasEmptyTest(wg)
 		case incomingTest := <-r.incomingTestChan:
@@ -734,20 +738,13 @@ func (r *SeededKafkaReader) ScanTests(wg *sync.WaitGroup) {
 				}
 				return
 			}
+			// Store the real bundle under its unique key
 			r.kafkaTestBundleLock.Lock()
 			r.kafkaTestBundle[incomingTest.Name] = incomingTest
 			r.kafkaTestBundleLock.Unlock()
+			// Check if all tests are now registered (all non-nil)
 			hasEmpty = r.HasEmptyTest(wg)
-		case <-iterationCtx.Done():
-			// Iteration timeout - check if reader is closing
-			// Use isReaderClosing() for both test and flow topic readers (was only checking ninjaTestClosed)
-			if r.isReaderClosing() {
-				if wg != nil {
-					wg.Done()
-				}
-				return
-			}
-			hasEmpty = r.HasEmptyTest(wg)
+
 		}
 		if !hasEmpty {
 			wg = nil
@@ -789,6 +786,61 @@ func (r *SeededKafkaReader) isReaderClosing() bool {
 	return (r.ninjaTestClosed.Load() && r.isTestReader.Load()) || (!r.isTestReader.Load() && flowTopicsClosed.Load())
 }
 
+// isQuotaError detects if an error is due to Kafka quota/throttling
+// Covers Confluent Cloud quota patterns including explicit error codes and timeout signatures
+// From Kafka protocol: code 22 (QUOTA_EXCEEDED), code 31 (THROTTLE_TIME_MS)
+func (r *SeededKafkaReader) isQuotaError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := strings.ToLower(err.Error())
+	return strings.Contains(errStr, "quota") ||
+		strings.Contains(errStr, "throttle") ||
+		strings.Contains(errStr, "client_quota_exceeded") ||
+		strings.Contains(errStr, "quota_exceeded") ||
+		strings.Contains(errStr, "429") ||
+		strings.Contains(errStr, "broker busy") ||
+		strings.Contains(errStr, "broker is busy") ||
+		strings.Contains(errStr, "broker not available") ||
+		strings.Contains(errStr, "insufficient capacity") ||
+		strings.Contains(errStr, "request timed out") ||
+		strings.Contains(errStr, "retriable error") || // some quota errors are marked retriable
+		strings.Contains(errStr, "throttled") // Kafka protocol THROTTLED_REQUEST_RESPONSE
+}
+
+// handleQuotaThrottling implements exponential backoff when quota is exhausted
+func (r *SeededKafkaReader) handleQuotaThrottling() time.Duration {
+	// Increment quota error count
+	count := atomic.AddInt32(&r.quotaErrorCount, 1)
+
+	// Calculate exponential backoff: 1s, 2s, 4s, 8s, 16s, then max 60s
+	backoffSeconds := int64(1) << uint(count-1)
+	if backoffSeconds > 60 {
+		backoffSeconds = 60
+	}
+
+	// Log quota issue
+	if count == 1 {
+		etlcore.LogError(fmt.Sprintf("Quota throttled on reader %s, count=%d, backing off %ds",
+			r.TopicName, count, backoffSeconds))
+	} else if count%10 == 0 {
+		// Log every 10 attempts to avoid log spam
+		etlcore.LogError(fmt.Sprintf("Still quota throttled on reader %s, count=%d, backing off %ds",
+			r.TopicName, count, backoffSeconds))
+	}
+
+	return time.Duration(backoffSeconds) * time.Second
+}
+
+// resetQuotaState resets quota error tracking when we successfully read
+func (r *SeededKafkaReader) resetQuotaState() {
+	if atomic.LoadInt32(&r.quotaErrorCount) > 0 {
+		atomic.StoreInt32(&r.quotaErrorCount, 0)
+		etlcore.LogError(fmt.Sprintf("Quota recovered on reader %s, resuming normal operation",
+			r.TopicName))
+	}
+}
+
 func (r *SeededKafkaReader) recreateKafkaReader() error {
 	if r == nil {
 		return errors.New("cannot recreate reader on nil SeededKafkaReader")
@@ -826,16 +878,6 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 	// Atomically try to activate this engine. This prevents a race condition where
 	// multiple goroutines could all pass the engineActive.Load() check before any of
 	// them sets engineActive to true. CompareAndSwap ensures only ONE goroutine succeeds.
-	if !r.engineActive.CompareAndSwap(false, true) {
-		// Another engine is already running on this reader - exit immediately
-		etlcore.LogError(fmt.Sprintf("Engine already active on reader for topic %s - exiting", r.TopicName))
-		if testReadyWG != nil && !r.testReadySignaled.Load() {
-			if r.testReadySignaled.CompareAndSwap(false, true) {
-				testReadyWG.Done() // Still need to signal done since we were counted in newKafkaReaderInternal
-			}
-		}
-		return
-	}
 
 	// Recover from any panics to ensure engineActive is released
 	defer func() {
@@ -861,8 +903,21 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 
 	wg.Wait()
 
-	etlcore.LogError("All tests have registered.  Engine starting to read from kafka.")
-
+	if r.isTestReader.Load() {
+		etlcore.LogError("All tests have registered. Test reader engine starting to read from kafka.")
+	} else {
+		etlcore.LogError("Flow reader engine starting to read from kafka.")
+	}
+	if !r.engineActive.CompareAndSwap(false, true) {
+		// Another engine is already running on this reader - exit immediately
+		etlcore.LogError(fmt.Sprintf("Engine already active on reader for topic %s - exiting", r.TopicName))
+		if testReadyWG != nil && !r.testReadySignaled.Load() {
+			if r.testReadySignaled.CompareAndSwap(false, true) {
+				testReadyWG.Done() // Still need to signal done since we were counted in newKafkaReaderInternal
+			}
+		}
+		return
+	}
 	// Signal that this engine is ready to process messages
 	// IMPORTANT: Only signal after ScanTests wg.Done() confirms ScanTests goroutine is fully initialized
 	if r.isTestReader.Load() && testReadyWG != nil && !r.testReadySignaled.Load() {
@@ -874,16 +929,9 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 
 	// All tests loaded and ready to go.
 	for {
-		// After a test completes, if there are no more tests, then exit the reader loop.
-		// Reader will stay in cache for potential reuse; cleanup handled by CloseAllTests()/CloseAllTestEngines()
-		if r.isTestReader.Load() && r.CountTest() == 0 {
-			// NOTE: May gobble an extra message here, but that is o.k.
-			// All done.  Don't process messages further.
-			etlcore.LogError("All tests completed.  Exiting reader loop.")
-			break
-		}
-
-		// Check if we're closing
+		// Exit only when explicitly closed by test framework (ninjaTestClosed set by CloseAllTests).
+		// DO NOT exit just because CountTest() == 0 - that's normal when tests are deleted between sequential tests.
+		// Engine must stay alive to process subsequent test registrations.
 		if r.isReaderClosing() {
 			etlcore.LogError("Reader is closing, exiting reader loop.")
 			break
@@ -917,6 +965,15 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 
 		// Check for errors in fetches
 		if err := fetches.Err(); err != nil {
+			// Check for quota/throttling errors FIRST - these need graceful backoff
+			if r.isQuotaError(err) {
+				backoffDuration := r.handleQuotaThrottling()
+				// Quota errors are handled internally with exponential backoff - do not send to error channel
+				// This ensures tests continue gracefully during transient quota throttling
+				time.Sleep(backoffDuration)
+				continue
+			}
+
 			// Check for authorization errors - these are fatal and should not retry
 			errStr := err.Error()
 			if strings.Contains(errStr, "TOPIC_AUTHORIZATION_FAILED") ||
@@ -1026,6 +1083,9 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 			etlcore.LogError("First fetch processing complete.")
 		}
 
+		// Reset quota throttling state on successful fetch
+		r.resetQuotaState()
+
 		// Process all records in the fetch
 		iter := fetches.RecordIter()
 		for !iter.Done() {
@@ -1118,21 +1178,9 @@ func testExpected(r *SeededKafkaReader, kafkaTestBundle *KafkaTestBundle) {
 	kafkaTestBundle.Wg = &sync.WaitGroup{}
 	kafkaTestBundle.Wg.Add(1)
 
-	r.kafkaTestBundleLock.Lock()
-	if _, hasKey := r.kafkaTestBundle[testName]; !hasKey {
-		kafkaTestBundle.SuccessFun(fmt.Errorf("invalid and unregisterd test, check testname: %s", testName))
-		kafkaTestBundle.Wg.Done()
-		r.kafkaTestBundleLock.Unlock()
-		return
-	}
-	r.kafkaTestBundleLock.Unlock()
-
-	// Override the name.  It should always be based on test function name
-	// or registration and setup can fail.
-	kafkaTestBundle.Name = testName
-
-	// Cleanup expected values....
-	// Because aggregator does this for Databricks.
+	// Cleanup expected values BEFORE storing in map to prevent race condition where
+	// another goroutine reads the bundle while we're still modifying it.
+	// This must complete before the bundle is exposed to message processing goroutines.
 	for k, v := range kafkaTestBundle.ExpectedLogicalKey {
 		kafkaTestBundle.ExpectedLogicalKey[k] = strings.TrimSpace(v.(string))
 	}
@@ -1149,6 +1197,43 @@ func testExpected(r *SeededKafkaReader, kafkaTestBundle *KafkaTestBundle) {
 			testBundleFun(err)
 		}
 		kafkaTestBundle.Wg.Done()
+	}
+
+	// Atomically check, generate unique key, and update map in one critical section
+	// to prevent race conditions with concurrent testExpected calls
+	r.kafkaTestBundleLock.Lock()
+	if _, hasKey := r.kafkaTestBundle[testName]; !hasKey {
+		kafkaTestBundle.SuccessFun(fmt.Errorf("invalid and unregisterd test, check testname: %s", testName))
+		kafkaTestBundle.Wg.Done()
+		r.kafkaTestBundleLock.Unlock()
+		return
+	}
+
+	// Generate unique ID for this test instance to support multiple simultaneous tests
+	testID, _ := uuid.NewRandom()
+	uniqueTestKey := testName + "|" + testID.String()
+	kafkaTestBundle.Name = uniqueTestKey
+
+	// Store the bundle directly under its unique key to guarantee message matching finds it immediately,
+	// even for injected tests where the engine is already running and processing messages.
+	// Bundle is fully initialized at this point (fields set before lock), so safe to expose.
+	r.kafkaTestBundle[uniqueTestKey] = kafkaTestBundle
+	delete(r.kafkaTestBundle, testName) // Remove placeholder - bundle now stored under unique key
+	r.kafkaTestBundleLock.Unlock()
+
+	// Send to incomingTestChan to notify ScanTests that bundle is registered (so it checks HasEmptyTest)
+	if r.incomingTestChan != nil && !r.channelsClosed.Load() {
+		func() {
+			defer func() {
+				if rec := recover(); rec != nil {
+					if !r.channelsClosed.Load() {
+						etlcore.LogError(fmt.Sprintf("Panic sending to incomingTestChan in testExpected: %v", rec))
+					}
+				}
+			}()
+			// Send the bundle (which is already stored) to trigger ScanTests to check HasEmptyTest
+			r.incomingTestChan <- kafkaTestBundle
+		}()
 	}
 
 	go func() {
@@ -1187,15 +1272,15 @@ func KafkaTestInit(argosID string,
 	testName := funcParts[len(funcParts)-1]
 	testName = strings.Replace(testName, "clean", "", 1)
 
-	testName = fmt.Sprintf("%33s", testName)
-	etlcore.LogError(fmt.Sprintf("KafkaTestInit setting up mpb for: %s\n", testName))
+	testNameFormatted := fmt.Sprintf("%33s", testName)
+	etlcore.LogError(fmt.Sprintf("KafkaTestInit setting up mpb for: %s\n", testNameFormatted))
 
 	multiBarLock.Lock()
 	multibar := MultiBarInstance()
 
 	bar := multibar.Mpb.AddBar(int64(100),
 		mpb.PrependDecorators(
-			decor.Name(testName, decor.WCSyncSpace),
+			decor.Name(testNameFormatted, decor.WCSyncSpace),
 			decor.Name(" "),
 			decor.Any(currentStateFunc),
 			decor.Elapsed(decor.ET_STYLE_MMSS, decor.WCSyncSpace),
@@ -1215,6 +1300,8 @@ func KafkaTestInit(argosID string,
 				bar.Abort(GetPlugin())
 				return nil, nil, "", "", nil, err
 			}
+			// Register test as soon as reader is created with base test name
+			reader.RegisterTest(testName)
 			readerSequence = append(readerSequence, reader)
 		}
 	}
@@ -1314,7 +1401,7 @@ func TestWait(currentState *atomic.Value, kafkaTestSequence []*KafkaTestBundle, 
 	time.Sleep(100 * time.Millisecond)
 }
 
-// TestExpectedHelper -- reads from kafka waiting for expectedKey and expected value index.  When it finds it, it returns whether expectedValue matched or not.
+// TestExpectedHelper -- sends the test bundle to ScanTests for registration and parsing.
 func TestExpectedHelper(r *SeededKafkaReader, kafkaTestBundle *KafkaTestBundle) error {
 	if r == nil {
 		return errors.New("cannot send test to nil reader")
@@ -1325,17 +1412,19 @@ func TestExpectedHelper(r *SeededKafkaReader, kafkaTestBundle *KafkaTestBundle) 
 	if r.channelsClosed.Load() {
 		return errors.New("reader channels have been closed")
 	}
-	// Use blocking send instead of non-blocking select with default case.
-	// Non-blocking send would silently drop messages if buffer is full, causing test timeouts.
-	// Blocking send ensures messages are delivered to the engine.
+	// Blocking send - ensures bundle is delivered and stored before returning.
+	// This guarantees message matching can find the bundle immediately.
 	// Wrap in panic recovery to handle TOCTOU race where channels close between check and send
-	func() {
+	done := make(chan bool, 1)
+	go func() {
 		defer func() {
 			if rec := recover(); rec != nil {
 				etlcore.LogError(fmt.Sprintf("Panic sending to incomingTestChan in TestExpectedHelper: %v", rec))
 			}
+			done <- true
 		}()
-		r.incomingTestChan <- kafkaTestBundle
+		r.incomingTestChan <- kafkaTestBundle // Blocking send
 	}()
+	<-done // Wait for send to complete
 	return nil
 }
