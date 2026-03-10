@@ -893,17 +893,16 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 	r.engineRunning.Add(1)
 	defer r.engineRunning.Done() // Signal completion when loop exits
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	//
-	// Block until all tests are set up.
-	//
-	go r.ScanTests(&wg)
-
-	wg.Wait()
-
 	if r.isTestReader.Load() {
+		var wg sync.WaitGroup
+		wg.Add(1)
+
+		//
+		// Block until all tests are set up.
+		//
+		go r.ScanTests(&wg)
+
+		wg.Wait()
 		etlcore.LogError("All tests have registered. Test reader engine starting to read from kafka.")
 	} else {
 		etlcore.LogError("Flow reader engine starting to read from kafka.")
