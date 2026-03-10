@@ -1,5 +1,5 @@
-//go:build trcshcursoraw && !trcshcursork
-// +build trcshcursoraw,!trcshcursork
+//go:build trcshcursoraw && !trcshcursork && !trcshcursorz
+// +build trcshcursoraw,!trcshcursork,!trcshcursorz
 
 package coreopts
 
@@ -22,8 +22,13 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 		"env":            "dev",
 		"exitOnFailure":  false,
 		"regions":        []string{"west"},
-		"pluginNameList": []string{""},
+		"pluginNameList": []string{},
 		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
 		"logNamespace":   "cursor-aw",
 	}
+}
+
+// IsKubeRunnable returns true if this build variant is allowed to run in Kubernetes/AKS
+func IsKubeRunnable() bool {
+	return false
 }

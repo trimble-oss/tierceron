@@ -478,7 +478,7 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 				return
 			}
 			sc, ok := properties.GetRegionConfigValues(projServ[1], path)
-        	if !ok {
+			if !ok {
 				driverConfig.CoreConfig.Log.Printf("Unable to access configuration data for %s\n", *pluginNamePtr)
 				return
 			}

@@ -354,6 +354,13 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 	return valid, desiredPolicy, nil
 }
 
+// ValidateToken - validates the current token using LookupSelf
+// @return error if token is invalid or expired, nil if valid
+func (m *Modifier) ValidateToken() error {
+	_, err := m.client.Auth().Token().LookupSelf()
+	return err
+}
+
 // Write - writes the key,value pairs in data to the vault
 //
 // @param   data A set of key,value pairs to be written
@@ -463,9 +470,8 @@ retryVaultAccess:
 
 	// Add these variable declarations at the top of the function
 	var (
-		secret     *api.Secret
-		err        error
-		versionMap = make(map[string][]string)
+		secret *api.Secret
+		err    error
 	)
 
 	// Create a timeout context and channel for results
@@ -481,6 +487,7 @@ retryVaultAccess:
 	go func() {
 		var s *api.Secret
 		var e error
+		versionMap := make(map[string][]string) // Create new map per goroutine
 
 		s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
 
@@ -529,6 +536,7 @@ retryVaultAccess:
 			go func() {
 				var s *api.Secret
 				var e error
+				versionMap := make(map[string][]string) // Create new map per goroutine
 
 				s, e = m.getVersionSpecificRead(path, fullPath, versionMap)
 

@@ -3,12 +3,14 @@ package trcxbase
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -51,7 +53,12 @@ func CommonMain(ctx config.ProcessContext,
 	isProd := strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")
 	// Executable input arguments(flags)
 	if flagset == nil {
-		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
+		errorHandling := flag.ExitOnError
+		if driverConfig != nil && (driverConfig.IsShellCommand || kernelopts.BuildOptions.IsKernelZ()) {
+			errorHandling = flag.ContinueOnError
+		}
+		flagset = flag.NewFlagSet(argLines[0], errorHandling)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
@@ -95,17 +102,66 @@ func CommonMain(ctx config.ProcessContext,
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter") // -templateFilter=config.yml
 
+	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
+	var outWriter io.Writer = os.Stderr
+	if driverConfig != nil && driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+		var stdioFile io.ReadWriteCloser
+		var err error
+		// Check if io directory exists
+		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
+		} else {
+			// Directory doesn't exist, use WriteToMemFile to create it
+			emptyData := []byte{}
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
+		}
+		if err == nil {
+			outWriter = stdioFile
+			defer stdioFile.Close()
+			// Redirect flagset output to the same writer for help messages
+			flagset.SetOutput(outWriter)
+		}
+	}
+
 	// Checks for proper flag input
 	args := argLines[1:]
 	for i := 0; i < len(args); i++ {
 		s := args[i]
 		if s[0] != '-' {
-			fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)
-			os.Exit(1)
+			fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
+			return
 		}
 	}
 
-	eUtils.CheckInitFlags(flagset, argLines[1:])
+	parseErr := eUtils.CheckInitFlags(flagset, argLines[1:])
+	// If help flag was used, print usage and return early
+	if parseErr == flag.ErrHelp {
+		flagset.Usage()
+		return
+	}
+	if parseErr != nil {
+		fmt.Fprintf(outWriter, "%s\n", parseErr.Error())
+		return
+	}
+
+	// After parsing, retrieve the actual env flag value if it was explicitly provided by user
+	// Check if -env flag was actually present in argLines (not just using default)
+	envFlagProvided := false
+	for _, arg := range argLines {
+		if strings.HasPrefix(arg, "-env") {
+			envFlagProvided = true
+			break
+		}
+	}
+	if envFlagProvided {
+		if envFlag := flagset.Lookup("env"); envFlag != nil {
+			// Make a persistent copy of the parsed env value
+			parsedEnvValue := envFlag.Value.String()
+			envPtr = &parsedEnvValue
+		}
+	}
 
 	configCtx := &config.ConfigContext{
 		ResultMap:            make(map[string]*string),
@@ -122,9 +178,17 @@ func CommonMain(ctx config.ProcessContext,
 	}
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
-	if eUtils.RefLength(tokenNamePtr) == 0 && eUtils.RefLength(tokenPtr) > 0 {
-		tokenName := fmt.Sprintf("config_token_%s", envBasis)
-		tokenNamePtr = &tokenName
+	// Update tokenNamePtr to match current environment
+	// This is needed when -env flag changes the environment from shell's default
+	if eUtils.RefLength(tokenNamePtr) == 0 {
+		// TokenName is empty - create one based on envBasis
+		tokenNameValue := fmt.Sprintf("config_token_%s", envBasis)
+		tokenNamePtr = &tokenNameValue
+	} else if envFlagProvided {
+		// When -env flag was explicitly provided and tokenName was already set,
+		// update tokenNamePtr to match the new environment
+		tokenNameValue := fmt.Sprintf("config_token_%s", envBasis)
+		tokenNamePtr = &tokenNameValue
 	}
 	var driverConfigBase *config.DriverConfig
 	if driverConfig == nil {
@@ -175,37 +239,37 @@ func CommonMain(ctx config.ProcessContext,
 	}
 
 	if cleanPresent && !envPresent {
-		fmt.Fprintln(os.Stderr, "Environment must be defined with -env=env1,... for -clean usage")
-		os.Exit(1)
+		fmt.Fprintln(outWriter, "Environment must be defined with -env=env1,... for -clean usage")
+		return
 	} else if *diffPtr && *versionPtr {
-		fmt.Fprintln(os.Stderr, "-version flag cannot be used with -diff flag")
-		os.Exit(1)
+		fmt.Fprintln(outWriter, "-version flag cannot be used with -diff flag")
+		return
 	} else if *versionPtr && len(*eUtils.RestrictedPtr) > 0 {
-		fmt.Fprintln(os.Stderr, "-restricted flags cannot be used with -versions flag")
-		os.Exit(1)
+		fmt.Fprintln(outWriter, "-restricted flags cannot be used with -versions flag")
+		return
 	} else if isProd && *addrPtr == "" {
-		fmt.Fprintln(os.Stderr, "The -addr flag must be used with staging/prod environment")
-		os.Exit(1)
+		fmt.Fprintln(outWriter, "The -addr flag must be used with staging/prod environment")
+		return
 	} else if (len(*fieldsPtr) == 0) && len(*seedPathPtr) != 0 {
-		fmt.Fprintln(os.Stderr, "The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
-		os.Exit(1)
+		fmt.Fprintln(outWriter, "The -fields flag must be used with -seedPath flag; -encrypted flag is optional")
+		return
 	} else if *readOnlyPtr && (len(*encryptedPtr) == 0 || len(*seedPathPtr) == 0) {
-		fmt.Fprintln(os.Stderr, "The -encrypted flag must be used with -seedPath flag if -readonly is used")
-		os.Exit(1)
+		fmt.Fprintln(outWriter, "The -encrypted flag must be used with -seedPath flag if -readonly is used")
+		return
 	} else {
 		if len(*dynamicPathPtr) == 0 {
 			if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexNameFilterPtr) == 0) && len(*eUtils.IndexedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-serviceFilter and -indexFilter must be specified to use -indexed flag")
-				os.Exit(1)
+				fmt.Fprintln(outWriter, "-serviceFilter and -indexFilter must be specified to use -indexed flag")
+				return
 			} else if len(*eUtils.ServiceFilterPtr) == 0 && len(*eUtils.RestrictedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-serviceFilter must be specified to use -restricted flag")
-				os.Exit(1)
+				fmt.Fprintln(outWriter, "-serviceFilter must be specified to use -restricted flag")
+				return
 			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *diffPtr && len(*eUtils.IndexedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
-				os.Exit(1)
+				fmt.Fprintln(outWriter, "-indexFilter and -indexValueFilter must be specified to use -indexed & -diff flag")
+				return
 			} else if (len(*eUtils.ServiceFilterPtr) == 0 || len(*eUtils.IndexValueFilterPtr) == 0) && *versionPtr && len(*eUtils.IndexedPtr) != 0 {
-				fmt.Fprintln(os.Stderr, "-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
-				os.Exit(1)
+				fmt.Fprintln(outWriter, "-indexFilter and -indexValueFilter must be specified to use -indexed & -versions flag")
+				return
 			}
 		}
 	}
@@ -233,12 +297,12 @@ func CommonMain(ctx config.ProcessContext,
 
 	if *versionPtr {
 		if strings.Contains(*envPtr, ",") {
-			fmt.Fprintln(os.Stderr, Yellow+"Invalid environment, please specify one environment."+Reset)
-			os.Exit(1)
+			fmt.Fprintln(outWriter, Yellow+"Invalid environment, please specify one environment."+Reset)
+			return
 		}
 		envVersion := strings.Split(*envPtr, "_")
 		if len(envVersion) > 1 && envVersion[1] != "" && envVersion[1] != "0" {
-			fmt.Fprintln(os.Stderr, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
+			fmt.Fprintln(outWriter, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
 			*envPtr = strings.Split(*envPtr, "_")[0]
 		}
 		configCtx.EnvSlice = append(configCtx.EnvSlice, *envPtr+"_versionInfo")
@@ -252,52 +316,55 @@ func CommonMain(ctx config.ProcessContext,
 			configCtx.EnvSlice = strings.Split(*envPtr, ",")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 			if len(configCtx.EnvSlice) > 4 {
-				fmt.Fprintln(os.Stderr, "Unsupported number of environments - Maximum: 4")
-				os.Exit(1)
+				fmt.Fprintln(outWriter, "Unsupported number of environments - Maximum: 4")
+				return
 			}
 			for i, env := range configCtx.EnvSlice {
 				if env == "local" {
-					fmt.Fprintln(os.Stderr, "Unsupported env: local not available with diff flag")
-					os.Exit(1)
+					fmt.Fprintln(outWriter, "Unsupported env: local not available with diff flag")
+					return
 				}
 				if !strings.Contains(env, "_") {
 					configCtx.EnvSlice[i] = env + "_0"
 				}
 			}
 		} else {
-			fmt.Fprintln(os.Stderr, "Incorrect format for diff: -env=env1,env2,...")
-			os.Exit(1)
+			fmt.Fprintln(outWriter, "Incorrect format for diff: -env=env1,env2,...")
+			return
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
-			fmt.Fprintln(os.Stderr, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
-			os.Exit(1)
+			fmt.Fprintln(outWriter, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
+			return
 		}
 		configCtx.EnvSlice = append(configCtx.EnvSlice, (*envPtr))
 		envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
 		*envPtr = envVersion[0]
 		if !*noVaultPtr {
-			roleEntityPtr := new(string)
+			roleEntity := "bamboo"
+			currentRoleEntityPtr := &roleEntity
 			autoErr := eUtils.AutoAuth(driverConfigBase,
 				tokenNamePtr,
 				&tokenPtr,
 				envPtr,
 				envCtxPtr,
-				roleEntityPtr, *pingPtr)
+				currentRoleEntityPtr, *pingPtr)
 
 			if autoErr != nil {
-				fmt.Fprintln(os.Stderr, "Auth failure: "+autoErr.Error())
+				fmt.Fprintln(outWriter, "Auth failure: "+autoErr.Error())
 				eUtils.LogErrorMessage(driverConfigBase.CoreConfig, autoErr.Error(), true)
 			}
 		} else {
 			*tokenPtr = "novault"
+			// Add novault token to cache immediately for this environment
+			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), tokenPtr)
 		}
 
 		if len(envVersion) >= 2 { // Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
-				fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1")
-				os.Exit(1)
+				fmt.Fprintln(outWriter, "Must declare desired version number after '_' : -env=env1_ver1")
+				return
 			}
 		} else {
 			*envPtr = envVersion[0] + "_0"
@@ -313,25 +380,42 @@ func CommonMain(ctx config.ProcessContext,
 	}
 
 	if len(listCheck) != len(configCtx.EnvSlice) {
-		fmt.Fprintf(os.Stderr, "Cannot diff an environment against itself.\n")
-		os.Exit(1)
+		fmt.Fprintf(outWriter, "Cannot diff an environment against itself.\n")
+		return
 	}
 
 skipDiff:
 	// Prints usage if no flags are specified
 	if *helpPtr {
 		flagset.Usage()
-		os.Exit(1)
+		return
 	}
 	if ctx == nil && !driverConfig.CoreConfig.IsEditor {
-		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Fprintln(os.Stderr, "Missing required start template folder: "+*startDirPtr)
-			os.Exit(1)
+		// Check template folder - use memfs for shell mode, real fs otherwise
+		if driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+			if _, err := driverConfig.MemFs.Stat(*startDirPtr); err != nil {
+				fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
+				return
+			}
+		} else {
+			if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
+				fmt.Fprintln(outWriter, "Missing required start template folder: "+*startDirPtr)
+				return
+			}
 		}
+
 		if !*diffPtr { // -diff doesn't require seed folder
-			if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
-				fmt.Fprintln(os.Stderr, "Missing required start seed folder: "+*endDirPtr)
-				os.Exit(1)
+			// Check seed folder - use memfs for shell mode, real fs otherwise
+			if driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+				if _, err := driverConfig.MemFs.Stat(*endDirPtr); err != nil {
+					fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
+					return
+				}
+			} else {
+				if _, err := os.Stat(*endDirPtr); os.IsNotExist(err) {
+					fmt.Fprintln(outWriter, "Missing required start seed folder: "+*endDirPtr)
+					return
+				}
 			}
 		}
 	}
@@ -373,20 +457,20 @@ skipDiff:
 			},
 		}, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, roleEntityPtr, *pingPtr)
 		if autoErr != nil {
-			fmt.Fprintln(os.Stderr, "Missing auth components.")
+			fmt.Fprintln(outWriter, "Missing auth components.")
 			eUtils.LogErrorMessage(driverConfigBase.CoreConfig, autoErr.Error(), true)
 		}
 	}
 
 	if len(configCtx.EnvSlice) == 1 && (eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0) && !*noVaultPtr {
-		fmt.Fprintf(os.Stderr, "Missing required auth token for env: %s\n", envBasis)
-		os.Exit(1)
+		fmt.Fprintf(outWriter, "Missing required auth token for env: %s\n", envBasis)
+		return
 	}
 
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
-		fmt.Fprintln(os.Stderr, *envPtr)
+		fmt.Fprintln(outWriter, *envPtr)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	}
 
@@ -777,10 +861,13 @@ skipDiff:
 							eUtils.LogAndSafeExit(driverConfigBase.CoreConfig, fmt.Sprintf("Unexpected auth error %v ", authErr), 1)
 						}
 					}
-				} else if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", envBasis))) == 0 {
-					token := "novault"
-					envBasis := eUtils.GetEnvBasis(*envPtr)
-					driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), &token)
+				} else {
+					// Add novault token to cache for current environment in loop
+					currentEnvBasis := eUtils.GetEnvBasis(*envPtr)
+					if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", currentEnvBasis))) == 0 {
+						token := "novault"
+						driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", currentEnvBasis), &token)
+					}
 				}
 				if len(envVersion) >= 2 { // Put back env+version together
 					*envPtr = envVersion[0] + "_" + envVersion[1]

@@ -1,5 +1,5 @@
-//go:build trcshcurator && !trcshcursoraw && !trcshcursork
-// +build trcshcurator,!trcshcursoraw,!trcshcursork
+//go:build trcshcurator && !trcshcursoraw && !trcshcursork && !trcshcursorz
+// +build trcshcurator,!trcshcursoraw,!trcshcursork,!trcshcursorz
 
 package coreopts
 
@@ -21,7 +21,7 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 	if pluginEnvConfig != nil {
 		pluginEnvConfig["exitOnFailure"] = false
 		pluginEnvConfig["regions"] = []string{"west"}
-		pluginEnvConfig["pluginNameList"] = []string{"trc-vault-plugin", "trcsh-cursor-aw", "trcsh-cursor-ak"}
+		pluginEnvConfig["pluginNameList"] = []string{"trc-vault-plugin", "trcsh-cursor-aw", "trcsh-cursor-k", "trcsh-cursor-z"}
 		pluginEnvConfig["templatePath"] = []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"}
 		pluginEnvConfig["logNamespace"] = "trcshcurator"
 		return pluginEnvConfig
@@ -30,9 +30,14 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 			"env":            "dev",
 			"exitOnFailure":  false,
 			"regions":        []string{"west"},
-			"pluginNameList": []string{"trc-vault-plugin", "trcsh-cursor-aw", "trcsh-cursor-ak"},
+			"pluginNameList": []string{"trc-vault-plugin", "trcsh-cursor-aw", "trcsh-cursor-k", "trcsh-cursor-z"},
 			"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
 			"logNamespace":   "trcshcurator",
 		}
 	}
+}
+
+// IsKubeRunnable returns true if this build variant is allowed to run in Kubernetes/AKS
+func IsKubeRunnable() bool {
+	return false
 }

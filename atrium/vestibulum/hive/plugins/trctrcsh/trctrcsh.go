@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 
 	"gopkg.in/yaml.v2"
 
@@ -27,6 +28,7 @@ func main() {
 	f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error opening log file: %v\n", err)
+		exec.Command("stty", "sane").Run() // Reset terminal to sane defaults
 		os.Exit(-1)
 	}
 	logger := log.New(f, "[trchelloworld]", log.LstdFlags)
@@ -35,6 +37,7 @@ func main() {
 	data, err := os.ReadFile("config.yml")
 	if err != nil {
 		logger.Println("Error reading YAML file:", err)
+		exec.Command("stty", "sane").Run() // Reset terminal to sane defaults
 		os.Exit(-1)
 	}
 
@@ -45,6 +48,7 @@ func main() {
 	err = yaml.Unmarshal(data, &configCommon)
 	if err != nil {
 		logger.Println("Error unmarshaling YAML:", err)
+		exec.Command("stty", "sane").Run() // Reset terminal to sane defaults
 		os.Exit(-1)
 	}
 

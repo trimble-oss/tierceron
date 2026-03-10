@@ -245,6 +245,7 @@ func LogErrorAndSafeExit(config *coreconfig.CoreConfig, err error, code int) err
 
 // LogSyncAndExit synchronizes logger output and exits with the specified exit code
 func LogSyncAndExit(logger *log.Logger, message string, exitCode int) {
+	// Restore terminal to normal state before exiting
 	fmt.Fprintln(os.Stderr, message)
 	if logger != nil {
 		logger.Printf("Exit(%d): %s", exitCode, message)
@@ -252,6 +253,8 @@ func LogSyncAndExit(logger *log.Logger, message string, exitCode int) {
 			logWriter.Sync()
 		}
 	}
+
+	exec.Command("stty", "sane").Run() // Reset terminal to sane defaults
 	os.Exit(exitCode)
 }
 

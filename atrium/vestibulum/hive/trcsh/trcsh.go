@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -18,7 +20,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
@@ -27,6 +28,22 @@ import (
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
+
+var logger *log.Logger
+
+func init() {
+	// Initialize kernelopts early so IsKernelZ() is available in plugin init() functions
+	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
+	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
+
+	// Create log file early so stderr redirection happens before plugin init() functions
+	var logErr error
+	logger, logErr = trcshbase.CreateLogFile()
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to create log file: %v\n", logErr)
+		os.Exit(1)
+	}
+}
 
 // This is a controller program that can act as any command line utility.
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
@@ -39,14 +56,25 @@ func main() {
 	flowopts.NewOptionsBuilder(flowopts.LoadOptions())
 	pluginopts.NewOptionsBuilder(pluginopts.LoadOptions())
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
-	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
 	deployopts.NewOptionsBuilder(deployopts.LoadOptions())
 	harbingeropts.NewOptionsBuilder(harbingeropts.LoadOptions())
 	tcopts.NewOptionsBuilder(tcopts.LoadOptions())
 	xencryptopts.NewOptionsBuilder(xencryptopts.LoadOptions())
 	saltyopts.NewOptionsBuilder(saltyopts.LoadOptions())
-	kernelopts.NewOptionsBuilder(kernelopts.LoadOptions())
 	cursoropts.NewOptionsBuilder(cursoropts.LoadOptions())
+
+	// Safety check: Prevent non-Kubernetes variants from running in Kubernetes
+	if !coreopts.BuildOptions.IsKubeRunnable() {
+		if _, aksExists := os.LookupEnv("KUBERNETES_SERVICE_HOST"); aksExists {
+			fmt.Fprintln(os.Stderr, "ERROR: This trcsh variant is not permitted to run in AKS/Kubernetes environments")
+			os.Exit(1)
+		}
+		if _, err := os.Stat("/var/run/secrets/kubernetes.io"); err == nil {
+			fmt.Fprintln(os.Stderr, "ERROR: This trcsh variant is not permitted to run in AKS/Kubernetes environments")
+			os.Exit(1)
+		}
+	}
+
 	eUtils.InitHeadless(true)
 
 	tiercerontls.InitRoot()
@@ -58,11 +86,6 @@ func main() {
 		flagset.PrintDefaults()
 	}
 	envPtr := flagset.String("env", "", "Environment to be processed") // If this is blank -> use context otherwise override context.
-
-	logger, logErr := trcshbase.CreateLogFile()
-	if logErr != nil {
-		os.Exit(1)
-	}
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{

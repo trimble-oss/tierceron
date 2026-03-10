@@ -51,13 +51,3 @@ func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*tccore.TTDINode, error) 
 func GetDataFlowGroups(mod *kv.Modifier, argosy *tccore.TTDINode) []tccore.TTDINode {
 	return nil
 }
-
-func BuildFleet(mod *kv.Modifier, logger *log.Logger) (*tccore.TTDINode, error) {
-	return &tccore.TTDINode{}, nil
-}
-
-// GetStubbedDataFlowStatistics returns the list data being tracked along with time data for the data being tracked.
-func GetStubbedDataFlowStatistics() ([]string, map[string][]float64) {
-	//	return data, TimeData
-	return data, TimeData
-}

@@ -323,7 +323,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 			FlowController:      flowopts.BuildOptions.ProcessFlowController,
 			TestFlowController:  testopts.BuildOptions.ProcessTestFlowController,
 		}
-		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), l)
+		driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pec, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pec["env"]), l)
 		if driverConfigErr != nil {
 			l.Printf("Flow %s had an error: %s\n", pec["trcplugin"], driverConfigErr.Error())
 		}
@@ -607,7 +607,7 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 				logger.Println("Error: " + errors.New("Found empty hostname").Error())
 				return logical.ErrorResponse("Found empty hostname"), nil
 			}
-			hostRegion := coreopts.BuildOptions.GetRegion(hostName)
+			hostRegion := coreopts.BuildOptions.GetRegionByHost(hostName)
 
 			pluginConfig["env"] = req.Path
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)

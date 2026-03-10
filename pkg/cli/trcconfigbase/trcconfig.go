@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -11,11 +12,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -23,6 +24,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 )
+
+var outWriter io.Writer = os.Stderr
 
 func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 	var data config.ResultData
@@ -42,7 +45,7 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 		path, err := os.Getwd()
 		fileData, err1 := os.ReadFile(filepath.FromSlash(path + inPathSplit[1]))
 		if err != nil || err1 != nil {
-			fmt.Fprintln(os.Stderr, "Error reading file: "+inPathSplit[1])
+			fmt.Fprintln(outWriter, "Error reading file: "+inPathSplit[1])
 			return
 		}
 		dataStr := string(fileData)
@@ -71,7 +74,7 @@ var STARTDIR_DEFAULT string
 var ENDDIR_DEFAULT = "."
 
 func PrintVersion() {
-	fmt.Fprintln(os.Stderr, "Version: "+"1.33")
+	fmt.Fprintln(outWriter, "Version: "+"1.33")
 }
 
 func CommonMain(envDefaultPtr *string,
@@ -103,10 +106,19 @@ func CommonMain(envDefaultPtr *string,
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
 			PrintVersion() // For trcsh
 		}
-		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
+		errorHandling := flag.ExitOnError
+		if driverConfig != nil && (driverConfig.IsShellCommand || (kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernelZ())) {
+			errorHandling = flag.ContinueOnError
+		}
+		flagset = flag.NewFlagSet(argLines[0], errorHandling)
 		flagset.Usage = func() {
 			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
 			flagset.PrintDefaults()
+			// Add -ofs option to help when building for trcshz
+			if kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernelZ() {
+				fmt.Fprintf(flagset.Output(), "  -ofs\n\t\tOpen file selector to choose output directory (trcshz only)\n")
+			}
 		}
 
 		envPtr = flagset.String("env", "", "Environment to configure")
@@ -122,8 +134,10 @@ func CommonMain(envDefaultPtr *string,
 	}
 	startDirPtr := flagset.String("startDir", STARTDIR_DEFAULT, "Template directory")
 	endDirPtr := flagset.String("endDir", ENDDIR_DEFAULT, "Directory to put configured templates into")
+	outputDirPtr := flagset.String("outputDir", "", "Output directory for file system (specify to enable file system output)")
 	secretMode := flagset.Bool("secretMode", true, "Only override secret values in templates?")
 	servicesWanted := flagset.String("servicesWanted", "", "Services to pull template values for, in the form 'service1,service2' (defaults to all services)")
+	swPtr := flagset.String("sw", "", "Alias for -servicesWanted")
 	wantCertsPtr := flagset.Bool("certs", false, "Pull certificates into directory specified by endDirPtr")
 	certDestPathPtr := flagset.String("certDestPath", "", "Override templated cert destination paths. Format of tmplFileName:certDirPath/file.pfx")
 	keyStorePtr := flagset.String("keystore", "", "Put certificates into this keystore file.")
@@ -146,18 +160,52 @@ func CommonMain(envDefaultPtr *string,
 		isDrone = driverConfig.IsDrone
 	}
 
+	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
+	if driverConfig != nil && driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+		var stdioFile io.ReadWriteCloser
+		var err error
+		// Check if io directory exists
+		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
+		} else {
+			// Directory doesn't exist, use WriteToMemFile to create it
+			emptyData := []byte{}
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
+		}
+		if err == nil {
+			outWriter = stdioFile
+			defer stdioFile.Close()
+			// Redirect flagset output to the same writer for help messages
+			flagset.SetOutput(outWriter)
+		}
+	}
+
 	if driverConfig == nil || !isShell {
 		args := argLines[1:]
 		for i := 0; i < len(args); i++ {
 			s := args[i]
 			if s[0] != '-' {
-				fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)
+				fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
 				return fmt.Errorf("wrong flag syntax: %s", s)
 			}
 		}
 		diffPtr = flagset.Bool("diff", false, "Diff files")
 		versionInfoPtr = flagset.Bool("versions", false, "Version information about values")
-		flagset.Parse(argLines[1:])
+		parseErr := flagset.Parse(argLines[1:])
+		// If help flag was used, print usage and return early
+		if parseErr == flag.ErrHelp {
+			flagset.Usage()
+			return nil
+		}
+		if parseErr != nil {
+			return parseErr
+		}
+		// Handle -sw override for -servicesWanted
+		if len(*swPtr) > 0 {
+			*servicesWanted = *swPtr
+		}
 	} else {
 		versionInfo := false
 		versionInfoPtr = &versionInfo
@@ -165,7 +213,10 @@ func CommonMain(envDefaultPtr *string,
 		diffPtr = &diff
 		// TODO: rework to support standard arg parsing...
 		for _, args := range argLines {
-			if args == "-certs" {
+			if args == "-h" || args == "-help" || args == "--help" {
+				flagset.Usage()
+				return nil
+			} else if args == "-certs" {
 				driverConfig.CoreConfig.WantCerts = true
 			} else if strings.HasPrefix(args, "-keystore") {
 				storeArgs := strings.Split(args, "=")
@@ -182,6 +233,11 @@ func CommonMain(envDefaultPtr *string,
 				if len(servicesWantedArg) > 1 {
 					*servicesWanted = servicesWantedArg[1]
 				}
+			} else if strings.HasPrefix(args, "-sw") {
+				swArg := strings.Split(args, "=")
+				if len(swArg) > 1 {
+					*swPtr = swArg[1]
+				}
 			} else if strings.HasPrefix(args, "-certDestPath") {
 				certDestPath := strings.Split(args, "=")
 				if len(certDestPath) > 1 {
@@ -196,13 +252,23 @@ func CommonMain(envDefaultPtr *string,
 					}
 					*envPtr = envArgs[1]
 				}
+			} else if strings.HasPrefix(args, "-outputDir") {
+				outputDirArg := strings.Split(args, "=")
+				if len(outputDirArg) > 1 {
+					*outputDirPtr = outputDirArg[1]
+				}
 			}
 		}
 		flagset.Parse(nil)
+		// Handle -sw override for -servicesWanted in shell mode
+		if len(*swPtr) > 0 {
+			*servicesWanted = *swPtr
+		}
 		if driverConfig.CoreConfig.WantCerts {
 			*wantCertsPtr = true
 		}
 	}
+
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
@@ -210,9 +276,10 @@ func CommonMain(envDefaultPtr *string,
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}
+
 	if !isShell && !kernelopts.BuildOptions.IsKernel() && !isDrone {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
-			fmt.Fprintln(os.Stderr, "Missing required template folder: "+*startDirPtr)
+			fmt.Fprintln(outWriter, "Missing required template folder: "+*startDirPtr)
 			return fmt.Errorf("missing required template folder: %s", *startDirPtr)
 		}
 	}
@@ -222,7 +289,7 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if strings.Contains(*envPtr, "*") {
-		fmt.Fprintln(os.Stderr, "* is not available as an environment suffix.")
+		fmt.Fprintln(outWriter, "* is not available as an environment suffix.")
 		return errors.New("* is not available as an environment suffix")
 	}
 
@@ -238,6 +305,13 @@ func CommonMain(envDefaultPtr *string,
 			// Bad inputs... use default.
 			driverConfigBase.StartDir = append([]string{}, *startDirPtr)
 		}
+
+		// Handle -outputDir flag if set
+		if outputDirPtr != nil && len(*outputDirPtr) > 0 {
+			driverConfigBase.OutputFileSystemDir = *outputDirPtr
+			fmt.Fprintf(outWriter, "Will output files to: %s\n", *outputDirPtr)
+		}
+
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 		currentRoleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		if driverConfigBase.FileFilter != nil {
@@ -247,7 +321,7 @@ func CommonMain(envDefaultPtr *string,
 		if driverConfigBase.CoreConfig.Log == nil {
 			f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error creating log file: "+*logFilePtr)
+				fmt.Fprintln(outWriter, "Error creating log file: "+*logFilePtr)
 				return errors.New("Error creating log file: " + *logFilePtr)
 			}
 			logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
@@ -292,19 +366,19 @@ func CommonMain(envDefaultPtr *string,
 
 	// Dont allow these combinations of flags
 	if *templateInfoPtr && *diffPtr {
-		fmt.Fprintln(os.Stderr, "Cannot use -diff flag and -templateInfo flag together")
+		fmt.Fprintln(outWriter, "Cannot use -diff flag and -templateInfo flag together")
 		return errors.New("cannot use -diff flag and -templateInfo flag together")
 	} else if *versionInfoPtr && *diffPtr {
-		fmt.Fprintln(os.Stderr, "Cannot use -diff flag and -versionInfo flag together")
+		fmt.Fprintln(outWriter, "Cannot use -diff flag and -versionInfo flag together")
 		return errors.New("cannot use -diff flag and -versionInfo flag together")
 	} else if *wantCertsPtr && *diffPtr {
-		fmt.Fprintln(os.Stderr, "Cannot use -diff flag and -certs flag together")
+		fmt.Fprintln(outWriter, "Cannot use -diff flag and -certs flag together")
 		return errors.New("cannot use -diff flag and -certs flag together")
 	} else if *certDestPathPtr != "" && !*wantCertsPtr {
-		fmt.Fprintln(os.Stderr, "Cannot use -certDestPath flag without including -certs flag")
+		fmt.Fprintln(outWriter, "Cannot use -certDestPath flag without including -certs flag")
 		return errors.New("Cannot use -certDestPath flag without including -certs flag")
 	} else if *versionInfoPtr && *templateInfoPtr {
-		fmt.Fprintln(os.Stderr, "Cannot use -templateInfo flag and -versionInfo flag together")
+		fmt.Fprintln(outWriter, "Cannot use -templateInfo flag and -versionInfo flag together")
 		return errors.New("cannot use -templateInfo flag and -versionInfo flag together")
 	} else if *diffPtr {
 		if strings.ContainsAny(*envPtr, ",") { // Multiple environments
@@ -312,12 +386,12 @@ func CommonMain(envDefaultPtr *string,
 			configCtx.EnvSlice = strings.Split(*envPtr, ",")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 			if len(configCtx.EnvSlice) > 4 {
-				fmt.Fprintln(os.Stderr, "Unsupported number of environments - Maximum: 4")
+				fmt.Fprintln(outWriter, "Unsupported number of environments - Maximum: 4")
 				return errors.New("unsupported number of environments - Maximum: 4")
 			}
 			for i, env := range configCtx.EnvSlice {
 				if env == "local" {
-					fmt.Fprintln(os.Stderr, "Unsupported env: local not available with diff flag")
+					fmt.Fprintln(outWriter, "Unsupported env: local not available with diff flag")
 					return errors.New("unsupported env: local not available with diff flag")
 				}
 				if !strings.Contains(env, "_") && env != "filesys" {
@@ -331,16 +405,16 @@ func CommonMain(envDefaultPtr *string,
 				}
 			}
 		} else {
-			fmt.Fprintln(os.Stderr, "Incorrect format for diff: -env=env1,env2,...")
+			fmt.Fprintln(outWriter, "Incorrect format for diff: -env=env1,env2,...")
 			return errors.New("incorrect format for diff: -env=env1,env2")
 		}
 	} else {
 		if strings.ContainsAny(*envPtr, ",") {
-			fmt.Fprintln(os.Stderr, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
+			fmt.Fprintln(outWriter, "-diff flag is required for multiple environments - env: -env=env1,env2,...")
 			return errors.New("-diff flag is required for multiple environments - env: -env=env1,env2")
 		}
 		if strings.Contains(*envPtr, "filesys") {
-			fmt.Fprintln(os.Stderr, "Unsupported env: filesys only available with diff flag")
+			fmt.Fprintln(outWriter, "Unsupported env: filesys only available with diff flag")
 			return errors.New("unsupported env: filesys only available with diff flag")
 		}
 		envVersion := strings.Split(*envPtr, "_") // Break apart env+version for token
@@ -348,6 +422,8 @@ func CommonMain(envDefaultPtr *string,
 
 		if !*noVaultPtr {
 			wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfigBase.CoreConfig.Env))
+			roleEntity := "bamboo"
+			currentRoleEntityPtr = &roleEntity
 			autoErr := eUtils.AutoAuth(driverConfigBase,
 				&wantedTokenName,
 				&tokenPtr,
@@ -361,7 +437,7 @@ func CommonMain(envDefaultPtr *string,
 				} else {
 					driverConfigBase.CoreConfig.Log.Printf("auth error: %s", autoErr)
 				}
-				fmt.Fprintln(os.Stderr, "Missing auth components.")
+				fmt.Fprintln(outWriter, "Missing auth components.")
 				return errors.New("missing auth components")
 			}
 			if *pingPtr {
@@ -379,7 +455,7 @@ func CommonMain(envDefaultPtr *string,
 		if len(envVersion) >= 2 { // Put back env+version together
 			*envPtr = envVersion[0] + "_" + envVersion[1]
 			if envVersion[1] == "" {
-				fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1")
+				fmt.Fprintln(outWriter, "Must declare desired version number after '_' : -env=env1_ver1")
 				return errors.New("must declare desired version number after '_' : -env=env1_ver1")
 			}
 		} else {
@@ -397,14 +473,14 @@ func CommonMain(envDefaultPtr *string,
 				Reset = ""
 				Yellow = ""
 			}
-			fmt.Fprintln(os.Stderr, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
+			fmt.Fprintln(outWriter, Yellow+"Specified versioning not available, using "+envVersion[0]+" as environment"+Reset)
 		}
 	}
 
 	if len(configCtx.EnvSlice) > 1 {
 		removeDuplicateValuesSlice := eUtils.RemoveDuplicateValues(configCtx.EnvSlice)
 		if !cmp.Equal(configCtx.EnvSlice, removeDuplicateValuesSlice) {
-			fmt.Fprintln(os.Stderr, "There is a duplicate environment in the -env flag")
+			fmt.Fprintln(outWriter, "There is a duplicate environment in the -env flag")
 			return errors.New("there is a duplicate environment in the -env flag")
 		}
 	}
@@ -413,7 +489,7 @@ func CommonMain(envDefaultPtr *string,
 		if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 			var err error
 			*envPtr, err = eUtils.LoginToLocal()
-			fmt.Fprintln(os.Stderr, *envPtr)
+			fmt.Fprintln(outWriter, *envPtr)
 			if err != nil {
 				return err
 			}
@@ -432,7 +508,7 @@ func CommonMain(envDefaultPtr *string,
 				}
 			}
 			if len(regions) == 0 {
-				fmt.Fprintln(os.Stderr, "Unsupported region: "+*regionPtr)
+				fmt.Fprintln(outWriter, "Unsupported region: "+*regionPtr)
 				return fmt.Errorf("unsupported region: %s", *regionPtr)
 			}
 		}
@@ -450,12 +526,12 @@ func CommonMain(envDefaultPtr *string,
 		for _, rebind := range strings.Split(*certDestPathPtr, ",") {
 			split := strings.Split(rebind, ":")
 			if len(split) != 2 {
-				fmt.Fprintln(os.Stderr, "Incorrect format for certDestPath: "+rebind)
+				fmt.Fprintln(outWriter, "Incorrect format for certDestPath: "+rebind)
 				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
 			}
 			certFileName, certFileDest := split[0], split[1]
 			if split[0] == "" || split[1] == "" {
-				fmt.Fprintln(os.Stderr, "Incorrect format for certDestPath: "+rebind)
+				fmt.Fprintln(outWriter, "Incorrect format for certDestPath: "+rebind)
 				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
 			}
 			certOverrides[certFileName] = certFileDest
@@ -472,7 +548,7 @@ func CommonMain(envDefaultPtr *string,
 			if !*noVaultPtr {
 				autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, *pingPtr)
 				if autoErr != nil {
-					fmt.Fprintln(os.Stderr, "Missing auth components.")
+					fmt.Fprintln(outWriter, "Missing auth components.")
 					return errors.New("missing auth components")
 				}
 				if *pingPtr {
@@ -485,7 +561,7 @@ func CommonMain(envDefaultPtr *string,
 			if len(envVersion) >= 2 { // Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]
 				if envVersion[1] == "" {
-					fmt.Fprintln(os.Stderr, "Must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
+					fmt.Fprintln(outWriter, "Must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
 					return errors.New("must declare desired version number after '_' : -env=env1_ver1,env2_ver2")
 				}
 			} else {
@@ -505,22 +581,23 @@ func CommonMain(envDefaultPtr *string,
 					ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
 					Log:                 driverConfigBase.CoreConfig.Log,
 				},
-				IsShellSubProcess: driverConfigBase.IsShellSubProcess,
-				SecretMode:        *secretMode,
-				ServicesWanted:    driverConfigBase.ServicesWanted,
-				StartDir:          driverConfigBase.StartDir,
-				EndDir:            driverConfigBase.EndDir,
-				WantKeystore:      *keyStorePtr,
-				ZeroConfig:        *zcPtr,
-				GenAuth:           false,
-				ReadMemCache:      driverConfigBase.ReadMemCache,
-				SubOutputMemCache: driverConfigBase.SubOutputMemCache,
-				OutputMemCache:    driverConfigBase.OutputMemCache,
-				MemFs:             driverConfigBase.MemFs,
-				CertPathOverrides: certOverrides,
-				Diff:              *diffPtr,
-				Update:            messenger,
-				FileFilter:        fileFilterSlice,
+				IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
+				SecretMode:          *secretMode,
+				ServicesWanted:      driverConfigBase.ServicesWanted,
+				StartDir:            driverConfigBase.StartDir,
+				EndDir:              driverConfigBase.EndDir,
+				WantKeystore:        *keyStorePtr,
+				ZeroConfig:          *zcPtr,
+				GenAuth:             false,
+				ReadMemCache:        driverConfigBase.ReadMemCache,
+				SubOutputMemCache:   driverConfigBase.SubOutputMemCache,
+				OutputMemCache:      driverConfigBase.OutputMemCache,
+				MemFs:               driverConfigBase.MemFs,
+				OutputFileSystemDir: driverConfig.OutputFileSystemDir,
+				CertPathOverrides:   certOverrides,
+				Diff:                *diffPtr,
+				Update:              messenger,
+				FileFilter:          fileFilterSlice,
 			}
 
 			configSlice = append(configSlice, driverConfig)
@@ -558,23 +635,24 @@ func CommonMain(envDefaultPtr *string,
 				ExitOnFailure:       driverConfigBase.CoreConfig.ExitOnFailure,
 				Log:                 driverConfigBase.CoreConfig.Log,
 			},
-			IsShellSubProcess: driverConfigBase.IsShellSubProcess,
-			SecretMode:        *secretMode,
-			ServicesWanted:    driverConfigBase.ServicesWanted,
-			StartDir:          driverConfigBase.StartDir,
-			EndDir:            driverConfigBase.EndDir,
-			WantKeystore:      *keyStorePtr,
-			NoVault:           driverConfigBase.NoVault,
-			ZeroConfig:        driverConfigBase.ZeroConfig,
-			GenAuth:           false,
-			ReadMemCache:      driverConfigBase.ReadMemCache,
-			SubOutputMemCache: driverConfigBase.SubOutputMemCache,
-			OutputMemCache:    driverConfigBase.OutputMemCache,
-			MemFs:             driverConfigBase.MemFs,
-			CertPathOverrides: certOverrides,
-			Diff:              *diffPtr,
-			FileFilter:        fileFilterSlice,
-			VersionInfo:       eUtils.VersionHelper,
+			IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
+			SecretMode:          *secretMode,
+			ServicesWanted:      driverConfigBase.ServicesWanted,
+			StartDir:            driverConfigBase.StartDir,
+			EndDir:              driverConfigBase.EndDir,
+			WantKeystore:        *keyStorePtr,
+			NoVault:             driverConfigBase.NoVault,
+			ZeroConfig:          driverConfigBase.ZeroConfig,
+			GenAuth:             false,
+			ReadMemCache:        driverConfigBase.ReadMemCache,
+			SubOutputMemCache:   driverConfigBase.SubOutputMemCache,
+			OutputMemCache:      driverConfigBase.OutputMemCache,
+			MemFs:               driverConfigBase.MemFs,
+			OutputFileSystemDir: driverConfig.OutputFileSystemDir,
+			CertPathOverrides:   certOverrides,
+			Diff:                *diffPtr,
+			FileFilter:          fileFilterSlice,
+			VersionInfo:         eUtils.VersionHelper,
 		}
 
 		if *wantCertsPtr {

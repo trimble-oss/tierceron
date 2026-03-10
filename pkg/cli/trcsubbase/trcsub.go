@@ -4,16 +4,17 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	il "github.com/trimble-oss/tierceron/pkg/trcinit/initlib"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -57,9 +58,18 @@ func CommonMain(envDefaultPtr *string,
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
 			fmt.Fprintln(os.Stderr, "Version: "+"1.7")
 		}
-		flagset = flag.NewFlagSet(argLines[0], flag.ExitOnError)
+		progName := "trcsub"
+		if len(argLines) > 0 {
+			progName = argLines[0]
+		}
+		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
+		errorHandling := flag.ExitOnError
+		if driverConfig.IsShellCommand || kernelopts.BuildOptions.IsKernelZ() {
+			errorHandling = flag.ContinueOnError
+		}
+		flagset = flag.NewFlagSet(progName, errorHandling)
 		flagset.Usage = func() {
-			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", argLines[0])
+			fmt.Fprintf(flagset.Output(), "Usage of %s:\n", progName)
 			flagset.PrintDefaults()
 		}
 		if envDefaultPtr != nil {
@@ -80,14 +90,54 @@ func CommonMain(envDefaultPtr *string,
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 	insecurePtr := flagset.Bool("insecure", false, "By default, every ssl connection this tool makes is verified secure.  This option allows to tool to continue with server connections considered insecure.")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"sub.log", "Output path for log files")
-	projectInfoPtr := flagset.Bool("projectInfo", false, "Lists all project info")
+	saPtr := flagset.Bool("sa", false, "Lists all projects and services available")
 	pluginInfoPtr := flagset.Bool("pluginInfo", false, "Lists all plugins")
 	pluginNamePtr := flagset.String("pluginName", "", "Specifies which templates to filter")
 
 	filterTemplatePtr := flagset.String("templateFilter", "", "Specifies which templates to filter")
+	swPtr := flagset.String("sw", "", "Alias for -templateFilter")
 	templatePathsPtr := flagset.String("templatePaths", "", "Specifies which specific templates to download.")
 
-	flagset.Parse(argLines[1:])
+	// If running from trcshcmd (IsShellCommand), redirect output to io/STDIO in memfs
+	var outWriter io.Writer = os.Stderr
+	if driverConfig.IsShellCommand && driverConfig.MemFs != nil {
+		var stdioFile io.ReadWriteCloser
+		var err error
+		// Check if io directory exists
+		if _, statErr := driverConfig.MemFs.Stat("io"); statErr == nil {
+			// Directory exists, open file for read-write with append
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
+		} else {
+			// Directory doesn't exist, use WriteToMemFile to create it
+			emptyData := []byte{}
+			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &emptyData, "io/STDIO")
+			stdioFile, err = driverConfig.MemFs.OpenFile("io/STDIO", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0o644)
+		}
+		if err == nil {
+			outWriter = stdioFile
+			defer stdioFile.Close()
+			// Redirect flagset output to the same writer for help messages
+			flagset.SetOutput(outWriter)
+		}
+	}
+
+	var parseErr error
+	if len(argLines) > 1 {
+		parseErr = flagset.Parse(argLines[1:])
+	} else {
+		parseErr = flagset.Parse([]string{})
+	}
+
+	// If help flag was used, print usage and return early
+	if parseErr == flag.ErrHelp {
+		flagset.Usage()
+		return nil
+	}
+
+	// Handle -sw override for -templateFilter
+	if len(*swPtr) > 0 {
+		*filterTemplatePtr = *swPtr
+	}
 
 	if envPtr == nil {
 		if envDefaultPtr != nil {
@@ -99,16 +149,16 @@ func CommonMain(envDefaultPtr *string,
 	}
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
-	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*projectInfoPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
-		fmt.Fprintf(os.Stderr, "Must specify either -projectInfo, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
-		return errors.New("must specify either -projectInfo or -templateFilter flag")
+	if len(*filterTemplatePtr) == 0 && len(*pluginNamePtr) == 0 && !*saPtr && !*pluginInfoPtr && *templatePathsPtr == "" {
+		fmt.Fprintf(outWriter, "Must specify either -sa, -fileTemplate, -pluginName, -pluginInfo, or -templateFilter flag \n")
+		return errors.New("must specify either -sa or -templateFilter flag")
 	}
 	var driverConfigBase *config.DriverConfig
 	var currentRoleEntityPtr *string
 
 	if driverConfig.CoreConfig.IsShell || kernelopts.BuildOptions.IsKernel() {
 		driverConfigBase = driverConfig
-		if len(driverConfigBase.EndDir) == 0 && len(*endDirPtr) != 0 {
+		if (len(driverConfigBase.EndDir) == 0 || driverConfigBase.EndDir == ".") && len(*endDirPtr) != 0 {
 			// Bad inputs... use default.
 			driverConfigBase.EndDir = *endDirPtr
 		}
@@ -125,7 +175,7 @@ func CommonMain(envDefaultPtr *string,
 		}
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Log init failure")
+			fmt.Fprintln(outWriter, "Log init failure")
 			return err
 		}
 
@@ -147,7 +197,7 @@ func CommonMain(envDefaultPtr *string,
 	if len(*envPtr) >= 5 && (*envPtr)[:5] == "local" {
 		var err error
 		*envPtr, err = eUtils.LoginToLocal()
-		fmt.Fprintln(os.Stderr, *envPtr)
+		fmt.Fprintln(outWriter, *envPtr)
 		eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
 		return err
 	}
@@ -161,11 +211,11 @@ func CommonMain(envDefaultPtr *string,
 		currentRoleEntityPtr,
 		*pingPtr)
 	if autoErr != nil {
-		fmt.Fprintln(os.Stderr, "Missing auth components.")
+		fmt.Fprintln(outWriter, "Missing auth components.")
 		return autoErr
 	}
 	if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-		fmt.Fprintf(os.Stderr, "Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
+		driverConfigBase.CoreConfig.Log.Printf("Connecting to vault @ %s\n", *driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr)
 	}
 
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfigBase.CoreConfig,
@@ -209,28 +259,56 @@ func CommonMain(envDefaultPtr *string,
 		for _, pluginPath := range pluginList.Data {
 			for _, pluginInterface := range pluginPath.([]any) {
 				plugin := pluginInterface.(string)
-				fmt.Fprintln(os.Stderr, strings.TrimRight(plugin, "/"))
+				fmt.Fprintln(outWriter, strings.TrimRight(plugin, "/"))
 			}
 		}
 
-	} else if *projectInfoPtr {
+	} else if *saPtr {
 		templateList, err := mod.List("templates/", driverConfigBase.CoreConfig.Log)
 		if err != nil {
 			driverConfigBase.CoreConfig.Log.Println("Failure read templates")
 			return err
 		}
 		if driverConfigBase.CoreConfig.IsEditor {
-			driverConfigBase.CoreConfig.Log.Printf("\nProjects available:\n")
+			driverConfigBase.CoreConfig.Log.Printf("\nProjects and Services available:\n")
 		} else {
-			fmt.Fprintf(os.Stderr, "\nProjects available:\n")
+			fmt.Fprintf(outWriter, "\nProjects and Services available:\n")
 		}
 		for _, templatePath := range templateList.Data {
 			for _, projectInterface := range templatePath.([]any) {
-				project := projectInterface.(string)
-				if driverConfigBase.CoreConfig.IsEditor {
-					driverConfigBase.CoreConfig.Log.Println(strings.TrimRight(project, "/"))
-				} else {
-					fmt.Fprintln(os.Stderr, strings.TrimRight(project, "/"))
+				project := strings.TrimRight(projectInterface.(string), "/")
+
+				// List services under this project
+				servicePath := "templates/" + project + "/"
+				serviceList, err := mod.List(servicePath, driverConfigBase.CoreConfig.Log)
+				if err != nil {
+					// Log error but continue with next project
+					driverConfigBase.CoreConfig.Log.Printf("Warning: unable to read services for project %s\n", project)
+					continue
+				}
+
+				// Output each service under this project
+				hasServices := false
+				for _, servicePathData := range serviceList.Data {
+					for _, serviceInterface := range servicePathData.([]any) {
+						service := strings.TrimRight(serviceInterface.(string), "/")
+						output := fmt.Sprintf("%s/%s", project, service)
+						hasServices = true
+						if driverConfigBase.CoreConfig.IsEditor {
+							driverConfigBase.CoreConfig.Log.Println(output)
+						} else {
+							fmt.Fprintln(outWriter, output)
+						}
+					}
+				}
+
+				// If project has no services, still show the project alone
+				if !hasServices {
+					if driverConfigBase.CoreConfig.IsEditor {
+						driverConfigBase.CoreConfig.Log.Println(project)
+					} else {
+						fmt.Fprintln(outWriter, project)
+					}
 				}
 			}
 		}

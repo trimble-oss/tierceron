@@ -72,7 +72,7 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 		return errors.New("could not find hostname")
 	}
 
-	hostRegion := coreopts.BuildOptions.GetRegion(hostName)
+	hostRegion := coreopts.BuildOptions.GetRegionByHost(hostName)
 	if hostRegion == "" {
 		logger.Println("PluginDeployedUpdate self certification not provided on base region deployers")
 		return nil
@@ -81,6 +81,11 @@ func PluginDeployedUpdate(driverConfig *config.DriverConfig, mod *helperkv.Modif
 	mod.Regions = append(mod.Regions, hostRegion)
 	projects, services, _ := eUtils.GetProjectServices(nil, cPath)
 	for _, pluginName := range pluginNameList {
+		// Skip empty plugin names to prevent misconfiguration errors
+		if pluginName == "" {
+			logger.Println("WARNING: Empty plugin name in pluginNameList - skipping. Check build options configuration.")
+			continue
+		}
 		for i := 0; i < len(projects); i++ {
 			if services[i] == "Certify" {
 				mod.SectionName = "trcplugin"

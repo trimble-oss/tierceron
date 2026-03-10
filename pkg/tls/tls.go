@@ -11,13 +11,15 @@ import (
 	"os"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/utils"
 	"google.golang.org/grpc/credentials"
 )
 
 const (
-	ServCertLocal = "./serv_cert.pem"
+	ServCertLocal       = "./serv_cert.pem"
+	ServCertLocalTrcshz = "/usr/local/trcshz/serv_cert.pem"
 )
 
 var (
@@ -38,6 +40,11 @@ func InitRoot() {
 func ReadServerCert(certName string, drone ...*bool) ([]byte, error) {
 	var err error
 	if len(certName) == 0 {
+		if kernelopts.BuildOptions.IsKernelZ() {
+			if _, err = os.Stat(ServCertLocalTrcshz); err == nil {
+				return os.ReadFile(ServCertLocalTrcshz)
+			}
+		}
 		if _, err = os.Stat(ServCertLocal); err == nil && (utils.IsWindows() || (len(drone) > 0 && *drone[0])) {
 			return os.ReadFile(ServCertLocal)
 		}
@@ -88,7 +95,9 @@ func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Cert read failure.")
+		if !kernelopts.BuildOptions.IsKernelZ() {
+			fmt.Fprintln(os.Stderr, "Cert read failure.")
+		}
 		return
 	}
 

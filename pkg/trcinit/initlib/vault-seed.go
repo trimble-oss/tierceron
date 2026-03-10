@@ -16,6 +16,7 @@ import (
 	"strings"
 	"text/template/parse"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
@@ -85,7 +86,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 	driverConfig.CoreConfig.Log.SetPrefix("[SEED]")
 	driverConfig.CoreConfig.Log.Printf("Seeding vault from seeds in: %s\n", driverConfig.StartDir[0])
 
-	if driverConfig.CoreConfig.IsEditor {
+	if kernelopts.BuildOptions.IsKernelZ() || driverConfig.CoreConfig.IsEditor {
 		SeedVaultFromFile(driverConfig, driverConfig.StartDir[0]+"/"+driverConfig.CoreConfig.EnvBasis+"/"+driverConfig.CoreConfig.DynamicPathFilter+"/"+driverConfig.CoreConfig.EnvBasis+"_seed.yml")
 		return nil
 	}
@@ -456,7 +457,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 func SeedVaultFromFile(driverConfig *config.DriverConfig, filepath string) {
 	var rawFile []byte
 	var err error
-	if driverConfig.CoreConfig.IsEditor {
+	if kernelopts.BuildOptions.IsKernelZ() || driverConfig.CoreConfig.IsEditor {
 		seedFile, seedOpenErr := driverConfig.MemFs.Open(filepath)
 		if seedOpenErr != nil {
 			eUtils.LogErrorMessage(driverConfig.CoreConfig, seedOpenErr.Error(), false)

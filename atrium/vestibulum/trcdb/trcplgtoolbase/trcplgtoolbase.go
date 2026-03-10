@@ -19,12 +19,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil/certify"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 	"github.com/trimble-oss/tierceron/pkg/core/util/docker"
@@ -134,12 +134,19 @@ func CommonMain(envPtr *string,
 	isGetCommand := false
 	repoName := ""
 	isRunnableKernelPlugin := false
+	isInternalKernelPlugin := false
 	if !trcshDriverConfig.DriverConfig.CoreConfig.IsShell {
 		isRunnableKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshpluginservice" ||
 				(kernelopts.BuildOptions.IsKernel() && (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcflowpluginservice"))
+
+		isInternalKernelPlugin = trcshDriverConfig.DriverConfig != nil &&
+			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
+			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
+			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "kernelplugin" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin")
 
 		args := argLines[1:]
 		argOffset := 1
@@ -226,7 +233,7 @@ func CommonMain(envPtr *string,
 		trcshDriverConfig.DriverConfig.CoreConfig.Log = logger
 	}
 
-	if !isRunnableKernelPlugin {
+	if !isRunnableKernelPlugin && !isInternalKernelPlugin {
 		if eUtils.RefLength(addrPtr) == 0 {
 			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
 		} else {
@@ -463,7 +470,7 @@ func CommonMain(envPtr *string,
 		}
 	}
 
-	if isRunnableKernelPlugin {
+	if isRunnableKernelPlugin || isInternalKernelPlugin {
 		if len(mainPluginHandler) > 0 && mainPluginHandler[0] != nil && mainPluginHandler[0].Services != nil {
 			kernelPluginHandler = mainPluginHandler[0]
 			pluginHandler = kernelPluginHandler.GetPluginHandler(*pluginNamePtr, trcshDriverConfigBase.DriverConfig)
@@ -533,11 +540,21 @@ func CommonMain(envPtr *string,
 	}
 
 	// Get existing configs if they exist...
-	pluginToolConfig, plcErr := trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
-	if plcErr != nil {
-		fmt.Fprintln(os.Stderr, plcErr.Error())
-		return plcErr
+	var pluginToolConfig map[string]any
+	var plcErr error
+
+	// For internal kernel plugins, that provide their own DeploymentConfig directly
+	if isInternalKernelPlugin && trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println("Using hardcoded DeploymentConfig for internal kernel plugin")
+		pluginToolConfig = *trcshDriverConfigBase.DriverConfig.DeploymentConfig
+	} else {
+		pluginToolConfig, plcErr = trcvutils.GetPluginToolConfig(trcshDriverConfigBase.DriverConfig, mod, coreopts.BuildOptions.InitPluginConfig(map[string]any{}), *defineServicePtr)
+		if plcErr != nil {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Println(plcErr.Error())
+			return plcErr
+		}
 	}
+
 	if *certifyImagePtr {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")
 	}
@@ -802,7 +819,7 @@ func CommonMain(envPtr *string,
 		}
 		fmt.Fprintf(os.Stderr, "Service started: %s\n", pluginToolConfig["trcservicename"].(string))
 	} else if *codebundledeployPtr {
-		if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		if (isRunnableKernelPlugin || isInternalKernelPlugin) && plugincoreopts.BuildOptions.IsPluginHardwired() {
 			var deployRoot string
 			if deploySubPath, ok := pluginToolConfig["trcdeploysubpath"]; ok {
 				deployRoot = filepath.Join(pluginToolConfig["trcdeployroot"].(string), deploySubPath.(string))
@@ -818,9 +835,7 @@ func CommonMain(envPtr *string,
 			}
 
 			eUtils.LogInfo(trcshDriverConfigBase.DriverConfig.CoreConfig, fmt.Sprintf("Skipping codebundledeploy for hardwired: %s\n", pluginToolConfig["trcplugin"].(string)))
-			if isRunnableKernelPlugin {
-				return nil
-			}
+			return nil
 		}
 		if pluginToolConfig["trcsha256"] == nil || len(pluginToolConfig["trcsha256"].(string)) == 0 {
 			if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil && (*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"] != nil && len((*trcshDriverConfigBase.DriverConfig.DeploymentConfig)["trcsha256"].(string)) > 0 {
@@ -966,8 +981,10 @@ func CommonMain(envPtr *string,
 						trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Tried to redeploy same failed plugin: %s\n", *pluginNamePtr)
 						// do we want to remove from available services???
 					} else {
-						if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice") {
-							pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+						if pluginToolConfig != nil {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice" || s == "trcshcmdtoolplugin") {
+								pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
+							}
 						}
 						pluginHandler.Signature = sha
 					}
@@ -1276,7 +1293,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintln(os.Stderr, "Incorrect trcplgtool utilization")
 			return err
 		}
-	} else if *pluginservicestartPtr && isRunnableKernelPlugin {
+	} else if *pluginservicestartPtr && (isRunnableKernelPlugin || isInternalKernelPlugin) {
 		if pluginHandler != nil && pluginHandler.State != 2 && kernelPluginHandler != nil {
 			if kernelPluginHandler.ConfigContext == nil || kernelPluginHandler.ConfigContext.ChatReceiverChan == nil {
 				fmt.Fprintf(os.Stderr, "Unable to access chat channel configuration data for %s\n", *pluginNamePtr)
@@ -1289,7 +1306,7 @@ func CommonMain(envPtr *string,
 			fmt.Fprintf(os.Stderr, "Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Handler not initialized for plugin to start: %s\n", *pluginNamePtr)
 		}
-	} else if *pluginservicestopPtr && isRunnableKernelPlugin {
+	} else if *pluginservicestopPtr && (isRunnableKernelPlugin || isInternalKernelPlugin) {
 		if pluginHandler != nil && pluginHandler.State != 2 {
 			pluginHandler.PluginserviceStop(trcshDriverConfigBase.DriverConfig)
 		} else {

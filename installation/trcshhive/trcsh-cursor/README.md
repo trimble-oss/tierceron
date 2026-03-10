@@ -43,6 +43,8 @@ trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW -s
 
 trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK -serviceFilter=config -indexFilter=config -novault
 
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorZ -serviceFilter=config -indexFilter=config -novault
+
 ```
 
 ... after making edits to the generated seed file (all values can be TODO for local), init it.  These must
@@ -52,6 +54,8 @@ be distinct from TrcshCursor for proper functioning.
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW
 
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK
+
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorZ
 
 ```
 

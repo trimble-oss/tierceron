@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
 	"github.com/glycerine/bchan"
@@ -49,6 +50,7 @@ type TrcFlowContext struct {
 	PreviousFlowStateLock *sync.RWMutex
 	QueryLock             *sync.Mutex
 	Inserter              sql.RowInserter
+	LastRefreshed         string
 
 	Restart                 bool
 	Init                    bool
@@ -106,6 +108,25 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentLoaded() {
 		// Notify flow context it's loaded.
 		tfContext.ContextNotifyChan <- true
 	}()
+}
+
+func (tfContext *TrcFlowContext) NotifyFlowComponentNeedsRestart() {
+	if tfContext.GetFlowStateState() != 3 {
+		tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("3", tfContext.GetFlowSyncMode()))
+	} else {
+		return
+	}
+	for {
+		if tfContext.GetFlowStateState() == 0 {
+			break
+		} else {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+	// When state is set to 0, set state to 1 to trigger reload.
+	if tfContext.GetFlowStateState() != 3 {
+		tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("1", tfContext.GetFlowSyncMode()))
+	}
 }
 
 func (tfContext *TrcFlowContext) WaitFlowLoaded() {
@@ -175,6 +196,18 @@ func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
 	tfContext.FlowState.SyncMode = syncMode
+}
+
+func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
+	tfContext.FlowStateLock.RLock()
+	defer tfContext.FlowStateLock.RUnlock()
+	return tfContext.LastRefreshed
+}
+
+func (tfContext *TrcFlowContext) SetLastRefreshedTime(lastRefreshed string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
+	tfContext.LastRefreshed = lastRefreshed
 }
 
 func (tfContext *TrcFlowContext) GetFlowSource() string {

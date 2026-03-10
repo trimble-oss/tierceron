@@ -28,13 +28,13 @@ import (
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	trcengine "github.com/trimble-oss/tierceron/atrium/trcdb/engine"
 	"github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	tcopts "github.com/trimble-oss/tierceron/buildopts/tcopts"
 
 	trcdbutil "github.com/trimble-oss/tierceron/pkg/core/dbutil"
@@ -147,6 +147,24 @@ func (tfmContext *TrcFlowMachineContext) SetFlowIDs() {
 		tfmContext.Log("Could not initialize bit lock for flow IDs.", errors.New("bit lock initialization failed"))
 		return
 	}
+}
+
+func (tfmContext *TrcFlowMachineContext) LockFlow(flowName flowcore.FlowNameType) {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
+	if tfmContext.FlowLockMap == nil || !tfmContext.FlowLockMap.Has(flowName.FlowName()) {
+		return
+	}
+	tfmContext.BitLock.Lock(tfmContext.FlowIDMap[flowName.FlowName()])
+}
+
+func (tfmContext *TrcFlowMachineContext) UnlockFlow(flowName flowcore.FlowNameType) {
+	tfmContext.FlowMapLock.RLock()
+	defer tfmContext.FlowMapLock.RUnlock()
+	if tfmContext.FlowLockMap == nil || !tfmContext.FlowLockMap.Has(flowName.FlowName()) {
+		return
+	}
+	tfmContext.BitLock.Unlock(tfmContext.FlowIDMap[flowName.FlowName()])
 }
 
 func (tfmContext *TrcFlowMachineContext) SetFlumeDbType(flumeDBType flowcore.FlumeDbType) {

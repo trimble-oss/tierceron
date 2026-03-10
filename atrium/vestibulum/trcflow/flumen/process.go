@@ -15,6 +15,7 @@ import (
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/testopts"
 	trcdb "github.com/trimble-oss/tierceron/atrium/trcdb"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/pluginutil"
@@ -24,7 +25,6 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -518,6 +518,9 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			if readErr == nil && len(dataMap) > 0 {
 				if dataMap["flowAlias"] != nil {
 					tcfContext.FlowState.FlowAlias = dataMap["flowAlias"].(string)
+				}
+				if dataMap["lastModified"] != nil {
+					tcfContext.SetLastRefreshedTime(dataMap["lastModified"].(string))
 				}
 			}
 			tcfContext.FlowHeader.SourceAlias = coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb)

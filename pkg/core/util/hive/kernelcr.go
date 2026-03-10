@@ -25,11 +25,12 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
@@ -73,6 +74,19 @@ type PluginHandler struct {
 	KernelCtx        *KernelCtx
 	ServiceResource  any
 	DeploymentConfig map[string]interface{} // Full deployment configuration from Vault Certify
+}
+
+// IsRunningInKubernetes detects if the process is running in a Kubernetes/AKS environment
+func IsRunningInKubernetes() bool {
+	// Check for Kubernetes service host environment variable
+	if _, exists := os.LookupEnv("KUBERNETES_SERVICE_HOST"); exists {
+		return true
+	}
+	// Check for Kubernetes service account directory
+	if _, err := os.Stat("/var/run/secrets/kubernetes.io"); err == nil {
+		return true
+	}
+	return false
 }
 
 type KernelCtx struct {
@@ -207,6 +221,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 				if t, ok := metadata["created_time"]; ok {
 					if t != v.CreatedTime {
 						// validate cert and restart kernel
+						driverConfig.CoreConfig.Log.Printf("Cert mismatch detected for %s - calling LoadCertComponent\n", k)
 						configuredCert, err := certutil.LoadCertComponent(driverConfig,
 							mod,
 							k)
@@ -236,6 +251,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							if certSha256 != v.sha256 {
 								if pluginHandler.Services == nil {
 									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
+									v.CreatedTime = t
+									globalCertCache.Set(k, v)
 									goto waitToReload
 								}
 								for s, sPluginHandler := range *pluginHandler.Services {
@@ -257,6 +274,9 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								// 2. Start each plugin
 								eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 							} else {
+								v.CreatedTime = t
+								globalCertCache.Set(k, v)
+								driverConfig.CoreConfig.Log.Printf("Cert %s validated, updating cached CreatedTime to %v\n", k, t)
 								continue
 							}
 						} else {
@@ -494,6 +514,7 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 				PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
 			},
 		}
+		pluginsync.CreatePluginReadyChannel(service)
 	}
 }
 
@@ -541,7 +562,21 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 		return
 	}
 
-	if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
+	// Check if this is a kernel-type plugin (uses callback pattern)
+	var isKernelPlugin bool
+	if properties != nil {
+		if certify, ok := (*properties)["certify"].(map[string]interface{}); ok {
+			if trctype, ok := certify["trctype"].(string); ok {
+				isKernelPlugin = (trctype == "kernelplugin")
+			}
+		}
+	}
+
+	if isKernelPlugin {
+		// Use callback-based initialization for kernel plugins
+		pluginHandler.ConfigContext.Log.Printf("Initializing kernel plugin %s via callbacks\n", pluginHandler.Name)
+		CallPluginInit(pluginHandler.Name, pluginHandler.Name, properties)
+	} else if !plugincoreopts.BuildOptions.IsPluginHardwired() && pluginHandler.PluginMod != nil {
 		if pluginHandler.PluginMod == nil {
 			pluginHandler.ConfigContext.Log.Println("No plugin module set for initializing plugin service.")
 			return
@@ -601,6 +636,17 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 	(*serviceConfig)["log"] = driverConfig.CoreConfig.Log
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
+	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
+	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
+
+	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
+	if kernelopts.BuildOptions.IsKernelZ() {
+		if service != "trcshcmd" && service != "trcsh" && service != "rosea" {
+			driverConfig.CoreConfig.Log.Printf("Security: Plugin %s not allowed in KernelZ.", service)
+			return
+		}
+	}
+
 	go pluginHandler.handleErrors(driverConfig)
 	*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -611,8 +657,22 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	}
 	(*serviceConfig)["certify"] = pluginHandler.DeploymentConfig
 
-	go pluginHandler.receiver(driverConfig)
+	// Determine kernel plugin type before starting receiver to avoid race
+	var isKernelPlugin bool
+	if pluginHandler.DeploymentConfig != nil {
+		if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+			isKernelPlugin = (trctype == "kernelplugin")
+		}
+	}
+	go pluginHandler.receiver(driverConfig, isKernelPlugin)
 	pluginHandler.Init(serviceConfig)
+
+	// Check if plugin refused to initialize
+	if refused, ok := (*serviceConfig)["pluginRefused"].(bool); ok && refused {
+		driverConfig.CoreConfig.Log.Printf("Plugin %s refused to initialize. Skipping start.", service)
+		return
+	}
+
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 	safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 		PluginName: pluginHandler.Name,
@@ -975,6 +1035,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig[tccore.PLUGIN_EVENT_CHANNELS_MAP_KEY] = chan_map
 			serviceConfig["log"] = driverConfig.CoreConfig.Log
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
+			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
+			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -984,6 +1046,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				return
 			}
 			(serviceConfig)["certify"] = pluginHandler.DeploymentConfig
+
+			// Add driverConfig for kernel plugins only
+			if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok && trctype == "kernelplugin" {
+				(serviceConfig)["driverConfig"] = driverConfig
+			}
 
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
 			if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcflowpluginservice" {
@@ -1101,8 +1168,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 							continue
 						}
 
+						var isKernelPlugin bool
+						if pluginHandler.DeploymentConfig != nil {
+							if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+								isKernelPlugin = (trctype == "kernelplugin")
+							}
+						}
+
 						go handler.handleDataflowStat(bootDriverConfig, statMod, nil)
-						go handler.receiver(bootDriverConfig)
+						go handler.receiver(bootDriverConfig, isKernelPlugin)
 					}
 				}()
 
@@ -1122,7 +1196,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 				tfmContext.(flow.FlowMachineContext).SetFlowIDs()
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
-
+				driverConfig.CoreConfig.Log.Printf("Plugin %s flows loaded and ready\n", pluginHandler.Name)
+				// kick off reload process from vault
+				go reloadFlows(tfmContext.(flow.FlowMachineContext), mod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
 			} else {
 				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
@@ -1137,14 +1213,30 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					go pluginHandler.handleDataflowStat(driverConfig, kernelmod, nil)
 				}
 
-				go pluginHandler.receiver(driverConfig)
-			}
+				// Determine if this is a kernel plugin BEFORE starting receiver to avoid race
+				var isKernelPlugin bool
+				if pluginHandler.DeploymentConfig != nil {
+					if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok {
+						isKernelPlugin = (trctype == "kernelplugin")
+					}
+				}
 
-			if len(driverConfig.CoreConfig.Regions) > 0 {
-				serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
+				go pluginHandler.receiver(driverConfig, isKernelPlugin)
+				if len(driverConfig.CoreConfig.Regions) > 0 {
+					serviceConfig["region"] = driverConfig.CoreConfig.Regions[0]
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Warning: No regions configured for plugin %s", pluginHandler.Name)
+				}
 			}
 
 			pluginHandler.Init(&serviceConfig)
+
+			// Check if plugin refused to initialize
+			if refused, ok := serviceConfig["pluginRefused"].(bool); ok && refused {
+				driverConfig.CoreConfig.Log.Printf("Plugin %s refused to initialize. Skipping start.", service)
+				return
+			}
+
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
 			go safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 				PluginName: pluginHandler.Name,
@@ -1155,12 +1247,57 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	}
 }
 
-func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig) {
+func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
+	for {
+		for _, tfCtx := range tfmContext.GetFlows() {
+			// load last modified time from vault
+			flowPath := fmt.Sprintf("super-secrets/Index/FlumeDatabase/flowName/%s/%s", tfCtx.GetFlowHeader().TableName(), flow.TierceronControllerFlow.FlowName())
+			dataMap, readErr := mod.ReadData(flowPath)
+			if readErr == nil && len(dataMap) > 0 && dataMap["lastModified"] != nil {
+				if tfCtx.GetLastRefreshedTime() == "" {
+					// If RefreshedTime is not set, set it and skip refresh to avoid unnecessary restarts on boot
+					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
+					continue
+				}
+				lastModifiedTime, err := time.Parse("2006-01-02 15:04:05 -0700 MST", dataMap["lastModified"].(string))
+				if err != nil {
+					tfmContext.Log(fmt.Sprintf("Error parsing last modified time for flow %s", tfCtx.GetFlowHeader().TableName()), err)
+					continue
+				}
+				flowLastModified, err := time.Parse("2006-01-02 15:04:05 -0700 MST", tfCtx.GetLastRefreshedTime())
+				if tfCtx.GetLastRefreshedTime() != "" && err != nil {
+					tfmContext.Log(fmt.Sprintf("Error parsing existing last modified time for flow %s", tfCtx.GetFlowHeader().TableName()), err)
+					continue
+				}
+				if flowLastModified.Before(lastModifiedTime) {
+					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
+					// Need to refresh flow
+					tfmContext.LockFlow(tfCtx.GetFlowHeader().FlowNameType())
+					tfCtx.NotifyFlowComponentNeedsRestart()
+					tfmContext.UnlockFlow(tfCtx.GetFlowHeader().FlowNameType())
+				}
+			}
+		}
+		time.Sleep(5 * time.Minute)
+	}
+}
+
+func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig, isKernelPlugin bool) {
 	for {
 		event := <-*pluginHandler.ConfigContext.CmdReceiverChan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
+			if isKernelPlugin {
+				// Use callback-based start for kernel plugins
+				driverConfig.CoreConfig.Log.Printf("Starting kernel plugin %s via callbacks\n", pluginHandler.Name)
+				CallPluginStart(pluginHandler.Name)
+				// For kernel plugins, wait until they signal ready before setting State
+			}
 			pluginHandler.State = 1
+			pluginsync.SignalPluginReady(pluginHandler.Name)
+			if isKernelPlugin {
+				driverConfig.CoreConfig.Log.Printf("Kernel plugin %s is ready\n", pluginHandler.Name)
+			}
 			if globalPluginStatusChan != nil {
 				<-globalPluginStatusChan
 			}
@@ -1425,6 +1562,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
 					StatisticsDoc: msg.StatisticsDoc,
+					HookResponse:  msg.HookResponse,
 				}
 				if eUtils.RefLength(msg.Name) > 0 {
 					*newMsg.Query = append(*newMsg.Query, *msg.Name)
@@ -1462,12 +1600,26 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				}
 				go safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
 			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
-				driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
-				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
+				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State == 1 {
+					// Querying plugin is running - forward the message
 					responseError := "Service unavailable"
+					if len(queryPlugin) > 0 {
+						if targetPlugin, ok := (*pluginHandler.Services)[queryPlugin[0]]; ok && targetPlugin != nil && targetPlugin.State == 0 {
+							responseError = "Service initializing"
+							driverConfig.CoreConfig.Log.Printf("Service initializing while processessing query from %s\n", *msg.Name)
+						} else {
+							driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
+						}
+					} else {
+						driverConfig.CoreConfig.Log.Printf("Service unavailable to process query from %s\n", *msg.Name)
+					}
 					time.Sleep(2 * time.Second) // Give time for the plugin to start
 					msg.Response = &responseError
-					go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
+					if plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
+						go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
+					}
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Service unavailable to send response: %s\n", *msg.Name)
 				}
 				continue
 			} else {
