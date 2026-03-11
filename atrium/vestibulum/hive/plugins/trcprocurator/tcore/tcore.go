@@ -285,18 +285,24 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 					configContext.Log.Printf("Warning: replaced listen text with target text but found occurrences of the original port '%s' in the response body. This may indicate some instances of the listen text were not properly replaced.", replacePort)
 				}
 			}
-			var compressedBuffer bytes.Buffer
-			gzipWriter := gzip.NewWriter(&compressedBuffer)
-			if _, err := gzipWriter.Write([]byte(updatedBody)); err != nil {
-				configContext.Log.Printf("Failed to gzip response: %v", err)
-				return err
-			}
-			gzipWriter.Close()
+			if resp.Header.Get("Content-Encoding") == "gzip" {
+				var compressedBuffer bytes.Buffer
+				gzipWriter := gzip.NewWriter(&compressedBuffer)
+				if _, err := gzipWriter.Write([]byte(updatedBody)); err != nil {
+					configContext.Log.Printf("Failed to gzip response: %v", err)
+					return err
+				}
+				gzipWriter.Close()
 
-			resp.Body = io.NopCloser(bytes.NewReader(compressedBuffer.Bytes()))
-			resp.ContentLength = int64(compressedBuffer.Len())
-			resp.Header.Set("Content-Length", strconv.FormatInt(resp.ContentLength, 10))
-			resp.Header.Set("Content-Encoding", "gzip")
+				resp.Body = io.NopCloser(bytes.NewReader(compressedBuffer.Bytes()))
+				resp.ContentLength = int64(compressedBuffer.Len())
+				resp.Header.Set("Content-Length", strconv.FormatInt(resp.ContentLength, 10))
+				resp.Header.Set("Content-Encoding", "gzip")
+			} else {
+				resp.Body = io.NopCloser(strings.NewReader(updatedBody))
+				resp.ContentLength = int64(len(updatedBody))
+				resp.Header.Set("Content-Length", strconv.Itoa(len(updatedBody)))
+			}
 		}
 		return nil
 	}
