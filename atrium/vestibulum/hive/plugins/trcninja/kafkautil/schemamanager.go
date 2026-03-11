@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	schemaregistry "github.com/wildbeavers/schema-registry" //github.com/landoop/schema-registry
+	schemaregistry "github.com/wildbeavers/schema-registry" // github.com/landoop/schema-registry
 )
 
 type SchemaManager struct {
@@ -28,9 +28,16 @@ func InitSchemaManager(schemaCert []byte, schemaSource string, schemaUser string
 		}
 	}
 
-	tlsConfig := &tls.Config{
-		RootCAs:            caCertPool,
-		InsecureSkipVerify: true,
+	var tlsConfig *tls.Config
+	if len(schemaCert) > 0 {
+		caCertPool := x509.NewCertPool()
+		if ok := caCertPool.AppendCertsFromPEM(schemaCert); !ok {
+			// Log warning - certificates may be invalid but continue
+		}
+		tlsConfig = &tls.Config{RootCAs: caCertPool}
+	} else {
+		// Use system root CAs
+		tlsConfig = &tls.Config{}
 	}
 
 	httpsClientTransport := &http.Transport{
