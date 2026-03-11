@@ -1,6 +1,8 @@
 package tcore
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -180,7 +182,7 @@ func (h *localhostOnlyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	ip := net.ParseIP(host)
-	if ip == nil || !ip.IsPrivate() {
+	if ip == nil || (!ip.IsPrivate() && !ip.IsLoopback()) {
 		h.logger.Printf("Blocked non-private IP connection from: %s", host)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -252,7 +254,26 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 			}
 			_ = resp.Body.Close()
 
-			updatedBody := string(bodyBytes)
+			// Decompress if gzip-encoded
+			var decompressed []byte
+			if resp.Header.Get("Content-Encoding") == "gzip" {
+				gzipReader, err := gzip.NewReader(bytes.NewReader(bodyBytes))
+				if err != nil {
+					configContext.Log.Printf("Failed to create gzip reader: %v", err)
+					decompressed = bodyBytes
+				} else {
+					defer gzipReader.Close()
+					decompressed, err = io.ReadAll(gzipReader)
+					if err != nil {
+						configContext.Log.Printf("Failed to decompress gzip: %v", err)
+						decompressed = bodyBytes
+					}
+				}
+			} else {
+				decompressed = bodyBytes
+			}
+
+			updatedBody := string(decompressed)
 			for i := 0; i < len(listenTexts); i++ {
 				replacePort := ""
 				splitReplaceTxt := strings.Split(listenTexts[i], ":")
@@ -264,9 +285,18 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 					configContext.Log.Printf("Warning: replaced listen text with target text but found occurrences of the original port '%s' in the response body. This may indicate some instances of the listen text were not properly replaced.", replacePort)
 				}
 			}
-			resp.Body = io.NopCloser(strings.NewReader(updatedBody))
-			resp.ContentLength = int64(len(updatedBody))
-			resp.Header.Set("Content-Length", strconv.Itoa(len(updatedBody)))
+			var compressedBuffer bytes.Buffer
+			gzipWriter := gzip.NewWriter(&compressedBuffer)
+			if _, err := gzipWriter.Write([]byte(updatedBody)); err != nil {
+				configContext.Log.Printf("Failed to gzip response: %v", err)
+				return err
+			}
+			gzipWriter.Close()
+
+			resp.Body = io.NopCloser(bytes.NewReader(compressedBuffer.Bytes()))
+			resp.ContentLength = int64(compressedBuffer.Len())
+			resp.Header.Set("Content-Length", strconv.FormatInt(resp.ContentLength, 10))
+			resp.Header.Set("Content-Encoding", "gzip")
 		}
 		return nil
 	}
