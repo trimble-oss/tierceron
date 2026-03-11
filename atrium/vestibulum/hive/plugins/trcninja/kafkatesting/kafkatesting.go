@@ -175,12 +175,12 @@ func GetPlugin() bool {
 func MultiBarInstance() *MultiBarContainer {
 	if multiProgressContainer.Mpb == nil {
 		mpbContext, mpbContextCancel = context.WithCancel(context.Background())
-		if IsPlugin && etlcore.GetConfigContext() != nil && etlcore.GetConfigContext().Log != nil {
+		if IsPlugin && etlcore.GetConfigContext("ninja") != nil && etlcore.GetConfigContext("ninja").Log != nil {
 			multiProgressContainer.Mpb = mpb.NewWithContext(mpbContext,
 				mpb.WithWidth(64),
 				mpb.WithWaitGroup(multiProgressContainer.Wg),
-				mpb.WithOutput(etlcore.GetConfigContext().Log.Writer()),
-				mpb.WithDebugOutput(etlcore.GetConfigContext().Log.Writer()))
+				mpb.WithOutput(etlcore.GetConfigContext("ninja").Log.Writer()),
+				mpb.WithDebugOutput(etlcore.GetConfigContext("ninja").Log.Writer()))
 		} else if IsPlugin {
 			multiProgressContainer.Mpb = mpb.NewWithContext(mpbContext,
 				mpb.WithWidth(64),
