@@ -1,6 +1,8 @@
 package tcore
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -15,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -179,7 +182,7 @@ func (h *localhostOnlyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 
 	ip := net.ParseIP(host)
-	if ip == nil || !ip.IsPrivate() {
+	if ip == nil || (!ip.IsPrivate() && !ip.IsLoopback()) {
 		h.logger.Printf("Blocked non-private IP connection from: %s", host)
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
@@ -188,56 +191,12 @@ func (h *localhostOnlyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	h.handler.ServeHTTP(w, r)
 }
 
-func start(pluginName string) {
-	if configContext == nil {
-		fmt.Fprintln(os.Stderr, "no config context initialized for procurator")
-		return
-	}
-
-	// Get configuration values
-	var listenPort, targetPort int
-	var err error
-
-	if portInterface, ok := (*configContext.Config)["listen_port"]; ok {
-		if port, ok := portInterface.(int); ok {
-			listenPort = port
-		} else {
-			listenPort, err = strconv.Atoi(portInterface.(string))
-			if err != nil {
-				configContext.Log.Printf("Failed to process listen port: %v", err)
-				send_err(err)
-				return
-			}
-		}
-	} else {
-		configContext.Log.Println("Missing config: listen_port")
-		send_err(errors.New("missing config: listen_port"))
-		return
-	}
-
-	if portInterface, ok := (*configContext.Config)["target_port"]; ok {
-		if port, ok := portInterface.(int); ok {
-			targetPort = port
-		} else {
-			targetPort, err = strconv.Atoi(portInterface.(string))
-			if err != nil {
-				configContext.Log.Printf("Failed to process target port: %v", err)
-				send_err(err)
-				return
-			}
-		}
-	} else {
-		configContext.Log.Println("Missing config: target_port")
-		send_err(errors.New("missing config: target_port"))
-		return
-	}
-
+func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetTexts []string) (*http.Server, error) {
 	// Validate ports
 	if listenPort == targetPort {
 		err := errors.New("listen_port and target_port must be different")
 		configContext.Log.Println(err.Error())
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	// Exclude well-known ports (0-1023) and ephemeral port ranges (49152+).
@@ -245,8 +204,7 @@ func start(pluginName string) {
 	if listenPort < 1024 || listenPort > 49151 || targetPort < 1024 || targetPort > 49151 {
 		err := errors.New("ports must be between 1024 and 49151 (excludes system and ephemeral ports)")
 		configContext.Log.Println(err.Error())
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	configContext.Log.Printf("Starting Procurator proxy: HTTPS :%d -> HTTPS 127.0.0.1:%d\n", listenPort, targetPort)
@@ -257,8 +215,7 @@ func start(pluginName string) {
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
 	if err != nil {
 		configContext.Log.Printf("Failed to load TLS certificate: %v", err)
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	tlsConfig := &tls.Config{
@@ -276,8 +233,7 @@ func start(pluginName string) {
 	targetURL, err := url.Parse(fmt.Sprintf("https://127.0.0.1:%d", targetPort))
 	if err != nil {
 		configContext.Log.Printf("Failed to parse target URL: %v", err)
-		send_err(err)
-		return
+		return nil, err
 	}
 
 	// Create reverse proxy with HTTPS transport
@@ -289,7 +245,67 @@ func start(pluginName string) {
 			InsecureSkipVerify: true, // Required for 127.0.0.1 backend
 		},
 	}
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		if resp != nil && resp.Body != nil {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				configContext.Log.Printf("Failed reading backend response body: %v", err)
+				return nil
+			}
+			_ = resp.Body.Close()
 
+			// Decompress if gzip-encoded
+			var decompressed []byte
+			if resp.Header.Get("Content-Encoding") == "gzip" {
+				gzipReader, err := gzip.NewReader(bytes.NewReader(bodyBytes))
+				if err != nil {
+					configContext.Log.Printf("Failed to create gzip reader: %v", err)
+					decompressed = bodyBytes
+				} else {
+					defer gzipReader.Close()
+					decompressed, err = io.ReadAll(gzipReader)
+					if err != nil {
+						configContext.Log.Printf("Failed to decompress gzip: %v", err)
+						decompressed = bodyBytes
+					}
+				}
+			} else {
+				decompressed = bodyBytes
+			}
+
+			updatedBody := string(decompressed)
+			for i := 0; i < len(listenTexts); i++ {
+				replacePort := ""
+				splitReplaceTxt := strings.Split(listenTexts[i], ":")
+				if len(splitReplaceTxt) > 1 {
+					replacePort = splitReplaceTxt[len(splitReplaceTxt)-1]
+				}
+				updatedBody = strings.ReplaceAll(updatedBody, listenTexts[i], targetTexts[i])
+				if replacePort != "" && strings.Contains(updatedBody, replacePort) {
+					configContext.Log.Printf("Warning: replaced listen text with target text but found occurrences of the original port '%s' in the response body. This may indicate some instances of the listen text were not properly replaced.", replacePort)
+				}
+			}
+			if resp.Header.Get("Content-Encoding") == "gzip" {
+				var compressedBuffer bytes.Buffer
+				gzipWriter := gzip.NewWriter(&compressedBuffer)
+				if _, err := gzipWriter.Write([]byte(updatedBody)); err != nil {
+					configContext.Log.Printf("Failed to gzip response: %v", err)
+					return err
+				}
+				gzipWriter.Close()
+
+				resp.Body = io.NopCloser(bytes.NewReader(compressedBuffer.Bytes()))
+				resp.ContentLength = int64(compressedBuffer.Len())
+				resp.Header.Set("Content-Length", strconv.FormatInt(resp.ContentLength, 10))
+				resp.Header.Set("Content-Encoding", "gzip")
+			} else {
+				resp.Body = io.NopCloser(strings.NewReader(updatedBody))
+				resp.ContentLength = int64(len(updatedBody))
+				resp.Header.Set("Content-Length", strconv.Itoa(len(updatedBody)))
+			}
+		}
+		return nil
+	}
 	// Wrap with localhost-only middleware
 	handler := &localhostOnlyHandler{
 		handler: proxy,
@@ -317,6 +333,108 @@ func start(pluginName string) {
 			send_err(err)
 		}
 	}()
+	return proxyServer, nil
+}
+
+func start(pluginName string) {
+	if configContext == nil {
+		fmt.Fprintln(os.Stderr, "no config context initialized for procurator")
+		return
+	}
+
+	// Get configuration values
+	var listenPorts, targetPorts []int
+
+	if portInterface, ok := (*configContext.Config)["listen_port"]; ok {
+		if port, ok := portInterface.(string); ok {
+			ports := strings.Split(port, ",")
+			for _, p := range ports {
+				lp, err := strconv.Atoi(strings.TrimSpace(p))
+				if err != nil {
+					configContext.Log.Printf("Failed to process listen ports: %v", err)
+					send_err(err)
+					return
+				}
+				listenPorts = append(listenPorts, lp)
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret listen ports")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: listen_port")
+		send_err(errors.New("missing config: listen_port"))
+		return
+	}
+
+	if portInterface, ok := (*configContext.Config)["target_port"]; ok {
+		if port, ok := portInterface.(string); ok {
+			ports := strings.Split(port, ",")
+			for _, p := range ports {
+				tp, err := strconv.Atoi(strings.TrimSpace(p))
+				if err != nil {
+					configContext.Log.Printf("Failed to process target ports: %v", err)
+					send_err(err)
+					return
+				}
+				targetPorts = append(targetPorts, tp)
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret target ports")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: target_port")
+		send_err(errors.New("missing config: target_port"))
+		return
+	}
+	var targetTexts []string
+	if targetTextInterface, ok := (*configContext.Config)["target_text"]; ok {
+		if targetTxt, ok := targetTextInterface.(string); ok {
+			targetTxts := strings.Split(targetTxt, ",")
+			for _, tt := range targetTxts {
+				targetTexts = append(targetTexts, strings.TrimSpace(tt))
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret target text")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: target_text")
+		send_err(errors.New("missing config: target_text"))
+		return
+	}
+	var listenTexts []string
+	if listenTextInterface, ok := (*configContext.Config)["listen_text"]; ok {
+		if listenTxt, ok := listenTextInterface.(string); ok {
+			listenTxts := strings.Split(listenTxt, ",")
+			for _, lt := range listenTxts {
+				listenTexts = append(listenTexts, strings.TrimSpace(lt))
+			}
+		} else {
+			configContext.Log.Println("Failed to interpret listen texts")
+			return
+		}
+	} else {
+		configContext.Log.Println("Missing config: listen_text")
+		send_err(errors.New("missing config: listen_text"))
+		return
+	}
+
+	if len(listenPorts) != len(targetPorts) || len(listenTexts) != len(targetTexts) {
+		err := errors.New("configuration error: number of listen ports, target ports, listen texts, and target texts must match")
+		configContext.Log.Println(err.Error())
+		send_err(err)
+		return
+	}
+
+	for i := 0; i < len(listenPorts); i++ {
+		if _, err := setUpProxy(listenPorts[i], targetPorts[i], listenTexts, targetTexts); err != nil {
+			configContext.Log.Printf("Failed to set up proxy for listen port %d and target port %d: %v", listenPorts[i], targetPorts[i], err)
+			send_err(err)
+			return
+		}
+	}
 
 	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
 	dfstat.UpdateDataFlowStatistic("System",
