@@ -60,7 +60,7 @@ func CheckInitFlags(flagset *flag.FlagSet, arguments []string) error {
 	}
 
 	// Cannot specify a pathed indexed/restricted seed file while specifying a restricted/indexed section.
-	if len(*IndexNameFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 {
+	if len(*IndexNameFilterPtr) > 0 || len(*IndexValueFilterPtr) > 0 || len(*ServiceNameFilterPtr) > 0 {
 		filtered = true
 	}
 	if len(*RestrictedPtr) > 0 && len(*IndexedPtr) > 0 && filtered {
@@ -96,7 +96,7 @@ func CheckInitFlags(flagset *flag.FlagSet, arguments []string) error {
 	}
 
 	// These two filters are used differently between x and init so this is modifying incoming params to what is expected inside shared helpers.
-	if len(*IndexValueFilterPtr) > 0 && len(*ServiceNameFilterPtr) == 0 && len(*ServiceNameFilterPtr) == 0 {
+	if len(*IndexValueFilterPtr) > 0 && len(*ServiceNameFilterPtr) == 0 {
 		*ServiceNameFilterPtr = *IndexValueFilterPtr
 		*IndexValueFilterPtr = ""
 	}

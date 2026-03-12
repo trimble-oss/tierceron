@@ -25,12 +25,12 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
@@ -221,6 +221,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 				if t, ok := metadata["created_time"]; ok {
 					if t != v.CreatedTime {
 						// validate cert and restart kernel
+						driverConfig.CoreConfig.Log.Printf("Cert mismatch detected for %s - calling LoadCertComponent\n", k)
 						configuredCert, err := certutil.LoadCertComponent(driverConfig,
 							mod,
 							k)
@@ -250,6 +251,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							if certSha256 != v.sha256 {
 								if pluginHandler.Services == nil {
 									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
+									v.CreatedTime = t
+									globalCertCache.Set(k, v)
 									goto waitToReload
 								}
 								for s, sPluginHandler := range *pluginHandler.Services {
@@ -271,6 +274,9 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								// 2. Start each plugin
 								eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 							} else {
+								v.CreatedTime = t
+								globalCertCache.Set(k, v)
+								driverConfig.CoreConfig.Log.Printf("Cert %s validated, updating cached CreatedTime to %v\n", k, t)
 								continue
 							}
 						} else {
@@ -1243,6 +1249,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 }
 
 func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
+	tfmContext.LogInfo("Starting flow reload process")
 	for {
 		for _, tfCtx := range tfmContext.GetFlows() {
 			// load last modified time from vault
@@ -1251,6 +1258,7 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 			if readErr == nil && len(dataMap) > 0 && dataMap["lastModified"] != nil {
 				if tfCtx.GetLastRefreshedTime() == "" {
 					// If RefreshedTime is not set, set it and skip refresh to avoid unnecessary restarts on boot
+					tfmContext.LogInfo(fmt.Sprintf("Setting initial last refreshed time for flow %s", tfCtx.GetFlowHeader().FlowNameType()))
 					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
 					continue
 				}
@@ -1265,11 +1273,13 @@ func reloadFlows(tfmContext flow.FlowMachineContext, mod *kv.Modifier) {
 					continue
 				}
 				if flowLastModified.Before(lastModifiedTime) {
+					tfmContext.LogInfo(fmt.Sprintf("Flow %s has been modified since last refresh. Refreshing flow.", tfCtx.GetFlowHeader().FlowNameType()))
 					tfCtx.SetLastRefreshedTime(dataMap["lastModified"].(string))
 					// Need to refresh flow
 					tfmContext.LockFlow(tfCtx.GetFlowHeader().FlowNameType())
 					tfCtx.NotifyFlowComponentNeedsRestart()
 					tfmContext.UnlockFlow(tfCtx.GetFlowHeader().FlowNameType())
+					tfmContext.LogInfo(fmt.Sprintf("Flow %s refresh complete.", tfCtx.GetFlowHeader().FlowNameType()))
 				}
 			}
 		}

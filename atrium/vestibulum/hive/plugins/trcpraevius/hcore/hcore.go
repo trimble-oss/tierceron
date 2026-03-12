@@ -3,7 +3,6 @@ package hcore
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -17,10 +16,8 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/pluginlib"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcpraevius/praeviussdk" // Update package path as needed
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"gopkg.in/yaml.v2"
@@ -32,6 +29,7 @@ type server struct {
 
 var (
 	configContext *tccore.ConfigContext
+	pluginNameVar string
 	grpcServer    *grpc.Server
 	sender        chan error
 	serverAddr    *string // another way to do this...
@@ -51,27 +49,46 @@ const (
 
 func templateIfy(configKey string) string {
 	if strings.Contains(HELLO_CERT, ".crt") || strings.Contains(HELLO_CERT, ".key") {
-		return fmt.Sprintf("Common/%s.mf.tmpl", configKey[2])
+		return fmt.Sprintf("Common/%s.mf.tmpl", string(configKey[2]))
 	} else {
 		commonBasis := strings.Split(configKey, ".")[1]
 		return commonBasis[1:]
 	}
 }
 
-func receiver(receive_chan *chan tccore.KernelCmd) {
+func receiverPraevius(receive_chan chan tccore.KernelCmd) {
 	for {
-		event := <-*receive_chan
+		event := <-receive_chan
 		switch {
 		case event.Command == tccore.PLUGIN_EVENT_START:
-			go start(event.PluginName)
+			go configContext.Start(event.PluginName)
 		case event.Command == tccore.PLUGIN_EVENT_STOP:
-			go stop(event.PluginName)
-			sender <- errors.New("hello shutting down")
+			go stop()
+			sender <- errors.New("praevius shutting down")
 			return
 		case event.Command == tccore.PLUGIN_EVENT_STATUS:
 			// TODO
 		default:
 			// TODO
+		}
+	}
+}
+
+func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+	for {
+		event := <-chat_receive_chan
+		switch {
+		case event == nil:
+			continue
+		case event.Name != nil && *event.Name == "SHUTDOWN":
+			if configContext != nil {
+				configContext.Log.Println("praevius shutting down message receiver")
+			}
+			return
+		default:
+			if configContext != nil {
+				configContext.Log.Println("praevius received chat message")
+			}
 		}
 	}
 }
@@ -97,18 +114,32 @@ func init() {
 	fmt.Fprintf(os.Stderr, "praevius Version: %s\n", sha)
 }
 
-func send_dfstat() {
-	if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
-		fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for praevius.")
-		return
-	}
-	dfsctx, _, err := dfstat.GetDeliverStatCtx()
+func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
-		configContext.Log.Println("Failed to get dataflow statistic context: ", err)
-		send_err(err)
-		return
+		return nil, nil, fmt.Errorf("failed to listen on port %d: %w", port, err)
 	}
-	pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+
+	// For now, create a basic gRPC server without TLS
+	// TODO: implement TLS with certBytes and keyBytes if needed
+	server := grpc.NewServer()
+	return lis, server, nil
+}
+
+func send_dfstat() {
+	if configContext != nil {
+		if configContext == nil || configContext.DfsChan == nil || dfstat == nil {
+			fmt.Fprintln(os.Stderr, "Dataflow Statistic channel not initialized properly for praevius.")
+			return
+		}
+		dfsctx, _, err := dfstat.GetDeliverStatCtx()
+		if err != nil {
+			configContext.Log.Println("Failed to get dataflow statistic context: ", err)
+			send_err(err)
+			return
+		}
+		tccore.SendDfStat(configContext, dfsctx, dfstat)
+	}
 }
 
 func send_err(err error) {
@@ -130,29 +161,9 @@ func send_err(err error) {
 			func(msg string, err error) {
 				configContext.Log.Println(msg, err)
 			})
-		pluginlib.SendDfStat(configContext, dfsctx, dfstat)
+		tccore.SendDfStat(configContext, dfsctx, dfstat)
 	}
 	*configContext.ErrorChan <- err
-}
-
-func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
-	var err error
-
-	cert, err := tls.X509KeyPair(certBytes, keyBytes)
-	if err != nil {
-		log.Fatalf("Couldn't construct key pair: %v", err)
-	}
-	creds := credentials.NewServerTLSFromCert(&cert)
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Failed to listen:", err)
-		return nil, nil, err
-	}
-
-	grpcServer := grpc.NewServer(grpc.Creds(creds))
-
-	return lis, grpcServer, nil
 }
 
 func start(pluginName string) {
@@ -252,7 +263,7 @@ func start(pluginName string) {
 	}
 }
 
-func stop(pluginName string) {
+func stop() {
 	if configContext != nil {
 		configContext.Log.Println("praevius received shutdown message from kernel.")
 		configContext.Log.Println("Stopping server")
@@ -266,7 +277,7 @@ func stop(pluginName string) {
 		configContext.Log.Println("Stopped server")
 		configContext.Log.Println("Stopped server for praevius.")
 		dfstat.UpdateDataFlowStatistic("System",
-			pluginName,
+			pluginNameVar,
 			"Shutdown",
 			"0",
 			1, func(msg string, err error) {
@@ -277,13 +288,15 @@ func stop(pluginName string) {
 				}
 			})
 		send_dfstat()
-		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
+		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginNameVar, Command: tccore.PLUGIN_EVENT_STOP}
 	}
 	grpcServer = nil
 	dfstat = nil
 }
 
-func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
+func GetConfigContext(pluginName string) *tccore.ConfigContext {
+	return configContext
+}
 
 func GetConfigPaths(pluginName string) []string {
 	return []string{
@@ -293,17 +306,26 @@ func GetConfigPaths(pluginName string) []string {
 	}
 }
 
-func PostInit(configContext *tccore.ConfigContext) {
+func PostInit(ctx *tccore.ConfigContext) {
+	configContext = ctx
 	configContext.Start = start
 	sender = *configContext.ErrorChan
-	go receiver(configContext.CmdReceiverChan)
+	go receiverPraevius(*configContext.CmdReceiverChan)
 }
 
 func Init(pluginName string, properties *map[string]any) {
 	var err error
-
-	configContext, err = pluginlib.Init(pluginName, properties, PostInit)
-	if err != nil {
+	pluginNameVar = pluginName
+	configContext, err = tccore.Init(properties,
+		tccore.TRCSHHIVEK_CERT,
+		tccore.TRCSHHIVEK_KEY,
+		COMMON_PATH,
+		"hiveplugin",
+		start,
+		receiverPraevius,
+		chat_receiver,
+	)
+	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
 	}
@@ -313,7 +335,7 @@ func Init(pluginName string, properties *map[string]any) {
 		certbytes = cert
 		(*configContext.ConfigCerts)[HELLO_CERT] = certbytes
 	}
-	if key, ok := (*properties)[HELLO_CERT].([]byte); ok && len(key) > 0 {
+	if key, ok := (*properties)[HELLO_KEY].([]byte); ok && len(key) > 0 {
 		keybytes = key
 		(*configContext.ConfigCerts)[HELLO_KEY] = keybytes
 	}

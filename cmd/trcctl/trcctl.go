@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
+	kernelloadopts "github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	flowcoreloadopts "github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
@@ -18,8 +20,6 @@ import (
 	deployloadopts "github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
 	harbingerloadopts "github.com/trimble-oss/tierceron/buildopts/harbingeropts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
-	kernelloadopts "github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	pluginloadopts "github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	tcloadopts "github.com/trimble-oss/tierceron/buildopts/tcopts"

@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
-	"github.com/trimble-oss/tierceron/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/pkg/oauth"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
@@ -449,12 +449,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 					driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
 				}
 
-				fmt.Fprintf(os.Stderr, "Using trcshhivez AppRole stored as hivekernel\n")
+				LogInfo(driverConfig.CoreConfig, "Using trcshhivez AppRole stored as hivekernel\n")
 			}
 		}
-		fmt.Fprintf(os.Stderr, "AutoAuth: After OAuth block, vault addr: %s, credentials ready\n", *addrPtr)
-	} else {
-		fmt.Fprintf(os.Stderr, "AutoAuth: vault addr: %s, credentials ready\n", *addrPtr)
+		LogInfo(driverConfig.CoreConfig, fmt.Sprintf("AutoAuth: After OAuth block, vault addr: %s, credentials ready\n", *addrPtr))
 	}
 
 	var tokenPtr *string
@@ -528,9 +526,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	} else {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			fmt.Fprintf(os.Stderr, "No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell)
+			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell))
+		} else {
+			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("AutoAuth: Creating vault connection to %s\n", *addrPtr))
 		}
-		fmt.Fprintf(os.Stderr, "AutoAuth: Creating vault connection to %s\n", *addrPtr)
 		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 
 		if v != nil {
@@ -541,10 +540,10 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			}
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "AutoAuth: Vault connection error: %v\n", err)
+			LogErrorMessage(driverConfig.CoreConfig, fmt.Sprintf("AutoAuth: Vault connection error: %v\n", err), false)
 			return err
 		}
-		fmt.Fprintf(os.Stderr, "AutoAuth: Vault connection established successfully\n")
+		LogInfo(driverConfig.CoreConfig, fmt.Sprintf("AutoAuth: Vault connection established successfully\n"))
 	}
 
 	if len((*appRoleSecret)[0]) == 0 || len((*appRoleSecret)[1]) == 0 {
@@ -642,7 +641,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			return fmt.Errorf("unexpected approle len = %d and secret len = %d --> expecting 36", len((*appRoleSecret)[0]), len((*appRoleSecret)[1]))
 		}
 
-		fmt.Fprintf(os.Stderr, "AutoAuth: Logging in with AppRole to get vault token...\n")
+		LogInfo(driverConfig.CoreConfig, "AutoAuth: Logging in with AppRole to get vault token...\n")
 		roleToken, err := v.AppRoleLogin((*appRoleSecret)[0], (*appRoleSecret)[1])
 		if err != nil {
 			return err
@@ -681,8 +680,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.EnvBasis = "rattan"
 			mod.Env = "rattan"
 		}
-		LogInfo(driverConfig.CoreConfig, "Detected and utilizing role: "+mod.Env)
-		fmt.Fprintf(os.Stderr, "AutoAuth: obtaining access\n")
+		LogInfo(driverConfig.CoreConfig, "AutoAuth: obtaining access\n")
 		token, err := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr)
 		if err != nil {
 			if strings.Contains(err.Error(), "permission denied") {
@@ -791,7 +789,7 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 			}
 		}
 		if envPtr != nil {
-			fmt.Fprintf(os.Stderr, "Auth connecting to vault @ %s\n", *addrPtr)
+			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Auth connecting to vault @ %s\n", *addrPtr))
 			*v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
 		} else {
 			return nil, false, nil, errors.New("envPtr is nil")
