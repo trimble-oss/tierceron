@@ -342,6 +342,11 @@ func start(pluginName string) {
 		return
 	}
 
+	if len(proxyServers) > 0 {
+		configContext.Log.Println("Procurator proxy servers already running, skipping procurator startup.")
+		return
+	}
+
 	// Get configuration values
 	var listenPorts, targetPorts []int
 
