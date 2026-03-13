@@ -455,7 +455,7 @@ func stop(pluginName string) {
 		configContext.Log.Println("Procurator received shutdown message from kernel.")
 		configContext.Log.Println("Stopping Procurator server")
 		if len(proxyServers) == 0 {
-			configContext.Log.Println("Procurator proxy servers were not running.")
+			configContext.Log.Println("Procurator proxy servers not initialized.")
 		}
 	}
 	for _, pS := range proxyServers {
