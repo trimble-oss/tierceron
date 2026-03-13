@@ -25,7 +25,7 @@ import (
 
 var (
 	configContext *tccore.ConfigContext
-	proxyServer   *http.Server
+	proxyServers  []*http.Server
 	dfstat        *tccore.TTDINode
 )
 
@@ -132,8 +132,8 @@ func ProcuratorDiagnostic() string {
 	if configContext == nil {
 		return "Improper config context for procurator diagnostic."
 	}
-	if proxyServer == nil {
-		return "Procurator server not running."
+	if len(proxyServers) == 0 {
+		return "Procurator servers not running."
 	}
 	return "Procurator proxy is running and forwarding HTTPS traffic to localhost."
 }
@@ -313,7 +313,7 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 	}
 
 	// Create HTTPS server
-	proxyServer = &http.Server{
+	proxyServer := &http.Server{
 		Addr:              fmt.Sprintf(":%d", listenPort),
 		Handler:           handler,
 		TLSConfig:         tlsConfig,
@@ -429,10 +429,12 @@ func start(pluginName string) {
 	}
 
 	for i := 0; i < len(listenPorts); i++ {
-		if _, err := setUpProxy(listenPorts[i], targetPorts[i], listenTexts, targetTexts); err != nil {
+		if proxyServer, err := setUpProxy(listenPorts[i], targetPorts[i], listenTexts, targetTexts); err != nil {
 			configContext.Log.Printf("Failed to set up proxy for listen port %d and target port %d: %v", listenPorts[i], targetPorts[i], err)
 			send_err(err)
 			return
+		} else {
+			proxyServers = append(proxyServers, proxyServer)
 		}
 	}
 
@@ -452,15 +454,20 @@ func stop(pluginName string) {
 	if configContext != nil {
 		configContext.Log.Println("Procurator received shutdown message from kernel.")
 		configContext.Log.Println("Stopping Procurator server")
+		if len(proxyServers) == 0 {
+			configContext.Log.Println("Procurator proxy servers not initialized.")
+		}
 	}
-	if proxyServer != nil {
+	for _, pS := range proxyServers {
+		if pS == nil {
+			configContext.Log.Println("Procurator proxy server was not initialized properly, skipping shutdown for this server.")
+			continue
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := proxyServer.Shutdown(ctx); err != nil {
+		if err := pS.Shutdown(ctx); err != nil {
 			configContext.Log.Printf("Error shutting down server: %v", err)
 		}
-	} else {
-		fmt.Fprintln(os.Stderr, "no Procurator server initialized")
 	}
 	if configContext != nil {
 		configContext.Log.Println("Stopped Procurator server")
@@ -478,7 +485,7 @@ func stop(pluginName string) {
 		send_dfstat()
 		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
 	}
-	proxyServer = nil
+	proxyServers = nil
 	dfstat = nil
 }
 
