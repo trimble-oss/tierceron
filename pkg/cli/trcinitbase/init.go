@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -137,7 +138,7 @@ func CommonMain(envPtr *string,
 
 	if driverConfig == nil || (!driverConfig.IsShellSubProcess && (driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor)) {
 		args := argLines[1:]
-		for i := 0; i < len(args); i++ {
+		for i := range args {
 			s := args[i]
 			if s[0] != '-' {
 				if driverConfig.CoreConfig.Log != nil {
@@ -685,7 +686,7 @@ func CommonMain(envPtr *string,
 					continue
 				}
 
-				var allTokensData map[string]interface{}
+				var allTokensData map[string]any
 				if err := json.Unmarshal(tokenFileData, &allTokensData); err != nil {
 					fmt.Fprintf(os.Stderr, "Error parsing token JSON file %s: %v\n", tokenFilePath, err)
 					continue
@@ -830,13 +831,7 @@ func CommonMain(envPtr *string,
 			} else {
 				for _, approleFile := range approleFiles {
 					if len(approleFilters) > 0 {
-						matched := false
-						for _, roleFilter := range approleFilters {
-							if approleFile == roleFilter {
-								matched = true
-								break
-							}
-						}
+						matched := slices.Contains(approleFilters, approleFile)
 						if !matched {
 							continue
 						}
@@ -1147,8 +1142,8 @@ func CommonMain(envPtr *string,
 
 			// Chewbacca: redo this next if section
 			if len(*eUtils.IndexValueFilterPtr) > 0 {
-				filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
-				for _, filter := range filterSlice {
+				filterSlice := strings.SplitSeq(*eUtils.IndexValueFilterPtr, ",")
+				for filter := range filterSlice {
 					for _, section := range sectionSlice {
 						if filter == section {
 							filteredSectionSlice = append(filteredSectionSlice, section)

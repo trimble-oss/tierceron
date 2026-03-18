@@ -127,9 +127,9 @@ func GetEncryptors(secSection map[string]map[string]map[string]string) (map[stri
 
 func CreateEncryptedReadMap(encryptedKeys string) map[string]any {
 	encryptedMap := map[string]any{}
-	encryptedKeysSplit := strings.Split(encryptedKeys, ",")
+	encryptedKeysSplit := strings.SplitSeq(encryptedKeys, ",")
 
-	for _, encryptedField := range encryptedKeysSplit {
+	for encryptedField := range encryptedKeysSplit {
 		encryptedMap[encryptedField] = ""
 	}
 

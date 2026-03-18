@@ -1,5 +1,4 @@
 //go:build trcshkernel && !trcshkernelz
-// +build trcshkernel,!trcshkernelz
 
 package hcore
 
