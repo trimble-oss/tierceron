@@ -251,14 +251,14 @@ func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, dri
 			}
 		}
 
-		cidrBlockSlice := strings.Split(vaultDatabaseConfig["cidrblock"].(string), ",")
-		for _, cidrBlock := range cidrBlockSlice {
+		cidrBlockSlice := strings.SplitSeq(vaultDatabaseConfig["cidrblock"].(string), ",")
+		for cidrBlock := range cidrBlockSlice {
 			dfsUserCreated := ""
 			cidrBlock = strings.TrimSpace(cidrBlock)
 
 			maxRetries := 3
 			var queryErr error
-			for attempt := 0; attempt < maxRetries; attempt++ {
+			for attempt := range maxRetries {
 				_, _, _, queryErr = engineQuery(engine, ctx, "CREATE USER '"+vaultDatabaseConfig["dbuser"].(string)+"'@'"+cidrBlock+"' IDENTIFIED BY '"+vaultDatabaseConfig["dbpassword"].(string)+"'")
 
 				if queryErr == nil {

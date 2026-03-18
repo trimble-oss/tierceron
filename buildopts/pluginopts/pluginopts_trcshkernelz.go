@@ -1,5 +1,4 @@
 //go:build trcshkernelz
-// +build trcshkernelz
 
 package pluginopts
 
