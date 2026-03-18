@@ -103,7 +103,8 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
 				configInitOnce.(*sync.Once).Do(func() {
-					startDailyServiceTokenRotation(pluginEnvConfig, logger)
+					// Chewbacca: Enable when stars are aligned
+					// startDailyServiceTokenRotation(pluginEnvConfig, logger)
 
 					if bootFlowMachineFunc != nil {
 						tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
