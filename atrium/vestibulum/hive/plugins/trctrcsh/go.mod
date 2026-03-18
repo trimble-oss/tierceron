@@ -8,7 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.6
+	github.com/trimble-oss/tierceron-core/v2 v2.10.7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20260213004917-d8ac158aacc6
 	golang.org/x/term v0.39.0
 	google.golang.org/grpc v1.72.1
