@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -184,7 +185,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if driverConfig == nil || !isShell {
 		args := argLines[1:]
-		for i := 0; i < len(args); i++ {
+		for i := range args {
 			s := args[i]
 			if s[0] != '-' {
 				fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
@@ -501,11 +502,8 @@ func CommonMain(envDefaultPtr *string,
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if regionPtr != nil && *regionPtr != "" {
-			for _, supportedRegion := range supportedRegions {
-				if *regionPtr == supportedRegion {
-					regions = append(regions, *regionPtr)
-					break
-				}
+			if slices.Contains(supportedRegions, *regionPtr) {
+				regions = append(regions, *regionPtr)
 			}
 			if len(regions) == 0 {
 				fmt.Fprintln(outWriter, "Unsupported region: "+*regionPtr)
@@ -523,7 +521,7 @@ func CommonMain(envDefaultPtr *string,
 
 	certOverrides := make(map[string]string, strings.Count(*certDestPathPtr, ",")+1)
 	if *certDestPathPtr != "" {
-		for _, rebind := range strings.Split(*certDestPathPtr, ",") {
+		for rebind := range strings.SplitSeq(*certDestPathPtr, ",") {
 			split := strings.Split(rebind, ":")
 			if len(split) != 2 {
 				fmt.Fprintln(outWriter, "Incorrect format for certDestPath: "+rebind)
@@ -692,11 +690,9 @@ func CommonMain(envDefaultPtr *string,
 			configCtx.EnvSlice = append(configCtx.EnvSlice, "filesys")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 		}
-		configCtx.ConfigWg.Add(1)
-		go func() {
-			defer configCtx.ConfigWg.Done()
+		configCtx.ConfigWg.Go(func() {
 			eUtils.DiffHelper(configCtx, true)
-		}()
+		})
 	}
 	configCtx.ConfigWg.Wait() // Wait for diff
 	return nil

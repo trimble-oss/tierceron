@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"log"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -206,9 +207,7 @@ func (p *Properties) WritePluginData(pluginData map[string]any, replacedFields m
 		writeMap = map[string]any{}
 	}
 
-	for field, value := range pluginData {
-		writeMap[field] = value
-	}
+	maps.Copy(writeMap, pluginData)
 
 	mod.SectionPath = ""
 	_, writeErr := mod.Write(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName), writeMap, log)

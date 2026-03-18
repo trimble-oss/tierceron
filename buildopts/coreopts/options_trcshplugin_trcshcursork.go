@@ -1,5 +1,4 @@
 //go:build trcshcursork && !trcshcursoraw && !trcshcursorz
-// +build trcshcursork,!trcshcursoraw,!trcshcursorz
 
 package coreopts
 

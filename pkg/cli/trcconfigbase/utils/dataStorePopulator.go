@@ -76,7 +76,7 @@ func (cds *ConfigDataStore) Init(config *coreconfig.CoreConfig,
 		//for each path, read the secrets there
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
-		for i := 0; i < len(servicesWanted); i++ {
+		for i := range servicesWanted {
 			if strings.HasSuffix(path, servicesWanted[i]) {
 				foundWantedService = true
 				break
@@ -289,7 +289,7 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *coreconfig.CoreConfi
 		//for each path, read the secrets there
 		pathParts := strings.Split(path, "/")
 		foundWantedService := false
-		for i := 0; i < len(servicesWanted); i++ {
+		for i := range servicesWanted {
 			splitService := strings.Split(servicesWanted[i], ".")
 			if len(pathParts) >= 2 && (pathParts[2] == servicesWanted[i] || splitService[0] == pathParts[2] || (len(pathParts) >= 4 && pathParts[3] == servicesWanted[i])) {
 				foundWantedService = true

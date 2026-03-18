@@ -127,7 +127,7 @@ func CommonMain(ctx config.ProcessContext,
 
 	// Checks for proper flag input
 	args := argLines[1:]
-	for i := 0; i < len(args); i++ {
+	for i := range args {
 		s := args[i]
 		if s[0] != '-' {
 			fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
@@ -798,8 +798,8 @@ skipDiff:
 		var filteredSectionSlice []string
 
 		if len(*eUtils.IndexValueFilterPtr) > 0 {
-			filterSlice := strings.Split(*eUtils.IndexValueFilterPtr, ",")
-			for _, filter := range filterSlice {
+			filterSlice := strings.SplitSeq(*eUtils.IndexValueFilterPtr, ",")
+			for filter := range filterSlice {
 				for _, section := range sectionSlice {
 					if filter == section {
 						filteredSectionSlice = append(filteredSectionSlice, section)

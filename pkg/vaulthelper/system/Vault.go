@@ -656,18 +656,18 @@ func (v *Vault) ConfigureJWT(options *JWTConfigOptions) error {
 
 // JWTRoleOptions holds configuration for a JWT role
 type JWTRoleOptions struct {
-	RoleType        string                 `json:"role_type,omitempty"` // "jwt" or "oidc"
-	BoundAudiences  []string               `json:"bound_audiences,omitempty"`
-	BoundSubject    string                 `json:"bound_subject,omitempty"`
-	BoundClaims     map[string]interface{} `json:"bound_claims,omitempty"`
-	ClaimMappings   map[string]string      `json:"claim_mappings,omitempty"`
-	UserClaim       string                 `json:"user_claim,omitempty"`
-	GroupsClaim     string                 `json:"groups_claim,omitempty"`
-	Policies        []string               `json:"policies,omitempty"`
-	TTL             string                 `json:"ttl,omitempty"`
-	MaxTTL          string                 `json:"max_ttl,omitempty"`
-	Period          string                 `json:"period,omitempty"`
-	TokenBoundCIDRs []string               `json:"token_bound_cidrs,omitempty"`
+	RoleType        string            `json:"role_type,omitempty"` // "jwt" or "oidc"
+	BoundAudiences  []string          `json:"bound_audiences,omitempty"`
+	BoundSubject    string            `json:"bound_subject,omitempty"`
+	BoundClaims     map[string]any    `json:"bound_claims,omitempty"`
+	ClaimMappings   map[string]string `json:"claim_mappings,omitempty"`
+	UserClaim       string            `json:"user_claim,omitempty"`
+	GroupsClaim     string            `json:"groups_claim,omitempty"`
+	Policies        []string          `json:"policies,omitempty"`
+	TTL             string            `json:"ttl,omitempty"`
+	MaxTTL          string            `json:"max_ttl,omitempty"`
+	Period          string            `json:"period,omitempty"`
+	TokenBoundCIDRs []string          `json:"token_bound_cidrs,omitempty"`
 }
 
 // CreateJWTRole creates a new JWT role with the given options
