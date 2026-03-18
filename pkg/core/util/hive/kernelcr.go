@@ -73,7 +73,7 @@ type PluginHandler struct {
 	PluginMod        *plugin.Plugin
 	KernelCtx        *KernelCtx
 	ServiceResource  any
-	DeploymentConfig map[string]interface{} // Full deployment configuration from Vault Certify
+	DeploymentConfig map[string]any // Full deployment configuration from Vault Certify
 }
 
 // IsRunningInKubernetes detects if the process is running in a Kubernetes/AKS environment
@@ -492,14 +492,14 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	return nil, errors.New("no created time for cert")
 }
 
-func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig, deploymentConfig *map[string]interface{}) {
+func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig, deploymentConfig *map[string]any) {
 	if pluginHandler == nil || pluginHandler.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
 		return
 	}
 	if pluginHandler.Services != nil {
 		driverConfig.CoreConfig.Log.Printf("Added plugin to kernel: %s\n", service)
-		var deployConfig map[string]interface{}
+		var deployConfig map[string]any
 		if deploymentConfig != nil {
 			deployConfig = *deploymentConfig
 		}
@@ -565,7 +565,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 	// Check if this is a kernel-type plugin (uses callback pattern)
 	var isKernelPlugin bool
 	if properties != nil {
-		if certify, ok := (*properties)["certify"].(map[string]interface{}); ok {
+		if certify, ok := (*properties)["certify"].(map[string]any); ok {
 			if trctype, ok := certify["trctype"].(string); ok {
 				isKernelPlugin = (trctype == "kernelplugin")
 			}
@@ -918,8 +918,8 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 
 						if strings.HasPrefix(paths[0], "-templateFilter=") {
 							filter := paths[0][strings.Index(paths[0], "=")+1:]
-							filterParts := strings.Split(filter, ",")
-							for _, filterPart := range filterParts {
+							filterParts := strings.SplitSeq(filter, ",")
+							for filterPart := range filterParts {
 								if !strings.HasPrefix(filterPart, "Common") {
 									restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
 									break

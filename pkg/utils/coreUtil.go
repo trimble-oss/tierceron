@@ -2,6 +2,7 @@ package utils
 
 import (
 	"runtime"
+	"slices"
 	"strings"
 )
 
@@ -49,12 +50,7 @@ func RefEqualsAny(src *string, dest []string) bool {
 	if src == nil {
 		return false
 	}
-	for _, d := range dest {
-		if *src == d {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(dest, *src)
 }
 
 func RefLength(src *string) int {
