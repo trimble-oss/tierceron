@@ -364,7 +364,8 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					strings.Contains(templatePath, ".crt.mf") ||
 					strings.Contains(templatePath, ".key.mf") ||
 					strings.Contains(templatePath, ".pem.mf") ||
-					strings.Contains(templatePath, ".jks.mf") {
+					strings.Contains(templatePath, ".jks.mf") ||
+					strings.Contains(templatePath, ".asc.mf") {
 					isCert = true
 				}
 
@@ -447,7 +448,8 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 				if strings.Contains(service, ".pfx.mf") ||
 					strings.Contains(service, ".cer.mf") ||
 					strings.Contains(service, ".pem.mf") ||
-					strings.Contains(service, ".jks.mf") {
+					strings.Contains(service, ".jks.mf") ||
+					strings.Contains(service, ".asc.mf") {
 					isCert = true
 				}
 

@@ -227,7 +227,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 		driverConfig.CoreConfig.Env = strings.Split(driverConfig.CoreConfig.Env, "*")[0]
 	}
 	for _, envDir := range files {
-		if strings.HasPrefix(driverConfig.CoreConfig.Env, envDir.Name()) || (strings.HasPrefix(driverConfig.CoreConfig.Env, "local") && envDir.Name() == "local") || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) {
+		if strings.HasPrefix(driverConfig.CoreConfig.Env, envDir.Name()) || (strings.HasPrefix(driverConfig.CoreConfig.Env, "local") && envDir.Name() == "local") || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "pgp")) {
 			if driverConfig.CoreConfig.Env != driverConfig.CoreConfig.EnvBasis && driverConfig.CoreConfig.Env != envDir.Name() { // If raw & env don't match -> current env is env-* so env will be skipped
 				continue
 			}
