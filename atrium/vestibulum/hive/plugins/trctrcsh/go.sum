@@ -68,8 +68,8 @@ github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU
 github.com/rogpeppe/go-internal v1.12.0/go.mod h1:E+RYuTGaKKdloAfM02xzb0FW3Paa99yedzYV+kq4uf4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
-github.com/trimble-oss/tierceron-nute-core v1.0.4 h1:SbX2QZzjzZqhJJeHWiNyH6nCri4AKV/i1cOEJVb3Vug=
-github.com/trimble-oss/tierceron-nute-core v1.0.4/go.mod h1:rgTSHO4RgVHCK+/RbZuv/d7/EFTSmeFRK4Ek9IUuECY=
+github.com/trimble-oss/tierceron-nute-core v1.0.5 h1:R/qhda7RQzHsNXeb7AyabQcBP62J/mWhyYT7nlmcv/Q=
+github.com/trimble-oss/tierceron-nute-core v1.0.5/go.mod h1:479K1HnOTew00Vs8fBsv9Gdp/HjdO2730LC/yKa6FhE=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20260213004917-d8ac158aacc6 h1:4IEy9j5PqC6KmgBLz4MPj28c/xrn/mN03XDiR/qZbjY=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20260213004917-d8ac158aacc6/go.mod h1:h7pINp6Nfzh+sWBgHQ2qwloVHbmoGrF2Y0HzNEDyqm0=
 github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e h1:JVG44RsyaB9T2KIHavMF/ppJZNG9ZpyihvCd0w101no=

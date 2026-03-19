@@ -32,7 +32,7 @@ require (
 	github.com/faiface/mainthread v0.0.0-20171120011319-8b78f0a41ae3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/graphql-go/graphql v0.8.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.7
+	github.com/trimble-oss/tierceron-core/v2 v2.10.8
 	github.com/trimble-oss/tierceron-hat v1.2.12
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
@@ -200,8 +200,8 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.0.12 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.4 // indirect
+	github.com/trimble-oss/tierceron-nute v1.1.0 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.5 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect

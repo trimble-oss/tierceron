@@ -4,8 +4,8 @@ go 1.26.1
 
 require (
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.7
-	github.com/trimble-oss/tierceron-nute-core v1.0.4
+	github.com/trimble-oss/tierceron-core/v2 v2.10.8
+	github.com/trimble-oss/tierceron-nute-core v1.0.5
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -58,7 +58,7 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.0.12 // indirect
+	github.com/trimble-oss/tierceron-nute v1.1.0 // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
