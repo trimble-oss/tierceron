@@ -85,7 +85,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if driverConfig == nil || !isShell {
 		args := argLines[1:]
-		for i := 0; i < len(args); i++ {
+		for i := range args {
 			s := args[i]
 			if s[0] != '-' {
 				fmt.Fprintln(os.Stderr, "Wrong flag syntax: ", s)

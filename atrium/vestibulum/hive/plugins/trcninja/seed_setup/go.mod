@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/seed_setup
 
-go 1.26.0
+go 1.26.1
 
 require (
 	github.com/google/uuid v1.6.0
@@ -14,13 +14,12 @@ require (
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/linkedin/goavro/v2 v2.14.0 // indirect
 	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/trimble-oss/tierceron-core/v2 v2.10.6 // indirect
+	github.com/trimble-oss/tierceron-core/v2 v2.10.7 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.4 // indirect
 	github.com/twmb/franz-go v1.20.5 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect

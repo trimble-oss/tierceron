@@ -154,7 +154,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 						Query:     &[]string{"rosea"},
 						ChatId:    &cmdType,        // "rosea"
 						RoutingId: event.RoutingId, // Preserve original routing ID for response
-						HookResponse: map[string]interface{}{
+						HookResponse: map[string]any{
 							"memfs":    driverConfig.MemFs,
 							"filename": filename,
 							"content":  fileContent,

@@ -12,6 +12,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template/parse"
@@ -303,13 +304,7 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 					// Iterate of projects...
 					for _, projectDirectory := range projectDirectories {
 						if len(driverConfig.ProjectSections) > 0 {
-							acceptProject := false
-							for _, index := range driverConfig.ProjectSections {
-								if index == projectDirectory.Name() {
-									acceptProject = true
-									break
-								}
-							}
+							acceptProject := slices.Contains(driverConfig.ProjectSections, projectDirectory.Name())
 							if !acceptProject {
 								continue
 							}

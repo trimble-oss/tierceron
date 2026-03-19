@@ -1,9 +1,9 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcpraevius
 
-go 1.26.0
+go 1.26.1
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.10.6
+	github.com/trimble-oss/tierceron-core/v2 v2.10.7
 	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
