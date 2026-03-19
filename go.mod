@@ -200,7 +200,7 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.0.11 // indirect
+	github.com/trimble-oss/tierceron-nute v1.0.12 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.4 // indirect
 	github.com/xlab/treeprint v1.1.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
