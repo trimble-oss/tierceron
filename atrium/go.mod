@@ -24,7 +24,7 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
-	github.com/trimble-oss/tierceron-hat v1.2.11
+	github.com/trimble-oss/tierceron-hat v1.2.12
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 )
 
@@ -40,9 +40,9 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.7
-	github.com/trimble-oss/tierceron-nute v1.0.12
-	github.com/trimble-oss/tierceron-nute-core v1.0.4
+	github.com/trimble-oss/tierceron-core/v2 v2.10.8
+	github.com/trimble-oss/tierceron-nute v1.1.0
+	github.com/trimble-oss/tierceron-nute-core v1.0.5
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
 	k8s.io/apimachinery v0.26.1

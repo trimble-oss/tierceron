@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcpraevi
 go 1.26.1
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.10.7
+	github.com/trimble-oss/tierceron-core/v2 v2.10.8
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
@@ -13,7 +13,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.4 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.5 // indirect
 	go.opentelemetry.io/otel v1.42.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
