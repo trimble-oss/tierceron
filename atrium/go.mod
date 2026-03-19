@@ -41,7 +41,7 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
 	github.com/trimble-oss/tierceron-core/v2 v2.10.7
-	github.com/trimble-oss/tierceron-nute v1.0.11
+	github.com/trimble-oss/tierceron-nute v1.0.12
 	github.com/trimble-oss/tierceron-nute-core v1.0.4
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.26.1
