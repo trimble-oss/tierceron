@@ -1377,6 +1377,7 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			// Send message to trcshcmd/rosea to get editor model
 			id := fmt.Sprintf("rosea-%d", time.Now().UnixNano())
 			responseChan := make(chan tea.Model, 1)
+			errorChan := make(chan string, 1)
 
 			// Register hook for response
 			GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
@@ -1385,6 +1386,8 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 						if editorModel, ok := msg.HookResponse.(tea.Model); ok {
 							responseChan <- editorModel
 						}
+					} else if msg.Response != nil && *msg.Response != "" {
+						errorChan <- *msg.Response
 					}
 					return true
 				}
@@ -1408,7 +1411,13 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			select {
 			case editorModel = <-responseChan:
 				GetChatMsgHooks().Remove(id)
-			case <-time.After(5 * time.Second):
+			case errMsg := <-errorChan:
+				GetChatMsgHooks().Remove(id)
+				return commandResultMsg{
+					output:     []string{errorStyle.Render(errMsg)},
+					shouldQuit: false,
+				}
+			case <-time.After(20 * time.Second):
 				GetChatMsgHooks().Remove(id)
 				return commandResultMsg{
 					output:     []string{errorStyle.Render("Error: timeout waiting for editor")},
