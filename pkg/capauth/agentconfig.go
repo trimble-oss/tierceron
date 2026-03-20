@@ -192,28 +192,15 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort b
 }
 
 func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*string, error) {
-	retry := 0
-	for retry < 5 {
-		result, err := agentconfig.PenseFeatherQuery(agentconfig.FeatherContext, pense)
-
-		if err != nil || result == nil || *result == "...." {
-			time.Sleep(time.Second)
-			retry = retry + 1
-		} else {
-			return result, err
-		}
-	}
-	return nil, errors.New("unavailable secrets")
+	return agentconfig.RetryingPenseFeatherQueryWithContext(agentconfig.FeatherContext, pense)
 }
 
-func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
-	penseCode := randomString(12 + rand.Intn(7))
-	penseArray := sha256.Sum256([]byte(penseCode))
-	penseSum := hex.EncodeToString(penseArray[:])
-	penseSum = penseSum + saltyopts.BuildOptions.GetSaltyGuardian()
-
+func (agentconfig *AgentConfigs) RetryingPenseFeatherQueryWithContext(featherCtx *cap.FeatherContext, pense string) (*string, error) {
+	const (
+		maxRetries = 17
+		retrySleep = 300 * time.Millisecond
+	)
 	creds, credErr := tls.GetTransportCredentials(false, agentconfig.Drone)
-
 	if credErr != nil {
 		return nil, credErr
 	}
@@ -230,7 +217,28 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
 
+	retry := 0
+	for retry < maxRetries {
+		result, err := agentconfig.penseFeatherQueryWithClient(featherCtx, pense, c)
+
+		if err != nil || result == nil || *result == "...." {
+			time.Sleep(retrySleep)
+			retry = retry + 1
+		} else {
+			return result, err
+		}
+	}
+	return nil, errors.New("unavailable secrets")
+}
+
+func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.FeatherContext, pense string, c cap.CapClient) (*string, error) {
+	penseCode := randomString(12 + rand.Intn(7))
+	penseArray := sha256.Sum256([]byte(penseCode))
+	penseSum := hex.EncodeToString(penseArray[:])
+	penseSum = penseSum + saltyopts.BuildOptions.GetSaltyGuardian()
+
 	var r *cap.PenseReply
+	var err error
 	retry := 0
 
 	for {
@@ -281,6 +289,26 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	memprotectopts.MemProtect(nil, penseProtect)
 
 	return penseProtect, nil
+}
+
+func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
+	creds, credErr := tls.GetTransportCredentials(false, agentconfig.Drone)
+	if credErr != nil {
+		return nil, credErr
+	}
+
+	err := ValidateVhost(*agentconfig.FeatherHostPort, "", true)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	return agentconfig.penseFeatherQueryWithClient(featherCtx, pense, cap.NewCapClient(conn))
 }
 
 func NewAgentConfig(tokenCache *cache.TokenCache,
@@ -410,6 +438,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 			Env:           trcHatEnv,
 			IsShellRunner: isShellRunner,
 			EnvContext:    trcHatEnv,
+			TokenCache:    tokenCache,
 		}
 
 		var bambooRolePtr *string

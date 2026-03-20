@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 
@@ -100,23 +99,17 @@ func GetSetEnvAddrContext(env string, envContext string, addrPort string) (strin
 }
 
 func retryingPenseFeatherQuery(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, pense string) (*string, error) {
-	retry := 0
-	for retry < 5 {
-		result, err := agentConfigs.PenseFeatherQuery(featherCtx, pense)
-
-		if err != nil || result == nil || *result == "...." {
-			time.Sleep(time.Second)
-			retry = retry + 1
-		} else {
-			return result, err
-		}
-	}
-	return nil, errors.New("unavailable secrets")
+	return agentConfigs.RetryingPenseFeatherQueryWithContext(featherCtx, pense)
 }
 
 func TrcshVAddress(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfigs, trcshDriverConfig *capauth.TrcshDriverConfig) (*string, error) {
 	var err error
 	var vaultAddress *string
+	if trcshDriverConfig != nil && trcshDriverConfig.DriverConfig != nil && trcshDriverConfig.DriverConfig.CoreConfig != nil && trcshDriverConfig.DriverConfig.CoreConfig.TokenCache != nil {
+		if eUtils.RefLength(trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr) > 0 {
+			return trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr, nil
+		}
+	}
 
 	// Chewbacca: scrub before checkin
 	if true {
@@ -153,6 +146,32 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	var pubRolePtr *string
 	var pluginAnyPtr *string
 	var kubeConfigPtr *string
+
+	if trcshConfig.TokenCache != nil {
+		if eUtils.RefLength(trcshConfig.TokenCache.VaultAddressPtr) > 0 {
+			vaultAddressPtr = trcshConfig.TokenCache.VaultAddressPtr
+		}
+
+		if bambooRolePtr := trcshConfig.TokenCache.GetRole("bamboo"); bambooRolePtr != nil && len(*bambooRolePtr) >= 2 {
+			configRole := fmt.Sprintf("%s:%s", (*bambooRolePtr)[0], (*bambooRolePtr)[1])
+			configRolePtr = &configRole
+		} else if configRoleCachePtr := trcshConfig.TokenCache.GetRole("configrole"); configRoleCachePtr != nil && len(*configRoleCachePtr) >= 2 {
+			configRole := fmt.Sprintf("%s:%s", (*configRoleCachePtr)[0], (*configRoleCachePtr)[1])
+			configRolePtr = &configRole
+		}
+
+		if pubRoleCachePtr := trcshConfig.TokenCache.GetRole("pub"); pubRoleCachePtr != nil && len(*pubRoleCachePtr) >= 2 {
+			pubRole := fmt.Sprintf("%s:%s", (*pubRoleCachePtr)[0], (*pubRoleCachePtr)[1])
+			pubRolePtr = &pubRole
+		} else if pubRoleAltPtr := trcshConfig.TokenCache.GetRole("pubrole"); pubRoleAltPtr != nil && len(*pubRoleAltPtr) >= 2 {
+			pubRole := fmt.Sprintf("%s:%s", (*pubRoleAltPtr)[0], (*pubRoleAltPtr)[1])
+			pubRolePtr = &pubRole
+		}
+
+		if pluginAnyCachePtr := trcshConfig.TokenCache.GetToken("config_token_pluginany"); eUtils.RefLength(pluginAnyCachePtr) > 0 {
+			pluginAnyPtr = pluginAnyCachePtr
+		}
+	}
 
 	// Chewbacca: scrub before checkin
 	if true {

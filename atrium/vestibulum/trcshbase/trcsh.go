@@ -373,6 +373,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 			deployerAcceptRemoteNoTimeout,
 			deployerInterrupted)
 		trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+		// Use a 5s idle heartbeat interval for deployer perching to reduce cpu utilizating
+		trcshDriverConfig.FeatherCtx.MultiSecondInterruptTicker = time.NewTicker(5 * time.Second)
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 
@@ -1616,10 +1618,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
 				}
 				continue
-			} else {
-				if retries > 0 {
-					time.Sleep(time.Second)
-				}
 			}
 			retries = retries + 1
 			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
