@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
@@ -1019,8 +1020,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
-		// Prioritize trcshcmd, rosea, and healthcheck deployments - start them first
-		priorityPlugins := []string{"trcshcmd", "rosea", "healthcheck"}
+		// Prioritize only the plugins needed for shell availability on the critical path.
+		priorityPlugins := []string{"trcshcmd", "healthcheck"}
 		priorityIndices := []int{}
 		for i, deploymentConfig := range pluginDeployments {
 			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
@@ -1064,6 +1065,29 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		for _, deploymentConfig := range pluginDeployments {
+			deploymentName := ""
+			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
+				if pluginName, isString := trcPlugin.(string); isString {
+					deploymentName = pluginName
+				}
+			}
+
+			if kernelopts.BuildOptions.IsKernel() && deploymentName == "rosea" {
+				driverConfigPtr.CoreConfig.Log.Println("Starting rosea deployer in background")
+				go EnableDeployer(driverConfigPtr,
+					*gAgentConfig.Env,
+					*regionPtr,
+					"",
+					*trcPathPtr,
+					true,
+					!isShellRunner,
+					dronePtr,
+					deploymentConfig,
+					tracelessPtr,
+					projectServicePtr)
+				continue
+			}
+
 			if kernelopts.BuildOptions.IsKernel() {
 				go func(dcPtr *config.DriverConfig,
 					env string,
@@ -1822,6 +1846,12 @@ collaboratorReRun:
 			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
+			if control == "trcplgtool" &&
+				strings.Contains(deployLine, "-codebundledeploy") &&
+				plugincoreopts.BuildOptions.IsPluginHardwired() {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping hardwired codebundledeploy command in startup pipeline")
+				continue
+			}
 			if len(deployArgs) > 1 {
 				envArgIndex := -1
 

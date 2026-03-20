@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/pkg/core/util/hive/plugins/trcshcmd/shellcmd"
@@ -14,6 +15,8 @@ var (
 	configContext *tccore.ConfigContext
 	driverConfig  *config.DriverConfig
 )
+
+const roseaStartupRetryLimit = 20
 
 // GetConfigContext returns the trcshcmd config context for cross-plugin access
 func GetConfigContext() *tccore.ConfigContext {
@@ -81,11 +84,61 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			// Handle shell command requests
 			cmdType := *event.ChatId
 			if event.Response != nil {
-				if *event.Response == "Service initializing" && cmdType != shellcmd.CmdTrcBoot {
-					return // Allow trcboot to go through when service unavailable.
+				if *event.Response == "Service initializing" && cmdType == shellcmd.CmdNano {
+					retryCount := 0
+					if payload, ok := event.HookResponse.(map[string]any); ok {
+						if existing, ok := payload["retryCount"].(int); ok {
+							retryCount = existing
+						}
+						payload["retryCount"] = retryCount + 1
+						event.HookResponse = payload
+					}
+					if retryCount < roseaStartupRetryLimit {
+						if configContext != nil {
+							configContext.Log.Printf("Rosea still initializing, retrying request %d/%d\n", retryCount+1, roseaStartupRetryLimit)
+						}
+						time.Sleep(time.Second)
+						if configContext != nil && configContext.ChatSenderChan != nil {
+							retryMsg := &tccore.ChatMsg{
+								Name:         event.Name,
+								Query:        event.Query,
+								ChatId:       event.ChatId,
+								RoutingId:    event.RoutingId,
+								HookResponse: event.HookResponse,
+							}
+							*configContext.ChatSenderChan <- retryMsg
+						}
+						continue
+					}
+
+					failure := "rosea: timed out waiting for plugin startup"
+					event.Response = &failure
+					if configContext != nil && configContext.ChatSenderChan != nil {
+						responseMsg := &tccore.ChatMsg{
+							Name:      event.Name,
+							Query:     &[]string{"trcsh"},
+							ChatId:    event.ChatId,
+							RoutingId: event.RoutingId,
+							Response:  &failure,
+						}
+						*configContext.ChatSenderChan <- responseMsg
+					}
+					continue
+				} else if *event.Response == "Service initializing" && cmdType != shellcmd.CmdTrcBoot {
+					continue
 				} else if *event.Response == "Service unavailable" {
-					// Service is actually unavailable and in error state likely.
-					return
+					if cmdType == shellcmd.CmdNano && configContext != nil && configContext.ChatSenderChan != nil {
+						failure := "rosea: plugin unavailable"
+						responseMsg := &tccore.ChatMsg{
+							Name:      event.Name,
+							Query:     &[]string{"trcsh"},
+							ChatId:    event.ChatId,
+							RoutingId: event.RoutingId,
+							Response:  &failure,
+						}
+						*configContext.ChatSenderChan <- responseMsg
+					}
+					continue
 				}
 			}
 
@@ -97,6 +150,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				cmdType == shellcmd.CmdRm || cmdType == shellcmd.CmdCp ||
 				cmdType == shellcmd.CmdMv || cmdType == shellcmd.CmdCat ||
 				cmdType == shellcmd.CmdMkdir || cmdType == shellcmd.CmdNano ||
+				cmdType == shellcmd.CmdTrcTv ||
 				cmdType == shellcmd.CmdSu {
 
 				if configContext != nil {
@@ -155,9 +209,10 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 						ChatId:    &cmdType,        // "rosea"
 						RoutingId: event.RoutingId, // Preserve original routing ID for response
 						HookResponse: map[string]any{
-							"memfs":    driverConfig.MemFs,
-							"filename": filename,
-							"content":  fileContent,
+							"memfs":      driverConfig.MemFs,
+							"filename":   filename,
+							"content":    fileContent,
+							"retryCount": 0,
 						},
 					}
 
@@ -170,7 +225,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 
 				//                  Only tinit and tpub require elevation - tx (trcx) does not
 				// Authorization check: Block privileged commands without elevated access
-				if (cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub) && !hasUnrestrictedAccess() {
+				if (cmdType == shellcmd.CmdTrcInit || cmdType == shellcmd.CmdTrcPub || cmdType == shellcmd.CmdTrcTv) && !hasUnrestrictedAccess() {
 					configContext.Log.Printf("AUTHORIZATION DENIED: Command %s requires elevated access\n", cmdType)
 
 					// Return authorization error immediately without executing command
