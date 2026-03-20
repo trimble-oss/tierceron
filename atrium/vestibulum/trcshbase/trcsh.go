@@ -1559,6 +1559,7 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	configRole := os.Getenv("CONFIG_ROLE")
 	pubRole := os.Getenv("PUB_ROLE")
 	pluginAny := os.Getenv("PLUGIN_ANY")
+	unrestrictedToken := os.Getenv("TRC_UNRESTRICTED_TOKEN")
 	fileBytes, _ := os.ReadFile("")
 	kc := base64.StdEncoding.EncodeToString(fileBytes)
 	gTrcshConfig = &capauth.TrcShConfig{
@@ -1575,6 +1576,10 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", &pluginAny)
 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", &configRole)
 	trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", &pubRole)
+	if unrestrictedToken != "" {
+		unrestrictedTokenName := fmt.Sprintf("config_%s_unrestricted", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken(unrestrictedTokenName, &unrestrictedToken)
+	}
 	// Chewbacca: end scrub
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth..")
