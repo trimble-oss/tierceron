@@ -1377,6 +1377,7 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			// Send message to trcshcmd/rosea to get editor model
 			id := fmt.Sprintf("rosea-%d", time.Now().UnixNano())
 			responseChan := make(chan tea.Model, 1)
+			errorChan := make(chan string, 1)
 
 			// Register hook for response
 			GetChatMsgHooks().Set(id, func(msg *tccore.ChatMsg) bool {
@@ -1385,6 +1386,8 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 						if editorModel, ok := msg.HookResponse.(tea.Model); ok {
 							responseChan <- editorModel
 						}
+					} else if msg.Response != nil && *msg.Response != "" {
+						errorChan <- *msg.Response
 					}
 					return true
 				}
@@ -1408,7 +1411,13 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 			select {
 			case editorModel = <-responseChan:
 				GetChatMsgHooks().Remove(id)
-			case <-time.After(5 * time.Second):
+			case errMsg := <-errorChan:
+				GetChatMsgHooks().Remove(id)
+				return commandResultMsg{
+					output:     []string{errorStyle.Render(errMsg)},
+					shouldQuit: false,
+				}
+			case <-time.After(20 * time.Second):
 				GetChatMsgHooks().Remove(id)
 				return commandResultMsg{
 					output:     []string{errorStyle.Render("Error: timeout waiting for editor")},
@@ -1655,6 +1664,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "")
 			output = append(output, "Elevated mode activated. Additional commands available:")
 			output = append(output, "  tinit    - Run trcinit commands (write access)")
+			output = append(output, "  tv       - List/read/patch secret store values")
 			output = append(output, "  tx       - Run trcx commands (write access)")
 			output = append(output, "Type 'exit' to return to normal mode.")
 		} else if response == "" {
@@ -1735,6 +1745,30 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			}
 		}
 
+	case "tv":
+		if !m.elevatedMode {
+			output = append(output, errorStyle.Render(fmt.Sprintf("Unknown command: %s", command)))
+			output = append(output, "Type 'help' for available commands")
+			break
+		}
+
+		if m.chatSenderChan == nil {
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		response := CallTrcshCmd(m.chatSenderChan, "tv", args)
+		if response != "" {
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "AUTHORIZATION ERROR") {
+					output = append(output, errorStyle.Render(line))
+				} else {
+					output = append(output, line)
+				}
+			}
+		}
+
 	case "help":
 		output = append(output, "Available commands:")
 		output = append(output, "  help     - Show this help message")
@@ -1756,6 +1790,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
+			output = append(output, "  tv       - List/read/patch secret store values (tv list|get|patch <path> ...)")
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}
 		output = append(output, "  exit     - Exit shell")
@@ -1943,7 +1978,7 @@ func callTrcshCmdWait(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args
 		*chatSenderChan <- msg
 	}()
 
-	// Wait for response with 15-second timeout
+	// Wait for response with timeout
 	select {
 	case response := <-responseChan:
 		GetChatMsgHooks().Remove(id)
