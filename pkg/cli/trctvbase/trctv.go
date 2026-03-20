@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
@@ -109,7 +110,7 @@ func CommonMain(
 			fmt.Fprintf(flagset.Output(), "  %s list <path>\n", argLines[0])
 			fmt.Fprintf(flagset.Output(), "      List accessible entries at a secret store path without reading secret data\n")
 			fmt.Fprintf(flagset.Output(), "      Path: <mount>/<env>/<path>  e.g. super-secrets/dev\n")
-			fmt.Fprintf(flagset.Output(), "  %s get <path>\n", argLines[0])
+			fmt.Fprintf(flagset.Output(), "  %s get <path> [--version=<number>]\n", argLines[0])
 			fmt.Fprintf(flagset.Output(), "      Read key/value data from a secret store path\n")
 			fmt.Fprintf(flagset.Output(), "      Path: <mount>/<env>/<secret>  e.g. super-secrets/dev/DataFlowStatistics\n")
 			fmt.Fprintf(flagset.Output(), "  %s patch <path> <key>=<value> ...\n", argLines[0])
@@ -124,6 +125,7 @@ func CommonMain(
 	}
 
 	insecurePtr := flagset.Bool("insecure", false, "Allow insecure SSL connections")
+	versionPtr := flagset.String("version", "", "Specific secret version for tv get")
 	logFilePtr := flagset.String("log", "./"+coreopts.BuildOptions.GetFolderPrefix(nil)+"tv.log", "Output path for log file")
 	pingPtr := flagset.Bool("ping", false, "Ping vault.")
 
@@ -145,6 +147,13 @@ func CommonMain(
 			case arg == "-env" && i+1 < len(argLines):
 				i++
 				*localEnvPtr = argLines[i]
+			case strings.HasPrefix(arg, "-version="):
+				*versionPtr = arg[9:]
+			case strings.HasPrefix(arg, "--version="):
+				*versionPtr = arg[10:]
+			case (arg == "-version" || arg == "--version") && i+1 < len(argLines):
+				i++
+				*versionPtr = argLines[i]
 			case arg == "-insecure" || arg == "--insecure":
 				*insecurePtr = true
 			case arg == "-ping" || arg == "--ping":
@@ -167,6 +176,13 @@ func CommonMain(
 	if showHelp {
 		flagset.Usage()
 		return nil
+	}
+
+	if *versionPtr != "" {
+		versionNum, convErr := strconv.Atoi(*versionPtr)
+		if convErr != nil || versionNum <= 0 {
+			return fmt.Errorf("invalid --version value %q: must be a positive number", *versionPtr)
+		}
 	}
 
 	// sub-command, path
@@ -260,7 +276,7 @@ func CommonMain(
 	case "list":
 		return executeList(vaultPath, mod, logger)
 	case "get":
-		return executeGet(vaultPath, mod, logger)
+		return executeGet(vaultPath, *versionPtr, mod, logger)
 	case "patch":
 		if len(positionalArgs) < 3 {
 			fmt.Fprintln(outWriter, "Usage: tv patch <path> <key>=<value> [<key>=<value> ...]")
@@ -314,7 +330,10 @@ func executeList(vaultPath string, mod *helperkv.Modifier, logger *log.Logger) e
 }
 
 // executeGet reads and prints the key/value data and metadata at vaultPath.
-func executeGet(vaultPath string, mod *helperkv.Modifier, logger *log.Logger) error {
+func executeGet(vaultPath string, version string, mod *helperkv.Modifier, logger *log.Logger) error {
+	if version != "" {
+		mod.Version = version
+	}
 	data, err := mod.ReadData(vaultPath)
 	if err != nil {
 		fmt.Fprintf(outWriter, "Error reading %s: %v\n", vaultPath, err)
