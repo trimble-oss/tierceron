@@ -410,6 +410,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 			Env:           trcHatEnv,
 			IsShellRunner: isShellRunner,
 			EnvContext:    trcHatEnv,
+			TokenCache:    tokenCache,
 		}
 
 		var bambooRolePtr *string
