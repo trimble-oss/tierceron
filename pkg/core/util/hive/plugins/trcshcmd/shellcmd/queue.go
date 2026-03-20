@@ -18,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trctvbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -198,6 +199,22 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 			DriverConfig: driverConfig,
 		}
 		err = trcplgtoolbase.CommonMain(&env, &envCtx, &plgTokenName, &region, nil, args, trcshDriverConfig)
+
+	case CmdTrcTv:
+		// Guard all tv operations behind elevated access (su).
+		if !hasUnrestrictedAccess(driverConfig) {
+			err = errors.New("AUTHORIZATION ERROR: 'tv' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
+			break
+		}
+
+		isPatch := len(args) > 0 && args[0] == "patch"
+		if isPatch {
+			// Use unrestricted token for write access (available after su)
+			patchTokenName := fmt.Sprintf("config_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+			err = trctvbase.CommonMain(&envDefaultPtr, &envCtx, &patchTokenName, &region, nil, argLines, driverConfig)
+		} else {
+			err = trctvbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, &region, nil, argLines, driverConfig)
+		}
 
 	case CmdKubectl:
 		// Initialize kubectl configuration

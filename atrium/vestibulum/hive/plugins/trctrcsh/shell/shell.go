@@ -1664,6 +1664,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "")
 			output = append(output, "Elevated mode activated. Additional commands available:")
 			output = append(output, "  tinit    - Run trcinit commands (write access)")
+			output = append(output, "  tv       - List/read/patch secret store values")
 			output = append(output, "  tx       - Run trcx commands (write access)")
 			output = append(output, "Type 'exit' to return to normal mode.")
 		} else if response == "" {
@@ -1744,6 +1745,30 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			}
 		}
 
+	case "tv":
+		if !m.elevatedMode {
+			output = append(output, errorStyle.Render(fmt.Sprintf("Unknown command: %s", command)))
+			output = append(output, "Type 'help' for available commands")
+			break
+		}
+
+		if m.chatSenderChan == nil {
+			output = append(output, errorStyle.Render("Error: chat channel not available"))
+			break
+		}
+
+		response := CallTrcshCmd(m.chatSenderChan, "tv", args)
+		if response != "" {
+			lines := strings.Split(strings.TrimSpace(response), "\n")
+			for _, line := range lines {
+				if strings.Contains(line, "AUTHORIZATION ERROR") {
+					output = append(output, errorStyle.Render(line))
+				} else {
+					output = append(output, line)
+				}
+			}
+		}
+
 	case "help":
 		output = append(output, "Available commands:")
 		output = append(output, "  help     - Show this help message")
@@ -1765,6 +1790,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
+			output = append(output, "  tv       - List/read/patch secret store values (tv list|get|patch <path> ...)")
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}
 		output = append(output, "  exit     - Exit shell")
@@ -1952,7 +1978,7 @@ func callTrcshCmdWait(chatSenderChan *chan *tccore.ChatMsg, cmdType string, args
 		*chatSenderChan <- msg
 	}()
 
-	// Wait for response with 15-second timeout
+	// Wait for response with timeout
 	select {
 	case response := <-responseChan:
 		GetChatMsgHooks().Remove(id)
