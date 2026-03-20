@@ -1610,10 +1610,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
 				}
 				continue
-			} else {
-				if retries > 0 {
-					time.Sleep(time.Second)
-				}
 			}
 			retries = retries + 1
 			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
