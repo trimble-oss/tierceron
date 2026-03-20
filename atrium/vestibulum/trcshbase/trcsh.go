@@ -372,6 +372,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 			deployerAcceptRemoteNoTimeout,
 			deployerInterrupted)
 		trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+		// Use a 5s idle heartbeat interval for deployer perching to reduce cpu utilizating
+		trcshDriverConfig.FeatherCtx.MultiSecondInterruptTicker = time.NewTicker(5 * time.Second)
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 
