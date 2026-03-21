@@ -1842,6 +1842,12 @@ collaboratorReRun:
 			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
+			if control == "trcplgtool" &&
+				strings.Contains(deployLine, "-codebundledeploy") &&
+				kernelopts.BuildOptions.IsKernelZ() {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping codebundledeploy command in startup pipeline for kernel-z")
+				continue
+			}
 			if len(deployArgs) > 1 {
 				envArgIndex := -1
 
