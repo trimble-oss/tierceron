@@ -24,7 +24,6 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
@@ -1843,13 +1842,6 @@ collaboratorReRun:
 			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
-			if control == "trcplgtool" &&
-				strings.Contains(deployLine, "-codebundledeploy") &&
-				plugincoreopts.BuildOptions.IsPluginHardwired() &&
-				kernelopts.BuildOptions.IsKernelZ() {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping hardwired codebundledeploy command in startup pipeline for kernel-z")
-				continue
-			}
 			if len(deployArgs) > 1 {
 				envArgIndex := -1
 
