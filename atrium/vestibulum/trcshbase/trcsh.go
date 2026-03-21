@@ -1845,8 +1845,9 @@ collaboratorReRun:
 			control := deployArgs[0]
 			if control == "trcplgtool" &&
 				strings.Contains(deployLine, "-codebundledeploy") &&
-				plugincoreopts.BuildOptions.IsPluginHardwired() {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping hardwired codebundledeploy command in startup pipeline")
+				plugincoreopts.BuildOptions.IsPluginHardwired() &&
+				kernelopts.BuildOptions.IsKernelZ() {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping hardwired codebundledeploy command in startup pipeline for kernel-z")
 				continue
 			}
 			if len(deployArgs) > 1 {
