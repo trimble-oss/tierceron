@@ -1845,8 +1845,9 @@ collaboratorReRun:
 			control := deployArgs[0]
 			if control == "trcplgtool" &&
 				strings.Contains(deployLine, "-codebundledeploy") &&
-				plugincoreopts.BuildOptions.IsPluginHardwired() {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping hardwired codebundledeploy command in startup pipeline")
+				(kernelopts.BuildOptions.IsKernelZ() || // Running hive-z or hive-k locally/hardwired skips codebundledeploys
+					(coreopts.BuildOptions.IsKubeRunnable() && plugincoreopts.BuildOptions.IsPluginHardwired())) {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Skipping codebundledeploy for plugin: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
 				continue
 			}
 			if len(deployArgs) > 1 {
