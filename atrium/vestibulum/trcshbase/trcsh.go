@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
@@ -1850,8 +1851,9 @@ collaboratorReRun:
 			control := deployArgs[0]
 			if control == "trcplgtool" &&
 				strings.Contains(deployLine, "-codebundledeploy") &&
-				kernelopts.BuildOptions.IsKernelZ() {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Skipping codebundledeploy command in startup pipeline for kernel-z")
+				(kernelopts.BuildOptions.IsKernelZ() || // Running hive-z or hive-k locally/hardwired skips codebundledeploys
+					(coreopts.BuildOptions.IsKubeRunnable() && plugincoreopts.BuildOptions.IsPluginHardwired())) {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Skipping codebundledeploy for plugin: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
 				continue
 			}
 			if len(deployArgs) > 1 {
