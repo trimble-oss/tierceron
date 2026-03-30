@@ -39,10 +39,7 @@ var globalToken *string
 var m sync.Mutex
 
 // convertingTimers tracks hourly reset timers per LONGEST_PDF_CONVERTING key to prevent goroutine leaks
-var (
-	convertingTimers      = make(map[string]*time.Timer)
-	convertingTimersMutex sync.Mutex
-)
+var convertingTimers *cmap.ConcurrentMap[string, *time.Timer]
 
 type statServiceServer struct {
 	pb.UnimplementedStatServiceServer
@@ -159,11 +156,8 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 // scheduleResetLongestConverting schedules a single hourly reset timer for the given key.
 // It cancels any existing timer for that key to prevent goroutine accumulation.
 func scheduleResetLongestConverting(key string) {
-	convertingTimersMutex.Lock()
-	defer convertingTimersMutex.Unlock()
-
 	// Cancel existing timer for this key if it exists
-	if existingTimer, exists := convertingTimers[key]; exists {
+	if existingTimer, exists := convertingTimers.Get(key); exists {
 		existingTimer.Stop()
 	}
 
@@ -181,7 +175,7 @@ func scheduleResetLongestConverting(key string) {
 		scheduleResetLongestConverting(key)
 	})
 
-	convertingTimers[key] = newTimer
+	convertingTimers.Set(key, newTimer)
 }
 
 func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
@@ -270,6 +264,8 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 func InitStats() {
 	ccmap := cmap.New[string]()
 	GlobalStats = &ccmap
+	convertingTimersMap := cmap.New[*time.Timer]()
+	convertingTimers = &convertingTimersMap
 }
 
 func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {

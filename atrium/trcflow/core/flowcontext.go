@@ -207,6 +207,7 @@ func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
 func (tfContext *TrcFlowContext) SetLastRefreshedTime(lastRefreshed string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
+	tfContext.Logger.Printf("Setting last refreshed time to %s for flow %s\n", lastRefreshed, tfContext.FlowHeader.Name)
 	tfContext.LastRefreshed = lastRefreshed
 }
 
