@@ -262,8 +262,8 @@ func start(pluginName string) {
 			})
 		send_dfstat()
 	} else {
-		configContext.Log.Println("Missing config: gprc_server_port")
-		send_err(errors.New("missing config: gprc_server_port"))
+		configContext.Log.Println("Missing config: grpc_server_port")
+		send_err(errors.New("missing config: grpc_server_port"))
 		return
 	}
 }

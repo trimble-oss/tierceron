@@ -33,12 +33,12 @@ fi
 
 
 
-echo "Will this be a (aw - traditional aks and windows), (k - advanced aks hive kernel), (z - oauth/jwt hive kernel), or (b - both aw+k) cursor? (aw, k, z, or b): "
+echo "Will this be a (aw - traditional aks and windows), (bw - bootstrap for traditional aks and windows), (k - advanced aks hive kernel), (z - oauth/jwt hive kernel), or (b - both aw+k) cursor? (aw, bw, k, z, or b): "
 read CURSOR_TYPE_IN
 
 CURSOR_TYPES=()
 
-if [ "$CURSOR_TYPE_IN" = 'aw' ] || [ "$CURSOR_TYPE_IN" = 'k' ] || [ "$CURSOR_TYPE_IN" = 'z' ]; then
+if [ "$CURSOR_TYPE_IN" = 'aw' ] || [ "$CURSOR_TYPE_IN" = 'bw' ] || [ "$CURSOR_TYPE_IN" = 'k' ] || [ "$CURSOR_TYPE_IN" = 'z' ]; then
     CURSOR_TYPES+=("$CURSOR_TYPE_IN")
     echo "Preparing to install cursor type $CURSOR_TYPE_IN..."
 elif [ "$CURSOR_TYPE_IN" = 'b' ]; then
@@ -165,7 +165,7 @@ function curatorDeployHive () {
 function certifyWorkers() {
     CURSOR_TYPE=$1
 
-    if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'aw' ]; then
+    if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'aw' ] || [ "$CURSOR_TYPE" = 'bw' ]; then
         #================================================================
         #trcsh.exe deployment
         #================================================================
