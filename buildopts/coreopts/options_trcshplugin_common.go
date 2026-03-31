@@ -31,3 +31,7 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 func IsKubeRunnable() bool {
 	return false
 }
+
+func GetDefaultDeployments() string {
+	return ""
+}
