@@ -253,6 +253,12 @@ func GetMachineID() string {
 	return netIP
 }
 
+// GetDefaultDeployments returns a hardwired deployment shard fallback when DEPLOYMENTS is absent.
+// Empty string means no fallback; DEPLOYMENTS must be provided by config/env.
+func GetDefaultDeployments() string {
+	return getDefaultDeploymentsByVariant()
+}
+
 // Override this to allow tierceron to use and manage plugin configuraitons.
 // These are generally cross-verified against vault.
 func GetPluginRestrictedMappings() map[string][][]string {

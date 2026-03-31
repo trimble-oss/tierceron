@@ -673,7 +673,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			if len(deploymentsShard) == 0 {
 				deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
 				if len(deploymentsShard) == 0 {
-					eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
+					if coreopts.BuildOptions != nil && coreopts.BuildOptions.GetDefaultDeployments != nil {
+						deploymentsShard = coreopts.BuildOptions.GetDefaultDeployments()
+					}
+					if len(deploymentsShard) == 0 {
+						eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
+					}
 				}
 			}
 		}
