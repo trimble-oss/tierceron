@@ -171,10 +171,15 @@ function certifyWorkers() {
 
     if [ "$CURSOR_TYPE" = 'b' ] || [ "$CURSOR_TYPE" = 'aw' ] || [ "$CURSOR_TYPE" = 'bw' ]; then
         #================================================================
-        #trcsh.exe deployment
+        #trcsh.exe or trcshb.exe deployment
         #================================================================
-        echo "Certifying trcsh.exe worker"
-        TRC_PLUGIN_NAME="trcsh.exe"
+        if [ "$CURSOR_TYPE" = 'bw' ]; then
+            TRC_PLUGIN_NAME="trcshb.exe"
+            echo "Certifying trcshb.exe worker"
+        else
+            TRC_PLUGIN_NAME="trcsh.exe"
+            echo "Certifying trcsh.exe worker"
+        fi
 
         FILE="target/$TRC_PLUGIN_NAME"
         if [ ! -f "$FILE" ]; then
@@ -199,9 +204,7 @@ function certifyWorkers() {
             vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
             VAULT_ENV="RQA"
             vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
-            echo "trcsh.exe certified and ready for manual deployment."
-            echo "Notifying Curator to deploy $TRC_PLUGIN_NAME for environment $CURATOR_ENV."
-            vault write vaultcurator/$CURATOR_ENV plugin=$TRC_PLUGIN_NAME
+            echo "$TRC_PLUGIN_NAME certified and ready for manual deployment."
         else
             echo "Skipping $TRC_PLUGIN_NAME deployment in prod."
         fi

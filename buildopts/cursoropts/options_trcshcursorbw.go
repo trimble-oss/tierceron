@@ -32,7 +32,7 @@ func GetCapCuratorPath() string {
 
 func GetPluginName(vaultPlugin bool) string {
 	if runtime.GOOS == "windows" {
-		return "trcsh.exe"
+		return "trcshb.exe"
 	} else {
 		if vaultPlugin {
 			return "trcsh-cursor-bw"
@@ -51,6 +51,15 @@ func GetCursorConfigPath() string {
 }
 
 func GetTrusts() map[string][]string {
+	if runtime.GOOS == "windows" {
+		return map[string][]string{
+			"trcshb.exe": {
+				"trcshb.exe",                       // Certify pluginName
+				"/home/azuredeploy/bin/trcshb.exe", // agent plugin path.
+				"azuredeploy",                      // Group ownership of agent plugin.
+			},
+		}
+	}
 	return map[string][]string{
 		"trcshqbw": {
 			"trcshqbw",                       // Certify pluginName,
