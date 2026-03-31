@@ -40,3 +40,9 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 func IsKubeRunnable() bool {
 	return false
 }
+
+// GetDefaultDeployments returns a comma separated string of default plugins to be deployed by the carrier
+// Do not provide defaults as these are provided exlusively by environment settings
+func GetDefaultDeployments() string {
+	return ""
+}
