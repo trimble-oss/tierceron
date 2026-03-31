@@ -31,3 +31,9 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 func IsKubeRunnable() bool {
 	return true
 }
+
+// GetDefaultDeployments returns a hardwired deployment shard fallback when DEPLOYMENTS is absent.
+// Empty string means no fallback; DEPLOYMENTS must be provided by config/env.
+func GetDefaultDeployments() string {
+	return ""
+}

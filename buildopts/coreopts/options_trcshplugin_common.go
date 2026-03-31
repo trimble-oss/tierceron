@@ -32,6 +32,8 @@ func IsKubeRunnable() bool {
 	return false
 }
 
+// GetDefaultDeployments returns a hardwired deployment shard fallback when DEPLOYMENTS is absent.
+// Empty string means no fallback; DEPLOYMENTS must be provided by config/env.
 func GetDefaultDeployments() string {
 	return ""
 }

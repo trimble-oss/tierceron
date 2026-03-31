@@ -325,9 +325,3 @@ func GetConfigPaths(pluginName string) []string {
 func GetSupportedCertIssuers() []string {
 	return []string{"http://r3.i.lencr.org/"}
 }
-
-// GetDefaultDeployments returns a hardwired deployment shard fallback when DEPLOYMENTS is absent.
-// Empty string means no fallback; DEPLOYMENTS must be provided by config/env.
-func GetDefaultDeployments() string {
-	return ""
-}
