@@ -49,6 +49,12 @@ cursorcsha:
 	sha256sum plugins/deploy/target/trcsh-cursor-aw | cut -d' ' -f1 > plugins/deploy/target/trcsh-cursor-aw.sha256
 cursoraw: cursorcbuild cursorcsha
 
+cursorbwbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "salty insecure azrcr localbuild trcshcursorbw" -o plugins/deploy/target/trcsh-cursor-bw github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/cursor
+cursorbwsha:
+	sha256sum plugins/deploy/target/trcsh-cursor-bw | cut -d' ' -f1 > plugins/deploy/target/trcsh-cursor-bw.sha256
+cursorbw: cursorbwbuild cursorbwsha
+
 cursorkbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build  -tags "salty insecure azrcr localbuild trcshcursork" -o plugins/deploy/target/trcsh-cursor-k github.com/trimble-oss/tierceron/atrium/vestibulum/plugins/cursor
 cursorksha:
@@ -94,8 +100,17 @@ trcshellqksha:
 	sha256sum plugins/deploy/target/trcshqk | cut -d' ' -f1 > plugins/deploy/target/trcshqk.sha256
 trcshellqk: trcshellqkbuild trcshellqksha
 
+trcshellqbwbuild:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqbw -ldflags "-w" -tags "salty memonly trcshcursorbw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+trcshellqbwsha:
+	sha256sum plugins/deploy/target/trcshqbw | cut -d' ' -f1 > plugins/deploy/target/trcshqbw.sha256
+trcshellqbw: trcshellqbwbuild trcshellqbwsha
+
 trcshellwin:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -buildmode=pie -ldflags "-w" -tags "salty tc windows azrcr memonly" -o plugins/deploy/target/trcsh.exe github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+
+trcshellbwin:
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=windows GOARCH=amd64 go build -buildmode=pie -ldflags "-w" -tags "salty tc windows azrcr memonly trcshcursorbw" -o plugins/deploy/target/trcshb.exe github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 
 trcshkernelbuild:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcshk -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernel" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
@@ -123,6 +138,10 @@ spiralis:
 
 all: certify azrtrcshcurator devplugintrcdb trcshellqw trcshellwin fenestra spiralis
 
-allq: certify cursoraw cursork trcshellqw trcshellqk 
+allk: cursork trcshellqk trcshk
 
-allz: certify cursorz trcshkz
+allq: cursoraw trcshellqw trcshellwin 
+
+allz: cursorz trcshkz
+
+allbw: cursorbw trcshellqbw trcshellbwin
