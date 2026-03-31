@@ -267,6 +267,9 @@ func GetPluginRestrictedMappings() map[string][][]string {
 		"trcshqk": {
 			[]string{"-templateFilter=APIMConfig/APIMConfig", "-restricted=APIMConfig", "-serviceFilter=config", "-indexFilter=config"},
 		},
+		"trcsh-cursor-bw": {
+			[]string{"-templateFilter=TrcVault/TrcshCursorBW", "-restricted=TrcshCursorBW", "-serviceFilter=config", "-indexFilter=config"},
+		},
 		"trcsh-cursor-aw": {
 			[]string{"-templateFilter=TrcVault/TrcshCursorAW", "-restricted=TrcshCursorAW", "-serviceFilter=config", "-indexFilter=config"},
 		},
