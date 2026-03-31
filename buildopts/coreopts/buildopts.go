@@ -32,6 +32,7 @@ type OptionsBuilder struct {
 	CompareLastModified         func(dfStatMapA map[string]any, dfStatMapB map[string]any) bool
 	PreviousStateCheck          func(currentState int) int
 	GetMachineID                func() string
+	GetDefaultDeployments       func() string
 	InitPluginConfig            func(pluginEnvConfig map[string]any) map[string]any
 	GetPluginRestrictedMappings func() map[string][][]string
 	GetConfigPaths              func(string) []string
@@ -64,6 +65,7 @@ func LoadOptions() Option {
 		optionsBuilder.CompareLastModified = CompareLastModified
 		optionsBuilder.PreviousStateCheck = PreviousStateCheck
 		optionsBuilder.GetMachineID = GetMachineID
+		optionsBuilder.GetDefaultDeployments = GetDefaultDeployments
 		optionsBuilder.InitPluginConfig = InitPluginConfig
 		optionsBuilder.GetPluginRestrictedMappings = GetPluginRestrictedMappings
 		optionsBuilder.GetConfigPaths = GetConfigPaths

@@ -1,12 +1,10 @@
-//go:build trcshcursorz && !trcshcursoraw && !trcshcursorbw && !trcshcursork
+//go:build trcshcursorbw && !trcshcursoraw && !trcshcursork && !trcshcursorz
 
 package cursoropts
 
 import (
-	"fmt"
 	"log"
-
-	"github.com/trimble-oss/tierceron-core/v2/prod"
+	"runtime"
 )
 
 func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
@@ -14,18 +12,18 @@ func GetCuratorConfig(pluginEnvConfig map[string]any) map[string]any {
 		"env":            "dev",
 		"exitOnFailure":  false,
 		"regions":        []string{"west"},
-		"pluginNameList": []string{},
+		"pluginNameList": []string{"trcsh.exe"},
 		"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
-		"logNamespace":   "trcshcursorz",
+		"logNamespace":   "trcshcursorbw",
 	}
 }
 
 func TapInit(config map[string]any, logger *log.Logger, initCapAuthFunc func(map[string]any, *log.Logger) error) {
-	// No-op for cursorz
+	// No-op for cursorbw
 }
 
 func GetCapPath() string {
-	return ""
+	return "/tmp/trcshqbw/"
 }
 
 func GetCapCuratorPath() string {
@@ -33,32 +31,31 @@ func GetCapCuratorPath() string {
 }
 
 func GetPluginName(vaultPlugin bool) string {
-	if vaultPlugin {
-		return "trcsh-cursor-z"
+	if runtime.GOOS == "windows" {
+		return "trcsh.exe"
 	} else {
-		return "trcshz"
+		if vaultPlugin {
+			return "trcsh-cursor-bw"
+		} else {
+			return "trcshqbw"
+		}
 	}
 }
 
 func GetLogPath() string {
-	return "/var/log/trcshcursorz.log"
+	return "/var/log/trcshcursorbw.log"
 }
 
 func GetCursorConfigPath() string {
-	return "super-secrets/Restricted/TrcshCursorZ/config"
+	return "super-secrets/Restricted/TrcshCursorBW/config"
 }
 
 func GetTrusts() map[string][]string {
-	prodSuffix := ""
-	if prod.IsProd() {
-		prodSuffix = "-prod"
-	}
-
 	return map[string][]string{
-		fmt.Sprintf("trcsh-cursor-z%s", prodSuffix): {
-			fmt.Sprintf("trcsh-cursor-z%s", prodSuffix),                        // Certify pluginName,
-			fmt.Sprintf("/etc/opt/vault/plugins/trcsh-cursor-z%s", prodSuffix), // vault plugin path.
-			"root", // Group ownership of vault plugin.
+		"trcshqbw": {
+			"trcshqbw",                       // Certify pluginName,
+			"/home/azuredeploy/bin/trcshqbw", // agent plugin path.
+			"azuredeploy",                    // Group ownership of agent plugin.
 		},
 	}
 }
@@ -73,6 +70,14 @@ func GetCursorFields() map[string]CursorFieldAttributes {
 			Description: "Read only role for specified environment.",
 			KeepSecret:  true,
 		},
+		"kubeconfig": {
+			Description: "kube config for specified environment.",
+			KeepSecret:  true,
+		},
+		"token": {
+			Description: "The restricted plugin readonly token.",
+			KeepSecret:  true,
+		},
 		"vaddress": {
 			Description: "Vault Url for plugin reference purposes.",
 			KeepSecret:  false,
@@ -80,10 +85,6 @@ func GetCursorFields() map[string]CursorFieldAttributes {
 		"caddress": {
 			Description: "Vault Url for plugin certification purposes.",
 			KeepSecret:  false,
-		},
-		"token": {
-			Description: "The restricted plugin readonly token.",
-			KeepSecret:  true,
 		},
 		"ctoken": {
 			Description: "Token for plugin certification purposes.",
