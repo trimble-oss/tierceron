@@ -106,3 +106,9 @@ func GetCursorFields() map[string]CursorFieldAttributes {
 		},
 	}
 }
+
+// GetDefaultDeployments returns a comma separated string of default plugins to be deployed by the carrier
+// Do not provide defaults as these are provided exlusively by environment settings
+func GetDefaultDeployments() string {
+	return ""
+}
