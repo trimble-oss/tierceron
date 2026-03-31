@@ -662,24 +662,25 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(&vaultAddr)
 			}
 
-			// Replace dev-1 with DEPLOYMENTS-1
-			deploymentsKey := "DEPLOYMENTS"
-			subDeploymentIndex := strings.Index(*envPtr, "-")
-			if subDeploymentIndex != -1 {
-				deploymentsKey += (*envPtr)[subDeploymentIndex:]
-			}
-			deploymentsShard = os.Getenv(deploymentsKey)
+			if coreopts.BuildOptions == nil ||
+				coreopts.BuildOptions.GetDefaultDeployments == nil ||
+				len(coreopts.BuildOptions.GetDefaultDeployments()) == 0 {
+				// Replace dev-1 with DEPLOYMENTS-1
+				deploymentsKey := "DEPLOYMENTS"
+				subDeploymentIndex := strings.Index(*envPtr, "-")
+				if subDeploymentIndex != -1 {
+					deploymentsKey += (*envPtr)[subDeploymentIndex:]
+				}
+				deploymentsShard = os.Getenv(deploymentsKey)
 
-			if len(deploymentsShard) == 0 {
-				deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
 				if len(deploymentsShard) == 0 {
-					if coreopts.BuildOptions != nil && coreopts.BuildOptions.GetDefaultDeployments != nil {
-						deploymentsShard = coreopts.BuildOptions.GetDefaultDeployments()
-					}
+					deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
 					if len(deploymentsShard) == 0 {
 						eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
 					}
 				}
+			} else {
+				deploymentsShard = coreopts.BuildOptions.GetDefaultDeployments()
 			}
 		}
 

@@ -269,6 +269,9 @@ function certifyKernelWorker() {
 
 function registerCursors() {
     CURSOR_DEPLOY_TYPE=$1
+    echo "Notifying Curator to deploy trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT for environment $CURATOR_ENV."
+    vault write vaultcurator/$CURATOR_ENV plugin=trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT
+
     #================================================================
     #trcsh-cursor-$CURSOR_TYPE$PROD_EXT deployment (the cursor)
     #================================================================
@@ -285,8 +288,6 @@ function registerCursors() {
             plugin
 
     echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT successful"
-    echo "Notifying Curator to deploy trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT for environment $CURATOR_ENV."
-    vault write vaultcurator/$CURATOR_ENV plugin=trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT
 }
 
 # Deploy curator only for dev and staging (skip 'z' since trcshz runs locally)
