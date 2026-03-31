@@ -20,7 +20,7 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 	if pluginEnvConfig != nil {
 		pluginEnvConfig["exitOnFailure"] = false
 		pluginEnvConfig["regions"] = []string{"west"}
-		pluginEnvConfig["pluginNameList"] = []string{"trc-vault-plugin", "trcsh-cursor-aw", "trcsh-cursor-k", "trcsh-cursor-z"}
+		pluginEnvConfig["pluginNameList"] = []string{"trc-vault-plugin", "trcsh-cursor-bw", "trcsh-cursor-aw", "trcsh-cursor-k", "trcsh-cursor-z"}
 		pluginEnvConfig["templatePath"] = []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"}
 		pluginEnvConfig["logNamespace"] = "trcshcurator"
 		return pluginEnvConfig
@@ -29,7 +29,7 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 			"env":            "dev",
 			"exitOnFailure":  false,
 			"regions":        []string{"west"},
-			"pluginNameList": []string{"trc-vault-plugin", "trcsh-cursor-aw", "trcsh-cursor-k", "trcsh-cursor-z"},
+			"pluginNameList": []string{"trc-vault-plugin", "trcsh-cursor-bw", "trcsh-cursor-aw", "trcsh-cursor-k", "trcsh-cursor-z"},
 			"templatePath":   []string{"trc_templates/TrcVault/Certify/config.yml.tmpl"},
 			"logNamespace":   "trcshcurator",
 		}
