@@ -54,6 +54,8 @@ if [[ -z "${VAULT_ENV}" ]]; then
     read VAULT_ENV
 fi
 
+CURATOR_ENV=$VAULT_ENV
+
 
 echo "Is this a prod environment? (Y or N): "
 read PROD_ENV
@@ -155,6 +157,8 @@ function curatorDeployHive () {
             if [ $certifystatus -eq 0 ]; then
                 echo "No certification problems encountered."
                 echo "trcshq$CURSOR_TYPE successfully certified"
+                echo "Notifying Curator to deploy $TRC_PLUGIN_NAME for environment $CURATOR_ENV."
+                vault write vaultcurator/$CURATOR_ENV plugin=$TRC_PLUGIN_NAME
             else
                 echo "Unexpected certification error."
                 echo "trcshq$CURSOR_TYPE failed certification"
@@ -196,6 +200,8 @@ function certifyWorkers() {
             VAULT_ENV="RQA"
             vault kv patch super-secrets/$VAULT_ENV/Index/TrcVault/trcplugin/$TRC_PLUGIN_NAME/Certify trcsha256=$FILESHAVAL
             echo "trcsh.exe certified and ready for manual deployment."
+            echo "Notifying Curator to deploy $TRC_PLUGIN_NAME for environment $CURATOR_ENV."
+            vault write vaultcurator/$CURATOR_ENV plugin=$TRC_PLUGIN_NAME
         else
             echo "Skipping $TRC_PLUGIN_NAME deployment in prod."
         fi
@@ -242,6 +248,8 @@ function certifyKernelWorker() {
         fi
 
         echo "$TRC_PLUGIN_NAME certified and ready for release pipeline deployment"
+        echo "Notifying Curator to deploy $TRC_PLUGIN_NAME for environment $CURATOR_ENV."
+        vault write vaultcurator/$CURATOR_ENV plugin=$TRC_PLUGIN_NAME
         
         # For hive-z, install trcshz to /usr/local/trcshz/ and create symlink
         if [ "$CURSOR_TYPE" = 'z' ]; then
@@ -274,6 +282,8 @@ function registerCursors() {
             plugin
 
     echo "Deployment and refresh of trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT successful"
+    echo "Notifying Curator to deploy trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT for environment $CURATOR_ENV."
+    vault write vaultcurator/$CURATOR_ENV plugin=trcsh-cursor-$CURSOR_DEPLOY_TYPE$PROD_EXT
 }
 
 # Deploy curator only for dev and staging (skip 'z' since trcshz runs locally)

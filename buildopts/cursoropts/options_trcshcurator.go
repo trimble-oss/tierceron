@@ -47,6 +47,11 @@ func GetCursorConfigPath() string {
 
 func GetTrusts() map[string][]string {
 	return map[string][]string{
+		"trcsh-cursor-bw": {
+			"trcsh-cursor-bw",                        // Certify pluginName,
+			"/etc/opt/vault/plugins/trcsh-cursor-bw", // vault plugin path.
+			"root",                                   // Group ownership of vault plugin.
+		}, // original
 		"trcsh-cursor-aw": {
 			"trcsh-cursor-aw",                        // Certify pluginName,
 			"/etc/opt/vault/plugins/trcsh-cursor-aw", // vault plugin path.
