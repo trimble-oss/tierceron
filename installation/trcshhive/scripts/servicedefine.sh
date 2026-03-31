@@ -20,6 +20,10 @@ trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -plugin
 
 trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trcshqk -pluginType=agent -codeBundle=trcshqk -deployroot=/home/azuredeploy/bin
 
+trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trcsh.exe -projectservice="Tierceron/TrcDeploy" -pluginType=trcshservice -serviceName=TrcDeploy -codeBundle=trcsh.exe -deployroot="C:\\TODO"
+
+trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trcshb.exe -projectservice="Tierceron/TrcDeploy" -pluginType=trcshservice -serviceName=BootTrcDeploy -codeBundle=trcshb.exe -deployroot="C:\\TODO"
+
 trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trcshk -projectservice="Hive/Kernel" -pluginType=trcshpluginservice -codeBundle=trcshk -deployroot=/usr/local/trcshk
 
 trcplgtool -addr=$VAULT_ADDR -token=$VAULT_TOKEN -env=dev -defineService -pluginName=trcctl -projectservice="Hive/TrcCtl" -pluginType=trccmdtool -codeBundle=trcctl -deployroot=/usr/local/bin
