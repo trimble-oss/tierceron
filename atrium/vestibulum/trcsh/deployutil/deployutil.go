@@ -320,6 +320,12 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 					deploymentList = append(deploymentList, &deploymentConfig)
 				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" || deploymentConfig["trctype"].(string) == "trcshpluginservice") && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, &deploymentConfig)
+				} else if (deploymentConfig["trctype"].(string) == "agent") &&
+					coreopts.BuildOptions != nil &&
+					coreopts.BuildOptions.GetDefaultDeployments != nil &&
+					len(coreopts.BuildOptions.GetDefaultDeployments()) > 0 &&
+					len(valid_id) > 0 && valid_id == machineID {
+					deploymentList = append(deploymentList, &deploymentConfig)
 				}
 			} else {
 				if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
