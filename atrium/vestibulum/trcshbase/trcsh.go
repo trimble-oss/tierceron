@@ -1991,6 +1991,9 @@ func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
 			} else {
 				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
 			}
+			// Wait briefly to ensure last item is transmitted before completing
+			// TODO: need ack... but that defeats purpose of kcp...
+			time.Sleep(3 * time.Second)
 			trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
 			atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 			break
