@@ -24,7 +24,7 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
-	github.com/trimble-oss/tierceron-hat v1.3.0
+	github.com/trimble-oss/tierceron-hat v1.3.1
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 )
 
@@ -300,7 +300,7 @@ require (
 
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.51.0
+//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.55.1
 
 replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4
 

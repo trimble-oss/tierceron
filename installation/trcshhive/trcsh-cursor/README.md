@@ -39,6 +39,8 @@ trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCurator
 If you want to support the trcsh kernel hive infrastructure, you'll need to install Trcshm
 
 ```
+trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorBW -serviceFilter=config -indexFilter=config -novault
+
 trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW -serviceFilter=config -indexFilter=config -novault
 
 trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK -serviceFilter=config -indexFilter=config -novault
@@ -51,6 +53,8 @@ trcx -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorZ -se
 be distinct from TrcshCursor for proper functioning.
 
 ```
+trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorBW
+
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorAW
 
 trcinit -env=dev -token=$VAULT_TOKEN -addr=$VAULT_ADDR -restricted=TrcshCursorK
