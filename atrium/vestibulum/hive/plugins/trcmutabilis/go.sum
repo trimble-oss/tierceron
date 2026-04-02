@@ -19,8 +19,8 @@ github.com/moby/sys/mountinfo v0.6.2 h1:BzJjoreD5BMFNmD9Rus6gdd1pLuecOFPt8wC+Vyg
 github.com/moby/sys/mountinfo v0.6.2/go.mod h1:IJb6JQeOklcdMU9F5xQ8ZALD+CUr5VlGpwtX+VE0rpI=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
 github.com/orcaman/concurrent-map/v2 v2.0.1/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
-github.com/trimble-oss/tierceron v1.51.0 h1:e5kVP+PU0CX/Qtwegme33HyX1pr6XFnbKAW9vrOC+70=
-github.com/trimble-oss/tierceron v1.51.0/go.mod h1:wTK6rUQ/A+UgGSaCYIofuvWXbZ1s8aEdD7niiS0rd0E=
+github.com/trimble-oss/tierceron v1.55.1 h1:pMhPKcVIgRDYDF3hKqQUoir0ihfnTSeLb3P2+SsVJik=
+github.com/trimble-oss/tierceron v1.55.1/go.mod h1:HKMx0XX8QyzIc8OUuDJC/cDRE/b96hDrJBPXsRgbcd0=
 github.com/trimble-oss/tierceron-core/v2 v2.10.8 h1:KLtcxr3/4Susm9FIbXNTMliTQzcKTzJ9MAu1eG9V23A=
 github.com/trimble-oss/tierceron-core/v2 v2.10.8/go.mod h1:PFribs6/QK3HIsWbjJJVOAdBYOH/p6MWrfpB0YoOhNg=
 github.com/trimble-oss/tierceron-nute-core v1.0.5 h1:R/qhda7RQzHsNXeb7AyabQcBP62J/mWhyYT7nlmcv/Q=
