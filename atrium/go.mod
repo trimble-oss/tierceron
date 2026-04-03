@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/vault-plugin-secrets-kv v0.9.0
 	github.com/hashicorp/vault/api v1.12.0
 	github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267 // IMPORTANT! This must match vault sdk used by vault for plugin to be stable!
-	github.com/sergi/go-diff v1.3.1 // indirect
+	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/twitchtv/twirp v8.1.3+incompatible // indirect
 	github.com/xo/dburl v0.9.0 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
@@ -302,7 +302,7 @@ require (
 
 //replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.55.1
 
-replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4
+replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.5
 
 replace google.golang.org/genproto => google.golang.org/genproto v0.0.0-20250603155806-513f23925822
 
