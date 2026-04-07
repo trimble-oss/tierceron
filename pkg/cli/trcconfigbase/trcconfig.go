@@ -278,6 +278,14 @@ func CommonMain(envDefaultPtr *string,
 		envPtr = envDefaultPtr
 	}
 
+	// Flatten environment for certs - cannot have different certs per env-x instance
+	// This applies to both shell and non-shell paths
+	if ((wantCertsPtr != nil && *wantCertsPtr) ||
+		(driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.WantCerts)) &&
+		envPtr != nil && len(*envPtr) > 0 {
+		*envPtr = eUtils.GetEnvBasis(*envPtr)
+	}
+
 	if !isShell && !kernelopts.BuildOptions.IsKernel() && !isDrone {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Fprintln(outWriter, "Missing required template folder: "+*startDirPtr)
@@ -332,14 +340,13 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.EndDir = *endDirPtr
 			driverConfigBase.ZeroConfig = *zcPtr
 			driverConfigBase.NoVault = *noVaultPtr
+		} else {
+			// Inherited logger from parent (e.g., trcsh), just log that we're starting
+			driverConfigBase.CoreConfig.Log.Printf("trcconfig starting with env=%s\n", driverConfigBase.CoreConfig.Env)
 		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
-		if *wantCertsPtr {
-			// Cannot have different certs per env-x instance.  Use basis.
-			*envPtr = eUtils.GetEnvBasis(*envPtr)
-		}
 		driverConfigBase = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
 				Env:                 *envPtr,
