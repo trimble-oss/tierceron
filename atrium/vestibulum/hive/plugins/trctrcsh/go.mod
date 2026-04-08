@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/charmbracelet/bubbles v0.21.1
@@ -49,7 +49,7 @@ require (
 )
 
 // Uncomment for local debugging
-replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
 
 replace (
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.40.0
