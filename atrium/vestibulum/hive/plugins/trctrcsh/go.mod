@@ -49,7 +49,7 @@ require (
 )
 
 // Uncomment for local debugging
-replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
 
 replace (
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.40.0
