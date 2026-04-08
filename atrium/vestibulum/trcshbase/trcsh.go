@@ -1467,6 +1467,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			*trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(gTrcshConfig, trcshDriverConfig.DriverConfig.CoreConfig)
 			if kubeInitErr != nil {
 				fmt.Fprintln(os.Stderr, kubeInitErr)
+				fmt.Fprintln(os.Stdout, kubeInitErr)
 				return
 			}
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Setting kube config setup complete")
