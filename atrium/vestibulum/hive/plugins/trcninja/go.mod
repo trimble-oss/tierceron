@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/linkedin/goavro/v2 v2.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.8
+	github.com/trimble-oss/tierceron-core/v2 v2.10.9
 	github.com/twmb/franz-go v1.20.5
 	github.com/vbauerster/mpb/v8 v8.10.2
 	github.com/wildbeavers/schema-registry v0.3.0
@@ -27,9 +27,9 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.5 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.6 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
-	go.opentelemetry.io/otel v1.40.0 // indirect
+	go.opentelemetry.io/otel v1.43.0 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
@@ -40,9 +40,9 @@ require (
 )
 
 replace (
-	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.40.0
-	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.40.0
-	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.40.0
-	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.40.0
-	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.40.0
+	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.43.0
+	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.43.0
+	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.43.0
+	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.43.0
 )
