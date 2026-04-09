@@ -41,7 +41,7 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
 	github.com/trimble-oss/tierceron-core/v2 v2.10.9
-	github.com/trimble-oss/tierceron-nute v1.1.0
+	github.com/trimble-oss/tierceron-nute v1.1.1
 	github.com/trimble-oss/tierceron-nute-core v1.0.6
 	gopkg.in/fsnotify.v1 v1.4.7
 	k8s.io/api v0.35.3
@@ -283,7 +283,7 @@ require (
 	golang.org/x/text v0.35.0
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
-	google.golang.org/grpc v1.80.0
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )

@@ -1320,8 +1320,8 @@ github.com/trimble-oss/tierceron-core/v2 v2.10.9 h1:C9mtcZw4ba5th4ZSV9H7aj5XG7fp
 github.com/trimble-oss/tierceron-core/v2 v2.10.9/go.mod h1:lubjoNvcfaJmVygfoy0xarSos16rjf+2jSLRDzvAxDU=
 github.com/trimble-oss/tierceron-hat v1.3.2 h1:UilI7sAcKaLUYFFYgqYA9XfEDzpd9IFbn6thpvYxfjs=
 github.com/trimble-oss/tierceron-hat v1.3.2/go.mod h1:GxPQRp5JLR3zwMLIZIFrpm3WJxE2rIrXqLbQuW49bEo=
-github.com/trimble-oss/tierceron-nute v1.1.0 h1:TTYg6FZfmHZ/4TiYnPbGdXa9jI9un/yyTuJ8ce/w7qw=
-github.com/trimble-oss/tierceron-nute v1.1.0/go.mod h1:kJCBZ0o9DsCtqY5Fl7F1l9zrb1OsCP2p7++G/WGrvtY=
+github.com/trimble-oss/tierceron-nute v1.1.1 h1:fJCLkzoAK7l0ru32IH4rCKcUFxeJY2lERjwYRDBIVJg=
+github.com/trimble-oss/tierceron-nute v1.1.1/go.mod h1:8MPX0snQ5VHEQnlaVU3phQqU6QzSYCK9HXzvtoubr8o=
 github.com/trimble-oss/tierceron-nute-core v1.0.6 h1:WkXLpTAfZzpz8gnRf6lTE3sj2IOXe9D6Pn7jWDW8AlE=
 github.com/trimble-oss/tierceron-nute-core v1.0.6/go.mod h1:AYyMIWVM5esOeMWms0TZWpHiNnS9cEAVIjq5SbEbs5M=
 github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 h1:pawnUESmxej0xrSStXI91vK9ryLWI4rFVDEJqy+pKHs=
@@ -2051,8 +2051,8 @@ gonum.org/v1/gonum v0.0.0-20180816165407-929014505bf4/go.mod h1:Y+Yx5eoAFn32cQvJ
 gonum.org/v1/gonum v0.8.2/go.mod h1:oe/vMfY3deqTw+1EZJhuvEW2iwGF1bW9wwu7XCu0+v0=
 gonum.org/v1/gonum v0.9.3/go.mod h1:TZumC3NeyVQskjXqmyWt4S3bINhy7B4eYwW69EbyX+0=
 gonum.org/v1/gonum v0.12.0/go.mod h1:73TDxJfAAHeA8Mk9mf8NlIppyhQNo5GLTcYeqgo2lvY=
-gonum.org/v1/gonum v0.17.0 h1:VbpOemQlsSMrYmn7T2OUvQ4dqxQXU+ouZFQsZOx50z4=
-gonum.org/v1/gonum v0.17.0/go.mod h1:El3tOrEuMpv2UdMrbNlKEh9vd86bmQ6vqIcDwxEOc1E=
+gonum.org/v1/gonum v0.16.0 h1:5+ul4Swaf3ESvrOnidPp4GZbzf0mxVQpDCYUQE7OJfk=
+gonum.org/v1/gonum v0.16.0/go.mod h1:fef3am4MQ93R2HHpKnLk4/Tbh/s0+wqD5nfa6Pnwy4E=
 gonum.org/v1/netlib v0.0.0-20190313105609-8cb42192e0e0/go.mod h1:wa6Ws7BG/ESfp6dHfk7C6KdzKA7wR7u/rKwOGE66zvw=
 gonum.org/v1/plot v0.0.0-20190515093506-e2840ee46a6b/go.mod h1:Wt8AAjI+ypCyYX3nZBvf6cAIx93T+c/OS2HFAYskSZc=
 gonum.org/v1/plot v0.9.0/go.mod h1:3Pcqqmp6RHvJI72kgb8fThyUnav364FOsdDo2aGW5lY=
@@ -2432,8 +2432,8 @@ google.golang.org/grpc v1.71.0/go.mod h1:H0GRtasmQOh9LkFoCPDu3ZrwUtD1YGE+b2vYBYd
 google.golang.org/grpc v1.71.1/go.mod h1:H0GRtasmQOh9LkFoCPDu3ZrwUtD1YGE+b2vYBYd/8Ec=
 google.golang.org/grpc v1.72.0/go.mod h1:wH5Aktxcg25y1I3w7H69nHfXdOG3UiadoBtjh3izSDM=
 google.golang.org/grpc v1.72.1/go.mod h1:wH5Aktxcg25y1I3w7H69nHfXdOG3UiadoBtjh3izSDM=
-google.golang.org/grpc v1.80.0 h1:Xr6m2WmWZLETvUNvIUmeD5OAagMw3FiKmMlTdViWsHM=
-google.golang.org/grpc v1.80.0/go.mod h1:ho/dLnxwi3EDJA4Zghp7k2Ec1+c2jqup0bFkw07bwF4=
+google.golang.org/grpc v1.79.3 h1:sybAEdRIEtvcD68Gx7dmnwjZKlyfuc61Dyo9pGXXkKE=
+google.golang.org/grpc v1.79.3/go.mod h1:KmT0Kjez+0dde/v2j9vzwoAScgEPx/Bw1CYChhHLrHQ=
 google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0/go.mod h1:6Kw0yEErY5E/yWrBtf03jp27GLLJujG4z/JK95pnjjw=
 google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.3.0/go.mod h1:Dk1tviKTvMCz5tvh7t+fh94dhmQVHuCt2OzJB3CTW9Y=
 google.golang.org/grpc/examples v0.0.0-20230224211313-3775f633ce20/go.mod h1:Nr5H8+MlGWr5+xX/STzdoEqJrO+YteqFbMyCsrb6mH0=
