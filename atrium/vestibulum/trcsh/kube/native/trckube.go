@@ -327,6 +327,38 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 		return nil
 	}
 
+	configFlags.HandleSecretFromEnvFileSources = func(secret *corev1.Secret, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			var data []byte
+
+			var memFile trcshio.TrcshReadWriteCloser
+			var memFileErr error
+
+			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
+			}
+
+			err := trccreate.AddFromMemEnvFile(fileSource, data, func(key, value string) error {
+				if errs := validation.IsConfigMapKey(key); len(errs) != 0 {
+					return fmt.Errorf("%q is not valid key name for a Secret %s", key, strings.Join(errs, ";"))
+				}
+				if _, entryExists := secret.Data[key]; entryExists {
+					return fmt.Errorf("cannot add key %s, another key by that name already exists", key)
+				}
+				secret.Data[key] = []byte(value)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
 		for _, fileSource := range fileSources {
 			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
