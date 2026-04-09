@@ -340,11 +340,11 @@ replace gioui.org v0.0.0-20220318070519-8833a6738a3b => github.com/mrjrieke/gio 
 
 replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.com/mrjrieke/glfw-js v0.0.0-20220409154018-95a896685cdb
 
-replace k8s.io/client-go => github.com/trimble-oss/client-go v0.35.3-trc.1
+replace k8s.io/client-go => github.com/trimble-oss/client-go v0.35.3-trc.2
 
-replace k8s.io/cli-runtime => github.com/trimble-oss/cli-runtime v0.35.3-trc.1.0.20260409204706-80a5d3ccbfa7
+replace k8s.io/cli-runtime => github.com/trimble-oss/cli-runtime v0.35.3-trc.2
 
-replace k8s.io/kubectl => github.com/trimble-oss/kubectl v0.35.3-trc.1.0.20260409204709-bfeb475e226b
+replace k8s.io/kubectl => github.com/trimble-oss/kubectl v0.35.3-trc.2
 
 replace github.com/denisenkom/go-mssqldb => github.com/denisenkom/go-mssqldb v0.12.3
 
