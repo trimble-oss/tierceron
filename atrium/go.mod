@@ -283,7 +283,7 @@ require (
 	golang.org/x/text v0.35.0
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.42.0 // indirect
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/src-d/go-errors.v1 v1.0.0 // indirect
 )
@@ -342,9 +342,9 @@ replace github.com/fyne-io/glfw-js v0.0.0-20220120001248-ee7290d23504 => github.
 
 replace k8s.io/client-go => github.com/trimble-oss/client-go v0.35.3-trc.1
 
-replace k8s.io/cli-runtime => github.com/trimble-oss/cli-runtime v0.35.3-trc.1
+replace k8s.io/cli-runtime => github.com/trimble-oss/cli-runtime v0.35.3-trc.1.0.20260409204706-80a5d3ccbfa7
 
-replace k8s.io/kubectl => github.com/trimble-oss/kubectl v0.35.3-trc.1
+replace k8s.io/kubectl => github.com/trimble-oss/kubectl v0.35.3-trc.1.0.20260409204709-bfeb475e226b
 
 replace github.com/denisenkom/go-mssqldb => github.com/denisenkom/go-mssqldb v0.12.3
 
