@@ -12,7 +12,7 @@ require (
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.10
@@ -21,8 +21,8 @@ require (
 require (
 	github.com/trimble-oss/tierceron v1.55.1
 	github.com/trimble-oss/tierceron-core/v2 v2.10.9
-	github.com/trimble-oss/tierceron-nute v1.1.0
-	github.com/trimble-oss/tierceron-nute-core v1.0.5
+	github.com/trimble-oss/tierceron-nute v1.1.1
+	github.com/trimble-oss/tierceron-nute-core v1.0.6
 	google.golang.org/api v0.226.0
 )
 
