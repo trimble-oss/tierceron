@@ -277,11 +277,11 @@ replace github.com/docker/distribution => github.com/distribution/distribution v
 
 replace github.com/trimble-oss/tierceron/atrium => ./atrium
 
-replace k8s.io/client-go => github.com/trimble-oss/client-go v0.35.3-trc.1
+replace k8s.io/client-go => github.com/trimble-oss/client-go v0.35.3-trc.2
 
-replace k8s.io/cli-runtime => github.com/trimble-oss/cli-runtime v0.35.3-trc.1
+replace k8s.io/cli-runtime => github.com/trimble-oss/cli-runtime v0.35.3-trc.2
 
-replace k8s.io/kubectl => github.com/trimble-oss/kubectl v0.35.3-trc.1
+replace k8s.io/kubectl => github.com/trimble-oss/kubectl v0.35.3-trc.2
 
 //replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck@v0.0.0-20241220234051-2d8c369c5b69 ./atrium/vestibulum/hive/plugins/trchealthcheck
 
