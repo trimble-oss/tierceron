@@ -1,6 +1,7 @@
 package harbingeropts
 
 import (
+	coreharbingeropts "github.com/trimble-oss/tierceron-core/v2/buildopts/harbingeropts"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -9,12 +10,8 @@ import (
 type Option func(*OptionsBuilder)
 
 type OptionsBuilder struct {
-	GetIdColumnType    func(table string) any
-	GetFolderPrefix    func(custom []string) string
-	IsValidProjectName func(projectName string) bool
-	BuildInterface     func(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext any, vaultDatabaseConfig map[string]any, serverListener any) error
-	BuildTableGrant    func(tableName string) (string, error)
-	TableGrantNotify   func(tfmContext flowcore.FlowMachineContext, tableName string)
+	*coreharbingeropts.OptionsBuilder
+	BuildInterface func(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, goMod *kv.Modifier, tfmContext any, vaultDatabaseConfig map[string]any, serverListener any) error
 }
 
 func LoadOptions() Option {
@@ -31,8 +28,9 @@ func LoadOptions() Option {
 var BuildOptions *OptionsBuilder
 
 func NewOptionsBuilder(opts ...Option) {
-	BuildOptions = &OptionsBuilder{}
+	BuildOptions = &OptionsBuilder{OptionsBuilder: &coreharbingeropts.OptionsBuilder{}}
 	for _, opt := range opts {
 		opt(BuildOptions)
 	}
+	coreharbingeropts.BuildOptions = BuildOptions.OptionsBuilder
 }

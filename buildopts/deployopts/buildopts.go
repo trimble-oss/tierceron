@@ -1,13 +1,10 @@
 package deployopts
 
-type Option func(*OptionsBuilder)
+import coredeployopts "github.com/trimble-oss/tierceron-core/v2/buildopts/deployopts"
 
-type OptionsBuilder struct {
-	// Deploy
-	InitSupportedDeployers func(supportedDeployers []string) []string
-	GetDecodedDeployerId   func(sessionId string) (string, bool)
-	GetEncodedDeployerId   func(deployment string, env string) (string, bool)
-}
+type Option = coredeployopts.Option
+
+type OptionsBuilder = coredeployopts.OptionsBuilder
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
@@ -20,8 +17,6 @@ func LoadOptions() Option {
 var BuildOptions *OptionsBuilder
 
 func NewOptionsBuilder(opts ...Option) {
-	BuildOptions = &OptionsBuilder{}
-	for _, opt := range opts {
-		opt(BuildOptions)
-	}
+	coredeployopts.NewOptionsBuilder(opts...)
+	BuildOptions = coredeployopts.BuildOptions
 }

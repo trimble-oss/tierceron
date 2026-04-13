@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium
 go 1.26.2
 
 require (
-	github.com/denisenkom/go-mssqldb v0.12.0 // indirect
+	github.com/denisenkom/go-mssqldb v0.12.3 // indirect
 	github.com/dolthub/go-mysql-server v0.19.0
 	github.com/go-sql-driver/mysql v1.8.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
@@ -40,7 +40,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.9
+	github.com/trimble-oss/tierceron-core/v2 v2.11.0
 	github.com/trimble-oss/tierceron-nute v1.1.1
 	github.com/trimble-oss/tierceron-nute-core v1.0.6
 	gopkg.in/fsnotify.v1 v1.4.7
