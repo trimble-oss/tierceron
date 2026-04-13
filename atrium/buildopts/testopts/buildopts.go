@@ -1,17 +1,10 @@
 package testopts
 
-import (
-	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
-)
+import coretestopts "github.com/trimble-oss/tierceron-core/v2/atrium/buildopts/testopts"
 
-type Option func(*OptionsBuilder)
+type Option = coretestopts.Option
 
-type OptionsBuilder struct {
-	GetAdditionalTestFlows    func() []flowcore.FlowDefinition
-	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
-	ProcessTestFlowController func(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error
-	GetTestConfig             func(tokenPtr *string, wantPluginPaths bool) map[string]any
-}
+type OptionsBuilder = coretestopts.OptionsBuilder
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
@@ -25,8 +18,6 @@ func LoadOptions() Option {
 var BuildOptions *OptionsBuilder
 
 func NewOptionsBuilder(opts ...Option) {
-	BuildOptions = &OptionsBuilder{}
-	for _, opt := range opts {
-		opt(BuildOptions)
-	}
+	coretestopts.NewOptionsBuilder(opts...)
+	BuildOptions = coretestopts.BuildOptions
 }
