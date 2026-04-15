@@ -1,11 +1,11 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra
 
-go 1.26.1
+go 1.26.2
 
 require (
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.7
-	github.com/trimble-oss/tierceron-nute-core v1.0.4
+	github.com/trimble-oss/tierceron-core/v2 v2.10.9
+	github.com/trimble-oss/tierceron-nute-core v1.0.5
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -58,32 +58,32 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.0.11 // indirect
+	github.com/trimble-oss/tierceron-nute v1.1.0 // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
 	golang.org/x/exp/shiny v0.0.0-20250819193227-8b4c13bb791b // indirect
-	golang.org/x/image v0.31.0 // indirect
+	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/mobile v0.0.0-20250911085028-6912353760cf // indirect
-	golang.org/x/net v0.49.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
 	golang.org/x/term v0.40.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
-	google.golang.org/grpc v1.72.1 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/grpc v1.79.3 // indirect
+	google.golang.org/protobuf v1.36.10 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.4
+replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.5
 
 replace fyne.io/fyne/v2 v2.5.2 => github.com/mrjrieke/fyne/v2 v2.5.2-1
 
 replace (
-	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.40.0
-	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.40.0
-	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.40.0
-	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.40.0
-	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.40.0
+	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.43.0
+	go.opentelemetry.io/otel/metric => go.opentelemetry.io/otel/metric v1.43.0
+	go.opentelemetry.io/otel/sdk => go.opentelemetry.io/otel/sdk v1.43.0
+	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.43.0
+	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.43.0
 )

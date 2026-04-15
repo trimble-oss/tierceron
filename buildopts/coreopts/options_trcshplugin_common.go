@@ -1,4 +1,4 @@
-//go:build !trcshcurator && !trcshcursoraw && !trcshcursork && !trcshcursorz
+//go:build !trcshcurator && !trcshcursoraw && !trcshcursorbw && !trcshcursork && !trcshcursorz
 
 package coreopts
 
@@ -30,4 +30,10 @@ func InitPluginConfig(pluginEnvConfig map[string]any) map[string]any {
 // IsKubeRunnable returns true if this build variant is allowed to run in Kubernetes/AKS
 func IsKubeRunnable() bool {
 	return false
+}
+
+// GetDefaultDeployments returns a hardwired deployment shard fallback when DEPLOYMENTS is absent.
+// Empty string means no fallback; DEPLOYMENTS must be provided by config/env.
+func GetDefaultDeployments() string {
+	return ""
 }

@@ -20,12 +20,12 @@ func InitSupportedDeployers(supportedDeployers []string) []string {
 // This code is used in trcsh communications
 // Override if you wish to provide a different encoding.
 func GetDecodedDeployerId(deployerCode string) (string, bool) {
-	deployerIdParts := strings.Split(deployerCode, ".")
+	deployerIdParts := strings.Split(deployerCode, "~")
 	if len(deployerIdParts) != 2 {
 		return "", false
 	}
 	if word, ok := succinctly.QWord(deployerIdParts[0]); ok {
-		return fmt.Sprintf("%s.%s", word, deployerIdParts[1]), true
+		return fmt.Sprintf("%s~%s", word, deployerIdParts[1]), true
 	} else {
 		return "", false
 	}
@@ -38,7 +38,7 @@ func GetDecodedDeployerId(deployerCode string) (string, bool) {
 func GetEncodedDeployerId(deployer string, env string) (string, bool) {
 	if code, ok := succinctly.QCode(deployer); ok {
 		env = strings.Split(env, "_")[0]
-		return fmt.Sprintf("%s.%s", code, env), true
+		return fmt.Sprintf("%s~%s", code, env), true
 	} else {
 		return "", false
 	}

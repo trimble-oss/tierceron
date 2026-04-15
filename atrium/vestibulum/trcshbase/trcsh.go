@@ -24,6 +24,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
@@ -371,6 +372,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 			deployerAcceptRemoteNoTimeout,
 			deployerInterrupted)
 		trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+		// Use a 5s idle heartbeat interval for deployer perching to reduce cpu utilizating
+		trcshDriverConfig.FeatherCtx.MultiSecondInterruptTicker = time.NewTicker(5 * time.Second)
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 
@@ -659,19 +662,25 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(&vaultAddr)
 			}
 
-			// Replace dev-1 with DEPLOYMENTS-1
-			deploymentsKey := "DEPLOYMENTS"
-			subDeploymentIndex := strings.Index(*envPtr, "-")
-			if subDeploymentIndex != -1 {
-				deploymentsKey += (*envPtr)[subDeploymentIndex:]
-			}
-			deploymentsShard = os.Getenv(deploymentsKey)
-
-			if len(deploymentsShard) == 0 {
-				deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
-				if len(deploymentsShard) == 0 {
-					eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
+			if coreopts.BuildOptions == nil ||
+				coreopts.BuildOptions.GetDefaultDeployments == nil ||
+				len(coreopts.BuildOptions.GetDefaultDeployments()) == 0 {
+				// Replace dev-1 with DEPLOYMENTS-1
+				deploymentsKey := "DEPLOYMENTS"
+				subDeploymentIndex := strings.Index(*envPtr, "-")
+				if subDeploymentIndex != -1 {
+					deploymentsKey += (*envPtr)[subDeploymentIndex:]
 				}
+				deploymentsShard = os.Getenv(deploymentsKey)
+
+				if len(deploymentsShard) == 0 {
+					deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
+					if len(deploymentsShard) == 0 {
+						eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
+					}
+				}
+			} else {
+				deploymentsShard = coreopts.BuildOptions.GetDefaultDeployments()
 			}
 		}
 
@@ -1017,8 +1026,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
-		// Prioritize trcshcmd, rosea, and healthcheck deployments - start them first
-		priorityPlugins := []string{"trcshcmd", "rosea", "healthcheck"}
+		// Prioritize only the plugins needed for shell availability on the critical path.
+		priorityPlugins := []string{"trcshcmd", "healthcheck"}
 		priorityIndices := []int{}
 		for i, deploymentConfig := range pluginDeployments {
 			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
@@ -1062,6 +1071,29 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		for _, deploymentConfig := range pluginDeployments {
+			deploymentName := ""
+			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
+				if pluginName, isString := trcPlugin.(string); isString {
+					deploymentName = pluginName
+				}
+			}
+
+			if kernelopts.BuildOptions.IsKernel() && deploymentName == "rosea" {
+				driverConfigPtr.CoreConfig.Log.Println("Starting rosea deployer in background")
+				go EnableDeployer(driverConfigPtr,
+					*gAgentConfig.Env,
+					*regionPtr,
+					"",
+					*trcPathPtr,
+					true,
+					!isShellRunner,
+					dronePtr,
+					deploymentConfig,
+					tracelessPtr,
+					projectServicePtr)
+				continue
+			}
+
 			if kernelopts.BuildOptions.IsKernel() {
 				go func(dcPtr *config.DriverConfig,
 					env string,
@@ -1435,6 +1467,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			*trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(gTrcshConfig, trcshDriverConfig.DriverConfig.CoreConfig)
 			if kubeInitErr != nil {
 				fmt.Fprintln(os.Stderr, kubeInitErr)
+				fmt.Fprintln(os.Stdout, kubeInitErr)
 				return
 			}
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Setting kube config setup complete")
@@ -1586,10 +1619,6 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
 				}
 				continue
-			} else {
-				if retries > 0 {
-					time.Sleep(time.Second)
-				}
 			}
 			retries = retries + 1
 			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
@@ -1821,6 +1850,13 @@ collaboratorReRun:
 			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
+			if control == "trcplgtool" &&
+				strings.Contains(deployLine, "-codebundledeploy") &&
+				(kernelopts.BuildOptions.IsKernelZ() || // Running hive-z or hive-k locally/hardwired skips codebundledeploys
+					(coreopts.BuildOptions.IsKubeRunnable() && plugincoreopts.BuildOptions.IsPluginHardwired())) {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Skipping codebundledeploy for plugin: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
+				continue
+			}
 			if len(deployArgs) > 1 {
 				envArgIndex := -1
 
@@ -1956,6 +1992,9 @@ func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
 			} else {
 				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
 			}
+			// Wait briefly to ensure last item is transmitted before completing
+			// TODO: need ack... but that defeats purpose of kcp...
+			time.Sleep(3 * time.Second)
 			trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
 			atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 			break

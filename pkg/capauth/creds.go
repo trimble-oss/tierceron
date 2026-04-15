@@ -5,7 +5,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/trimble-oss/tierceron/pkg/trcnet"
+	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
 )
 
 func LoopBackAddr() string {
@@ -38,7 +38,7 @@ func IsValidIP(ipaddr string) (bool, error) {
 }
 
 func TrcNetAddr() (string, error) {
-	netIP, err := trcnet.NetIpAddr(IsValidIP)
+	netIP, err := coreutil.NetIpAddr(IsValidIP)
 	if err != nil {
 		return "", err
 	}

@@ -1,4 +1,4 @@
-//go:build trcshcursorz && !trcshcursoraw && !trcshcursork
+//go:build trcshcursorz && !trcshcursoraw && !trcshcursorbw && !trcshcursork
 
 package cursoropts
 

@@ -1,4 +1,4 @@
-//go:build trcshcursoraw && !trcshcursork && !trcshcursorz
+//go:build trcshcursoraw && !trcshcursorbw && !trcshcursork && !trcshcursorz
 
 package cursoropts
 
@@ -51,7 +51,15 @@ func GetCursorConfigPath() string {
 }
 
 func GetTrusts() map[string][]string {
-	// TODO: when we retire carrier and switch to curator, move to trcsh instead of trcsh-curator
+	if runtime.GOOS == "windows" {
+		return map[string][]string{
+			"trcsh.exe": {
+				"trcsh.exe",                       // Certify pluginName,
+				"/home/azuredeploy/bin/trcsh.exe", // agent plugin path.
+				"azuredeploy",                     // Group ownership of agent plugin.
+			},
+		}
+	}
 	return map[string][]string{
 		"trcshqaw": {
 			"trcshqaw",                       // Certify pluginName,
