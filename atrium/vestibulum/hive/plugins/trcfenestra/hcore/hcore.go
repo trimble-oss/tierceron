@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
@@ -27,6 +28,8 @@ var (
 	sender        chan error
 	serverAddr    *string // another way to do this...
 	dfstat        *tccore.TTDINode
+	launchMu      sync.Mutex
+	launchActive  bool
 )
 
 var DetailedElements []*mashupsdk.MashupDetailedElement
@@ -82,6 +85,22 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				configContext.Log.Println("fenestra shutting down message receiver")
 			}
 			return
+		case event.ChatId != nil && *event.ChatId == "fenestra":
+			response := "trcfenestra launched"
+			if err := LaunchPOCWindow(); err != nil {
+				response = err.Error()
+			}
+
+			if event.RoutingId != nil && configContext != nil && configContext.ChatSenderChan != nil {
+				pluginName := "fenestra"
+				responseMsg := &tccore.ChatMsg{
+					Name:      &pluginName,
+					Query:     &[]string{"trcsh"},
+					RoutingId: event.RoutingId,
+					Response:  &response,
+				}
+				*configContext.ChatSenderChan <- responseMsg
+			}
 		default:
 			if configContext != nil {
 				configContext.Log.Println("fenestra received chat message")

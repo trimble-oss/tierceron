@@ -983,6 +983,9 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlE:
 			m.cursor = len(m.input)
 
+		case tea.KeyCtrlF:
+			return m, m.launchFenestraPOC()
+
 		case tea.KeyCtrlU:
 			// Clear line
 			m.input = ""
@@ -1782,6 +1785,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		output = append(output, "  mv       - Move/rename files or directories")
 		output = append(output, "  clear    - Clear screen (or press Ctrl+L)")
 		output = append(output, "  history  - Show command history")
+		output = append(output, "  Ctrl+F   - Launch trcfenestra POC window (trcshz builds)")
 		output = append(output, "  rosea    - Edit files with rosea editor")
 		output = append(output, "  tsub     - Run trcsub commands")
 		output = append(output, "  tconfig  - Run trcconfig commands")

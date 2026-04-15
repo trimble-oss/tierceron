@@ -119,7 +119,7 @@ trcshkernelsha:
 trcshk: trcshkernelbuild trcshkernelsha
 
 trcshkzbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcsh -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly trcshkernelz" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build  -o plugins/deploy/target/trcsh -buildmode=pie -trimpath -ldflags "-w" -tags "salty tc azrcr memonly hardwired trcshkernelz fyneboot argosystub" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshkzsha:
 	sha256sum plugins/deploy/target/trcsh | cut -d' ' -f1 > plugins/deploy/target/trcsh.sha256
 trcshkz: trcshkzbuild trcshkzsha

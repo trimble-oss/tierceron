@@ -6,6 +6,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
+	fcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra/hcore"
 	trcshcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
@@ -13,6 +14,8 @@ import (
 // GetConfigPaths - Override GetConfigPaths calls.
 func GetConfigPaths(pluginName string) []string {
 	switch pluginName {
+	case "fenestra":
+		return fcore.GetConfigPaths(pluginName)
 	case "trcsh":
 		return trcshcore.GetConfigPaths(pluginName)
 	}
@@ -22,6 +25,8 @@ func GetConfigPaths(pluginName string) []string {
 // Init - Override plugin Init calls
 func Init(pluginName string, properties *map[string]any) {
 	switch pluginName {
+	case "fenestra":
+		fcore.Init(pluginName, properties)
 	case "trcsh":
 		trcshcore.Init(pluginName, properties)
 	}
@@ -45,6 +50,8 @@ func GetFlowMachineInitContext(coreConfig *coreconfig.CoreConfig, pluginName str
 // GetPluginMessages - Override plugin messages
 func GetPluginMessages(pluginName string) []string {
 	switch pluginName {
+	case "fenestra":
+		return fcore.GetPluginMessages(pluginName)
 	case "trcsh":
 		return trcshcore.GetPluginMessages(pluginName)
 	}
