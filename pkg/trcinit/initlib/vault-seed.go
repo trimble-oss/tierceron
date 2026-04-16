@@ -222,12 +222,13 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 
 	seeded := false
 	starEnv := false
+	hasYml := false
 	if strings.Contains(driverConfig.CoreConfig.Env, "*") {
 		starEnv = true
 		driverConfig.CoreConfig.Env = strings.Split(driverConfig.CoreConfig.Env, "*")[0]
 	}
 	for _, envDir := range files {
-		if strings.HasPrefix(driverConfig.CoreConfig.Env, envDir.Name()) || (strings.HasPrefix(driverConfig.CoreConfig.Env, "local") && envDir.Name() == "local") || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) {
+		if strings.HasPrefix(driverConfig.CoreConfig.Env, envDir.Name()) || (strings.HasPrefix(driverConfig.CoreConfig.Env, "local") && envDir.Name() == "local") || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "certs")) || (driverConfig.CoreConfig.WantCerts && strings.HasPrefix(envDir.Name(), "pgp")) {
 			if driverConfig.CoreConfig.Env != driverConfig.CoreConfig.EnvBasis && driverConfig.CoreConfig.Env != envDir.Name() { // If raw & env don't match -> current env is env-* so env will be skipped
 				continue
 			}
@@ -408,6 +409,8 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 
 				if !strings.HasSuffix(fileSteppedInto.Name(), "_seed.yml") { // Rigid file path check - must be env_seed.yml or dev.eid_seed.yml
 					continue
+				} else {
+					hasYml = true
 				}
 
 				if normalEnv && len(strings.Split(fileSteppedInto.Name(), ".")) > 2 {
@@ -440,7 +443,9 @@ func SeedVault(driverConfig *config.DriverConfig) error {
 			}
 		}
 	}
-	if !seeded {
+	if !seeded && !hasYml {
+		eUtils.LogInfo(driverConfig.CoreConfig, "No seed files found for environment: "+driverConfig.CoreConfig.Env)
+	} else if !seeded {
 		eUtils.LogInfo(driverConfig.CoreConfig, "Environment is not valid - Environment: "+driverConfig.CoreConfig.Env)
 	} else {
 		eUtils.LogInfo(driverConfig.CoreConfig, "\nInitialization complete for: "+driverConfig.CoreConfig.Env+"\n")
@@ -581,6 +586,14 @@ func seedVaultWithCertsFromEntry(driverConfig *config.DriverConfig, mod *helperk
 			}
 		} else if strings.HasSuffix(certPath, ".jks") {
 			isValidCert = true
+		} else if strings.HasSuffix(certPath, ".asc") {
+			eUtils.LogInfo(driverConfig.CoreConfig, "Inspecting pgp key: "+certPath+".")
+			err := validator.ValidateASCKeyFile(&cert)
+			if err != nil {
+				eUtils.LogInfo(driverConfig.CoreConfig, "failed to verify PGP key: "+err.Error())
+			} else {
+				isValidCert = true
+			}
 		}
 		if isValidCert {
 			eUtils.LogInfo(driverConfig.CoreConfig, "Certificate passed validation: "+certPath+".")
