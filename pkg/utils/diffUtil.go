@@ -581,7 +581,7 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 			fmt.Println(LineByLineDiff(envFileKeyB, envFileKeyA, true, false))
 		}
 
-		// Seperator
+		// Separator
 		if IsWindows() {
 			fmt.Printf("======================================================================================\n")
 		} else {
