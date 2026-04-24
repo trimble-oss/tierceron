@@ -6,9 +6,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/registry"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/pkg/authconfig"
+	"github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/client"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
@@ -28,7 +28,7 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 		Password: pluginToolConfig["dockerPassword"].(string),
 	}
 
-	cli, err := client.NewClientWithOpts(client.WithHost(pluginToolConfig["dockerRepository"].(string)))
+	cli, err := client.New(client.WithHost(pluginToolConfig["dockerRepository"].(string)))
 	if err != nil {
 		panic(err)
 	}
@@ -38,22 +38,26 @@ func GetImageAndShaFromDownload(driverConfig *eUtils.DriverConfig, pluginToolCon
 	// 	return err
 	// }
 	// dockerAuth.IdentityToken = token.IdentityToken
-	auth, err := registry.EncodeAuthConfig(dockerAuth)
-
-	opts := &types.ImagePullOptions{
-		RegistryAuth: auth,
-	}
-
-	images, err := cli.ImageList(context.Background(), types.ImageListOptions{})
+	auth, err := authconfig.Encode(dockerAuth)
 	if err != nil {
 		return err
 	}
 
-	for _, image := range images {
-		_, err := cli.ImagePull(context.Background(), image.ID, *opts)
+	opts := client.ImagePullOptions{
+		RegistryAuth: auth,
+	}
+
+	images, err := cli.ImageList(context.Background(), client.ImageListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, image := range images.Items {
+		pullResponse, err := cli.ImagePull(context.Background(), image.ID, opts)
 		if err != nil {
 			return err
 		}
+		_ = pullResponse.Close()
 	}
 	return nil
 }
