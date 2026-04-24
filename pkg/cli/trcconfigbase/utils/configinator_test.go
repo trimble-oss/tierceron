@@ -381,8 +381,8 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 	_, _, err := generatePaths(driverConfig)
 
 	if err == nil {
-		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrecly error, instead got %s\n", err)
-		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrectly error, instead got %s\n", err)
+		t.Fatalf("Expected project and service specified incorrectly error, instead got %s\n", err)
 	}
 }
 
@@ -403,8 +403,8 @@ func TestGeneratePaths_CaseFiveWin(t *testing.T) {
 	_, _, err := generatePaths(driverConfig)
 
 	if err == nil {
-		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrecly error, instead got %s\n", err)
-		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrectly error, instead got %s\n", err)
+		t.Fatalf("Expected project and service specified incorrectly error, instead got %s\n", err)
 	}
 }
 
