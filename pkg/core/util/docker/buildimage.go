@@ -8,14 +8,13 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 )
 
 func BuildDockerImage(driverConfig *config.DriverConfig, dockerfilePath, imageName string) error {
 	ctx := context.Background()
-	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	cli, err := client.New(client.FromEnv)
 	if err != nil {
 		return err
 	}
@@ -32,7 +31,7 @@ func BuildDockerImage(driverConfig *config.DriverConfig, dockerfilePath, imageNa
 		return err
 	}
 
-	buildOptions := types.ImageBuildOptions{
+	buildOptions := client.ImageBuildOptions{
 		Context:    dockerfileTar,
 		Dockerfile: dockerfilePath,
 		Tags:       []string{imageName},
