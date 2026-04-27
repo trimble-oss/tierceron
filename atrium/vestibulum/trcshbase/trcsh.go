@@ -1317,7 +1317,16 @@ func roleBasedRunner(
 	case "trcsub":
 		// Save original EndDir and restore after trcsub completes
 		originalEndDir := trcshDriverConfig.DriverConfig.EndDir
-		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
+		templateEndDir := trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
+		if trcshDriverConfig.DriverConfig.SubOutputMemCache && trcshDriverConfig.DriverConfig.MemFs != nil {
+			cachePath := strings.ReplaceAll(templateEndDir, "\\", "/")
+			cachePath = strings.TrimPrefix(cachePath, "./")
+			cachePath = strings.TrimPrefix(cachePath, "/")
+			if cachePath != "" && cachePath != "." {
+				trcshDriverConfig.DriverConfig.MemFs.ClearCache(cachePath)
+			}
+		}
+		trcshDriverConfig.DriverConfig.EndDir = templateEndDir
 		err = trcsubbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 		trcshDriverConfig.DriverConfig.EndDir = originalEndDir
 	}
