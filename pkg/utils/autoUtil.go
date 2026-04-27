@@ -390,6 +390,20 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string, for
 	return nil
 }
 
+func isCmdLineTool(driverConfig *config.DriverConfig) bool {
+	if driverConfig == nil || driverConfig.CoreConfig == nil {
+		return false
+	}
+	if driverConfig.IsShellSubProcess || driverConfig.IsShellCommand {
+		return false
+	}
+	if driverConfig.CoreConfig.IsEditor {
+		return true
+	}
+	return !driverConfig.IsDrone && !driverConfig.CoreConfig.IsShell &&
+		(kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel())
+}
+
 // AutoAuth attempts to authenticate a user.
 func AutoAuth(driverConfig *config.DriverConfig,
 	wantedTokenNamePtr *string,
@@ -500,8 +514,7 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		roleEntityPtr = new(string)
 	}
 
-	IsCmdLineTool := !driverConfig.IsShellSubProcess && !driverConfig.IsShellCommand &&
-		(driverConfig.CoreConfig.IsEditor || (!driverConfig.IsDrone && !driverConfig.CoreConfig.IsShell && (kernelopts.BuildOptions == nil || !kernelopts.BuildOptions.IsKernel())))
+	IsCmdLineTool := isCmdLineTool(driverConfig)
 	IsApproleEmpty := len((*appRoleSecret)[0]) == 0 && len((*appRoleSecret)[1]) == 0
 
 	// If no token provided but context is provided, prefer the context over env.
@@ -875,6 +888,10 @@ func ReadAuthParts(driverConfig *config.DriverConfig,
 ) (bool, string, error) {
 	exists := false
 	var c cert
+	IsCmdLineTool := isCmdLineTool(driverConfig)
+	if !IsCmdLineTool {
+		return false, "", nil
+	}
 	if !prod.IsProd() {
 		// Get current user's home directory
 		userHome, err := userHome(driverConfig.CoreConfig.Log)
