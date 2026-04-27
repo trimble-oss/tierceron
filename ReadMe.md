@@ -40,6 +40,7 @@ If you are a contributor, please have a look on the [getting started](GETTING_ST
 - [Joel Rieke](mailto:joel_rieke@trimble.com)
 - [David Mkrtychyan](mailto:david_mkrtychyan@trimble.com)
 - [Karnveer Gill](mailto:karnveer_gill@trimble.com)
+- [Meghan Bailey](mailto:meghan_bailey@trimble.com)
 
 ## Contributing
 Contributions are always welcome, no matter how large or small. Before contributing, please read the [code of conduct](CODE_OF_CONDUCT.MD).

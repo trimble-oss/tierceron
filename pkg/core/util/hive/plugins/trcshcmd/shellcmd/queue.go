@@ -162,6 +162,18 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 
 	case CmdTrcSub:
 		originalEndDir := driverConfig.EndDir
+		if driverConfig.SubOutputMemCache && driverConfig.MemFs != nil {
+			cachePath := originalEndDir
+			if cachePath == "" || cachePath == "." {
+				cachePath = "trc_templates"
+			}
+			cachePath = strings.ReplaceAll(cachePath, "\\", "/")
+			cachePath = strings.TrimPrefix(cachePath, "./")
+			cachePath = strings.TrimPrefix(cachePath, "/")
+			if cachePath != "" && cachePath != "." {
+				driverConfig.MemFs.ClearCache(cachePath)
+			}
+		}
 		err = trcsubbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, nil, argLines, driverConfig)
 		driverConfig.EndDir = originalEndDir
 
