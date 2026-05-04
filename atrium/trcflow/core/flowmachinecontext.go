@@ -1381,6 +1381,7 @@ func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext fl
 				return nil, err
 			}
 			regionSource["connection"] = dbsourceConn
+			sqlConn = dbsourceConn
 		}
 	}
 	return sqlConn, nil
