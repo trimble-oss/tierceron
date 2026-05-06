@@ -41,6 +41,7 @@ func CommonMain(envPtr *string,
 
 	swaggerBytes, fileErr := os.ReadFile(path + "/target/swagger.json")
 	if fileErr != nil {
+		driverConfig.CoreConfig.Log.Fatalf("failed to read swagger file: %v", fileErr)
 		return fileErr
 	}
 
@@ -65,6 +66,7 @@ func CommonMain(envPtr *string,
 	if formatProbe.Swagger != "" {
 		var swaggerDoc openapi2.T
 		if swaggerErr := json.Unmarshal(swaggerBytes, &swaggerDoc); swaggerErr != nil {
+			driverConfig.CoreConfig.Log.Fatalf("failed to parse swagger document: %v", swaggerErr)
 			return swaggerErr
 		}
 		if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
@@ -73,6 +75,7 @@ func CommonMain(envPtr *string,
 		var convertErr error
 		openapi, convertErr = openapi2conv.ToV3(&swaggerDoc)
 		if convertErr != nil {
+			driverConfig.CoreConfig.Log.Fatalf("failed to convert swagger to openapi v3: %v", convertErr)
 			return convertErr
 		}
 	} else {
@@ -80,6 +83,7 @@ func CommonMain(envPtr *string,
 		var loadErr error
 		openapi, loadErr = loader.LoadFromData(swaggerBytes)
 		if loadErr != nil {
+			driverConfig.CoreConfig.Log.Fatalf("failed to load openapi document: %v", loadErr)
 			return loadErr
 		}
 		if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
@@ -93,10 +97,15 @@ func CommonMain(envPtr *string,
 
 	validateErr := openapi.Validate(context.Background())
 	if validateErr != nil {
+		driverConfig.CoreConfig.Log.Fatalf("failed to validate openapi document: %v", validateErr)
 		return validateErr
 	}
 
 	openapiByteArray, err := json.Marshal(openapi)
+	if err != nil {
+		driverConfig.CoreConfig.Log.Fatalf("failed to marshal openapi document: %v", err)
+		return err
+	}
 	openApiString := string(openapiByteArray)
 	openApiString = strings.Replace(openApiString, "alpha", "1.0", 1)
 
