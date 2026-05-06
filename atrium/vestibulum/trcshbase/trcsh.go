@@ -466,6 +466,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	go func() {
 		x := <-ic
 		interruptChan <- x
+		if !kernelopts.BuildOptions.IsKernel() {
+			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Interrupted by signal: %v", x), 128)
+		}
 	}()
 
 	if kernelopts.BuildOptions.IsKernelZ() {

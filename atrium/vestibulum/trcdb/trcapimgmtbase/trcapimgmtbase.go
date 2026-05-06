@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/apimanagement/armapimanagement/v2"
 	"github.com/getkin/kin-openapi/openapi2"
 	"github.com/getkin/kin-openapi/openapi2conv"
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
@@ -40,14 +41,14 @@ func CommonMain(envPtr *string,
 
 	swaggerBytes, fileErr := os.ReadFile(path + "/target/swagger.json")
 	if fileErr != nil {
+		driverConfig.CoreConfig.Log.Fatalf("failed to read swagger file: %v", fileErr)
 		return fileErr
 	}
 
-	var swaggerDoc openapi2.T
-	swaggerErr := json.Unmarshal(swaggerBytes, &swaggerDoc)
-	if swaggerErr != nil {
-		return swaggerErr
+	var formatProbe struct {
+		Swagger string `json:"swagger"`
 	}
+	_ = json.Unmarshal(swaggerBytes, &formatProbe)
 
 	apimConfigMap := make(map[string]string)
 	tempMap, readErr := mod.ReadData("super-secrets/Restricted/APIMConfig/config")
@@ -61,29 +62,55 @@ func CommonMain(envPtr *string,
 		apimConfigMap[fmt.Sprintf("%v", key)] = fmt.Sprintf("%v", value)
 	}
 
-	if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
-		swaggerDoc.Info.Title = apimConfigMap["API_TITLE"]
+	var openapi *openapi3.T
+	if formatProbe.Swagger != "" {
+		var swaggerDoc openapi2.T
+		if swaggerErr := json.Unmarshal(swaggerBytes, &swaggerDoc); swaggerErr != nil {
+			driverConfig.CoreConfig.Log.Fatalf("failed to parse swagger document: %v", swaggerErr)
+			return swaggerErr
+		}
+		if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
+			swaggerDoc.Info.Title = title
+		}
+		var convertErr error
+		openapi, convertErr = openapi2conv.ToV3(&swaggerDoc)
+		if convertErr != nil {
+			driverConfig.CoreConfig.Log.Fatalf("failed to convert swagger to openapi v3: %v", convertErr)
+			return convertErr
+		}
+	} else {
+		loader := openapi3.NewLoader()
+		var loadErr error
+		openapi, loadErr = loader.LoadFromData(swaggerBytes)
+		if loadErr != nil {
+			driverConfig.CoreConfig.Log.Fatalf("failed to load openapi document: %v", loadErr)
+			return loadErr
+		}
+		if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
+			openapi.Info.Title = title
+		}
 	}
 
-	openapi, convertErr := openapi2conv.ToV3(&swaggerDoc)
-	if convertErr != nil {
-		return convertErr
+	if apiURL, urlOK := apimConfigMap["API_URL"]; urlOK && apiURL != "" {
+		openapi.Servers = openapi3.Servers{&openapi3.Server{URL: apiURL}}
 	}
 
 	validateErr := openapi.Validate(context.Background())
 	if validateErr != nil {
+		driverConfig.CoreConfig.Log.Fatalf("failed to validate openapi document: %v", validateErr)
 		return validateErr
 	}
 
 	openapiByteArray, err := json.Marshal(openapi)
+	if err != nil {
+		driverConfig.CoreConfig.Log.Fatalf("failed to marshal openapi document: %v", err)
+		return err
+	}
 	openApiString := string(openapiByteArray)
 	openApiString = strings.Replace(openApiString, "alpha", "1.0", 1)
 
-	if !strings.Contains(openApiString, `"openapi":"3.0.3","servers": [{"url":"`+apimConfigMap["API_URL"]+`"}]`) {
-		openApiString = strings.Replace(openApiString, `"openapi":"3.0.3"`, `"openapi":"3.0.3","servers":[{"url":"`+apimConfigMap["API_URL"]+`"}]`, 1)
-		if !strings.Contains(openApiString, apimConfigMap["API_URL"]) {
-			return errors.New("Unable to insert server url into apim update.")
-		}
+	if !strings.Contains(openApiString, apimConfigMap["API_URL"]) {
+		return errors.New("Unable to insert server url into apim update.")
 	}
 
 	// ApiManagementCreateApiUsingSwaggerImport
