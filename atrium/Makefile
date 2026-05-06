@@ -89,19 +89,19 @@ localcertify:
 	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(GOBIN)/trcplgtool -tags "memonly dockercr" github.com/trimble-oss/tierceron/atrium/vestibulum/cmd/trcplgtool
 
 trcshellqwbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqw -ldflags "-w" -tags "salty memonly" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+        @GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqw -ldflags "-w" -tags "salty azrcr memonly trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshellqwsha:
 	sha256sum plugins/deploy/target/trcshqw | cut -d' ' -f1 > plugins/deploy/target/trcshqw.sha256
 trcshellqw: trcshellqwbuild trcshellqwsha
 
 trcshellqkbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqk -ldflags "-w" -tags "salty memonly trcshcursoraw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+        @GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqk -ldflags "-w" -tags "salty azrcr memonly trcshcursork" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshellqksha:
 	sha256sum plugins/deploy/target/trcshqk | cut -d' ' -f1 > plugins/deploy/target/trcshqk.sha256
 trcshellqk: trcshellqkbuild trcshellqksha
 
 trcshellqbwbuild:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqbw -ldflags "-w" -tags "salty memonly trcshcursorbw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
+        @GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOOS=$(GOOS) GOARCH=$(GOARCH) go build -buildmode=pie -o plugins/deploy/target/trcshqbw -ldflags "-w" -tags "salty azrcr memonly trcshcursorbw" github.com/trimble-oss/tierceron/atrium/vestibulum/hive/trcsh
 trcshellqbwsha:
 	sha256sum plugins/deploy/target/trcshqbw | cut -d' ' -f1 > plugins/deploy/target/trcshqbw.sha256
 trcshellqbw: trcshellqbwbuild trcshellqbwsha
