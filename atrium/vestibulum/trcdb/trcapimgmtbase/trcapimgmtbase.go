@@ -98,6 +98,31 @@ func CommonMain(envPtr *string,
 		openapi.Servers = openapi3.Servers{&openapi3.Server{URL: apiURL}}
 	}
 
+	// APIM rejects tag names containing '/' or spaces. Normalize to match Swagger 2.0 style:
+	// strip leading '/', remove remaining '/' and spaces, drop empty results.
+	sanitizeTag := func(s string) string {
+		s = strings.TrimPrefix(s, "/")
+		s = strings.ReplaceAll(s, "/", "")
+		s = strings.ReplaceAll(s, " ", "")
+		return s
+	}
+	for _, tag := range openapi.Tags {
+		tag.Name = sanitizeTag(tag.Name)
+	}
+	if openapi.Paths != nil {
+		for _, pathItem := range openapi.Paths.Map() {
+			for _, op := range pathItem.Operations() {
+				clean := op.Tags[:0]
+				for _, tag := range op.Tags {
+					if s := sanitizeTag(tag); s != "" {
+						clean = append(clean, s)
+					}
+				}
+				op.Tags = clean
+			}
+		}
+	}
+
 	if openapi.Info == nil {
 		openapi.Info = &openapi3.Info{}
 	}
