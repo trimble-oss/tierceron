@@ -87,12 +87,22 @@ func CommonMain(envPtr *string,
 			return loadErr
 		}
 		if title, titleOK := apimConfigMap["API_TITLE"]; titleOK && title != "" {
+			if openapi.Info == nil {
+				openapi.Info = &openapi3.Info{}
+			}
 			openapi.Info.Title = title
 		}
 	}
 
 	if apiURL, urlOK := apimConfigMap["API_URL"]; urlOK && apiURL != "" {
 		openapi.Servers = openapi3.Servers{&openapi3.Server{URL: apiURL}}
+	}
+
+	if openapi.Info == nil {
+		openapi.Info = &openapi3.Info{}
+	}
+	if openapi.Info.Version == "" {
+		openapi.Info.Version = "1.0"
 	}
 
 	validateErr := openapi.Validate(context.Background())
