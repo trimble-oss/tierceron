@@ -705,6 +705,9 @@ retryQuery:
 
 	if secret != nil {
 		if data, ok := secret.Data["metadata"].(map[string]any); ok {
+			if err != nil {
+				fmt.Println("error with metadata")
+			}
 			return data, err
 		}
 	}

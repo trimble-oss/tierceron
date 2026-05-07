@@ -38,6 +38,120 @@ func UploadTemplateDirectory(tfmContext flowcore.FlowMachineContext, config *cor
 	return nil, nil
 }
 
+func getTemplateSubDir(dirName string) string {
+	splitDir := strings.SplitAfterN(dirName, "/", 2)
+	return splitDir[len(splitDir)-1]
+}
+
+func collectTemplateNamesInDir(dirName string) (map[string]struct{}, error) {
+	files, err := os.ReadDir(dirName)
+	if err != nil {
+		return nil, err
+	}
+
+	templateNames := map[string]struct{}{}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		ext := filepath.Ext(file.Name())
+		if ext != ".tmpl" {
+			continue
+		}
+
+		name := file.Name()
+		name = name[0 : len(name)-len(ext)]
+		ext = filepath.Ext(name)
+		name = name[0 : len(name)-len(ext)]
+		templateNames[name] = struct{}{}
+	}
+
+	return templateNames, nil
+}
+
+func PruneVaultTemplatesNotOnDisk(config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) error {
+	projectDirs, err := os.ReadDir(dirName)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Read directory couldn't be completed.")
+		return err
+	}
+
+	for _, projectDir := range projectDirs {
+		if !projectDir.IsDir() {
+			continue
+		}
+
+		projectName := projectDir.Name()
+		projectPath := filepath.Join(dirName, projectName)
+		if templateFilter != nil && len(*templateFilter) != 0 && !strings.HasPrefix(*templateFilter, projectName) {
+			continue
+		}
+
+		serviceDirs, err := os.ReadDir(projectPath)
+		if err != nil {
+			return err
+		}
+
+		for _, serviceDir := range serviceDirs {
+			if !serviceDir.IsDir() {
+				continue
+			}
+
+			subDir := filepath.ToSlash(filepath.Join(projectName, serviceDir.Name()))
+			servicePath := filepath.Join(projectPath, serviceDir.Name())
+			if templateFilter != nil && len(*templateFilter) != 0 && !strings.Contains(servicePath, *templateFilter) {
+				continue
+			}
+
+			templateNames, err := collectTemplateNamesInDir(servicePath)
+			if err != nil {
+				return err
+			}
+
+			secret, err := mod.List("templates/"+subDir, config.Log)
+			if err != nil {
+				return err
+			}
+			if secret == nil || secret.Data == nil || secret.Data["keys"] == nil {
+				continue
+			}
+
+			vaultTemplateNames, ok := secret.Data["keys"].([]any)
+			if !ok {
+				continue
+			}
+
+			for _, vaultTemplateName := range vaultTemplateNames {
+				templateName, ok := vaultTemplateName.(string)
+				if !ok {
+					continue
+				}
+
+				templateName = strings.TrimSuffix(templateName, "/")
+				if len(templateName) == 0 {
+					continue
+				}
+
+				if _, ok := templateNames[templateName]; ok {
+					continue
+				}
+
+				config.Log.Printf("Deleting stale vault template %s/%s\n", subDir, templateName)
+				// if _, err := mod.HardDelete("templates/"+subDir+"/"+templateName+"/template-file", config.Log); err != nil {
+				// 	return err
+				// }
+				// if _, err := mod.HardDelete("values/"+subDir+"/"+templateName, config.Log); err != nil {
+				// 	return err
+				// }
+			}
+		}
+	}
+
+	return nil
+}
+
 func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) ([]string, error) {
 	// Open directory
 	files, err := os.ReadDir(dirName)
@@ -46,8 +160,7 @@ func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.
 	}
 
 	// Use name of containing directory as the template subdirectory
-	splitDir := strings.SplitAfterN(dirName, "/", 2)
-	subDir := splitDir[len(splitDir)-1]
+	subDir := getTemplateSubDir(dirName)
 
 	// Parse through files
 	for _, file := range files {

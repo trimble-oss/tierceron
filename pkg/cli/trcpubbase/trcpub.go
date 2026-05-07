@@ -207,7 +207,12 @@ func CommonMain(envPtr *string,
 	}
 	eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 	mod.Env = envBasis
-
+	if true || driverConfig.IsShellCommand && !kernelopts.BuildOptions.IsKernelZ() {
+		// Loop through templates on file system and check if any templates differ from what's in vault
+		// Delete templates that are only in vault
+		err = il.PruneVaultTemplatesNotOnDisk(driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, false) // TODO: should it return?
+	}
 	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
 		if strings.Contains(err.Error(), "x509: certificate") {
