@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 	"time"
 
@@ -39,6 +40,32 @@ func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string)
 	if driverConfig.KeyStore == nil {
 		return nil, errors.New("cert bundle not properly named")
 	}
+
+	aliases := driverConfig.KeyStore.Aliases()
+	certsByDir := make(map[string]keystore.Certificate)
+	for _, alias := range aliases {
+		if driverConfig.KeyStore.IsTrustedCertificateEntry(alias) {
+			if tce, err := driverConfig.KeyStore.GetTrustedCertificateEntry(alias); err == nil {
+				dir := path.Dir(alias)
+				if _, exists := certsByDir[dir]; !exists {
+					certsByDir[dir] = tce.Certificate
+				}
+			}
+		}
+	}
+	for _, alias := range aliases {
+		if driverConfig.KeyStore.IsPrivateKeyEntry(alias) {
+			if pke, err := driverConfig.KeyStore.GetPrivateKeyEntry(alias, []byte{}); err == nil {
+				if len(pke.CertificateChain) == 0 {
+					if cert, ok := certsByDir[path.Dir(alias)]; ok {
+						pke.CertificateChain = []keystore.Certificate{cert}
+					}
+				}
+				driverConfig.KeyStore.SetPrivateKeyEntry(alias, pke, []byte(trustStorePassword)) //nolint: errcheck
+			}
+		}
+	}
+
 	storeErr := driverConfig.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
 	if storeErr != nil {
 		return nil, storeErr
@@ -93,6 +120,28 @@ func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []b
 					Content: block.Bytes,
 				},
 			})
+			return nil
+		}
+		if block.Type == privateKeyType || block.Type == rsaPrivateKeyType {
+			var pkcs8KeyBytes []byte
+			if block.Type == privateKeyType {
+				pkcs8KeyBytes = block.Bytes
+			} else {
+				rsaKey, parseErr := x509.ParsePKCS1PrivateKey(block.Bytes)
+				if parseErr != nil {
+					return parseErr
+				}
+				var marshalErr error
+				pkcs8KeyBytes, marshalErr = pkcs8.MarshalPrivateKey(rsaKey, []byte{}, nil)
+				if marshalErr != nil {
+					return marshalErr
+				}
+			}
+			aliasCommon := strings.Replace(alias, "key.pem", "", 1)
+			driverConfig.KeyStore.SetPrivateKeyEntry(aliasCommon, keystore.PrivateKeyEntry{
+				CreationTime: time.Now(),
+				PrivateKey:   pkcs8KeyBytes,
+			}, password)
 			return nil
 		}
 		privateKeyBytes, err := ssh.ParseRawPrivateKey(data)
