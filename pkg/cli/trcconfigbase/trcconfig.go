@@ -666,10 +666,15 @@ func CommonMain(envDefaultPtr *string,
 			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
-		if *keyStorePtr != "" && *servicesWanted != "" {
-			swParts := strings.SplitN(strings.ReplaceAll(*servicesWanted, "\\", "/"), "/", 2)
-			if len(swParts) == 2 && swParts[1] != "" {
-				dConfig.KeystoreService = swParts[1]
+		if *wantCertsPtr {
+			if *keyStorePtr != "" && *servicesWanted != "" {
+				swParts := strings.SplitN(strings.ReplaceAll(*servicesWanted, "\\", "/"), "/", 2)
+				if len(swParts) == 2 && swParts[1] != "" {
+					dConfig.KeystoreService = swParts[1]
+				}
+			}
+			if dConfig.KeystoreService == "" && driverConfigBase.KeystoreService != "" {
+				dConfig.KeystoreService = driverConfigBase.KeystoreService
 			}
 		}
 

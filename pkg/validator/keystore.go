@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sort"
 	"strings"
 	"time"
 
@@ -42,14 +43,13 @@ func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string)
 	}
 
 	aliases := driverConfig.KeyStore.Aliases()
-	certsByDir := make(map[string]keystore.Certificate)
+	sort.Strings(aliases)
+	certChainsByBaseName := make(map[string][]keystore.Certificate)
 	for _, alias := range aliases {
 		if driverConfig.KeyStore.IsTrustedCertificateEntry(alias) {
 			if tce, err := driverConfig.KeyStore.GetTrustedCertificateEntry(alias); err == nil {
-				dir := path.Dir(alias)
-				if _, exists := certsByDir[dir]; !exists {
-					certsByDir[dir] = tce.Certificate
-				}
+				base := strings.TrimSuffix(path.Base(alias), path.Ext(path.Base(alias)))
+				certChainsByBaseName[base] = append(certChainsByBaseName[base], tce.Certificate)
 			}
 		}
 	}
@@ -57,12 +57,20 @@ func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string)
 		if driverConfig.KeyStore.IsPrivateKeyEntry(alias) {
 			if pke, err := driverConfig.KeyStore.GetPrivateKeyEntry(alias, []byte{}); err == nil {
 				if len(pke.CertificateChain) == 0 {
-					if cert, ok := certsByDir[path.Dir(alias)]; ok {
-						pke.CertificateChain = []keystore.Certificate{cert}
+					keyBase := strings.TrimSuffix(path.Base(alias), path.Ext(path.Base(alias)))
+					certBase := strings.Replace(keyBase, "key", "cert", 1)
+					if chain, ok := certChainsByBaseName[certBase]; ok {
+						pke.CertificateChain = chain
 					}
 				}
 				driverConfig.KeyStore.SetPrivateKeyEntry(alias, pke, []byte(trustStorePassword)) //nolint: errcheck
 			}
+		}
+	}
+	// Remove the #N staging entries — only the base alias (leaf cert) should remain as a trusted entry.
+	for _, alias := range aliases {
+		if driverConfig.KeyStore.IsTrustedCertificateEntry(alias) && strings.Contains(path.Base(alias), "#") {
+			driverConfig.KeyStore.DeleteEntry(alias)
 		}
 	}
 
@@ -113,13 +121,30 @@ func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []b
 	} else {
 		if block.Type == certificateType {
 			aliasCommon := strings.Replace(alias, "cert.pem", "", 1)
-			driverConfig.KeyStore.SetTrustedCertificateEntry(aliasCommon, keystore.TrustedCertificateEntry{
-				CreationTime: time.Now(),
-				Certificate: keystore.Certificate{
-					Type:    "X509",
-					Content: block.Bytes,
-				},
-			})
+			rest := data
+			chainIdx := 0
+			for {
+				var b *pem.Block
+				b, rest = pem.Decode(rest)
+				if b == nil {
+					break
+				}
+				if b.Type != certificateType {
+					continue
+				}
+				entryAlias := aliasCommon
+				if chainIdx > 0 {
+					entryAlias = fmt.Sprintf("%s#%d", aliasCommon, chainIdx)
+				}
+				driverConfig.KeyStore.SetTrustedCertificateEntry(entryAlias, keystore.TrustedCertificateEntry{
+					CreationTime: time.Now(),
+					Certificate: keystore.Certificate{
+						Type:    "X509",
+						Content: b.Bytes,
+					},
+				})
+				chainIdx++
+			}
 			return nil
 		}
 		if block.Type == privateKeyType || block.Type == rsaPrivateKeyType {
@@ -132,7 +157,7 @@ func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []b
 					return parseErr
 				}
 				var marshalErr error
-				pkcs8KeyBytes, marshalErr = pkcs8.MarshalPrivateKey(rsaKey, []byte{}, nil)
+				pkcs8KeyBytes, marshalErr = x509.MarshalPKCS8PrivateKey(rsaKey)
 				if marshalErr != nil {
 					return marshalErr
 				}
@@ -146,7 +171,7 @@ func AddToKeystore(driverConfig *config.DriverConfig, alias string, password []b
 		}
 		privateKeyBytes, err := ssh.ParseRawPrivateKey(data)
 		if err == nil {
-			privateKeyBytes, err := pkcs8.MarshalPrivateKey(privateKeyBytes, []byte{}, nil)
+			privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKeyBytes)
 			if err != nil {
 				return err
 			}
