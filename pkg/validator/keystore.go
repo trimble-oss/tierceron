@@ -67,6 +67,12 @@ func StoreKeystore(driverConfig *config.DriverConfig, trustStorePassword string)
 			}
 		}
 	}
+	// Remove the #N staging entries — only the base alias (leaf cert) should remain as a trusted entry.
+	for _, alias := range aliases {
+		if driverConfig.KeyStore.IsTrustedCertificateEntry(alias) && strings.Contains(path.Base(alias), "#") {
+			driverConfig.KeyStore.DeleteEntry(alias)
+		}
+	}
 
 	storeErr := driverConfig.KeyStore.Store(keystoreWriter, []byte(trustStorePassword))
 	if storeErr != nil {
