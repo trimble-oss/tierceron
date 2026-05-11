@@ -21,7 +21,7 @@ require (
 
 require (
 	github.com/g3n/engine v0.2.0
-	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1 // indirect
+	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
 	github.com/trimble-oss/tierceron-hat v1.3.2

@@ -528,6 +528,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			prod.SetProd(false)
 		}
 		trcshDriverConfig.PluginName = *pluginNamePtr
+		if len(*projectServicePtr) > 0 {
+			psParts := strings.SplitN(strings.ReplaceAll(*projectServicePtr, "\\", "/"), "/", 2)
+			if len(psParts) == 2 && psParts[1] != "" {
+				trcshDriverConfig.DriverConfig.KeystoreService = psParts[1]
+			}
+		}
 
 		// Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, *trcPathPtr, *projectServicePtr, dronePtr)
@@ -791,6 +797,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		)
 		if err != nil {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh agent bootstrap init config failure: %s\n", err.Error()), 124)
+		}
+		if eUtils.IsWindows() && len(*projectServicePtr) > 0 {
+			psParts := strings.SplitN(strings.ReplaceAll(*projectServicePtr, "\\", "/"), "/", 2)
+			if len(psParts) == 2 && psParts[1] != "" {
+				trcshDriverConfig.DriverConfig.KeystoreService = psParts[1]
+			}
 		}
 
 		if useRole {

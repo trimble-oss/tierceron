@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	github.com/pavlo-v-chernykh/keystore-go/v4 v4.4.1
+	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 )
