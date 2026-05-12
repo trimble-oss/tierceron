@@ -54,6 +54,7 @@ import (
 var (
 	gAgentConfig        *capauth.AgentConfigs = nil
 	gTrcshConfig        *capauth.TrcShConfig
+	gTrcshConfigOnce    sync.Once
 	kernelPluginHandler *hive.PluginHandler = nil
 	logEnvOnce          sync.Once
 )
@@ -455,6 +456,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
+		if !kernelopts.BuildOptions.IsKernel() {
+			SetParentDeathSignal()
+		}
 	} else {
 		dronePtr = new(bool)
 		*dronePtr = true
@@ -465,9 +469,6 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	go func() {
 		x := <-ic
 		interruptChan <- x
-		if !kernelopts.BuildOptions.IsKernel() {
-			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("Interrupted by signal: %v", x), 128)
-		}
 	}()
 
 	if kernelopts.BuildOptions.IsKernelZ() {
@@ -1630,29 +1631,31 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Bootstrap..")
 	var err error
-	retries := 0
-	for {
-		if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
-			// Loop until we have something usable...
-			gTrcshConfig, err = trcshauth.TrcshAuth(featherCtx, gAgentConfig, trcshDriverConfig)
-			if err != nil {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
-				time.Sleep(time.Second)
+	gTrcshConfigOnce.Do(func() {
+		retries := 0
+		for {
+			if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
+				// Loop until we have something usable...
+				gTrcshConfig, err = trcshauth.TrcshAuth(featherCtx, gAgentConfig, trcshDriverConfig)
+				if err != nil {
+					trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
+					time.Sleep(time.Second)
+					retries = retries + 1
+					if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
+						eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
+					}
+					continue
+				}
 				retries = retries + 1
 				if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
-					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
+					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup partial failure.  Cannot continue.\n", 124)
 				}
-				continue
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
+			} else {
+				break
 			}
-			retries = retries + 1
-			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
-				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup partial failure.  Cannot continue.\n", 124)
-			}
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-		} else {
-			break
 		}
-	}
+	})
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 
 	if len(mergedEnvBasis) == 0 {
