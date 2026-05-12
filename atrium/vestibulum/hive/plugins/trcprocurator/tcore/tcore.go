@@ -201,7 +201,7 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 
 	// Exclude well-known ports (0-1023) and ephemeral port ranges (49152+).
 	// Safe range: 1024-49151 (registered ports, includes common app ports like 8000s)
-	if listenPort < 1024 || listenPort > 49151 || targetPort < 1024 || targetPort > 49151 {
+	if targetPort != 443 && (listenPort < 1024 || listenPort > 49151 || targetPort < 1024 || targetPort > 49151) {
 		err := errors.New("ports must be between 1024 and 49151 (excludes system and ephemeral ports)")
 		configContext.Log.Println(err.Error())
 		return nil, err
