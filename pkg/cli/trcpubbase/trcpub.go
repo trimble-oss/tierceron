@@ -211,7 +211,7 @@ func CommonMain(envPtr *string,
 		// Loop through templates on file system and check if any templates differ from what's in vault
 		// Delete templates that are only in vault
 		err = il.PruneVaultTemplatesNotOnDisk(driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
-		eUtils.CheckError(driverConfigBase.CoreConfig, err, false) // TODO: should it return?
+		eUtils.CheckError(driverConfigBase.CoreConfig, err, false)
 	}
 	warn, err := il.UploadTemplateDirectory(nil, driverConfigBase.CoreConfig, mod, *dirPtr, filterTemplatePtr)
 	if err != nil {
