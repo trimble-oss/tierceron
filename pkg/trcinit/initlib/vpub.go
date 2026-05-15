@@ -142,20 +142,20 @@ func PruneVaultTemplatesNotOnDisk(config *coreconfig.CoreConfig, mod *helperkv.M
 				config.Log.Printf("Deleting stale vault template %s\n", templateName)
 			}
 
-			templatePath := "templates/" + templateName
+			templatePath := fmt.Sprintf("templates/%s", templateName)
 			if len(subDir) > 0 {
-				templatePath = "templates/" + subDir + "/" + templateName
+				templatePath = fmt.Sprintf("templates/%s/%s", subDir, templateName)
 			}
 
-			templateFilePath := templatePath + "/template-file"
+			templateFilePath := fmt.Sprintf("%s/template-file", templatePath)
 			if ok, err := mod.ReadData(templateFilePath); err != nil || ok == nil {
 				config.Log.Printf("Skipping deletion for %s as template file does not exist\n", templateFilePath)
 				continue
 			}
 
-			fmt.Println("vault template path to delete:", templatePath)
+			fmt.Println("vault template path to delete:", templateFilePath)
 
-			if _, err := mod.SoftDelete(templatePath+"/template-file", config.Log); err != nil {
+			if _, err := mod.SoftDelete(templateFilePath, config.Log); err != nil {
 				return err
 			}
 		}
