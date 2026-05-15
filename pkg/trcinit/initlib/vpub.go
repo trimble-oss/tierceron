@@ -43,108 +43,113 @@ func getTemplateSubDir(dirName string) string {
 	return splitDir[len(splitDir)-1]
 }
 
-func collectTemplateNamesInDir(dirName string) (map[string]struct{}, error) {
-	files, err := os.ReadDir(dirName)
+func collectTemplateNamesByPath(dirName string, templateFilter *string) (map[string]map[string]struct{}, error) {
+	templatesByPath := map[string]map[string]struct{}{}
+
+	err := filepath.WalkDir(dirName, func(path string, d os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		ext := filepath.Ext(d.Name())
+		if ext != ".tmpl" {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(dirName, path)
+		if err != nil {
+			return err
+		}
+		relPath = filepath.ToSlash(relPath)
+
+		if templateFilter != nil && len(*templateFilter) != 0 && !strings.Contains(relPath, *templateFilter) {
+			return nil
+		}
+
+		relDir := filepath.ToSlash(filepath.Dir(relPath))
+		if relDir == "." {
+			relDir = ""
+		}
+
+		name := d.Name()
+		name = name[0 : len(name)-len(ext)]
+		ext = filepath.Ext(name)
+		name = name[0 : len(name)-len(ext)]
+
+		if _, ok := templatesByPath[relDir]; !ok {
+			templatesByPath[relDir] = map[string]struct{}{}
+		}
+		templatesByPath[relDir][name] = struct{}{}
+
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	templateNames := map[string]struct{}{}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		ext := filepath.Ext(file.Name())
-		if ext != ".tmpl" {
-			continue
-		}
-
-		name := file.Name()
-		name = name[0 : len(name)-len(ext)]
-		ext = filepath.Ext(name)
-		name = name[0 : len(name)-len(ext)]
-		templateNames[name] = struct{}{}
-	}
-
-	return templateNames, nil
+	return templatesByPath, nil
 }
 
 func PruneVaultTemplatesNotOnDisk(config *coreconfig.CoreConfig, mod *helperkv.Modifier, dirName string, templateFilter *string) error {
-	projectDirs, err := os.ReadDir(dirName)
+	templatesByPath, err := collectTemplateNamesByPath(dirName, templateFilter)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "Read directory couldn't be completed.")
 		return err
 	}
 
-	for _, projectDir := range projectDirs {
-		if !projectDir.IsDir() {
+	for subDir, templateNames := range templatesByPath {
+		if strings.HasPrefix(subDir, "Common") || strings.HasPrefix(subDir, "Azure") {
 			continue
 		}
-
-		projectName := projectDir.Name()
-		projectPath := filepath.Join(dirName, projectName)
-		if templateFilter != nil && len(*templateFilter) != 0 && !strings.HasPrefix(*templateFilter, projectName) {
-			continue
+		vaultPath := "templates"
+		if len(subDir) > 0 {
+			vaultPath += "/" + subDir
 		}
 
-		serviceDirs, err := os.ReadDir(projectPath)
+		secret, err := mod.List(vaultPath, config.Log)
 		if err != nil {
 			return err
 		}
+		if secret == nil || secret.Data == nil || secret.Data["keys"] == nil {
+			continue
+		}
 
-		for _, serviceDir := range serviceDirs {
-			if !serviceDir.IsDir() {
-				continue
-			}
+		vaultTemplateNames, ok := secret.Data["keys"].([]any)
+		if !ok {
+			continue
+		}
 
-			subDir := filepath.ToSlash(filepath.Join(projectName, serviceDir.Name()))
-			servicePath := filepath.Join(projectPath, serviceDir.Name())
-			if templateFilter != nil && len(*templateFilter) != 0 && !strings.Contains(servicePath, *templateFilter) {
-				continue
-			}
-
-			templateNames, err := collectTemplateNamesInDir(servicePath)
-			if err != nil {
-				return err
-			}
-
-			secret, err := mod.List("templates/"+subDir, config.Log)
-			if err != nil {
-				return err
-			}
-			if secret == nil || secret.Data == nil || secret.Data["keys"] == nil {
-				continue
-			}
-
-			vaultTemplateNames, ok := secret.Data["keys"].([]any)
+		for _, vaultTemplateName := range vaultTemplateNames {
+			templateName, ok := vaultTemplateName.(string)
 			if !ok {
 				continue
 			}
 
-			for _, vaultTemplateName := range vaultTemplateNames {
-				templateName, ok := vaultTemplateName.(string)
-				if !ok {
-					continue
-				}
+			templateName = strings.TrimSuffix(templateName, "/")
+			if len(templateName) == 0 {
+				continue
+			}
 
-				templateName = strings.TrimSuffix(templateName, "/")
-				if len(templateName) == 0 {
-					continue
-				}
+			if _, ok := templateNames[templateName]; ok {
+				continue
+			}
 
-				if _, ok := templateNames[templateName]; ok {
-					continue
-				}
-
+			if len(subDir) > 0 {
 				config.Log.Printf("Deleting stale vault template %s/%s\n", subDir, templateName)
-				// if _, err := mod.HardDelete("templates/"+subDir+"/"+templateName+"/template-file", config.Log); err != nil {
-				// 	return err
-				// }
-				// if _, err := mod.HardDelete("values/"+subDir+"/"+templateName, config.Log); err != nil {
-				// 	return err
-				// }
+			} else {
+				config.Log.Printf("Deleting stale vault template %s\n", templateName)
+			}
+
+			templatePath := "templates/" + templateName
+			if len(subDir) > 0 {
+				templatePath = "templates/" + subDir + "/" + templateName
+			}
+			fmt.Println("vault template path to delete:", templatePath)
+
+			if _, err := mod.SoftDelete(templatePath+"/template-file", config.Log); err != nil {
+				return err
 			}
 		}
 	}
