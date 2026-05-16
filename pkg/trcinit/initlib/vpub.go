@@ -38,11 +38,6 @@ func UploadTemplateDirectory(tfmContext flowcore.FlowMachineContext, config *cor
 	return nil, nil
 }
 
-func getTemplateSubDir(dirName string) string {
-	splitDir := strings.SplitAfterN(dirName, "/", 2)
-	return splitDir[len(splitDir)-1]
-}
-
 func collectTemplateNamesByPath(dirName string, templateFilter *string) (map[string]map[string]struct{}, error) {
 	templatesByPath := map[string]map[string]struct{}{}
 
@@ -172,7 +167,8 @@ func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.
 	}
 
 	// Use name of containing directory as the template subdirectory
-	subDir := getTemplateSubDir(dirName)
+	splitDir := strings.SplitAfterN(dirName, "/", 2)
+	subDir := splitDir[len(splitDir)-1]
 
 	// Parse through files
 	for _, file := range files {
