@@ -1633,13 +1633,18 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 	var err error
 	gTrcshConfigOnce.Do(func() {
 		retries := 0
+		backoff := time.Second
+		const maxBackoff = 5 * time.Minute
 		for {
 			if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
 				// Loop until we have something usable...
 				gTrcshConfig, err = trcshauth.TrcshAuth(featherCtx, gAgentConfig, trcshDriverConfig)
 				if err != nil {
 					trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
-					time.Sleep(time.Second)
+					time.Sleep(backoff)
+					if eUtils.IsWindows() && backoff < maxBackoff {
+						backoff *= 2
+					}
 					retries = retries + 1
 					if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
 						eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
