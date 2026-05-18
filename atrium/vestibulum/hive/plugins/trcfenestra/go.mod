@@ -4,7 +4,7 @@ go 1.26.3
 
 require (
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.9
+	github.com/trimble-oss/tierceron-core/v2 v2.11.1
 	github.com/trimble-oss/tierceron-nute-core v1.0.5
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	gopkg.in/yaml.v2 v2.4.0
@@ -60,15 +60,15 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/trimble-oss/tierceron-nute v1.1.0 // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
-	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f // indirect
 	golang.org/x/exp/shiny v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/image v0.38.0 // indirect
 	golang.org/x/mobile v0.0.0-20250911085028-6912353760cf // indirect
-	golang.org/x/net v0.50.0 // indirect
-	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/term v0.40.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/net v0.53.0 // indirect
+	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/term v0.42.0 // indirect
+	golang.org/x/text v0.36.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
