@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.10.9
+	github.com/trimble-oss/tierceron-core/v2 v2.11.1
 	golang.org/x/term v0.42.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -34,7 +34,6 @@ require (
 	github.com/sahilm/fuzzy v0.1.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.6 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
