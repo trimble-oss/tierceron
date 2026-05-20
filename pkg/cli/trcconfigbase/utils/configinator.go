@@ -397,20 +397,6 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 							eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
 							goto wait
 						}
-					} else if driverConfig.WantKeystore != "" && len(certData) == 0 {
-						if driverConfig.KeystorePassword == "" {
-							projectSecrets, err := mod.ReadData(fmt.Sprintf("super-secrets/%s", driverConfig.VersionFilter[0]))
-							if err == nil {
-								if trustStorePassword, tspOk := projectSecrets["trustStorePassword"].(string); tspOk {
-									driverConfig.KeystorePassword = trustStorePassword
-								}
-							} else {
-								if driverConfig.CoreConfig.TokenCache != nil {
-									mod.EmptyCache()
-									driverConfig.CoreConfig.TokenCache.Clear()
-								}
-							}
-						}
 					}
 				}
 				// generate template or certificate
@@ -527,7 +513,25 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 		driverConfig.VersionInfo(versionData, true, "", false)
 	}
 	if driverConfig.WantKeystore != "" {
-		// Keystore is serialized at end.
+		secretsService := driverConfig.KeystoreService
+
+		for _, vf := range driverConfig.VersionFilter {
+			if vf == secretsService {
+				mod, _ := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, *tokenNamePtr, driverConfig.CoreConfig.EnvBasis, true)
+				mod.Env = driverConfig.CoreConfig.Env
+				mod.Version = version
+
+				if projectSecrets, err := mod.ReadData(fmt.Sprintf("super-secrets/%s", secretsService)); err == nil {
+					if trustStorePassword, tspOk := projectSecrets["trustStorePassword"].(string); tspOk {
+						driverConfig.KeystorePassword = trustStorePassword
+					}
+				}
+				break
+			}
+		}
+		if len(driverConfig.KeystorePassword) == 0 {
+			eUtils.LogInfo(driverConfig.CoreConfig, "Keystore password not found in vault, using empty password for keystore.")
+		}
 		ks, ksErr := validator.StoreKeystore(driverConfig, driverConfig.KeystorePassword)
 		if ksErr != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, ksErr, false)

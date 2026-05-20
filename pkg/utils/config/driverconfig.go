@@ -90,6 +90,7 @@ type DriverConfig struct {
 	// KeyStore Output tooling
 	KeyStore         *keystore.KeyStore
 	KeystorePassword string
+	KeystoreService  string // Service name used to look up trustStorePassword from super-secrets.
 	WantKeystore     string // If provided and non nil, pem files will be put into a java compatible keystore.
 
 	// Diff tooling
