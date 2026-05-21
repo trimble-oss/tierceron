@@ -977,8 +977,8 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnd:
 			m.cursor = len(m.input)
 
-		case tea.KeyCtrlA:
-			m.cursor = 0
+		// case tea.KeyCtrlA:
+		// 	m.cursor = 0
 
 		case tea.KeyCtrlE:
 			m.cursor = len(m.input)
@@ -995,6 +995,15 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.output = []string{}
 			m.updateViewportContent()
 			m.viewport.GotoTop()
+
+		case tea.KeyCtrlA:
+			// Start fenestra plugin in the background
+			m.output = append(m.output, promptStyle.Render(m.prompt+" ")+"Ctrl+A")
+			m.output = append(m.output, "")
+			m.commandExecuting = true
+			m.updateViewportContent()
+			m.viewport.GotoBottom()
+			return m, m.startFenestraAsync()
 
 		case tea.KeyPgUp, tea.KeyPgDown:
 			// Forward scrolling to viewport
@@ -1439,6 +1448,35 @@ func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 	}
 }
 
+// startFenestraAsync triggers fenestra plugin startup without blocking the shell.
+func (m *ShellModel) startFenestraAsync() tea.Cmd {
+	return func() tea.Msg {
+		if m.chatSenderChan == nil {
+			return commandResultMsg{
+				output:     []string{errorStyle.Render("Error: chat channel not available"), ""},
+				shouldQuit: false,
+			}
+		}
+
+		pluginName := "trcsh"
+		response := "Start Visualizer"
+		chatID := fmt.Sprintf("fenestra-%d", time.Now().UnixNano())
+		fenestraMsg := &tccore.ChatMsg{
+			Name:     &pluginName,
+			Query:    &[]string{"fenestra"},
+			ChatId:   &chatID,
+			Response: &response,
+		}
+
+		*m.chatSenderChan <- fenestraMsg
+
+		return commandResultMsg{
+			output:     []string{"Starting visualizer...", ""},
+			shouldQuit: false,
+		}
+	}
+}
+
 // Message type sent when editor model is ready
 type editorReadyMsg struct {
 	model tea.Model
@@ -1781,6 +1819,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 		output = append(output, "  cp       - Copy files or directories (use -r for recursive)")
 		output = append(output, "  mv       - Move/rename files or directories")
 		output = append(output, "  clear    - Clear screen (or press Ctrl+L)")
+		output = append(output, "  Ctrl+A   - Search via visualizer") // Setting to ctrl+a for now
 		output = append(output, "  history  - Show command history")
 		output = append(output, "  rosea    - Edit files with rosea editor")
 		output = append(output, "  tsub     - Run trcsub commands")

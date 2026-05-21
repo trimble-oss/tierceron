@@ -27,6 +27,7 @@ var (
 	sender        chan error
 	serverAddr    *string // another way to do this...
 	dfstat        *tccore.TTDINode
+	startVisChan  *chan bool
 )
 
 var DetailedElements []*mashupsdk.MashupDetailedElement
@@ -82,6 +83,13 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				configContext.Log.Println("fenestra shutting down message receiver")
 			}
 			return
+		case event.Name != nil && *event.Name == "trcsh" && event.Response != nil && *event.Response == "Start Visualizer":
+			configContext.Log.Println("Received request to start visualizer from shell command")
+			if startVisChan != nil {
+				*startVisChan <- true
+			} else {
+				configContext.Log.Println("Visualizer start channel not initialized")
+			}
 		default:
 			if configContext != nil {
 				configContext.Log.Println("fenestra received chat message")
@@ -161,6 +169,11 @@ func start(pluginName string) {
 	var ok bool
 
 	if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
+		if configContext.Config == nil || (*configContext.Config)[COMMON_PATH] == nil {
+			configContext.Log.Println("Missing common configs")
+			send_err(errors.New("Missing common configs"))
+			return
+		}
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
 		err := yaml.Unmarshal(configBytes, config)
 		if err != nil {
@@ -190,14 +203,7 @@ func start(pluginName string) {
 	envPtr := flag.String("env", "QA", "Environment to configure")
 	flag.Parse()
 
-	fenestrabase.CommonMain([]byte{},
-		configCert,
-		configKey,
-		callerCreds,    // For ipc
-		insecure,       // Run server without tls
-		headless,       // fake data
-		serverheadless, // No gui?
-		envPtr)
+	go startVisualizer([]byte{}, configCert, configKey, callerCreds, insecure, headless, serverheadless, envPtr)
 
 	if config != nil {
 		if portInterface, ok := (*config)["grpc_server_port"]; ok {
@@ -241,6 +247,32 @@ func start(pluginName string) {
 		send_err(errors.New("missing common configs"))
 		return
 	}
+}
+
+func startVisualizer(logoIconBytes []byte,
+	mashupCertBytes []byte,
+	mashupKeyBytes []byte,
+	callerCreds *string,
+	insecure *bool,
+	headless *bool,
+	serverheadless *bool,
+	envPtr *string,
+) {
+	if startVisChan == nil {
+		configContext.Log.Println("Visualizer start channel not initialized, unable to start visualizer.")
+		return
+	}
+	// Block visualizer startup until we receive the signal from the shell command
+	<-*startVisChan
+
+	fenestrabase.CommonMain(logoIconBytes,
+		mashupCertBytes,
+		mashupKeyBytes,
+		callerCreds,    // For ipc
+		insecure,       // Run server without tls
+		headless,       // fake data
+		serverheadless, // No gui?
+		envPtr)
 }
 
 func stop() {
@@ -303,6 +335,8 @@ func PostInit(ctx *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 	pluginNameVar = pluginName
+	startVis := make(chan bool, 1)
+	startVisChan = &startVis
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
