@@ -145,6 +145,11 @@ func start(pluginName string) {
 	var config *map[string]any
 	var ok bool
 	if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
+		if config == nil {
+			configContext.Log.Println("Missing common configs")
+			send_err(errors.New("missing common configs"))
+			return
+		}
 		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
 		err := yaml.Unmarshal(configBytes, &config)
 		if err != nil {
