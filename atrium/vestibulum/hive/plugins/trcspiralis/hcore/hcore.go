@@ -26,8 +26,8 @@ var (
 )
 
 const (
-	HELLO_CERT  = "./hello.crt"
-	HELLO_KEY   = "./hellokey.key"
+	HELLO_CERT  = "Common/hello.crt.mf.tmpl"
+	HELLO_KEY   = "Common/hellokey.key.mf.tmpl"
 	COMMON_PATH = "./config.yml"
 )
 
@@ -235,8 +235,8 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext {
 func GetConfigPaths(pluginName string) []string {
 	return []string{
 		COMMON_PATH,
-		HELLO_CERT,
-		HELLO_KEY,
+		// HELLO_CERT, //TODO: no longer setting up grpc server
+		// HELLO_KEY,
 	}
 }
 

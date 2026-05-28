@@ -29,14 +29,14 @@ func CommonMain(logoIconBytes []byte,
 	serverheadless *bool,
 	envPtr *string,
 ) {
-	fenestraLog, err := os.OpenFile("fenestra.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	fenestraLog, err := os.OpenFile("fenestra.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		log.Fatalf(err.Error(), err)
 	}
 	logger := log.New(fenestraLog, "[fenestra]", log.LstdFlags)
 	log.SetOutput(fenestraLog)
 
-	mashupsdk.InitCertKeyPairBytes(mashupCertBytes, mashupKeyBytes)
+	// mashupsdk.InitCertKeyPairBytes(mashupCertBytes, mashupKeyBytes)
 	var DetailedElements []*mashupsdk.MashupDetailedElement
 
 	if *headless {
@@ -51,6 +51,7 @@ func CommonMain(logoIconBytes []byte,
 	}
 
 	tenantDataRenderer := &trcRenderers.EntityDataRenderer{}
+	// TODO: instead of custosworld need g3nworld
 	custosWorld := custosworld.NewCustosWorldApp(*serverheadless, false, DetailedElements, tenantDataRenderer)
 	tenantDataRenderer.CustosWorldApp = custosWorld
 	custosWorld.CustomTabItemRenderer["EntityDataRenderer"] = tenantDataRenderer
@@ -60,9 +61,9 @@ func CommonMain(logoIconBytes []byte,
 	custosWorld.MainWindowSize = fyne.NewSize(800, 100)
 	custosWorld.Icon = fyne.NewStaticResource("Logo", logoIconBytes)
 
-	if !custosWorld.Headless {
-		custosWorld.InitServer(*callerCreds, *insecure, 500*1024*1024)
-	}
+	// if !custosWorld.Headless {
+	// custosWorld.InitServer(*callerCreds, *insecure, 500*1024*1024)
+	// }
 
 	// Initialize the main window.
 	custosWorld.InitMainWindow()

@@ -493,7 +493,7 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	return nil, errors.New("no created time for cert")
 }
 
-func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig, deploymentConfig *map[string]any) {
+func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig, deploymentConfig *map[string]any, serviceResource any) {
 	if pluginHandler == nil || pluginHandler.Name != "Kernel" {
 		driverConfig.CoreConfig.Log.Println("Unsupported handler attempting to add kernel service.")
 		return
@@ -514,6 +514,7 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
 			},
+			ServiceResource: serviceResource,
 		}
 		pluginsync.CreatePluginReadyChannel(service)
 	}
@@ -831,7 +832,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					return
 				}
 			} else {
-				if s, ok := pluginToolConfig["trctype"].(string); plugincoreopts.BuildOptions.IsPluginHardwired() || (ok && (s == "trcshkubeservice") || (s == "trcshcmdtoolplugin")) {
+				if s, ok := pluginToolConfig["trctype"].(string); plugincoreopts.BuildOptions.IsPluginHardwired() || (ok && (s == "trcshkubeservice") || (s == "trcshcmdtoolplugin") || (s == "trcshcmdtoolpluginmain")) {
 					paths = pluginopts.BuildOptions.GetConfigPaths(pluginHandler.Name)
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Unable to access config for %s\n", service)
@@ -1202,6 +1203,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				go reloadFlows(tfmContext.(flow.FlowMachineContext), mod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
 			} else {
+				// Set service resource for command tool plugins that have a process running on main
+				if s, ok := pluginToolConfig["trctype"].(string); ok && s == "trcshcmdtoolpluginmain" {
+					if pluginHandler.ServiceResource != nil {
+						serviceConfig["ServiceResource"] = pluginHandler.ServiceResource
+					}
+				}
 				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
 				_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
 				if err != nil {

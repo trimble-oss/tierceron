@@ -146,7 +146,8 @@ func CommonMain(envPtr *string,
 			trcshDriverConfig.DriverConfig.DeploymentConfig != nil &&
 			(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] != nil &&
 			((*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "kernelplugin" ||
-				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin")
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolplugin" ||
+				(*trcshDriverConfig.DriverConfig.DeploymentConfig)["trctype"] == "trcshcmdtoolpluginmain")
 
 		args := argLines[1:]
 		argOffset := 1
@@ -354,6 +355,7 @@ func CommonMain(envPtr *string,
 		case "trcshpluginservice":
 		case "trcshmutabilispraefecto":
 		case "trcshcmdtoolplugin":
+		case "trcshcmdtoolpluginmain":
 		case "trcflowpluginservice":
 		default:
 			if !*agentdeployPtr {
@@ -1010,7 +1012,7 @@ func CommonMain(envPtr *string,
 						// do we want to remove from available services???
 					} else {
 						if pluginToolConfig != nil {
-							if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice" || s == "trcshcmdtoolplugin") {
+							if s, ok := pluginToolConfig["trctype"].(string); ok && (s == "trcshpluginservice" || s == "trcflowpluginservice" || s == "trcshcmdtoolplugin" || s == "trcshcmdtoolpluginmain") {
 								pluginHandler.LoadPluginMod(trcshDriverConfigBase.DriverConfig, pathToSO)
 							}
 						}

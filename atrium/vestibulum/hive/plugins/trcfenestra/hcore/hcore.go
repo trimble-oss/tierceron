@@ -4,12 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
@@ -18,7 +16,6 @@ import (
 	"github.com/trimble-oss/tierceron-nute-core/mashupsdk"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/data"
 	"github.com/trimble-oss/tierceron/atrium/speculatio/fenestra/fenestrabase"
-	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -27,14 +24,14 @@ var (
 	sender        chan error
 	serverAddr    *string // another way to do this...
 	dfstat        *tccore.TTDINode
-	startVisChan  *chan bool
+	startVisChan  *chan func()
 )
 
 var DetailedElements []*mashupsdk.MashupDetailedElement
 
 const (
-	HELLO_CERT  = "./hello.crt"
-	HELLO_KEY   = "./hellokey.key"
+	HELLO_CERT  = "Common/hello.crt.mf.tmpl"
+	HELLO_KEY   = "Common/hellokey.key.mf.tmpl"
 	COMMON_PATH = "./config.yml"
 )
 
@@ -83,10 +80,10 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 				configContext.Log.Println("fenestra shutting down message receiver")
 			}
 			return
-		case event.Name != nil && *event.Name == "trcsh" && event.Response != nil && *event.Response == "Start Visualizer":
+		case event.Response != nil && *event.Response == "Start Visualizer":
 			configContext.Log.Println("Received request to start visualizer from shell command")
 			if startVisChan != nil {
-				*startVisChan <- true
+				*startVisChan <- startVisualizer
 			} else {
 				configContext.Log.Println("Visualizer start channel not initialized")
 			}
@@ -96,6 +93,20 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			}
 		}
 	}
+}
+
+func startVisualizer() {
+	insecure := true
+	headless := true
+	serverheadless := false
+	fenestrabase.CommonMain([]byte{},
+		[]byte{},
+		[]byte{},
+		new(string),     // For ipc
+		&insecure,       // Run server without tls
+		&headless,       // fake data
+		&serverheadless, // No gui?
+		&configContext.Env)
 }
 
 func init() {
@@ -163,116 +174,80 @@ func start(pluginName string) {
 		fmt.Fprintln(os.Stderr, "no config context initialized for fenestra")
 		return
 	}
-	var config *map[string]any
-	var configCert []byte
-	var configKey []byte
-	var ok bool
+	// var config *map[string]any
+	// var configCert []byte
+	// var configKey []byte
+	// var ok bool
 
-	if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
-		if configContext.Config == nil || (*configContext.Config)[COMMON_PATH] == nil {
-			configContext.Log.Println("Missing common configs")
-			send_err(errors.New("Missing common configs"))
-			return
+	// if config, ok = (*configContext.Config)[COMMON_PATH].(*map[string]any); !ok {
+	// 	if configContext.Config == nil || (*configContext.Config)[COMMON_PATH] == nil {
+	// 		configContext.Log.Println("Missing common configs")
+	// 		send_err(errors.New("Missing common configs"))
+	// 		return
+	// 	}
+	// 	configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
+	// 	err := yaml.Unmarshal(configBytes, config)
+	// 	if err != nil {
+	// 		configContext.Log.Println("Missing common configs")
+	// 		send_err(err)
+	// 		return
+	// 	}
+	// }
+	// if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
+	// 	if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+	// 		configContext.Log.Println("Missing config cert")
+	// 		send_err(errors.New("Missing config cert"))
+	// 		return
+	// 	}
+	// }
+	// if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
+	// 	if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
+	// 		configContext.Log.Println("Missing config key")
+	// 		send_err(errors.New("Missing config key"))
+	// 		return
+	// 	}
+	// }
+
+	// if config != nil {
+	// 	if portInterface, ok := (*config)["grpc_server_port"]; ok {
+	// 		var fenestraPort int
+	// 		if port, ok := portInterface.(int); ok {
+	// 			fenestraPort = port
+	// 		} else {
+	// 			var err error
+	// 			fenestraPort, err = strconv.Atoi(portInterface.(string))
+	// 			if err != nil {
+	// 				configContext.Log.Printf("Failed to process server port: %v", err)
+	// 				send_err(err)
+	// 				return
+	// 			}
+	// 		}
+	// 		configContext.Log.Printf("Server listening on :%d\n", fenestraPort)
+	// 		configContext.Log.Println("Starting server")
+	// 	} else {
+	// 		configContext.Log.Println("Missing config: gprc_server_port")
+	// 		send_err(errors.New("missing config: gprc_server_port"))
+	// 		return
+	// 	}
+	// } else {
+	// 	configContext.Log.Println("Missing common configs")
+	// }
+
+	go func(cmd_send_chan *chan tccore.KernelCmd) {
+		if cmd_send_chan != nil {
+			*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 		}
-		configBytes := (*configContext.Config)[COMMON_PATH].([]byte)
-		err := yaml.Unmarshal(configBytes, config)
-		if err != nil {
-			configContext.Log.Println("Missing common configs")
-			send_err(err)
-			return
-		}
-	}
-	if configCert, ok = (*configContext.ConfigCerts)[HELLO_CERT]; !ok {
-		if configCert, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
-			configContext.Log.Println("Missing config cert")
-			send_err(errors.New("Missing config cert"))
-			return
-		}
-	}
-	if configKey, ok = (*configContext.ConfigCerts)[HELLO_KEY]; !ok {
-		if configKey, ok = (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT]; !ok {
-			configContext.Log.Println("Missing config key")
-			send_err(errors.New("Missing config key"))
-			return
-		}
-	}
-	callerCreds := flag.String("CREDS", "", "Credentials of caller")
-	insecure := flag.Bool("tls-skip-validation", false, "Skip server validation")
-	headless := flag.Bool("headless", false, "Run headless")
-	serverheadless := flag.Bool("serverheadless", false, "Run server completely headless")
-	envPtr := flag.String("env", "QA", "Environment to configure")
-	flag.Parse()
-
-	go startVisualizer([]byte{}, configCert, configKey, callerCreds, insecure, headless, serverheadless, envPtr)
-
-	if config != nil {
-		if portInterface, ok := (*config)["grpc_server_port"]; ok {
-			var fenestraPort int
-			if port, ok := portInterface.(int); ok {
-				fenestraPort = port
-			} else {
-				var err error
-				fenestraPort, err = strconv.Atoi(portInterface.(string))
-				if err != nil {
-					configContext.Log.Printf("Failed to process server port: %v", err)
-					send_err(err)
-					return
-				}
-			}
-			configContext.Log.Printf("Server listening on :%d\n", fenestraPort)
-			configContext.Log.Println("Starting server")
-
-			go func(cmd_send_chan *chan tccore.KernelCmd) {
-				if cmd_send_chan != nil {
-					*cmd_send_chan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
-				}
-			}(configContext.CmdSenderChan)
-			dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
-			dfstat.UpdateDataFlowStatistic("System",
-				pluginName,
-				"Start up",
-				"1",
-				1,
-				func(msg string, err error) {
-					configContext.Log.Println(msg, err)
-				})
-			send_dfstat()
-		} else {
-			configContext.Log.Println("Missing config: gprc_server_port")
-			send_err(errors.New("missing config: gprc_server_port"))
-			return
-		}
-	} else {
-		configContext.Log.Println("Missing common configs")
-		send_err(errors.New("missing common configs"))
-		return
-	}
-}
-
-func startVisualizer(logoIconBytes []byte,
-	mashupCertBytes []byte,
-	mashupKeyBytes []byte,
-	callerCreds *string,
-	insecure *bool,
-	headless *bool,
-	serverheadless *bool,
-	envPtr *string,
-) {
-	if startVisChan == nil {
-		configContext.Log.Println("Visualizer start channel not initialized, unable to start visualizer.")
-		return
-	}
-	// Block visualizer startup until we receive the signal from the shell command
-	<-*startVisChan
-
-	fenestrabase.CommonMain(logoIconBytes,
-		mashupCertBytes,
-		mashupKeyBytes,
-		callerCreds,    // For ipc
-		insecure,       // Run server without tls
-		headless,       // fake data
-		serverheadless, // No gui?
-		envPtr)
+	}(configContext.CmdSenderChan)
+	dfstat = tccore.InitDataFlow(nil, configContext.ArgosId, false)
+	dfstat.UpdateDataFlowStatistic("System",
+		pluginName,
+		"Start up",
+		"1",
+		1,
+		func(msg string, err error) {
+			configContext.Log.Println(msg, err)
+		})
+	send_dfstat()
 }
 
 func stop() {
@@ -320,8 +295,8 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext {
 func GetConfigPaths(pluginName string) []string {
 	return []string{
 		COMMON_PATH,
-		HELLO_CERT,
-		HELLO_KEY,
+		// HELLO_CERT, //TODO: no longer setting up grpc server
+		// HELLO_KEY,
 	}
 }
 
@@ -335,8 +310,6 @@ func PostInit(ctx *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 	pluginNameVar = pluginName
-	startVis := make(chan bool, 1)
-	startVisChan = &startVis
 	configContext, err = tccore.Init(properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
@@ -349,6 +322,11 @@ func Init(pluginName string, properties *map[string]any) {
 	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
 		return
+	}
+	if servResource, ok := (*properties)["ServiceResource"]; ok {
+		if startVisResource, ok := servResource.(*chan func()); ok {
+			startVisChan = startVisResource
+		}
 	}
 	var certbytes []byte
 	var keybytes []byte
