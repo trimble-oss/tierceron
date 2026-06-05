@@ -198,6 +198,12 @@ func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
 	tfContext.FlowState.SyncMode = syncMode
 }
 
+func (tfContext *TrcFlowContext) SetFlowSyncFilter(syncFilter string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
+	tfContext.FlowState.SyncFilter = syncFilter
+}
+
 func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
 	tfContext.FlowStateLock.RLock()
 	defer tfContext.FlowStateLock.RUnlock()
