@@ -60,6 +60,7 @@ type TrcFlowContext struct {
 	ReadOnly                bool
 	DataFlowStatistic       FakeDFStat
 	FlowChatMsgReceiverChan *chan *tccore.ChatMsg // Channel for receiving flow messages
+	pullOnceMu              sync.Mutex            // Mutual exclusion between sync and async pull paths
 	Logger                  *log.Logger
 }
 
@@ -202,6 +203,10 @@ func (tfContext *TrcFlowContext) SetFlowSyncFilter(syncFilter string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
 	tfContext.FlowState.SyncFilter = syncFilter
+}
+
+func (tfContext *TrcFlowContext) GetPullOnceMu() *sync.Mutex {
+	return &tfContext.pullOnceMu
 }
 
 func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
