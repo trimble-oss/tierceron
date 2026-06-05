@@ -1535,6 +1535,10 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 
 	for {
 		msg := <-*pluginHandler.ConfigContext.ChatReceiverChan
+		if msg == nil {
+			driverConfig.CoreConfig.Log.Println("Kernel received nil message")
+			continue
+		}
 		if msg.KernelId == nil || *(msg.KernelId) == "" {
 			msg.KernelId = &pluginHandler.Id
 		}
@@ -1552,6 +1556,10 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			return
 		}
 
+		if msg.Query == nil {
+			driverConfig.CoreConfig.Log.Println("No query provided in chat message.")
+			continue
+		}
 		for _, q := range *msg.Query {
 			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
 			queryPlugin := strings.Split(q, ":")
