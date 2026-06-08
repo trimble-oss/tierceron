@@ -10,8 +10,6 @@ use ./atrium/vestibulum/hive/plugins/trcspiralis
 
 use ./atrium/vestibulum/hive/plugins/trcaurora
 
-use ./atrium/vestibulum/hive/plugins/trcagentic
-
 use ./atrium/vestibulum/hive/plugins/trcshtalk
 
 use ./atrium/vestibulum/hive/plugins/trcmutabilis
