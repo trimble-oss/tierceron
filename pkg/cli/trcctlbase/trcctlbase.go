@@ -287,6 +287,7 @@ func CommonMain(envDefaultPtr *string,
 				IsShell:             true, // Pretend to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				CertCache:           driverConfig.CoreConfig.CertCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,

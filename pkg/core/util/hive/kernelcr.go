@@ -1099,6 +1099,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 										CoreConfig: &coreconfig.CoreConfig{
 											ExitOnFailure: true,
 											TokenCache:    cache.NewTokenCacheEmpty(&rattanAddress),
+											CertCache:     cache.NewCertCache(),
 											Regions:       driverConfig.CoreConfig.Regions,
 											Insecure:      insecure,
 											Log:           driverConfig.CoreConfig.Log,
