@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/trimble-oss/tierceron v1.55.1
-	github.com/trimble-oss/tierceron-core/v2 v2.11.3
+	github.com/trimble-oss/tierceron-core/v2 v2.11.4
 	github.com/trimble-oss/tierceron-nute v1.1.1
 	github.com/trimble-oss/tierceron-nute-core v1.0.6
 	google.golang.org/api v0.226.0
@@ -67,7 +67,7 @@ require (
 // replace github.com/trimble-oss/tierceron-nute => github.com/trimble-oss/tierceron-nute v0.0.0-20231215170009-f41bd163ccda
 replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.5
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.31
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.32
 
 replace (
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.43.0

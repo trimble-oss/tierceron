@@ -75,6 +75,7 @@ func main() {
 			ExitOnFailure: true,
 			IsEditor:      false,
 			TokenCache:    cache.NewTokenCacheEmpty(),
+			CertCache:     cache.NewCertCache(),
 		},
 	}
 

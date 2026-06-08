@@ -17,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
@@ -50,17 +49,7 @@ var dfstat *tccore.TTDINode
 
 var m sync.Mutex
 
-var globalCertCache *cmap.ConcurrentMap[string, *certValue]
-
 var globalPluginStatusChan chan string
-
-type certValue struct {
-	CertBytes   *[]byte
-	CreatedTime any
-	NotAfter    *time.Time
-	lastUpdate  *time.Time
-	sha256      string
-}
 
 type PluginHandler struct {
 	Name             string // service
@@ -96,8 +85,6 @@ type KernelCtx struct {
 
 func InitKernel(id string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
-	certCache := cmap.New[*certValue]()
-	globalCertCache = &certCache
 	deployRestart := make(chan string)
 	pluginRestart := make(chan tccore.KernelCmd)
 	chatReceiverChan := make(chan *tccore.ChatMsg)
@@ -205,8 +192,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 				driverConfig.CoreConfig.Log.Printf("DynamicReloader Problem initializing mod: %s  Trying again later\n", err)
 			}
 		}
-		if globalCertCache != nil && mod != nil {
-			for k, v := range globalCertCache.Items() {
+		if driverConfig.CoreConfig.CertCache != nil && mod != nil {
+			for k, v := range driverConfig.CoreConfig.CertCache.Items() {
 				certPath := strings.TrimPrefix(k, "Common/")
 				certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
 				certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
@@ -248,11 +235,11 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							} else {
 								driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for cert reload check")
 							}
-							if certSha256 != v.sha256 {
+							if certSha256 != v.Sha256 {
 								if pluginHandler.Services == nil {
 									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
 									v.CreatedTime = t
-									globalCertCache.Set(k, v)
+									driverConfig.CoreConfig.CertCache.Set(k, v)
 									goto waitToReload
 								}
 								for s, sPluginHandler := range *pluginHandler.Services {
@@ -275,7 +262,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								eUtils.LogSyncAndExit(driverConfig.CoreConfig.Log, "Shutting down kernel...", 0)
 							} else {
 								v.CreatedTime = t
-								globalCertCache.Set(k, v)
+								driverConfig.CoreConfig.CertCache.Set(k, v)
 								driverConfig.CoreConfig.Log.Printf("Cert %s validated, updating cached CreatedTime to %v\n", k, t)
 								continue
 							}
@@ -283,9 +270,9 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							continue
 						}
 					}
-				} else if v != nil && v.NotAfter != nil && v.lastUpdate != nil && !(*v.NotAfter).IsZero() && globalPluginStatusChan != nil && len(globalPluginStatusChan) == 0 {
+				} else if v != nil && v.NotAfter != nil && v.LastUpdate != nil && !(*v.NotAfter).IsZero() && globalPluginStatusChan != nil && len(globalPluginStatusChan) == 0 {
 					timeDiff := time.Until((*v.NotAfter))
-					if timeDiff <= 0 && ((*v.lastUpdate).IsZero() || time.Since(*v.lastUpdate) < time.Hour) {
+					if timeDiff <= 0 && ((*v.LastUpdate).IsZero() || time.Since(*v.LastUpdate) < time.Hour) {
 						response := fmt.Sprintf("Expired cert %s in kernel, shutting down services.", k)
 						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
 							Name:        &pluginHandler.Name,
@@ -294,7 +281,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							Response:    &response,
 						}, "expired cert notification", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
-						v.lastUpdate = &tiNow
+						v.LastUpdate = &tiNow
 						if pluginHandler.Services != nil {
 							for s, sPluginHandler := range *pluginHandler.Services {
 								if sPluginHandler != nil && sPluginHandler.ConfigContext != nil && (*sPluginHandler.ConfigContext).CmdSenderChan != nil {
@@ -310,7 +297,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								}
 							}
 						}
-					} else if timeDiff <= time.Hour*24 && ((*v.lastUpdate).IsZero() || time.Since(*v.lastUpdate) < time.Hour) && pHID == 0 {
+					} else if timeDiff <= time.Hour*24 && ((*v.LastUpdate).IsZero() || time.Since(*v.LastUpdate) < time.Hour) && pHID == 0 {
 						response := fmt.Sprintf("Cert %s expiring in %.2f hours.", k, timeDiff.Hours())
 						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
 							Name:        &pluginHandler.Name,
@@ -319,8 +306,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							Response:    &response,
 						}, "cert expiring hours", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
-						v.lastUpdate = &tiNow
-					} else if timeDiff <= time.Hour*168 && ((*v.lastUpdate).IsZero() || time.Since(*v.lastUpdate) < time.Hour*24) && pHID == 0 {
+						v.LastUpdate = &tiNow
+					} else if timeDiff <= time.Hour*168 && ((*v.LastUpdate).IsZero() || time.Since(*v.LastUpdate) < time.Hour*24) && pHID == 0 {
 						daysLeft := timeDiff.Hours() / 24.0
 						response := fmt.Sprintf("Cert %s expiring in %d days.", k, int(daysLeft))
 						safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan, &tccore.ChatMsg{
@@ -330,7 +317,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							Response:    &response,
 						}, "cert expiring days", driverConfig.CoreConfig.Log)
 						tiNow := time.Now()
-						v.lastUpdate = &tiNow
+						v.LastUpdate = &tiNow
 					}
 				}
 			}
@@ -427,7 +414,10 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 	// Trim path
 	m.Lock()
 	defer m.Unlock()
-	if v, ok := globalCertCache.Get(path); ok {
+	if driverConfig.CoreConfig.CertCache == nil {
+		driverConfig.CoreConfig.CertCache = cache.NewCertCache()
+	}
+	if v, ok := driverConfig.CoreConfig.CertCache.Get(path); ok {
 		driverConfig.CoreConfig.WantCerts = false
 		return v.CertBytes, nil
 	}
@@ -473,12 +463,12 @@ func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier
 			} else {
 				driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for adding to cert cache")
 			}
-			globalCertCache.Set(path, &certValue{
+			driverConfig.CoreConfig.CertCache.Set(path, &cache.CertValue{
 				CreatedTime: t,
 				CertBytes:   &configuredCert,
 				NotAfter:    certNotAfter,
-				lastUpdate:  &zeroTime,
-				sha256:      certSha256,
+				LastUpdate:  &zeroTime,
+				Sha256:      certSha256,
 			})
 
 			driverConfig.CoreConfig.WantCerts = false
@@ -843,7 +833,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig := make(map[string]any)
 			for _, path := range paths {
 				if strings.HasPrefix(path, "Common") {
-					if v, ok := globalCertCache.Get(path); ok {
+					if v, ok := driverConfig.CoreConfig.CertCache.Get(path); ok {
 						driverConfig.CoreConfig.WantCerts = false
 						serviceConfig[path] = *v.CertBytes
 					} else {
@@ -1109,6 +1099,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 										CoreConfig: &coreconfig.CoreConfig{
 											ExitOnFailure: true,
 											TokenCache:    cache.NewTokenCacheEmpty(&rattanAddress),
+											CertCache:     cache.NewCertCache(),
 											Regions:       driverConfig.CoreConfig.Regions,
 											Insecure:      insecure,
 											Log:           driverConfig.CoreConfig.Log,
@@ -1473,7 +1464,7 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for plugin: %s\n", pluginHandler.Name)
 		return
 	}
-	if globalCertCache == nil {
+	if driverConfig.CoreConfig.CertCache == nil {
 		driverConfig.CoreConfig.Log.Printf("No cert information to broadcast\n")
 		return
 	}
@@ -1498,14 +1489,14 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		time.Sleep(5 * time.Second)
 	}
 	response := ""
-	for k, v := range globalCertCache.Items() {
-		if v != nil && v.NotAfter != nil && !(*v.NotAfter).IsZero() && (*v.lastUpdate).IsZero() {
+	for k, v := range driverConfig.CoreConfig.CertCache.Items() {
+		if v != nil && v.NotAfter != nil && !(*v.NotAfter).IsZero() && (*v.LastUpdate).IsZero() {
 			info := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
 				v.NotAfter.Year(), v.NotAfter.Month(), v.NotAfter.Day(),
 				v.NotAfter.Hour(), v.NotAfter.Minute(), v.NotAfter.Second())
 			response = response + fmt.Sprintf("Cert %s expires on %s\n", k, info)
 			tiNow := time.Now()
-			v.lastUpdate = &tiNow
+			v.LastUpdate = &tiNow
 		}
 	}
 	go safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan,

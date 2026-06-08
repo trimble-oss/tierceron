@@ -34,7 +34,7 @@ require (
 	github.com/graphql-go/graphql v0.8.1
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
-	github.com/trimble-oss/tierceron-core/v2 v2.11.3
+	github.com/trimble-oss/tierceron-core/v2 v2.11.4
 	github.com/trimble-oss/tierceron-hat v1.3.2
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
@@ -56,7 +56,7 @@ require (
 	github.com/klauspost/reedsolomon v1.12.4 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lafriks/go-shamir v1.2.0 // indirect
-	github.com/orcaman/concurrent-map/v2 v2.0.1
+	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/xtaci/kcp-go/v5 v5.6.70 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
@@ -272,7 +272,7 @@ replace github.com/cespare/xxhash => github.com/cespare/xxhash/v2 v2.1.2
 
 replace github.com/dolthub/vitess => github.com/dolthub/vitess v0.0.0-20221121184553-8d519d0bbb91
 
-replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.31
+replace github.com/dolthub/go-mysql-server => github.com/trimble-oss/go-mysql-server v0.12.0-1.32
 
 replace github.com/denisenkom/go-mssqldb => github.com/denisenkom/go-mssqldb v0.12.3
 

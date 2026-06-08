@@ -192,6 +192,11 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				gTokenCache.IsEmpty() {
 				gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
 			}
+			if driverConfigPtr.CoreConfig.CertCache != nil &&
+				!(*driverConfigPtr).CoreConfig.CertCache.IsEmpty() &&
+				gCertCache.IsEmpty() {
+				gCertCache = (*driverConfigPtr).CoreConfig.CertCache
+			}
 			if driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
 				driverConfigPtr.CoreConfig.Regions = regions
 			}
@@ -219,6 +224,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				IsShell:       isShell,
 				IsEditor:      isEditor,
 				TokenCache:    gTokenCache,
+				CertCache:     gCertCache,
 				Insecure:      false,
 				Env:           env,
 				EnvBasis:      eUtils.GetEnvBasis(env),
@@ -308,7 +314,10 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 	return nil
 }
 
-var gTokenCache *cache.TokenCache
+var (
+	gTokenCache *cache.TokenCache
+	gCertCache  *cache.CertCache
+)
 
 // EnableDeployer initializes and starts running deployer for the provided deployment and environment.
 func EnableDeployer(driverConfigPtr *config.DriverConfig,
@@ -437,6 +446,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 	// Initialize the token cache
 	gTokenCache = driverConfigPtr.CoreConfig.TokenCache
+	gCertCache = driverConfigPtr.CoreConfig.CertCache
 
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
@@ -781,6 +791,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		} else {
 			gTokenCache = driverConfigPtr.CoreConfig.TokenCache
+			gCertCache = driverConfigPtr.CoreConfig.CertCache
 		}
 		// Preload agent synchronization configs...
 		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
@@ -855,6 +866,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		gTokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
+		gCertCache = trcshDriverConfig.DriverConfig.CoreConfig.CertCache
 
 		if eUtils.IsWindows() {
 			if !fromWinCred {

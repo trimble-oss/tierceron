@@ -376,11 +376,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						token := new(string)
 						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
 						tokenCache.AddRoleStr("pub", roleCheckPtr)
+						certCache := cache.NewCertCache()
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
 								TokenCache:          tokenCache,
+								CertCache:           certCache,
 								Insecure:            false,
 								Log:                 logger,
 							},
@@ -397,11 +399,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						token := new(string)
 						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
 						tokenCache.AddRoleStr("bamboo", roleCheckPtr)
+						certCache := cache.NewCertCache()
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
 								TokenCache:          tokenCache,
+								CertCache:           certCache,
 								Insecure:            false,
 								Log:                 logger,
 							},

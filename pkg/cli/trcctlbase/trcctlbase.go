@@ -52,6 +52,7 @@ func CommonMain(envDefaultPtr *string,
 			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				TokenCache:    cache.NewTokenCacheEmpty(),
+				CertCache:     cache.NewCertCache(),
 			},
 		}
 	}
@@ -225,6 +226,7 @@ func CommonMain(envDefaultPtr *string,
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				IsEditor:            true, // Pretend to be editor.
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				CertCache:           driverConfig.CoreConfig.CertCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,
@@ -285,6 +287,7 @@ func CommonMain(envDefaultPtr *string,
 				IsShell:             true, // Pretend to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				CertCache:           driverConfig.CoreConfig.CertCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	vcutils "github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase/utils"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -11,6 +12,11 @@ import (
 )
 
 func LoadCertComponent(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, certPath string) ([]byte, error) {
+	if driverConfig.CoreConfig.CertCache != nil {
+		if v, ok := driverConfig.CoreConfig.CertCache.Get(certPath); ok && v != nil && v.CertBytes != nil {
+			return *v.CertBytes, nil
+		}
+	}
 	cert_ps := strings.Split(certPath, "/")
 	if len(cert_ps) != 2 {
 		return nil, errors.New("unable to process cert")
@@ -26,6 +32,12 @@ func LoadCertComponent(driverConfig *config.DriverConfig, goMod *helperkv.Modifi
 	if len(configuredCert) < 2 {
 		return nil, errors.New("No certificate data found")
 	}
-
-	return []byte(configuredCert[1]), nil
+	certBytes := []byte(configuredCert[1])
+	if driverConfig.CoreConfig.CertCache == nil {
+		driverConfig.CoreConfig.CertCache = cache.NewCertCache()
+	}
+	driverConfig.CoreConfig.CertCache.Set(certPath, &cache.CertValue{
+		CertBytes: &certBytes,
+	})
+	return certBytes, nil
 }
