@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdescar
 go 1.26.3
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.11.3
+	github.com/trimble-oss/tierceron-core/v2 v2.11.4
 	gopkg.in/yaml.v2 v2.4.0
 )
 
