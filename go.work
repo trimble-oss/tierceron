@@ -8,8 +8,6 @@ use ./atrium/vestibulum/hive/plugins/trcfenestra
 
 use ./atrium/vestibulum/hive/plugins/trcspiralis
 
-use ./atrium/vestibulum/hive/plugins/trcaurora
-
 use ./atrium/vestibulum/hive/plugins/trcshtalk
 
 use ./atrium/vestibulum/hive/plugins/trcmutabilis
@@ -33,5 +31,3 @@ use ./atrium/vestibulum/hive/plugins/trcprocurator
 use ./atrium/vestibulum/hive/plugins/trctrcsh
 
 use ./atrium/vestibulum/trcchatproxy
-
-replace github.com/dolthub/go-mysql-server => ../go-mysql-server
