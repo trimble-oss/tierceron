@@ -398,9 +398,18 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowc
 		}
 	}
 	if !triggerExist {
-		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), identityColumnNames)
-		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), identityColumnNames)
-		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), identityColumnNames)
+		tableName := tfContext.FlowHeader.TableName()
+		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+		// Wire a Go callback so that any direct SQL write to this table immediately
+		// wakes seedVaultCycle without requiring a polling tick.
+		if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tableName)]; ok {
+			triggerCallback := func() { notificationFlowChannel.Bcast(true) }
+			updTrigger.Callback = triggerCallback
+			insTrigger.Callback = triggerCallback
+			delTrigger.Callback = triggerCallback
+		}
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
