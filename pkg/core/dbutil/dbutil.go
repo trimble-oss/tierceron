@@ -52,12 +52,21 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 		default:
 			return nil, errors.New("unsupported driver for TLS")
 		}
-		clientCertBytes, err = certutil.LoadCertComponent(driverConfig,
+		goMod.Reset()
+
+		// Clone driverConfig so that LoadCertComponent's WantCerts mutation
+		// is isolated to this call and does not race with other goroutines
+		// sharing the original driverConfig.CoreConfig.
+		coreCopy := *driverConfig.CoreConfig
+		driverConfigCopy := *driverConfig
+		driverConfigCopy.CoreConfig = &coreCopy
+		clientCertBytes, err = certutil.LoadCertComponent(&driverConfigCopy,
 			goMod,
 			clientCertPath)
 		if err != nil {
 			return nil, err
 		}
+		driverConfig.CoreConfig.CertCache = driverConfigCopy.CoreConfig.CertCache
 		tlsConfig, err = trctls.GetTlsConfigFromCertBytes(clientCertBytes)
 	} else {
 		tlsConfig, err = trctls.GetTlsConfig(certName)
