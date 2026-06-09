@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -96,6 +97,8 @@ type TrcFlowMachineContext struct {
 	FlowLockMap               *cmap.ConcurrentMap[string, *TrcFlowLock] // Map of locks for each query
 	PreloadChan               chan PermissionUpdate
 	PermissionChan            chan PermissionUpdate // This channel is used to alert for dynamic permissions when tables are loaded
+	apiHTTPClients            map[string]*http.Client
+	apiHTTPClientsMu          sync.RWMutex
 }
 
 var _ flowcore.FlowMachineContext = (*TrcFlowMachineContext)(nil)
@@ -1400,13 +1403,22 @@ func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext fl
 // this CB makes a call on behalf of the caller and returns a map
 // representation of json data provided by the endpoint.
 func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]any, int, error) {
-	httpClient, err := helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
-	if httpClient != nil {
-		defer httpClient.CloseIdleConnections()
-	}
+	tfmContext.apiHTTPClientsMu.RLock()
+	httpClient := tfmContext.apiHTTPClients[host]
+	tfmContext.apiHTTPClientsMu.RUnlock()
 
-	if err != nil {
-		return nil, -1, err
+	if httpClient == nil {
+		var err error
+		httpClient, err = helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
+		if err != nil {
+			return nil, -1, err
+		}
+		tfmContext.apiHTTPClientsMu.Lock()
+		if tfmContext.apiHTTPClients == nil {
+			tfmContext.apiHTTPClients = make(map[string]*http.Client)
+		}
+		tfmContext.apiHTTPClients[host] = httpClient
+		tfmContext.apiHTTPClientsMu.Unlock()
 	}
 	if getOrPost {
 		return trcvutils.GetJSONFromClientByGet(tfmContext.DriverConfig.CoreConfig, httpClient, apiAuthHeaders, apiEndpoint, bodyData)
