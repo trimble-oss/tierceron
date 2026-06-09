@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
@@ -69,7 +70,25 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 		driverConfig.CoreConfig.CertCache = driverConfigCopy.CoreConfig.CertCache
 		tlsConfig, err = trctls.GetTlsConfigFromCertBytes(clientCertBytes)
 	} else {
-		tlsConfig, err = trctls.GetTlsConfig(certName)
+		cacheKey := certName
+		if cacheKey == "" {
+			cacheKey = trctls.ServCert
+		}
+		var certBytes []byte
+		if driverConfig.CoreConfig.CertCache != nil {
+			if cv, ok := driverConfig.CoreConfig.CertCache.Get(cacheKey); ok && cv != nil && cv.CertBytes != nil {
+				certBytes = *cv.CertBytes
+			}
+		}
+		if certBytes == nil {
+			certBytes, err = trctls.ReadServerCert(certName)
+			if err == nil && driverConfig.CoreConfig.CertCache != nil {
+				driverConfig.CoreConfig.CertCache.Set(cacheKey, &cache.CertValue{CertBytes: &certBytes})
+			}
+		}
+		if err == nil {
+			tlsConfig, err = trctls.GetTlsConfigFromCertBytes(certBytes)
+		}
 	}
 	if err != nil {
 		return nil, err

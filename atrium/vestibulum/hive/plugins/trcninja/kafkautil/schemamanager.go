@@ -21,13 +21,6 @@ func InitSchemaManager(schemaCert []byte, schemaSource string, schemaUser string
 		// This allows for development/testing scenarios
 	}
 
-	caCertPool := x509.NewCertPool()
-	if len(schemaCert) > 0 {
-		if ok := caCertPool.AppendCertsFromPEM(schemaCert); !ok {
-			// Log warning - certificates may be invalid but continue
-		}
-	}
-
 	var tlsConfig *tls.Config
 	if len(schemaCert) > 0 {
 		caCertPool := x509.NewCertPool()

@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
@@ -31,6 +32,7 @@ import (
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 )
 
@@ -42,6 +44,8 @@ type AgentConfigs struct {
 	Deployments     *string
 	Env             *string
 	Drone           *bool
+	cachedCreds     credentials.TransportCredentials
+	credsOnce       sync.Once
 }
 
 type TrcshDriverConfig struct {
@@ -191,6 +195,16 @@ func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort b
 	return errors.New("Bad host: " + host)
 }
 
+func (agentconfig *AgentConfigs) getTransportCreds() (credentials.TransportCredentials, error) {
+	agentconfig.credsOnce.Do(func() {
+		agentconfig.cachedCreds, _ = tls.GetTransportCredentials(false, agentconfig.Drone)
+	})
+	if agentconfig.cachedCreds == nil {
+		return tls.GetTransportCredentials(false, agentconfig.Drone)
+	}
+	return agentconfig.cachedCreds, nil
+}
+
 func (agentconfig *AgentConfigs) RetryingPenseFeatherQuery(pense string) (*string, error) {
 	return agentconfig.RetryingPenseFeatherQueryWithContext(agentconfig.FeatherContext, pense)
 }
@@ -200,7 +214,7 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQueryWithContext(featherCtx
 		maxRetries = 17
 		retrySleep = 300 * time.Millisecond
 	)
-	creds, credErr := tls.GetTransportCredentials(false, agentconfig.Drone)
+	creds, credErr := agentconfig.getTransportCreds()
 	if credErr != nil {
 		return nil, credErr
 	}
@@ -292,7 +306,7 @@ func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.Fea
 }
 
 func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContext, pense string) (*string, error) {
-	creds, credErr := tls.GetTransportCredentials(false, agentconfig.Drone)
+	creds, credErr := agentconfig.getTransportCreds()
 	if credErr != nil {
 		return nil, credErr
 	}
@@ -413,7 +427,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 			isDrone = *drone[0]
 		}
 		agentconfig := &AgentConfigs{
-			captiplib.FeatherCtlInit(nil,
+			FeatherContext: captiplib.FeatherCtlInit(nil,
 				trcHatHostLocal,
 				&trcHatEncryptPass,
 				&trcHatEncryptSalt,
@@ -422,12 +436,12 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 				&sessionIdentifier,
 				&env,
 				acceptRemoteFunc, interruptedFunc),
-			agentTokenPtr,
-			&hatFeatherHostAddr,
-			new(string),
-			&deployments,
-			&trcHatEnv,
-			&isDrone,
+			AgentToken:      agentTokenPtr,
+			FeatherHostPort: &hatFeatherHostAddr,
+			DeployRoleID:    new(string),
+			Deployments:     &deployments,
+			Env:             &trcHatEnv,
+			Drone:           &isDrone,
 		}
 
 		if !initNewTrcsh {
