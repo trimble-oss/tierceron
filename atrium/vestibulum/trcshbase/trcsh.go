@@ -1998,7 +1998,7 @@ collaboratorReRun:
 				}
 				time.Sleep(time.Second)
 			} else if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-				// Only restart deployment if explicitly requested via RESETTING state
+				// Only restart deployment if explicitly requested via RESETTING state.
 				content = nil
 				goto collaboratorReRun
 			} else {
@@ -2011,37 +2011,11 @@ collaboratorReRun:
 }
 
 func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
-	lastCtlChanLen := 0
-	waitCtr := 0
-	for {
-		ctlChanLen := len(trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan)
-		if ctlChanLen > 0 && waitCtr < 10 {
-			if lastCtlChanLen != ctlChanLen {
-				waitCtr = 0
-			} else {
-				waitCtr++
-			}
-			lastCtlChanLen = ctlChanLen
-			time.Sleep(1 * time.Second)
-		} else {
-			if waitCtr == 10 {
-			drainLoop:
-				for {
-					select {
-					case <-trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan:
-					case <-time.After(120 * time.Second):
-						break drainLoop
-					}
-				}
-			} else {
-				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
-			}
-			// Wait briefly to ensure last item is transmitted before completing
-			// TODO: need ack... but that defeats purpose of kcp...
-			time.Sleep(3 * time.Second)
-			trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
-			atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
-			break
-		}
-	}
+	// DeploymentCtlMessageChan is FIFO and FeatherCtlEmitter processes each message
+	// sequentially (waits for controller ack before pulling the next). Appending
+	// CTL_COMPLETE after all deploy lines guarantees it is processed last, with no
+	// polling or sleeping required.
+	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
+	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
+	atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 }
