@@ -1994,16 +1994,12 @@ collaboratorReRun:
 			state := atomic.LoadInt64(&featherCtx.RunState)
 			if state == cap.RUNNING {
 				sawCompletionRun = true
-				time.Sleep(time.Second)
-			} else if sawCompletionRun {
-				// Once the completion handshake drains, return to the idle collaborator loop
-				// and wait for the next explicit controller request.
+			} else if sawCompletionRun && state == cap.RUN_STARTED {
+				// Only rearm once the emitter has fully returned to its idle perch state.
 				content = nil
 				goto collaboratorReRun
-			} else {
-				// Other states - keep waiting
-				time.Sleep(time.Second)
 			}
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	// Make the arguments in the script -> os.args.
