@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/danieljoos/wincred"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
@@ -57,6 +58,7 @@ var (
 	gTrcshConfigOnce    sync.Once
 	kernelPluginHandler *hive.PluginHandler = nil
 	logEnvOnce          sync.Once
+	deployCtlSeenLines  = cmap.New[struct{}]()
 )
 
 var MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
@@ -258,6 +260,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 // Logging of deployer controller activities..
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
 	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
+		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		if eUtils.IsWindows() {
 			featherCtx.Log.Println("Deployment controller complete")
@@ -268,11 +271,15 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	}
 
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
-		fmt.Fprintf(os.Stderr, "%s\n", msg)
+		emitKey := strings.TrimSpace(msg)
+		if len(emitKey) == 0 || deployCtlSeenLines.SetIfAbsent(emitKey, struct{}{}) {
+			fmt.Fprintf(os.Stderr, "%s\n", msg)
+		}
 	}
 	deployerID, _ := deployopts.BuildOptions.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
 	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerID, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
+		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		if eUtils.IsWindows() {
 			featherCtx.Log.Println("Deployment encountered errors")
@@ -785,7 +792,6 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		shutdown := make(chan bool)
-
 		if !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 			fmt.Fprintf(os.Stderr, "drone trcsh beginning new agent configuration sequence.\n")
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
@@ -1989,59 +1995,28 @@ collaboratorReRun:
 		}
 	}
 	if *dronePtr && !gTrcshConfig.IsShellRunner {
-		completeOnce := false
+		closeCleanupMessaging(trcshDriverConfig)
+		sawCompletionRun := atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING
 		for {
-			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
-				if !completeOnce {
-					closeCleanupMessaging(trcshDriverConfig)
-					completeOnce = true
-				}
-				time.Sleep(time.Second)
-			} else if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-				// Only restart deployment if explicitly requested via RESETTING state
+			state := atomic.LoadInt64(&featherCtx.RunState)
+			if state == cap.RUNNING {
+				sawCompletionRun = true
+			} else if sawCompletionRun && state == cap.RUN_STARTED {
+				// Only rearm once the emitter has fully returned to its idle perch state.
 				content = nil
 				goto collaboratorReRun
-			} else {
-				// Other states - keep waiting
-				time.Sleep(time.Second)
 			}
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	// Make the arguments in the script -> os.args.
 }
 
 func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
-	lastCtlChanLen := 0
-	waitCtr := 0
-	for {
-		ctlChanLen := len(trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan)
-		if ctlChanLen > 0 && waitCtr < 10 {
-			if lastCtlChanLen != ctlChanLen {
-				waitCtr = 0
-			} else {
-				waitCtr++
-			}
-			lastCtlChanLen = ctlChanLen
-			time.Sleep(1 * time.Second)
-		} else {
-			if waitCtr == 10 {
-			drainLoop:
-				for {
-					select {
-					case <-trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan:
-					case <-time.After(120 * time.Second):
-						break drainLoop
-					}
-				}
-			} else {
-				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
-			}
-			// Wait briefly to ensure last item is transmitted before completing
-			// TODO: need ack... but that defeats purpose of kcp...
-			time.Sleep(3 * time.Second)
-			trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
-			atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
-			break
-		}
-	}
+	// DeploymentCtlMessageChan is FIFO and FeatherCtlEmitter processes each message
+	// sequentially (waits for controller ack before pulling the next). Appending
+	// CTL_COMPLETE after all deploy lines guarantees it is processed last, with no
+	// polling or sleeping required.
+	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
+	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
 }

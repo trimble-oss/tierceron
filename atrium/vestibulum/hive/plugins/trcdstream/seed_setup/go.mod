@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdstream/seed_setup
 
-go 1.26.3
+go 1.26.4
 
 require (
 	github.com/google/uuid v1.6.0
@@ -19,7 +19,7 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
-	github.com/trimble-oss/tierceron-core/v2 v2.11.4 // indirect
+	github.com/trimble-oss/tierceron-core/v2 v2.11.5 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.4 // indirect
 	github.com/twmb/franz-go v1.20.7 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect

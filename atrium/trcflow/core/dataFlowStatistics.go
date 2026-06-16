@@ -15,6 +15,7 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
+	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -45,6 +46,15 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 		return &aFleet, errors.New("no project was found for argosyFleet")
 	}
 
+	driverConfig := &config.DriverConfig{
+		CoreConfig: &coreconfig.CoreConfig{
+			ExitOnFailure: true,
+			Insecure:      mod.Insecure,
+			Log:           logger,
+			CertCache:     cache.NewCertCache(),
+		},
+	}
+
 	for _, idNameList := range idNameListData.Data {
 		for _, idName := range idNameList.([]any) {
 			idListData, idListErr := mod.List(fmt.Sprintf("super-secrets/Index/%s/tenantId", project), logger)
@@ -62,14 +72,6 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 				if readErr != nil {
 					return &aFleet, readErr
 				} else {
-					driverConfig := &config.DriverConfig{
-						CoreConfig: &coreconfig.CoreConfig{
-							ExitOnFailure: true,
-							Insecure:      mod.Insecure,
-							Log:           logger,
-						},
-					}
-
 					sourceDatabaseConnectionMap := map[string]any{
 						"dbsourceurl":      buildopts.BuildOptions.GetTrcDbUrl(data),
 						"dbsourceuser":     data["dbuser"],
