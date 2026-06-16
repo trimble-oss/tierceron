@@ -785,7 +785,6 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		shutdown := make(chan bool)
-
 		if !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 			fmt.Fprintf(os.Stderr, "drone trcsh beginning new agent configuration sequence.\n")
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
@@ -1989,16 +1988,16 @@ collaboratorReRun:
 		}
 	}
 	if *dronePtr && !gTrcshConfig.IsShellRunner {
-		completeOnce := false
+		closeCleanupMessaging(trcshDriverConfig)
+		sawCompletionRun := atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING
 		for {
-			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
-				if !completeOnce {
-					closeCleanupMessaging(trcshDriverConfig)
-					completeOnce = true
-				}
+			state := atomic.LoadInt64(&featherCtx.RunState)
+			if state == cap.RUNNING {
+				sawCompletionRun = true
 				time.Sleep(time.Second)
-			} else if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-				// Only restart deployment if explicitly requested via RESETTING state.
+			} else if sawCompletionRun {
+				// Once the completion handshake drains, return to the idle collaborator loop
+				// and wait for the next explicit controller request.
 				content = nil
 				goto collaboratorReRun
 			} else {
@@ -2017,5 +2016,4 @@ func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
 	// polling or sleeping required.
 	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
 	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
-	atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 }
