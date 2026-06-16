@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/danieljoos/wincred"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
@@ -57,6 +58,7 @@ var (
 	gTrcshConfigOnce    sync.Once
 	kernelPluginHandler *hive.PluginHandler = nil
 	logEnvOnce          sync.Once
+	deployCtlSeenLines  = cmap.New[struct{}]()
 )
 
 var MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
@@ -258,6 +260,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 // Logging of deployer controller activities..
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
 	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
+		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		if eUtils.IsWindows() {
 			featherCtx.Log.Println("Deployment controller complete")
@@ -268,11 +271,15 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	}
 
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
-		fmt.Fprintf(os.Stderr, "%s\n", msg)
+		emitKey := strings.TrimSpace(msg)
+		if len(emitKey) == 0 || deployCtlSeenLines.SetIfAbsent(emitKey, struct{}{}) {
+			fmt.Fprintf(os.Stderr, "%s\n", msg)
+		}
 	}
 	deployerID, _ := deployopts.BuildOptions.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
 	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerID, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
+		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		if eUtils.IsWindows() {
 			featherCtx.Log.Println("Deployment encountered errors")
