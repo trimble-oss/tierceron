@@ -1532,8 +1532,15 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 }
 
 func (pluginHandler *PluginHandler) sendMsgFailureBroadcast(driverConfig *config.DriverConfig, failedService string) {
-	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
-		driverConfig.CoreConfig.Log.Printf("Message failure broadcasting not supported for plugin: %s\n", pluginHandler.Name)
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.Log == nil {
+		return
+	}
+	if failedService == "trcshtalk" {
+		driverConfig.CoreConfig.Log.Printf("Skipping message failure broadcast for %s to avoid recursive delivery failures\n", failedService)
+		return
+	}
+	if pluginHandler == nil || pluginHandler.Name != "Kernel" || pluginHandler.Services == nil || len(*pluginHandler.Services) == 0 || pluginHandler.ConfigContext == nil || pluginHandler.ConfigContext.ChatReceiverChan == nil {
+		driverConfig.CoreConfig.Log.Printf("Message failure broadcasting not supported for plugin: %v\n", pluginHandler)
 		return
 	}
 	response := "Message delivery to " + failedService + " timed out after 10 seconds."
