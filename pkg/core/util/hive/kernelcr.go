@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
@@ -50,6 +51,7 @@ var dfstat *tccore.TTDINode
 var m sync.Mutex
 
 var globalPluginStatusChan chan string
+var msgFailureBroadcastCounter atomic.Int32
 
 type PluginHandler struct {
 	Name             string // service
@@ -144,7 +146,14 @@ func safeChannelSend[T any](ch *chan T, value T, logPrefix string, log *log.Logg
 		}
 	}()
 
-	*ch <- value
+	select {
+	case *ch <- value:
+	case <-time.After(10 * time.Second):
+		success = false
+		if log != nil {
+			log.Printf("safeChannelSend timeout %s: unable to send to channel after 10 seconds, exiting\n", logPrefix)
+		}
+	}
 	return
 }
 
@@ -248,10 +257,14 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 										continue
 									}
 									if kernelopts.BuildOptions.IsKernel() {
-										safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+										success := safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 											PluginName: sPluginHandler.Name,
 											Command:    tccore.PLUGIN_EVENT_STOP,
 										}, fmt.Sprintf("cert reload shutdown %s", s), driverConfig.CoreConfig.Log)
+										if !success {
+											driverConfig.CoreConfig.Log.Printf("Failed to send cert reload shutdown command to service: %s\n", s)
+											pluginHandler.sendMsgFailureBroadcast(driverConfig, sPluginHandler.Name)
+										}
 									}
 									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 								}
@@ -286,10 +299,14 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							for s, sPluginHandler := range *pluginHandler.Services {
 								if sPluginHandler != nil && sPluginHandler.ConfigContext != nil && (*sPluginHandler.ConfigContext).CmdSenderChan != nil {
 									if sPluginHandler.Name != "healthcheck" {
-										safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+										success := safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 											PluginName: sPluginHandler.Name,
 											Command:    tccore.PLUGIN_EVENT_STOP,
 										}, fmt.Sprintf("cert expiration shutdown %s", s), driverConfig.CoreConfig.Log)
+										if !success {
+											driverConfig.CoreConfig.Log.Printf("Failed to send cert expiration shutdown command to service: %s\n", s)
+											pluginHandler.sendMsgFailureBroadcast(driverConfig, sPluginHandler.Name)
+										}
 										driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
 									}
 								} else {
@@ -351,10 +368,14 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 									goto waitToReload
 								}
 								driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", service)
-								safeChannelSend(servPh.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+								success := safeChannelSend(servPh.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 									PluginName: servPh.Name,
 									Command:    tccore.PLUGIN_EVENT_STOP,
 								}, fmt.Sprintf("kube service restart %s", service), driverConfig.CoreConfig.Log)
+								if !success {
+									driverConfig.CoreConfig.Log.Printf("Failed to send shutdown command to kube service: %s\n", service)
+									pluginHandler.sendMsgFailureBroadcast(driverConfig, servPh.Name)
+								}
 
 								if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil && *pluginHandler.KernelCtx.PluginRestartChan != nil {
 									cmd := <-*pluginHandler.KernelCtx.PluginRestartChan
@@ -383,10 +404,14 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 							for s, sPluginHandler := range *pluginHandler.Services {
 								if sPluginHandler != nil && sPluginHandler.ConfigContext != nil && (*sPluginHandler.ConfigContext).CmdSenderChan != nil {
 									driverConfig.CoreConfig.Log.Printf("Shutting down service: %s\n", s)
-									safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+									success := safeChannelSend(sPluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 										PluginName: sPluginHandler.Name,
 										Command:    tccore.PLUGIN_EVENT_STOP,
 									}, fmt.Sprintf("service shutdown %s", s), driverConfig.CoreConfig.Log)
+									if !success {
+										driverConfig.CoreConfig.Log.Printf("Failed to send shutdown command to service: %s\n", s)
+										pluginHandler.sendMsgFailureBroadcast(driverConfig, sPluginHandler.Name)
+									}
 
 									if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil && *pluginHandler.KernelCtx.PluginRestartChan != nil {
 										cmd := <-*pluginHandler.KernelCtx.PluginRestartChan
@@ -1508,6 +1533,34 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		}, "init broadcast sender", driverConfig.CoreConfig.Log)
 }
 
+func (pluginHandler *PluginHandler) sendMsgFailureBroadcast(driverConfig *config.DriverConfig, failedService string) {
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.Log == nil {
+		return
+	}
+	if failedService == "trcshtalk" {
+		driverConfig.CoreConfig.Log.Printf("Skipping message failure broadcast for %s to avoid recursive delivery failures\n", failedService)
+		return
+	}
+	if pluginHandler == nil || pluginHandler.Name != "Kernel" || pluginHandler.Services == nil || len(*pluginHandler.Services) == 0 || pluginHandler.ConfigContext == nil || pluginHandler.ConfigContext.ChatReceiverChan == nil {
+		driverConfig.CoreConfig.Log.Printf("Message failure broadcasting not supported for plugin: %v\n", pluginHandler)
+		return
+	}
+	if msgFailureBroadcastCounter.Add(1) > 3 {
+		return
+	}
+	response := "Message delivery to " + failedService + " timed out after 10 seconds."
+	broadcastSuccess := safeChannelSend(pluginHandler.ConfigContext.ChatReceiverChan,
+		&tccore.ChatMsg{
+			Name:        &pluginHandler.Name,
+			Query:       &[]string{"trcshtalk"},
+			IsBroadcast: true,
+			Response:    &response,
+		}, "msg failure broadcast sender", driverConfig.CoreConfig.Log)
+	if !broadcastSuccess {
+		driverConfig.CoreConfig.Log.Printf("Failed to broadcast message failure to trcshtalk for service: %s\n", failedService)
+	}
+}
+
 func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig) {
 	if pluginHandler == nil || (*pluginHandler).Name != "Kernel" || len(*pluginHandler.Services) == 0 {
 		driverConfig.CoreConfig.Log.Printf("Chat handling not supported for plugin: %s\n", pluginHandler.Name)
@@ -1538,10 +1591,16 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			for _, p := range *pluginHandler.Services {
 				if p != nil && p.ConfigContext != nil && p.ConfigContext.ChatSenderChan != nil && *msg.Query != nil && len(*msg.Query) > 0 && (*msg.Query)[0] == p.Name {
-					go safeChannelSend(p.ConfigContext.ChatSenderChan, &tccore.ChatMsg{
-						Name:     msg.Name,
-						KernelId: &pluginHandler.Id,
-					}, "SHUTDOWN plugin chat receiver", driverConfig.CoreConfig.Log)
+					go func(p *PluginHandler) {
+						success := safeChannelSend(p.ConfigContext.ChatSenderChan, &tccore.ChatMsg{
+							Name:     msg.Name,
+							KernelId: &pluginHandler.Id,
+						}, "SHUTDOWN plugin chat receiver", driverConfig.CoreConfig.Log)
+						if !success {
+							driverConfig.CoreConfig.Log.Printf("Failed to send shutdown message to plugin: %s\n", p.Name)
+							pluginHandler.sendMsgFailureBroadcast(driverConfig, p.Name)
+						}
+					}(p)
 				}
 			}
 			return
@@ -1602,7 +1661,13 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 					driverConfig.CoreConfig.Log.Printf("Unable to send query from %s\n", *msg.Name)
 					continue
 				}
-				go safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
+				go func() {
+					success := safeChannelSend(&chatSenderChan, newMsg, "chat sender", driverConfig.CoreConfig.Log)
+					if !success {
+						driverConfig.CoreConfig.Log.Printf("Failed to send chat message from %s\n", *msg.Name)
+						pluginHandler.sendMsgFailureBroadcast(driverConfig, plugin.Name)
+					}
+				}()
 			} else if eUtils.RefLength(msg.Name) > 0 && !msg.IsBroadcast {
 				if plugin, ok := (*pluginHandler.Services)[*msg.Name]; ok && plugin != nil && plugin.State == 1 {
 					// Querying plugin is running - forward the message
@@ -1620,7 +1685,13 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 					time.Sleep(2 * time.Second) // Give time for the plugin to start
 					msg.Response = &responseError
 					if plugin.ConfigContext != nil && plugin.ConfigContext.ChatSenderChan != nil {
-						go safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
+						go func() {
+							success := safeChannelSend(plugin.ConfigContext.ChatSenderChan, msg, "unavailable service notification", driverConfig.CoreConfig.Log)
+							if !success {
+								driverConfig.CoreConfig.Log.Printf("Failed to send unavailable service notification to plugin: %s\n", plugin.Name)
+								pluginHandler.sendMsgFailureBroadcast(driverConfig, plugin.Name)
+							}
+						}()
 					}
 				} else {
 					driverConfig.CoreConfig.Log.Printf("Service unavailable to send response: %s\n", *msg.Name)
