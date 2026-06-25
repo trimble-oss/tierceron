@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
@@ -50,6 +51,7 @@ var dfstat *tccore.TTDINode
 var m sync.Mutex
 
 var globalPluginStatusChan chan string
+var msgFailureBroadcastCounter atomic.Int32
 
 type PluginHandler struct {
 	Name             string // service
@@ -1541,6 +1543,9 @@ func (pluginHandler *PluginHandler) sendMsgFailureBroadcast(driverConfig *config
 	}
 	if pluginHandler == nil || pluginHandler.Name != "Kernel" || pluginHandler.Services == nil || len(*pluginHandler.Services) == 0 || pluginHandler.ConfigContext == nil || pluginHandler.ConfigContext.ChatReceiverChan == nil {
 		driverConfig.CoreConfig.Log.Printf("Message failure broadcasting not supported for plugin: %v\n", pluginHandler)
+		return
+	}
+	if msgFailureBroadcastCounter.Add(1) > 3 {
 		return
 	}
 	response := "Message delivery to " + failedService + " timed out after 10 seconds."
