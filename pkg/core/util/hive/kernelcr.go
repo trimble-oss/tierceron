@@ -144,7 +144,15 @@ func safeChannelSend[T any](ch *chan T, value T, logPrefix string, log *log.Logg
 		}
 	}()
 
-	*ch <- value
+	select {
+	case *ch <- value:
+	case <-time.After(10 * time.Second):
+		success = false
+		if log != nil {
+			log.Printf("safeChannelSend timeout %s: unable to send to channel after 10 seconds, exiting\n", logPrefix)
+		}
+		os.Exit(0)
+	}
 	return
 }
 
