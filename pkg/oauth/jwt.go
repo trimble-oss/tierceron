@@ -30,19 +30,19 @@ type JWKSet struct {
 
 // IDTokenClaims represents the claims in an ID token
 type IDTokenClaims struct {
-	Issuer        string                 `json:"iss"`
-	Subject       string                 `json:"sub"`
-	Audience      interface{}            `json:"aud"` // Can be string or []string
-	ExpiresAt     int64                  `json:"exp"`
-	IssuedAt      int64                  `json:"iat"`
-	AuthTime      int64                  `json:"auth_time,omitempty"`
-	Nonce         string                 `json:"nonce,omitempty"`
-	Email         string                 `json:"email,omitempty"`
-	EmailVerified bool                   `json:"email_verified,omitempty"`
-	Name          string                 `json:"name,omitempty"`
-	GivenName     string                 `json:"given_name,omitempty"`
-	FamilyName    string                 `json:"family_name,omitempty"`
-	OtherClaims   map[string]interface{} `json:"-"`
+	Issuer        string         `json:"iss"`
+	Subject       string         `json:"sub"`
+	Audience      any            `json:"aud"` // Can be string or []string
+	ExpiresAt     int64          `json:"exp"`
+	IssuedAt      int64          `json:"iat"`
+	AuthTime      int64          `json:"auth_time,omitempty"`
+	Nonce         string         `json:"nonce,omitempty"`
+	Email         string         `json:"email,omitempty"`
+	EmailVerified bool           `json:"email_verified,omitempty"`
+	Name          string         `json:"name,omitempty"`
+	GivenName     string         `json:"given_name,omitempty"`
+	FamilyName    string         `json:"family_name,omitempty"`
+	OtherClaims   map[string]any `json:"-"`
 }
 
 // FetchJWKS fetches the JSON Web Key Set from the JWKS URI
@@ -142,7 +142,7 @@ func VerifyIDToken(ctx context.Context, idToken string, jwksURI string, clientID
 	switch aud := claims.Audience.(type) {
 	case string:
 		audienceValid = aud == clientID
-	case []interface{}:
+	case []any:
 		for _, a := range aud {
 			if str, ok := a.(string); ok && str == clientID {
 				audienceValid = true

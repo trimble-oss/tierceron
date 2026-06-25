@@ -57,6 +57,7 @@ func main() {
 				Insecure:             false,
 				CurrentRoleEntityPtr: new(string),
 				TokenCache:           cache.NewTokenCacheEmpty(),
+				CertCache:            cache.NewCertCache(),
 			},
 			IsShellSubProcess: false,
 			StartDir:          []string{""},

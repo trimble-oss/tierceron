@@ -57,7 +57,7 @@ func LoginToLocal() (string, error) {
 		// 	Username:    username,
 		// 	Password:    string(password),
 		// })
-		for i := 0; i < len(password); i++ {
+		for i := range password {
 			password[i] = 0
 		}
 		httpsClient.CloseIdleConnections()

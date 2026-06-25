@@ -60,6 +60,7 @@ type TrcFlowContext struct {
 	ReadOnly                bool
 	DataFlowStatistic       FakeDFStat
 	FlowChatMsgReceiverChan *chan *tccore.ChatMsg // Channel for receiving flow messages
+	pullOnceMu              sync.Mutex            // Mutual exclusion between sync and async pull paths
 	Logger                  *log.Logger
 }
 
@@ -198,6 +199,16 @@ func (tfContext *TrcFlowContext) SetFlowSyncMode(syncMode string) {
 	tfContext.FlowState.SyncMode = syncMode
 }
 
+func (tfContext *TrcFlowContext) SetFlowSyncFilter(syncFilter string) {
+	tfContext.FlowStateLock.Lock()
+	defer tfContext.FlowStateLock.Unlock()
+	tfContext.FlowState.SyncFilter = syncFilter
+}
+
+func (tfContext *TrcFlowContext) GetPullOnceMu() *sync.Mutex {
+	return &tfContext.pullOnceMu
+}
+
 func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
 	tfContext.FlowStateLock.RLock()
 	defer tfContext.FlowStateLock.RUnlock()
@@ -207,6 +218,7 @@ func (tfContext *TrcFlowContext) GetLastRefreshedTime() string {
 func (tfContext *TrcFlowContext) SetLastRefreshedTime(lastRefreshed string) {
 	tfContext.FlowStateLock.Lock()
 	defer tfContext.FlowStateLock.Unlock()
+	tfContext.Logger.Printf("Setting last refreshed time to %s for flow %s\n", lastRefreshed, tfContext.FlowHeader.Name)
 	tfContext.LastRefreshed = lastRefreshed
 }
 

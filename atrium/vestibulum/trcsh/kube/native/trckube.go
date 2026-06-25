@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/resource"
-	"k8s.io/component-base/cli"
 	"k8s.io/klog/v2"
 
 	"k8s.io/client-go/rest"
@@ -22,7 +22,6 @@ import (
 	"k8s.io/kubectl/pkg/cmd"
 	"k8s.io/kubectl/pkg/cmd/apply"
 	"k8s.io/kubectl/pkg/cmd/plugin"
-	"k8s.io/kubectl/pkg/cmd/util"
 	cmdutil "k8s.io/kubectl/pkg/cmd/util"
 	kubectlutil "k8s.io/kubectl/pkg/util"
 
@@ -31,7 +30,6 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/path"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcsh/kube/native/trccreate"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 )
 
 const (
@@ -68,6 +66,50 @@ type TrcKubeConfig struct {
 	KubeDirective *TrcKubeDirective
 
 	PipeOS trcshio.TrcshReadWriteCloser // Where to send output.
+}
+
+func loadInMemoryKubeConfig(trcKubeDeploymentConfig *TrcKubeConfig, filename string) (*clientcmdapi.Config, error) {
+	if trcKubeDeploymentConfig == nil {
+		return nil, fmt.Errorf("missing tierceron kube configuration")
+	}
+	if apiConfig, ok := trcKubeDeploymentConfig.ApiConfig[filename]; ok {
+		return apiConfig, nil
+	}
+	if len(trcKubeDeploymentConfig.KubeConfigBytes) == 0 {
+		return nil, fmt.Errorf("tierceron requires in-memory kubeconfig bytes; disk kubeconfig loading is disabled")
+	}
+
+	config, err := clientcmd.Load(trcKubeDeploymentConfig.KubeConfigBytes)
+	if err != nil {
+		return nil, err
+	}
+	klog.V(6).Infoln("Config loaded from memory for:", filename)
+
+	for key, obj := range config.AuthInfos {
+		obj.LocationOfOrigin = filename
+		config.AuthInfos[key] = obj
+	}
+	for key, obj := range config.Clusters {
+		obj.LocationOfOrigin = filename
+		config.Clusters[key] = obj
+	}
+	for key, obj := range config.Contexts {
+		obj.LocationOfOrigin = filename
+		config.Contexts[key] = obj
+	}
+
+	if config.AuthInfos == nil {
+		config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
+	}
+	if config.Clusters == nil {
+		config.Clusters = map[string]*clientcmdapi.Cluster{}
+	}
+	if config.Contexts == nil {
+		config.Contexts = map[string]*clientcmdapi.Context{}
+	}
+
+	trcKubeDeploymentConfig.ApiConfig[filename] = config
+	return config, nil
 }
 
 func LoadFromKube(kubeConfigBytes []byte, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
@@ -111,13 +153,59 @@ func LoadFromKube(kubeConfigBytes []byte, config *coreconfig.CoreConfig) (*TrcKu
 }
 
 func InitTrcKubeConfig(trcshConfig *capauth.TrcShConfig, config *coreconfig.CoreConfig) (*TrcKubeConfig, error) {
+	if trcshConfig == nil || trcshConfig.KubeConfigPtr == nil {
+		if config != nil && config.Log != nil {
+			config.Log.Println("Missing in-memory kubeconfig configuration.")
+		}
+		return nil, fmt.Errorf("missing in-memory kubeconfig configuration")
+	}
+	if len(*trcshConfig.KubeConfigPtr) == 0 {
+		if config != nil && config.Log != nil {
+			config.Log.Println("Empty in-memory kubeconfig configuration.")
+		}
+		return nil, fmt.Errorf("empty in-memory kubeconfig configuration")
+	}
+
 	kubeConfigBytes, decodeErr := base64.StdEncoding.DecodeString(*trcshConfig.KubeConfigPtr)
 	if decodeErr != nil {
-		fmt.Fprintln(os.Stderr, "Decoding error")
-		eUtils.LogErrorObject(config, decodeErr, false)
+		if config != nil && config.Log != nil {
+			config.Log.Println("Invalid in-memory kubeconfig encoding.")
+		}
+		return nil, fmt.Errorf("invalid in-memory kubeconfig encoding")
 	}
 
 	return LoadFromKube(kubeConfigBytes, config)
+}
+
+func newTierceronIOStreams(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.DriverConfig) (genericclioptions.IOStreams, error) {
+	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: io.Discard, ErrOut: io.Discard}
+	if trcKubeDeploymentConfig == nil || trcKubeDeploymentConfig.PipeOS == nil {
+		return iostreams, nil
+	}
+
+	stat, err := driverConfig.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name())
+	if err != nil {
+		if errors, ok := err.(*fs.PathError); ok && errors != nil {
+			return iostreams, nil
+		}
+		return iostreams, err
+	}
+
+	if stat.Size() > 0 {
+		pipeName := trcKubeDeploymentConfig.PipeOS.Name()
+		trcKubeDeploymentConfig.PipeOS.Close()
+		pipeReader, err := driverConfig.MemFs.Open(pipeName)
+		if err != nil {
+			return iostreams, err
+		}
+		trcKubeDeploymentConfig.PipeOS = pipeReader
+		iostreams.In = trcKubeDeploymentConfig.PipeOS
+		return iostreams, nil
+	}
+
+	iostreams.Out = trcKubeDeploymentConfig.PipeOS
+	iostreams.ErrOut = trcKubeDeploymentConfig.PipeOS
+	return iostreams, nil
 }
 
 func ParseTrcKubeContext(trcKubeContext *TrcKubeContext, deployArgs []string) *TrcKubeContext {
@@ -169,8 +257,6 @@ func ParseTrcKubeDeployDirective(trcKubeDirective *TrcKubeDirective, deployArgs 
 					trcKubeDirective.Name = deployArgs[i+2]
 				} else if deployArgs[i] == "configmap" {
 					trcKubeDirective.Name = deployArgs[i+1]
-				} else {
-					fmt.Fprintln(os.Stderr, "Unsupported element: "+deployArgs[i])
 				}
 			}
 		} else {
@@ -200,50 +286,12 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 		WithDiscoveryQPS(50.0)
 
 	configFlags.KubeConfigLoader = func(filename string) (*clientcmdapi.Config, error) {
-		var kubeconfigBytes []byte
-		var err error
-		if apiConfig, apiConfigOk := trcKubeDeploymentConfig.ApiConfig[filename]; apiConfigOk {
-			return apiConfig, nil
-		}
-
-		if len(trcKubeDeploymentConfig.KubeConfigBytes) > 0 {
-			kubeconfigBytes = trcKubeDeploymentConfig.KubeConfigBytes
-		}
-		config, err := clientcmd.Load(kubeconfigBytes)
-		if err != nil {
-			return nil, err
-		}
-		klog.V(6).Infoln("Config loaded from file: ", filename)
-
-		// set LocationOfOrigin on every Cluster, User, and Context
-		for key, obj := range config.AuthInfos {
-			obj.LocationOfOrigin = filename
-			config.AuthInfos[key] = obj
-		}
-		for key, obj := range config.Clusters {
-			obj.LocationOfOrigin = filename
-			config.Clusters[key] = obj
-		}
-		for key, obj := range config.Contexts {
-			obj.LocationOfOrigin = filename
-			config.Contexts[key] = obj
-		}
-
-		if config.AuthInfos == nil {
-			config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
-		}
-		if config.Clusters == nil {
-			config.Clusters = map[string]*clientcmdapi.Cluster{}
-		}
-		if config.Contexts == nil {
-			config.Contexts = map[string]*clientcmdapi.Context{}
-		}
-
-		trcKubeDeploymentConfig.ApiConfig[filename] = config
-
-		return config, nil
+		return loadInMemoryKubeConfig(trcKubeDeploymentConfig, filename)
 	}
-	iostreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+	iostreams, err := newTierceronIOStreams(trcKubeDeploymentConfig, driverConfig)
+	if err != nil {
+		return err
+	}
 
 	configFlags.PathVisitorLoader = func() resource.PathVisitor {
 		return &path.MemPathVisitor{MemFs: driverConfig.MemFs, Iostreams: iostreams}
@@ -279,8 +327,39 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 		return nil
 	}
 
+	configFlags.HandleSecretFromEnvFileSources = func(secret *corev1.Secret, fileSources []string) error {
+		for _, fileSource := range fileSources {
+			var data []byte
+
+			var memFile trcshio.TrcshReadWriteCloser
+			var memFileErr error
+
+			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
+				buf := bytes.NewBuffer(nil)
+				io.Copy(buf, memFile) // Error handling elided for brevity.
+				data = buf.Bytes()
+			} else {
+				return fmt.Errorf("Error could not find %s for deployment instructions", fileSource)
+			}
+
+			err := trccreate.AddFromMemEnvFile(fileSource, data, func(key, value string) error {
+				if errs := validation.IsConfigMapKey(key); len(errs) != 0 {
+					return fmt.Errorf("%q is not valid key name for a Secret %s", key, strings.Join(errs, ";"))
+				}
+				if _, entryExists := secret.Data[key]; entryExists {
+					return fmt.Errorf("cannot add key %s, another key by that name already exists", key)
+				}
+				secret.Data[key] = []byte(value)
+				return nil
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	configFlags.HandleConfigMapFromFileSources = func(configMap *corev1.ConfigMap, fileSources []string) error {
-		fmt.Fprintf(os.Stderr, "ConfigMap file sources: %v\n", fileSources)
 		for _, fileSource := range fileSources {
 			keyName, filePath, err := kubectlutil.ParseFileSource(fileSource)
 			if err != nil {
@@ -329,30 +408,17 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 		return nil
 	}
 
-	if trcKubeDeploymentConfig.PipeOS != nil {
-		if iostat, ioerr := driverConfig.MemFs.Stat(trcKubeDeploymentConfig.PipeOS.Name()); ioerr == nil {
-			if iostat.Size() > 0 {
-				pipeName := trcKubeDeploymentConfig.PipeOS.Name()
-				trcKubeDeploymentConfig.PipeOS.Close()
-				if trcKubeDeploymentConfig.PipeOS, ioerr = driverConfig.MemFs.Open(pipeName); ioerr == nil {
-					iostreams.In = trcKubeDeploymentConfig.PipeOS
-				}
-			} else {
-				iostreams.Out = trcKubeDeploymentConfig.PipeOS
-			}
-		}
-	}
-
 	command := cmd.NewDefaultKubectlCommandWithArgs(cmd.KubectlOptions{
 		PluginHandler: cmd.NewDefaultPluginHandler(plugin.ValidPluginFilenamePrefixes),
 		Arguments:     os.Args,
 		ConfigFlags:   configFlags,
 		IOStreams:     iostreams,
 	})
+	command.SilenceErrors = true
+	command.SilenceUsage = true
 
-	if err := cli.RunNoErrOutput(command); err != nil {
-		// Pretty-print the error and exit with an error.
-		util.CheckErr(err)
+	if err := command.Execute(); err != nil {
+		return err
 	}
 
 	return nil
@@ -364,53 +430,18 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driv
 		NewConfigFlags(true).
 		WithDeprecatedPasswordFlag()
 	configFlags.KubeConfigLoader = func(filename string) (*clientcmdapi.Config, error) {
-		var kubeconfigBytes []byte
-		var err error
-		if len(trcKubeDeploymentConfig.KubeConfigBytes) > 0 {
-			kubeconfigBytes = trcKubeDeploymentConfig.KubeConfigBytes
-		}
-		config, err := clientcmd.Load(kubeconfigBytes)
-		if err != nil {
-			return nil, err
-		}
-		klog.V(6).Infoln("Config loaded from file: ", filename)
-
-		// set LocationOfOrigin on every Cluster, User, and Context
-		for key, obj := range config.AuthInfos {
-			obj.LocationOfOrigin = filename
-			config.AuthInfos[key] = obj
-		}
-		for key, obj := range config.Clusters {
-			obj.LocationOfOrigin = filename
-			config.Clusters[key] = obj
-		}
-		for key, obj := range config.Contexts {
-			obj.LocationOfOrigin = filename
-			config.Contexts[key] = obj
-		}
-
-		if config.AuthInfos == nil {
-			config.AuthInfos = map[string]*clientcmdapi.AuthInfo{}
-		}
-		if config.Clusters == nil {
-			config.Clusters = map[string]*clientcmdapi.Cluster{}
-		}
-		if config.Contexts == nil {
-			config.Contexts = map[string]*clientcmdapi.Context{}
-		}
-
-		return config, nil
+		return loadInMemoryKubeConfig(trcKubeDeploymentConfig, filename)
 	}
 
-	f := cmdutil.NewFactory(
-		cmdutil.NewMatchVersionFlags(configFlags),
-		&path.MemPathVisitor{MemFs: driverConfig.MemFs},
-		configFlags.HandleSecretFromFileSources,
-		configFlags.HandleConfigMapFromFileSources,
-		configFlags.HandleConfigMapFromEnvFileSources,
-	)
+	ioStreams, err := newTierceronIOStreams(trcKubeDeploymentConfig, driverConfig)
+	if err != nil {
+		return err
+	}
+	configFlags.PathVisitorLoader = func() resource.PathVisitor {
+		return &path.MemPathVisitor{MemFs: driverConfig.MemFs, Iostreams: ioStreams}
+	}
 
-	ioStreams := genericclioptions.IOStreams{In: os.Stdin, Out: os.Stdout, ErrOut: os.Stderr}
+	f := cmdutil.NewFactory(cmdutil.NewMatchVersionFlags(configFlags))
 
 	flags := apply.NewApplyFlags(ioStreams)
 	fileNamesPtr := flags.DeleteFlags.FileNameFlags.Filenames
@@ -420,7 +451,9 @@ func KubeApply(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driv
 	if err != nil {
 		return err
 	}
-	o.Run()
+	if err := o.Run(); err != nil {
+		return err
+	}
 
 	return nil
 }

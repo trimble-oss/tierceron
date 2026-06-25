@@ -2,13 +2,14 @@ package flowcoreopts
 
 import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
+	coreflowcoreopts "github.com/trimble-oss/tierceron-core/v2/atrium/buildopts/flowcoreopts"
 )
 
 const (
-	DataflowTestNameColumn      = "flowName"
-	DataflowGroupTestNameColumn = "flowGroup"
-	DataflowTestIdColumn        = "argosId"
-	DataflowTestStateCodeColumn = "stateCode"
+	DataflowTestNameColumn      = coreflowcoreopts.DataflowTestNameColumn
+	DataflowGroupTestNameColumn = coreflowcoreopts.DataflowGroupTestNameColumn
+	DataflowTestIdColumn        = coreflowcoreopts.DataflowTestIdColumn
+	DataflowTestStateCodeColumn = coreflowcoreopts.DataflowTestStateCodeColumn
 )
 
 // GetIdColumnType is provided as a custom override to allow users of the TrcDb
@@ -18,8 +19,6 @@ func GetIdColumnType(table string) any {
 	return sqle.Text
 }
 
-// IsCreateTableEnabled - Default implementation returns false
-// This can be overridden by setting BuildOptions.IsCreateTableEnabled to a custom function
 func IsCreateTableEnabled() bool {
-	return false
+	return coreflowcoreopts.IsCreateTableEnabled()
 }

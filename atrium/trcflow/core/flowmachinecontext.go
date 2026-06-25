@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -96,6 +97,8 @@ type TrcFlowMachineContext struct {
 	FlowLockMap               *cmap.ConcurrentMap[string, *TrcFlowLock] // Map of locks for each query
 	PreloadChan               chan PermissionUpdate
 	PermissionChan            chan PermissionUpdate // This channel is used to alert for dynamic permissions when tables are loaded
+	apiHTTPClients            map[string]*http.Client
+	apiHTTPClientsMu          sync.RWMutex
 }
 
 var _ flowcore.FlowMachineContext = (*TrcFlowMachineContext)(nil)
@@ -398,9 +401,18 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowc
 		}
 	}
 	if !triggerExist {
-		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), identityColumnNames)
-		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), identityColumnNames)
-		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), identityColumnNames)
+		tableName := tfContext.FlowHeader.TableName()
+		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+		// Wire a Go callback so that any direct SQL write to this table immediately
+		// wakes seedVaultCycle without requiring a polling tick.
+		if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tableName)]; ok {
+			triggerCallback := func() { notificationFlowChannel.Bcast(true) }
+			updTrigger.Callback = triggerCallback
+			insTrigger.Callback = triggerCallback
+			delTrigger.Callback = triggerCallback
+		}
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
 		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
@@ -1381,6 +1393,7 @@ func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext fl
 				return nil, err
 			}
 			regionSource["connection"] = dbsourceConn
+			sqlConn = dbsourceConn
 		}
 	}
 	return sqlConn, nil
@@ -1390,13 +1403,22 @@ func (tfmContext *TrcFlowMachineContext) GetCacheRefreshSqlConn(tcflowContext fl
 // this CB makes a call on behalf of the caller and returns a map
 // representation of json data provided by the endpoint.
 func (tfmContext *TrcFlowMachineContext) CallAPI(apiAuthHeaders map[string]string, host string, apiEndpoint string, bodyData io.Reader, getOrPost bool) (map[string]any, int, error) {
-	httpClient, err := helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
-	if httpClient != nil {
-		defer httpClient.CloseIdleConnections()
-	}
+	tfmContext.apiHTTPClientsMu.RLock()
+	httpClient := tfmContext.apiHTTPClients[host]
+	tfmContext.apiHTTPClientsMu.RUnlock()
 
-	if err != nil {
-		return nil, -1, err
+	if httpClient == nil {
+		var err error
+		httpClient, err = helperkv.CreateHTTPClient(false, host, tfmContext.Env, false)
+		if err != nil {
+			return nil, -1, err
+		}
+		tfmContext.apiHTTPClientsMu.Lock()
+		if tfmContext.apiHTTPClients == nil {
+			tfmContext.apiHTTPClients = make(map[string]*http.Client)
+		}
+		tfmContext.apiHTTPClients[host] = httpClient
+		tfmContext.apiHTTPClientsMu.Unlock()
 	}
 	if getOrPost {
 		return trcvutils.GetJSONFromClientByGet(tfmContext.DriverConfig.CoreConfig, httpClient, apiAuthHeaders, apiEndpoint, bodyData)

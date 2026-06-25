@@ -42,6 +42,7 @@ func main() {
 		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 			TokenCache:    cache.NewTokenCacheEmpty(),
+			CertCache:     cache.NewCertCache(),
 		},
 	}
 	trcxbase.CommonMain(nil, xutil.GenerateSeedsFromVault, envPtr, nil, nil, nil, flagset, os.Args, &driverConfig)

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
@@ -17,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcpubbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
+	"github.com/trimble-oss/tierceron/pkg/cli/trctvbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcxbase"
 	"github.com/trimble-oss/tierceron/pkg/trcx/xutil"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -95,13 +97,7 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 
 	// Clear the cached "novault" token only if this command is not requesting -novault
 	// (this allows switching from -novault mode to vault-authenticated mode)
-	hasNoVault := false
-	for _, arg := range args {
-		if arg == "-novault" {
-			hasNoVault = true
-			break
-		}
-	}
+	hasNoVault := slices.Contains(args, "-novault")
 	if !hasNoVault && driverConfig.CoreConfig.TokenCache != nil {
 		tokenKey := fmt.Sprintf("config_token_%s", requestedEnvBasis)
 		if cachedToken := driverConfig.CoreConfig.TokenCache.GetToken(tokenKey); cachedToken != nil && *cachedToken == "novault" {
@@ -166,6 +162,18 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 
 	case CmdTrcSub:
 		originalEndDir := driverConfig.EndDir
+		if driverConfig.SubOutputMemCache && driverConfig.MemFs != nil {
+			cachePath := originalEndDir
+			if cachePath == "" || cachePath == "." {
+				cachePath = "trc_templates"
+			}
+			cachePath = strings.ReplaceAll(cachePath, "\\", "/")
+			cachePath = strings.TrimPrefix(cachePath, "./")
+			cachePath = strings.TrimPrefix(cachePath, "/")
+			if cachePath != "" && cachePath != "." {
+				driverConfig.MemFs.ClearCache(cachePath)
+			}
+		}
 		err = trcsubbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, nil, argLines, driverConfig)
 		driverConfig.EndDir = originalEndDir
 
@@ -203,6 +211,22 @@ func ExecuteShellCommand(cmdType string, args []string, driverConfig *config.Dri
 			DriverConfig: driverConfig,
 		}
 		err = trcplgtoolbase.CommonMain(&env, &envCtx, &plgTokenName, &region, nil, args, trcshDriverConfig)
+
+	case CmdTrcTv:
+		// Guard all tv operations behind elevated access (su).
+		if !hasUnrestrictedAccess(driverConfig) {
+			err = errors.New("AUTHORIZATION ERROR: 'tv' command requires elevated access. Run 'su' to obtain unrestricted credentials.")
+			break
+		}
+
+		isPatch := len(args) > 0 && args[0] == "patch"
+		if isPatch {
+			// Use unrestricted token for write access (available after su)
+			patchTokenName := fmt.Sprintf("config_%s_unrestricted", driverConfig.CoreConfig.EnvBasis)
+			err = trctvbase.CommonMain(&envDefaultPtr, &envCtx, &patchTokenName, &region, nil, argLines, driverConfig)
+		} else {
+			err = trctvbase.CommonMain(&envDefaultPtr, &envCtx, &tokenName, &region, nil, argLines, driverConfig)
+		}
 
 	case CmdKubectl:
 		// Initialize kubectl configuration
@@ -358,8 +382,8 @@ func ExecuteRm(args []string, driverConfig *config.DriverConfig) error {
 // removePath removes a single file or directory
 func removePath(driverConfig *config.DriverConfig, path string, recursive bool) error {
 	// Clean the path
-	if strings.HasPrefix(path, "./") {
-		path = strings.TrimPrefix(path, "./")
+	if after, ok := strings.CutPrefix(path, "./"); ok {
+		path = after
 	}
 
 	// Prevent removal of .clipboard file
@@ -484,8 +508,8 @@ func ExecuteMkdir(args []string, driverConfig *config.DriverConfig) error {
 // createDirectory creates a single directory
 func createDirectory(driverConfig *config.DriverConfig, dirPath string, createParents bool) error {
 	// Clean the path
-	if strings.HasPrefix(dirPath, "./") {
-		dirPath = strings.TrimPrefix(dirPath, "./")
+	if after, ok := strings.CutPrefix(dirPath, "./"); ok {
+		dirPath = after
 	}
 
 	// Check if path already exists
@@ -575,11 +599,11 @@ func ExecuteCp(args []string, driverConfig *config.DriverConfig) error {
 	dest := paths[1]
 
 	// Clean paths
-	if strings.HasPrefix(source, "./") {
-		source = strings.TrimPrefix(source, "./")
+	if after, ok := strings.CutPrefix(source, "./"); ok {
+		source = after
 	}
-	if strings.HasPrefix(dest, "./") {
-		dest = strings.TrimPrefix(dest, "./")
+	if after, ok := strings.CutPrefix(dest, "./"); ok {
+		dest = after
 	}
 
 	// Check if source exists
@@ -785,11 +809,11 @@ func ExecuteMv(args []string, driverConfig *config.DriverConfig) error {
 	dest := args[1]
 
 	// Clean paths
-	if strings.HasPrefix(source, "./") {
-		source = strings.TrimPrefix(source, "./")
+	if after, ok := strings.CutPrefix(source, "./"); ok {
+		source = after
 	}
-	if strings.HasPrefix(dest, "./") {
-		dest = strings.TrimPrefix(dest, "./")
+	if after, ok := strings.CutPrefix(dest, "./"); ok {
+		dest = after
 	}
 
 	// Check if source exists
@@ -897,8 +921,8 @@ func ExecuteCat(args []string, driverConfig *config.DriverConfig) error {
 	// Process each file
 	for _, filePath := range args {
 		// Clean path
-		if strings.HasPrefix(filePath, "./") {
-			filePath = strings.TrimPrefix(filePath, "./")
+		if after, ok := strings.CutPrefix(filePath, "./"); ok {
+			filePath = after
 		}
 
 		// Prevent access to .clipboard file

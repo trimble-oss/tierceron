@@ -1,0 +1,6 @@
+#!/bin/bash
+# Only trcconfig commands make any sense to run as bash...
+
+trcplgtool -winservicestop -env={{or .deploy_basis_ENVIRONMENT "$KUBEENV"}}
+trcplgtool -codebundledeploy -env={{or .deploy_basis_ENVIRONMENT "$KUBEENV"}}
+trcplgtool -winservicestart -env={{or .deploy_basis_ENVIRONMENT "$KUBEENV"}}

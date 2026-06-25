@@ -67,7 +67,7 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 	maxRetries := 3
 	retryDelay := time.Second
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		vault, err = sys.NewVault(driverConfig.CoreConfig.Insecure, driverConfig.CoreConfig.TokenCache.VaultAddressPtr,
 			driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
 

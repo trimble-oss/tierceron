@@ -1,5 +1,4 @@
 //go:build !testrunner
-// +build !testrunner
 
 package coreopts
 

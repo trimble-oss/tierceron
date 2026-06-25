@@ -1,5 +1,4 @@
-//go:build !trcshcurator && !trcshcursoraw && !trcshcursork && !trcshcursorz
-// +build !trcshcurator,!trcshcursoraw,!trcshcursork,!trcshcursorz
+//go:build !trcshcurator && !trcshcursoraw && !trcshcursorbw && !trcshcursork && !trcshcursorz
 
 package cursoropts
 

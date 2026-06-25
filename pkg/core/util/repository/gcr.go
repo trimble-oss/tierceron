@@ -1,5 +1,4 @@
 //go:build gcr
-// +build gcr
 
 package repository
 

@@ -1,5 +1,4 @@
 //go:build awsecr
-// +build awsecr
 
 package repository
 

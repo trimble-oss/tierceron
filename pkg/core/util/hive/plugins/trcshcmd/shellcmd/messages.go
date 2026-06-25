@@ -8,6 +8,7 @@ const (
 	CmdTrcX       = "tx"
 	CmdTrcInit    = "tinit"
 	CmdTrcPlgtool = "trcplgtool"
+	CmdTrcTv      = "tv"
 	CmdKubectl    = "kubectl"
 	CmdTrcBoot    = "tboot"
 	CmdRm         = "rm"

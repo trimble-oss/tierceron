@@ -1,13 +1,10 @@
 package tcopts
 
-type Option func(*OptionsBuilder)
+import coretcopts "github.com/trimble-oss/tierceron-core/v2/buildopts/tcopts"
 
-type OptionsBuilder struct {
-	CheckIncomingColumnName      func(col string) bool
-	CheckFlowDataIncoming        func(secretColumns map[string]string, secretValue string, dbName string, tableName string) ([]byte, string, string, string, error)
-	CheckIncomingAliasColumnName func(col string) bool
-	GetTrcDbUrl                  func(data map[string]any) string
-}
+type Option = coretcopts.Option
+
+type OptionsBuilder = coretcopts.OptionsBuilder
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
@@ -21,8 +18,6 @@ func LoadOptions() Option {
 var BuildOptions *OptionsBuilder
 
 func NewOptionsBuilder(opts ...Option) {
-	BuildOptions = &OptionsBuilder{}
-	for _, opt := range opts {
-		opt(BuildOptions)
-	}
+	coretcopts.NewOptionsBuilder(opts...)
+	BuildOptions = coretcopts.BuildOptions
 }

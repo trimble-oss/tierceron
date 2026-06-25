@@ -1,31 +1,25 @@
 package flowcoreopts
 
-type Option func(*OptionsBuilder)
+import coreflowcoreopts "github.com/trimble-oss/tierceron-core/v2/atrium/buildopts/flowcoreopts"
 
-type OptionsBuilder struct {
-	// Flow Core
-	GetIdColumnType      func(table string) any
-	IsCreateTableEnabled func() bool
-}
+type Option = coreflowcoreopts.Option
+
+type OptionsBuilder = coreflowcoreopts.OptionsBuilder
 
 func LoadOptions() Option {
 	return func(optionsBuilder *OptionsBuilder) {
-		optionsBuilder.GetIdColumnType = GetIdColumnType
-		optionsBuilder.IsCreateTableEnabled = IsCreateTableEnabled
+		optionsBuilder.GetIdColumnType = func(table string) any {
+			return GetIdColumnType(table)
+		},
+		optionsBuilder.IsCreateTableEnabled = func()bool {
+			return IsCreateTableEnabled()
+		}
 	}
 }
 
 var BuildOptions *OptionsBuilder
 
 func NewOptionsBuilder(opts ...Option) {
-	BuildOptions = &OptionsBuilder{}
-	for _, opt := range opts {
-		opt(BuildOptions)
-	}
-}
-
-// IsCreateTableEnabled - Default implementation returns false
-// This can be overridden by setting BuildOptions.IsCreateTableEnabled to a custom function
-func IsCreateTableEnabled() bool {
-	return false
+	coreflowcoreopts.NewOptionsBuilder(opts...)
+	BuildOptions = coreflowcoreopts.BuildOptions
 }

@@ -43,6 +43,7 @@ func main() {
 		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 			TokenCache:    cache.NewTokenCacheEmpty(),
+			CertCache:     cache.NewCertCache(),
 		},
 	}
 

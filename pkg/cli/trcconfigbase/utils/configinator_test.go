@@ -86,7 +86,7 @@ func FuzzBasicTestGeneratePaths_CaseOne(f *testing.F) {
 			EndDir:           ".",
 			ServicesWanted:   []string{"hello/Service"},
 		}
-		for j := 0; j < i; j++ {
+		for range i {
 			driverConfig.StartDir = append(driverConfig.StartDir, s)
 		}
 
@@ -381,8 +381,8 @@ func TestGeneratePaths_CaseFive(t *testing.T) {
 	_, _, err := generatePaths(driverConfig)
 
 	if err == nil {
-		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrecly error, instead got %s\n", err)
-		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrectly error, instead got %s\n", err)
+		t.Fatalf("Expected project and service specified incorrectly error, instead got %s\n", err)
 	}
 }
 
@@ -403,8 +403,8 @@ func TestGeneratePaths_CaseFiveWin(t *testing.T) {
 	_, _, err := generatePaths(driverConfig)
 
 	if err == nil {
-		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrecly error, instead got %s\n", err)
-		t.Fatalf("Expected project and service specified incorrecly error, instead got %s\n", err)
+		fmt.Fprintf(os.Stderr, "Expected project and service specified incorrectly error, instead got %s\n", err)
+		t.Fatalf("Expected project and service specified incorrectly error, instead got %s\n", err)
 	}
 }
 
@@ -447,7 +447,7 @@ func TestGeneratePaths_CaseSix(t *testing.T) {
 		fmt.Fprintf(os.Stderr, "Expected different template path, instead got: %s\n", templatePaths[2])
 		t.Fatalf("Expected different template path, instead got: %s\n", templatePaths[2])
 	}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if endPaths[i] != "hello/world/bonjour/monde" {
 			fmt.Fprintf(os.Stderr, "Expected different end path, instead got: %s\n", endPaths[i])
 			t.Fatalf("Expected different end path, instead got: %s\n", endPaths[i])

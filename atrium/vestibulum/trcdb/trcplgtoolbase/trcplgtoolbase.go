@@ -808,16 +808,44 @@ func CommonMain(envPtr *string,
 		fmt.Fprintf(os.Stderr, "Service stopped: %s\n", pluginToolConfig["trcservicename"].(string))
 
 	} else if *winservicestartPtr {
-		fmt.Fprintf(os.Stderr, "Starting service %s\n", pluginToolConfig["trcservicename"].(string))
-		//		cmd := exec.Command("sc", "start", pluginToolConfig["trcservicename"].(string))
-		cmd := exec.Command("net", "start", pluginToolConfig["trcservicename"].(string))
-		err := cmd.Run()
-		if err != nil && strings.Contains(err.Error(), "2185") {
-			// Only break if service isn't defined...
-			fmt.Fprintln(os.Stderr, err)
-			return err
+		serviceName := pluginToolConfig["trcservicename"].(string)
+		fmt.Fprintf(os.Stderr, "Starting service %s\n", serviceName)
+		//		cmd := exec.Command("sc", "start", serviceName)
+		for attempt := 0; attempt < 3; attempt++ {
+			cmd := exec.Command("net", "start", serviceName)
+			output, err := cmd.CombinedOutput()
+			if err == nil {
+				break
+			}
+
+			outputText := strings.TrimSpace(string(output))
+			if strings.Contains(err.Error(), "2185") || strings.Contains(outputText, "2185") {
+				// Only break if service isn't defined...
+				if outputText != "" {
+					fmt.Fprintln(os.Stderr, outputText)
+				} else {
+					fmt.Fprintln(os.Stderr, err)
+				}
+				return err
+			}
+
+			lowerOutput := strings.ToLower(outputText)
+			if strings.Contains(err.Error(), "1056") || strings.Contains(outputText, "1056") || strings.Contains(lowerOutput, "already been started") {
+				break
+			}
+
+			if attempt == 2 {
+				if outputText != "" {
+					fmt.Fprintln(os.Stderr, outputText)
+				} else {
+					fmt.Fprintln(os.Stderr, err)
+				}
+				return err
+			}
+
+			time.Sleep(time.Second)
 		}
-		fmt.Fprintf(os.Stderr, "Service started: %s\n", pluginToolConfig["trcservicename"].(string))
+		fmt.Fprintf(os.Stderr, "Service started: %s\n", serviceName)
 	} else if *codebundledeployPtr {
 		if (isRunnableKernelPlugin || isInternalKernelPlugin) && plugincoreopts.BuildOptions.IsPluginHardwired() {
 			var deployRoot string

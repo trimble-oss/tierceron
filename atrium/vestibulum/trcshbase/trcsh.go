@@ -21,9 +21,11 @@ import (
 	"time"
 
 	"github.com/danieljoos/wincred"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
@@ -53,8 +55,10 @@ import (
 var (
 	gAgentConfig        *capauth.AgentConfigs = nil
 	gTrcshConfig        *capauth.TrcShConfig
+	gTrcshConfigOnce    sync.Once
 	kernelPluginHandler *hive.PluginHandler = nil
 	logEnvOnce          sync.Once
+	deployCtlSeenLines  = cmap.New[struct{}]()
 )
 
 var MODE_PERCH_STR string = string([]byte{cap.MODE_PERCH})
@@ -190,6 +194,11 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				gTokenCache.IsEmpty() {
 				gTokenCache = (*driverConfigPtr).CoreConfig.TokenCache
 			}
+			if driverConfigPtr.CoreConfig.CertCache != nil &&
+				!(*driverConfigPtr).CoreConfig.CertCache.IsEmpty() &&
+				gCertCache.IsEmpty() {
+				gCertCache = (*driverConfigPtr).CoreConfig.CertCache
+			}
 			if driverConfigPtr.CoreConfig.Regions == nil && len(regions) > 0 {
 				driverConfigPtr.CoreConfig.Regions = regions
 			}
@@ -217,6 +226,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 				IsShell:       isShell,
 				IsEditor:      isEditor,
 				TokenCache:    gTokenCache,
+				CertCache:     gCertCache,
 				Insecure:      false,
 				Env:           env,
 				EnvBasis:      eUtils.GetEnvBasis(env),
@@ -250,6 +260,7 @@ func TrcshInitConfig(driverConfigPtr *config.DriverConfig,
 // Logging of deployer controller activities..
 func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg string) {
 	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
+		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		if eUtils.IsWindows() {
 			featherCtx.Log.Println("Deployment controller complete")
@@ -260,11 +271,15 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	}
 
 	if len(ctlFlapMode) > 0 && ctlFlapMode[0] == cap.MODE_FLAP {
-		fmt.Fprintf(os.Stderr, "%s\n", msg)
+		emitKey := strings.TrimSpace(msg)
+		if len(emitKey) == 0 || deployCtlSeenLines.SetIfAbsent(emitKey, struct{}{}) {
+			fmt.Fprintf(os.Stderr, "%s\n", msg)
+		}
 	}
 	deployerID, _ := deployopts.BuildOptions.GetDecodedDeployerId(*featherCtx.SessionIdentifier)
 	featherCtx.Log.Printf("deployer: %s ctl: %s  msg: %s\n", deployerID, ctlFlapMode, strings.Trim(msg, "\n"))
 	if strings.Contains(msg, "encountered errors") {
+		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
 		if eUtils.IsWindows() {
 			featherCtx.Log.Println("Deployment encountered errors")
@@ -306,7 +321,10 @@ func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 	return nil
 }
 
-var gTokenCache *cache.TokenCache
+var (
+	gTokenCache *cache.TokenCache
+	gCertCache  *cache.CertCache
+)
 
 // EnableDeployer initializes and starts running deployer for the provided deployment and environment.
 func EnableDeployer(driverConfigPtr *config.DriverConfig,
@@ -371,6 +389,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 			deployerAcceptRemoteNoTimeout,
 			deployerInterrupted)
 		trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
+		// Use a 5s idle heartbeat interval for deployer perching to reduce cpu utilizating
+		trcshDriverConfig.FeatherCtx.MultiSecondInterruptTicker = time.NewTicker(5 * time.Second)
 		// featherCtx initialization is delayed for the self contained deployments (kubernetes, etc...)
 		atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
 
@@ -433,6 +453,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 	// Initialize the token cache
 	gTokenCache = driverConfigPtr.CoreConfig.TokenCache
+	gCertCache = driverConfigPtr.CoreConfig.CertCache
 
 	if !eUtils.IsWindows() {
 		if os.Geteuid() == 0 {
@@ -452,6 +473,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}
 		}
 		signal.Notify(ic, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT)
+		if !kernelopts.BuildOptions.IsKernel() {
+			SetParentDeathSignal()
+		}
 	} else {
 		dronePtr = new(bool)
 		*dronePtr = true
@@ -521,6 +545,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			prod.SetProd(false)
 		}
 		trcshDriverConfig.PluginName = *pluginNamePtr
+		if len(*projectServicePtr) > 0 {
+			psParts := strings.SplitN(strings.ReplaceAll(*projectServicePtr, "\\", "/"), "/", 2)
+			if len(psParts) == 2 && psParts[1] != "" {
+				trcshDriverConfig.DriverConfig.KeystoreService = psParts[1]
+			}
+		}
 
 		// Open deploy script and parse it.
 		ProcessDeploy(nil, trcshDriverConfig, *trcPathPtr, *projectServicePtr, dronePtr)
@@ -659,19 +689,25 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(&vaultAddr)
 			}
 
-			// Replace dev-1 with DEPLOYMENTS-1
-			deploymentsKey := "DEPLOYMENTS"
-			subDeploymentIndex := strings.Index(*envPtr, "-")
-			if subDeploymentIndex != -1 {
-				deploymentsKey += (*envPtr)[subDeploymentIndex:]
-			}
-			deploymentsShard = os.Getenv(deploymentsKey)
-
-			if len(deploymentsShard) == 0 {
-				deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
-				if len(deploymentsShard) == 0 {
-					eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
+			if coreopts.BuildOptions == nil ||
+				coreopts.BuildOptions.GetDefaultDeployments == nil ||
+				len(coreopts.BuildOptions.GetDefaultDeployments()) == 0 {
+				// Replace dev-1 with DEPLOYMENTS-1
+				deploymentsKey := "DEPLOYMENTS"
+				subDeploymentIndex := strings.Index(*envPtr, "-")
+				if subDeploymentIndex != -1 {
+					deploymentsKey += (*envPtr)[subDeploymentIndex:]
 				}
+				deploymentsShard = os.Getenv(deploymentsKey)
+
+				if len(deploymentsShard) == 0 {
+					deploymentsShard = os.Getenv(strings.Replace(deploymentsKey, "-", "_", 1))
+					if len(deploymentsShard) == 0 {
+						eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh requires a %s\n", deploymentsKey), -1)
+					}
+				}
+			} else {
+				deploymentsShard = coreopts.BuildOptions.GetDefaultDeployments()
 			}
 		}
 
@@ -756,12 +792,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		shutdown := make(chan bool)
-
 		if !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 			fmt.Fprintf(os.Stderr, "drone trcsh beginning new agent configuration sequence.\n")
 			driverConfigPtr.CoreConfig.Log.Printf("drone trcsh beginning new agent configuration sequence.\n")
 		} else {
 			gTokenCache = driverConfigPtr.CoreConfig.TokenCache
+			gCertCache = driverConfigPtr.CoreConfig.CertCache
 		}
 		// Preload agent synchronization configs...
 		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
@@ -777,6 +813,12 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		)
 		if err != nil {
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh agent bootstrap init config failure: %s\n", err.Error()), 124)
+		}
+		if eUtils.IsWindows() && len(*projectServicePtr) > 0 {
+			psParts := strings.SplitN(strings.ReplaceAll(*projectServicePtr, "\\", "/"), "/", 2)
+			if len(psParts) == 2 && psParts[1] != "" {
+				trcshDriverConfig.DriverConfig.KeystoreService = psParts[1]
+			}
 		}
 
 		if useRole {
@@ -830,6 +872,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		gTokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
+		gCertCache = trcshDriverConfig.DriverConfig.CoreConfig.CertCache
 
 		if eUtils.IsWindows() {
 			if !fromWinCred {
@@ -1017,8 +1060,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			}(kernelPluginHandler, trcshDriverConfig.DriverConfig)
 		}
 
-		// Prioritize trcshcmd, rosea, and healthcheck deployments - start them first
-		priorityPlugins := []string{"trcshcmd", "rosea", "healthcheck"}
+		// Prioritize only the plugins needed for shell availability on the critical path.
+		priorityPlugins := []string{"trcshcmd", "healthcheck"}
 		priorityIndices := []int{}
 		for i, deploymentConfig := range pluginDeployments {
 			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
@@ -1062,6 +1105,29 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		for _, deploymentConfig := range pluginDeployments {
+			deploymentName := ""
+			if trcPlugin, ok := (*deploymentConfig)["trcplugin"]; ok {
+				if pluginName, isString := trcPlugin.(string); isString {
+					deploymentName = pluginName
+				}
+			}
+
+			if kernelopts.BuildOptions.IsKernel() && deploymentName == "rosea" {
+				driverConfigPtr.CoreConfig.Log.Println("Starting rosea deployer in background")
+				go EnableDeployer(driverConfigPtr,
+					*gAgentConfig.Env,
+					*regionPtr,
+					"",
+					*trcPathPtr,
+					true,
+					!isShellRunner,
+					dronePtr,
+					deploymentConfig,
+					tracelessPtr,
+					projectServicePtr)
+				continue
+			}
+
 			if kernelopts.BuildOptions.IsKernel() {
 				go func(dcPtr *config.DriverConfig,
 					env string,
@@ -1285,7 +1351,16 @@ func roleBasedRunner(
 	case "trcsub":
 		// Save original EndDir and restore after trcsub completes
 		originalEndDir := trcshDriverConfig.DriverConfig.EndDir
-		trcshDriverConfig.DriverConfig.EndDir = trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
+		templateEndDir := trcshDriverConfig.DriverConfig.EndDir + "/trc_templates"
+		if trcshDriverConfig.DriverConfig.SubOutputMemCache && trcshDriverConfig.DriverConfig.MemFs != nil {
+			cachePath := strings.ReplaceAll(templateEndDir, "\\", "/")
+			cachePath = strings.TrimPrefix(cachePath, "./")
+			cachePath = strings.TrimPrefix(cachePath, "/")
+			if cachePath != "" && cachePath != "." {
+				trcshDriverConfig.DriverConfig.MemFs.ClearCache(cachePath)
+			}
+		}
+		trcshDriverConfig.DriverConfig.EndDir = templateEndDir
 		err = trcsubbase.CommonMain(&envDefaultPtr, &gTrcshConfig.EnvContext, &tokenName, nil, deployArgLines, trcshDriverConfig.DriverConfig)
 		trcshDriverConfig.DriverConfig.EndDir = originalEndDir
 	}
@@ -1435,6 +1510,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			*trcKubeDeploymentConfig, kubeInitErr = kube.InitTrcKubeConfig(gTrcshConfig, trcshDriverConfig.DriverConfig.CoreConfig)
 			if kubeInitErr != nil {
 				fmt.Fprintln(os.Stderr, kubeInitErr)
+				fmt.Fprintln(os.Stdout, kubeInitErr)
 				return
 			}
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Setting kube config setup complete")
@@ -1573,33 +1649,36 @@ func ProcessDeploy(featherCtx *cap.FeatherContext,
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Bootstrap..")
 	var err error
-	retries := 0
-	for {
-		if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
-			// Loop until we have something usable...
-			gTrcshConfig, err = trcshauth.TrcshAuth(featherCtx, gAgentConfig, trcshDriverConfig)
-			if err != nil {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
-				time.Sleep(time.Second)
+	gTrcshConfigOnce.Do(func() {
+		retries := 0
+		backoff := time.Second
+		const maxBackoff = 5 * time.Minute
+		for {
+			if gTrcshConfig == nil || !gTrcshConfig.IsValid(trcshDriverConfig, gAgentConfig) {
+				// Loop until we have something usable...
+				gTrcshConfig, err = trcshauth.TrcshAuth(featherCtx, gAgentConfig, trcshDriverConfig)
+				if err != nil {
+					trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf(".")
+					time.Sleep(backoff)
+					if eUtils.IsWindows() && backoff < maxBackoff {
+						backoff *= 2
+					}
+					retries = retries + 1
+					if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
+						eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
+					}
+					continue
+				}
 				retries = retries + 1
 				if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
-					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup failure.  Cannot continue.\n", 124)
+					eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup partial failure.  Cannot continue.\n", 124)
 				}
-				continue
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 			} else {
-				if retries > 0 {
-					time.Sleep(time.Second)
-				}
+				break
 			}
-			retries = retries + 1
-			if trcshDriverConfig.DriverConfig.CoreConfig.IsShell && retries >= 7 {
-				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "pipeline auth setup partial failure.  Cannot continue.\n", 124)
-			}
-			trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Auth re-loaded %s\n", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
-		} else {
-			break
 		}
-	}
+	})
 	mergedEnvBasis := trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 
 	if len(mergedEnvBasis) == 0 {
@@ -1821,6 +1900,13 @@ collaboratorReRun:
 			deployLine = strings.TrimSpace(deployLine)
 			deployArgs := strings.Split(deployLine, " ")
 			control := deployArgs[0]
+			if control == "trcplgtool" &&
+				strings.Contains(deployLine, "-codebundledeploy") &&
+				(kernelopts.BuildOptions.IsKernelZ() || // Running hive-z or hive-k locally/hardwired skips codebundledeploys
+					(coreopts.BuildOptions.IsKubeRunnable() && plugincoreopts.BuildOptions.IsPluginHardwired())) {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Skipping codebundledeploy for plugin: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
+				continue
+			}
 			if len(deployArgs) > 1 {
 				envArgIndex := -1
 
@@ -1909,56 +1995,28 @@ collaboratorReRun:
 		}
 	}
 	if *dronePtr && !gTrcshConfig.IsShellRunner {
-		completeOnce := false
+		closeCleanupMessaging(trcshDriverConfig)
+		sawCompletionRun := atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING
 		for {
-			if atomic.LoadInt64(&featherCtx.RunState) == cap.RUNNING {
-				if !completeOnce {
-					closeCleanupMessaging(trcshDriverConfig)
-					completeOnce = true
-				}
-				time.Sleep(time.Second)
-			} else if atomic.LoadInt64(&featherCtx.RunState) == cap.RESETTING {
-				// Only restart deployment if explicitly requested via RESETTING state
+			state := atomic.LoadInt64(&featherCtx.RunState)
+			if state == cap.RUNNING {
+				sawCompletionRun = true
+			} else if sawCompletionRun && state == cap.RUN_STARTED {
+				// Only rearm once the emitter has fully returned to its idle perch state.
 				content = nil
 				goto collaboratorReRun
-			} else {
-				// Other states - keep waiting
-				time.Sleep(time.Second)
 			}
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 	// Make the arguments in the script -> os.args.
 }
 
 func closeCleanupMessaging(trcshDriverConfig *capauth.TrcshDriverConfig) {
-	lastCtlChanLen := 0
-	waitCtr := 0
-	for {
-		ctlChanLen := len(trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan)
-		if ctlChanLen > 0 && waitCtr < 10 {
-			if lastCtlChanLen != ctlChanLen {
-				waitCtr = 0
-			} else {
-				waitCtr++
-			}
-			lastCtlChanLen = ctlChanLen
-			time.Sleep(1 * time.Second)
-		} else {
-			if waitCtr == 10 {
-			drainLoop:
-				for {
-					select {
-					case <-trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan:
-					case <-time.After(120 * time.Second):
-						break drainLoop
-					}
-				}
-			} else {
-				trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
-			}
-			trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
-			atomic.StoreInt64(&trcshDriverConfig.FeatherCtx.RunState, cap.RUN_STARTED)
-			break
-		}
-	}
+	// DeploymentCtlMessageChan is FIFO and FeatherCtlEmitter processes each message
+	// sequentially (waits for controller ack before pulling the next). Appending
+	// CTL_COMPLETE after all deploy lines guarantees it is processed last, with no
+	// polling or sleeping required.
+	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- "..."
+	trcshDriverConfig.DriverConfig.DeploymentCtlMessageChan <- cap.CTL_COMPLETE
 }

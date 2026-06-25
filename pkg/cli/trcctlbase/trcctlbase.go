@@ -52,6 +52,7 @@ func CommonMain(envDefaultPtr *string,
 			CoreConfig: &coreconfig.CoreConfig{
 				ExitOnFailure: true,
 				TokenCache:    cache.NewTokenCacheEmpty(),
+				CertCache:     cache.NewCertCache(),
 			},
 		}
 	}
@@ -225,6 +226,7 @@ func CommonMain(envDefaultPtr *string,
 				IsShell:             true, // Pretent to be shell to keep things in memory
 				IsEditor:            true, // Pretend to be editor.
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				CertCache:           driverConfig.CoreConfig.CertCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,
@@ -285,6 +287,7 @@ func CommonMain(envDefaultPtr *string,
 				IsShell:             true, // Pretend to be shell to keep things in memory
 				IsEditor:            true,
 				TokenCache:          driverConfig.CoreConfig.TokenCache,
+				CertCache:           driverConfig.CoreConfig.CertCache,
 				ExitOnFailure:       true,
 				CurrentTokenNamePtr: &tokenName,
 				EnvBasis:            *envPtr,
@@ -430,8 +433,8 @@ func GetPluginConfigs(driverConfig *config.DriverConfig, flagset *flag.FlagSet, 
 
 			if strings.HasPrefix(restrictedMapping[0], "-templateFilter=") {
 				filter := restrictedMapping[0][strings.Index(restrictedMapping[0], "=")+1:]
-				filterParts := strings.Split(filter, ",")
-				for _, filterPart := range filterParts {
+				filterParts := strings.SplitSeq(filter, ",")
+				for filterPart := range filterParts {
 					if !strings.HasPrefix(filterPart, "Common") && !strings.HasSuffix(filterPart, "Build") {
 						restrictedMappingConfig = append(restrictedMappingConfig, fmt.Sprintf("-servicesWanted=%s", filterPart))
 						projServ = strings.Split(filterPart, "/")

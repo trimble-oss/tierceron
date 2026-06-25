@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -184,7 +185,7 @@ func CommonMain(envDefaultPtr *string,
 
 	if driverConfig == nil || !isShell {
 		args := argLines[1:]
-		for i := 0; i < len(args); i++ {
+		for i := range args {
 			s := args[i]
 			if s[0] != '-' {
 				fmt.Fprintln(outWriter, "Wrong flag syntax: ", s)
@@ -277,6 +278,14 @@ func CommonMain(envDefaultPtr *string,
 		envPtr = envDefaultPtr
 	}
 
+	// Flatten environment for certs - cannot have different certs per env-x instance
+	// This applies to both shell and non-shell paths
+	if ((wantCertsPtr != nil && *wantCertsPtr) ||
+		(driverConfig != nil && driverConfig.CoreConfig != nil && driverConfig.CoreConfig.WantCerts)) &&
+		envPtr != nil && len(*envPtr) > 0 {
+		*envPtr = eUtils.GetEnvBasis(*envPtr)
+	}
+
 	if !isShell && !kernelopts.BuildOptions.IsKernel() && !isDrone {
 		if _, err := os.Stat(*startDirPtr); os.IsNotExist(err) {
 			fmt.Fprintln(outWriter, "Missing required template folder: "+*startDirPtr)
@@ -331,14 +340,13 @@ func CommonMain(envDefaultPtr *string,
 			driverConfigBase.EndDir = *endDirPtr
 			driverConfigBase.ZeroConfig = *zcPtr
 			driverConfigBase.NoVault = *noVaultPtr
+		} else {
+			// Inherited logger from parent (e.g., trcsh), just log that we're starting
+			driverConfigBase.CoreConfig.Log.Printf("trcconfig starting with env=%s\n", driverConfigBase.CoreConfig.Env)
 		}
 	} else {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 		logger := log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
-		if *wantCertsPtr {
-			// Cannot have different certs per env-x instance.  Use basis.
-			*envPtr = eUtils.GetEnvBasis(*envPtr)
-		}
 		driverConfigBase = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
 				Env:                 *envPtr,
@@ -501,11 +509,8 @@ func CommonMain(envDefaultPtr *string,
 	if strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod") || strings.HasPrefix(*envPtr, "dev") {
 		supportedRegions := eUtils.GetSupportedProdRegions()
 		if regionPtr != nil && *regionPtr != "" {
-			for _, supportedRegion := range supportedRegions {
-				if *regionPtr == supportedRegion {
-					regions = append(regions, *regionPtr)
-					break
-				}
+			if slices.Contains(supportedRegions, *regionPtr) {
+				regions = append(regions, *regionPtr)
 			}
 			if len(regions) == 0 {
 				fmt.Fprintln(outWriter, "Unsupported region: "+*regionPtr)
@@ -523,7 +528,7 @@ func CommonMain(envDefaultPtr *string,
 
 	certOverrides := make(map[string]string, strings.Count(*certDestPathPtr, ",")+1)
 	if *certDestPathPtr != "" {
-		for _, rebind := range strings.Split(*certDestPathPtr, ",") {
+		for rebind := range strings.SplitSeq(*certDestPathPtr, ",") {
 			split := strings.Split(rebind, ":")
 			if len(split) != 2 {
 				fmt.Fprintln(outWriter, "Incorrect format for certDestPath: "+rebind)
@@ -661,6 +666,18 @@ func CommonMain(envDefaultPtr *string,
 			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
+		if *wantCertsPtr {
+			if *keyStorePtr != "" && *servicesWanted != "" {
+				swParts := strings.SplitN(strings.ReplaceAll(*servicesWanted, "\\", "/"), "/", 2)
+				if len(swParts) == 2 && swParts[1] != "" {
+					dConfig.KeystoreService = swParts[1]
+				}
+			}
+			if dConfig.KeystoreService == "" && driverConfigBase.KeystoreService != "" {
+				dConfig.KeystoreService = driverConfigBase.KeystoreService
+			}
+		}
+
 		if driverConfigBase.DeploymentConfig != nil {
 			dConfig.DeploymentConfig = driverConfigBase.DeploymentConfig
 		}
@@ -692,11 +709,9 @@ func CommonMain(envDefaultPtr *string,
 			configCtx.EnvSlice = append(configCtx.EnvSlice, "filesys")
 			configCtx.EnvLength = len(configCtx.EnvSlice)
 		}
-		configCtx.ConfigWg.Add(1)
-		go func() {
-			defer configCtx.ConfigWg.Done()
+		configCtx.ConfigWg.Go(func() {
 			eUtils.DiffHelper(configCtx, true)
-		}()
+		})
 	}
 	configCtx.ConfigWg.Wait() // Wait for diff
 	return nil

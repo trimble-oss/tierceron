@@ -235,7 +235,7 @@ func cleanCacheHelper(env string, addr string, limit uint64) {
 	modifierCachLock.Lock()
 	if modifierCache[fmt.Sprintf("%s+%s", env, addr)].modCount > 1 {
 	emptied:
-		for i := uint64(0); i < limit; i++ {
+		for range limit {
 			select {
 			case mod := <-modifierCache[fmt.Sprintf("%s+%s", env, addr)].modifierChan:
 				mod.Close()
@@ -580,7 +580,7 @@ processResult:
 		if strings.Contains(fullPath, "argosId") {
 			if _, argosIDOk := data["argosId"]; !argosIDOk {
 				pathParts := strings.Split(fullPath, "/")
-				for i := 0; i < len(pathParts); i++ {
+				for i := range pathParts {
 					if pathParts[i] == "argosId" {
 						data["argosId"] = pathParts[i+1]
 						break

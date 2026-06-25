@@ -92,6 +92,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
 			TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
+			CertCache:     cache.NewCertCache(),
 			Insecure:      *insecure,
 			Log:           logger,
 		},

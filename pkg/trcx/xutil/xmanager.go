@@ -3,6 +3,7 @@ package xutil
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -774,7 +775,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			var ctErr error
 			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(driverConfig, certMod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
 			if ctErr != nil {
-				if !strings.Contains(ctErr.Error(), "Missing .certData") {
+				if !strings.Contains(strings.ToLower(ctErr.Error()), "missing .certdata") {
 					eUtils.CheckError(driverConfig.CoreConfig, ctErr, true)
 				}
 			}
@@ -948,9 +949,7 @@ func CombineSection(config *coreconfig.CoreConfig, sliceSectionInterface any, ma
 					if _, ok := combinedSectionImpl[k2][k3]; !ok {
 						combinedSectionImpl[k2][k3] = map[string]string{}
 					}
-					for k4, v4 := range v3 {
-						combinedSectionImpl[k2][k3][k4] = v4
-					}
+					maps.Copy(combinedSectionImpl[k2][k3], v3)
 				}
 			}
 		}

@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -26,7 +25,7 @@ func main() {
 	}
 
 	if clientOnly {
-		certBytes, _ := ioutil.ReadFile(os.Args[2])
+		certBytes, _ := os.ReadFile(os.Args[2])
 		block, _ := pem.Decode(certBytes)
 		cert, _ := x509.ParseCertificate(block.Bytes)
 		certPool := x509.NewCertPool()
@@ -45,12 +44,12 @@ func main() {
 	keyPath := os.Args[2]
 	domain := os.Args[3]
 
-	certBytes, err := ioutil.ReadFile(certPath)
+	certBytes, err := os.ReadFile(certPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't read cert file: %v\n", err)
 		os.Exit(1)
 	}
-	keyBytes, err := ioutil.ReadFile(keyPath)
+	keyBytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't read key file: %v\n", err)
 		os.Exit(1)

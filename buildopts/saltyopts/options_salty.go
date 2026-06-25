@@ -1,5 +1,4 @@
 //go:build salty
-// +build salty
 
 package saltyopts
 

@@ -283,10 +283,7 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 		// Get the secret name
 		keySlice := args[0]
 		keyName := keySlice[1:]
-		keyFileIndex := templateDir + 3
-		if len(templatePathSlice)-1 < keyFileIndex {
-			keyFileIndex = len(templatePathSlice) - 1
-		}
+		keyFileIndex := min(len(templatePathSlice)-1, templateDir+3)
 		keyPath := templatePathSlice[keyFileIndex:]
 		secret := defaultSecret
 		if keyName == "certData" {

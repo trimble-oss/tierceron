@@ -358,7 +358,7 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 		return pluginEnvConfigClone, nil
 	} else {
 		if _, ok := pluginEnvConfigClone["trcplugin"]; ok {
-			if strings.ContainsAny(pluginEnvConfigClone["trcplugin"].(string), "./") {
+			if strings.ContainsAny(pluginEnvConfigClone["trcplugin"].(string), "~/") {
 				err = errors.New("Invalid plugin configuration: " + pluginEnvConfigClone["trcplugin"].(string))
 				return nil, err
 			}

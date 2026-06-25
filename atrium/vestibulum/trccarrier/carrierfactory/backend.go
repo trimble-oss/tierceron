@@ -103,6 +103,9 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 
 			if configInitOnce, ciOk := pluginEnvConfig["syncOnce"]; ciOk {
 				configInitOnce.(*sync.Once).Do(func() {
+					// Chewbacca: Enable when stars are aligned
+					// startDailyServiceTokenRotation(pluginEnvConfig, logger)
+
 					if bootFlowMachineFunc != nil {
 						tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
 						driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pluginEnvConfig, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), l)
@@ -373,11 +376,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						token := new(string)
 						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
 						tokenCache.AddRoleStr("pub", roleCheckPtr)
+						certCache := cache.NewCertCache()
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
 								TokenCache:          tokenCache,
+								CertCache:           certCache,
 								Insecure:            false,
 								Log:                 logger,
 							},
@@ -394,11 +399,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						token := new(string)
 						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
 						tokenCache.AddRoleStr("bamboo", roleCheckPtr)
+						certCache := cache.NewCertCache()
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &coreconfig.CoreConfig{
 								ExitOnFailure:       true,
 								CurrentTokenNamePtr: &currentTokenName,
 								TokenCache:          tokenCache,
+								CertCache:           certCache,
 								Insecure:            false,
 								Log:                 logger,
 							},

@@ -38,6 +38,9 @@ var globalToken *string
 
 var m sync.Mutex
 
+// convertingTimers tracks hourly reset timers per LONGEST_PDF_CONVERTING key to prevent goroutine leaks
+var convertingTimers *cmap.ConcurrentMap[string, *time.Timer]
+
 type statServiceServer struct {
 	pb.UnimplementedStatServiceServer
 }
@@ -150,15 +153,29 @@ func (s *statServiceServer) IncrementStats(ctx context.Context, req *pb.UpdateSt
 	}, nil
 }
 
-func resetLongestConverting(key string) error {
-	for {
-		currentTime := time.Now()
-		nextHour := currentTime.Truncate(time.Hour).Add(time.Hour)
-		durationUntilNextHour := nextHour.Sub(currentTime)
-		time.Sleep(durationUntilNextHour)
+// scheduleResetLongestConverting schedules a single hourly reset timer for the given key.
+// It cancels any existing timer for that key to prevent goroutine accumulation.
+func scheduleResetLongestConverting(key string) {
+	// Cancel existing timer for this key if it exists
+	if existingTimer, exists := convertingTimers.Get(key); exists {
+		existingTimer.Stop()
+	}
+
+	// Calculate duration until next hour
+	currentTime := time.Now()
+	nextHour := currentTime.Truncate(time.Hour).Add(time.Hour)
+	durationUntilNextHour := nextHour.Sub(currentTime)
+
+	// Create new timer that fires once at next hour
+	newTimer := time.AfterFunc(durationUntilNextHour, func() {
 		var t float64 = 0
 		(*GlobalStats).Set(key, fmt.Sprintf("%f", t))
-	}
+
+		// Recursively schedule the next hourly reset
+		scheduleResetLongestConverting(key)
+	})
+
+	convertingTimers.Set(key, newTimer)
 }
 
 func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateStatRequest) (*pb.UpdateStatResponse, error) {
@@ -176,7 +193,7 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 	value := req.GetValue()
 	prev_value, ok := (*GlobalStats).Get(key)
 	if !ok && strings.HasPrefix(key, "LONGEST_PDF_CONVERTING") {
-		go resetLongestConverting(key)
+		scheduleResetLongestConverting(key)
 	}
 	var err error
 	var max_value string
@@ -247,6 +264,8 @@ func (s *statServiceServer) UpdateMaxStats(ctx context.Context, req *pb.UpdateSt
 func InitStats() {
 	ccmap := cmap.New[string]()
 	GlobalStats = &ccmap
+	convertingTimersMap := cmap.New[*time.Timer]()
+	convertingTimers = &convertingTimersMap
 }
 
 func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
