@@ -146,8 +146,18 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	// Construct path for vault
 	s := strings.Split(emptyFilePath, "/")
 
-	// Remove file extensions
-	filename := s[len(s)-1][0:strings.LastIndex(s[len(s)-1], ".")]
+	baseName := s[len(s)-1]
+	if strings.HasSuffix(baseName, ".tmpl") {
+		baseName = baseName[:len(baseName)-len(".tmpl")]
+	}
+	var filename string
+	if strings.HasPrefix(baseName, ".") && !strings.Contains(baseName[1:], ".") {
+		filename = baseName
+	} else if dotIdx := strings.LastIndex(baseName, "."); dotIdx > 0 {
+		filename = baseName[:dotIdx]
+	} else {
+		filename = baseName
+	}
 
 	extra := ""
 	// Please rework... Urg...
@@ -164,9 +174,6 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		} else {
 			extra = extra + "/" + component
 		}
-	}
-	if strings.Contains(filename, ".") {
-		filename = filename[0:strings.Index(filename, ".")]
 	}
 
 	if extra != "" {

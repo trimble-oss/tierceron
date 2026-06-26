@@ -64,7 +64,12 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 		driverConfig.CoreConfig.Log.Printf("templateDir: %s\n", templateAndFilePath)
 		driverConfig.CoreConfig.Log.Printf("Dir: %s\n", dirPath)
 		driverConfig.CoreConfig.Log.Printf("file: %s\n", file)
-		templateFile := fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
+		var templateFile string
+		if ext != "" && (file == ext || file == "/"+ext) {
+			templateFile = fmt.Sprintf("%s/%s.tmpl", dirPath, file)
+		} else {
+			templateFile = fmt.Sprintf("%s/%s%s.tmpl", dirPath, file, ext)
+		}
 
 		if driverConfig.SubOutputMemCache {
 			driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)
@@ -76,7 +81,11 @@ func DownloadTemplates(driverConfig *config.DriverConfig, mod *helperkv.Modifier
 				continue
 			}
 			if eUtils.IsWindows() {
-				templateFile = fmt.Sprintf("%s\\%s%s.tmpl", dirPath, file, ext)
+				if ext != "" && (file == ext || file == "/"+ext) {
+					templateFile = fmt.Sprintf("%s\\%s.tmpl", dirPath, file)
+				} else {
+					templateFile = fmt.Sprintf("%s\\%s%s.tmpl", dirPath, file, ext)
+				}
 			}
 			newFile, err := os.Create(templateFile)
 			if err != nil {
@@ -161,7 +170,12 @@ func DownloadTemplateDirectory(driverConfig *config.DriverConfig, mod *helperkv.
 				file = ""
 			}
 
-			templateFile := fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
+			var templateFile string
+			if ext != "" && (file == ext || file == "/"+ext) {
+				templateFile = fmt.Sprintf("%s%s.tmpl", dirPath, file)
+			} else {
+				templateFile = fmt.Sprintf("%s%s%s.tmpl", dirPath, file, ext)
+			}
 
 			if driverConfig.SubOutputMemCache {
 				driverConfig.MemFs.WriteToMemFile(driverConfig.CoreConfig, &templateBytes, templateFile)

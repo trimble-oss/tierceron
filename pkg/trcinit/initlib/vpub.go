@@ -77,8 +77,14 @@ func UploadTemplates(tfmContext flowcore.FlowMachineContext, config *coreconfig.
 			}
 
 			// Separate name and extension one more time for saving to vault
-			ext = filepath.Ext(name)
-			name = name[0 : len(name)-len(ext)]
+			innerExt := filepath.Ext(name)
+			if strings.HasPrefix(name, ".") && !strings.Contains(name[1:], ".") {
+				// .env.tmpl → vault key ".env", output ext ".env"
+				ext = name
+			} else if innerExt != "" {
+				ext = innerExt
+				name = name[0 : len(name)-len(innerExt)]
+			}
 			config.Log.Printf("dirName: %s\n", dirName)
 			config.Log.Printf("file name: %s\n", file.Name())
 			// Extract values

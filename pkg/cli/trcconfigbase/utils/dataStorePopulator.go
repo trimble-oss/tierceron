@@ -557,7 +557,7 @@ func verifyTemplatePath(mod *helperkv.Modifier, logger *log.Logger) error {
 	} else if secrets != nil {
 		//add paths
 		slicey := secrets.Data["keys"].([]any)
-		if len(slicey) == 1 && slicey[0].(string) == "template-file" {
+		if len(slicey) >= 1 {
 			return nil
 		}
 	}

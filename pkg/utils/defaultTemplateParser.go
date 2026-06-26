@@ -13,6 +13,13 @@ func TrimLastDotAfterLastSlash(s string) (string, int) {
 	if strings.Contains(s, ".tmpl") {
 		s = s[0 : len(s)-len(".tmpl")]
 	}
+	base := s
+	if i := strings.LastIndex(s, "/"); i >= 0 {
+		base = s[i+1:]
+	}
+	if strings.HasPrefix(base, ".") && !strings.Contains(base[1:], ".") {
+		return s, -1
+	}
 	lastSlash := strings.LastIndex(s, "/")
 	if lastSlash == -1 {
 		lastSlash = 0
