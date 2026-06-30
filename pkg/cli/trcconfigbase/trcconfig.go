@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
@@ -33,9 +34,8 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 	data.InData = inData
 	data.InPath = inPath
 	inPathSplit := strings.Split(inPath, "||.")
-	configCtx.Mutex.Lock()
-	_, present := configCtx.ResultMap["filesys||."+inPathSplit[1]]
-	configCtx.Mutex.Unlock()
+	_, present := configCtx.ResultMap.Get("filesys||." + inPathSplit[1])
+	//If data is filesys - skip fileSys loop
 	// If data is filesys - skip fileSys loop
 	if strings.Contains(inPath, "filesys") {
 		goto skipSwitch
@@ -63,9 +63,7 @@ func receiver(configCtx *config.ConfigContext) {
 			return
 		}
 		if data != nil && data.InData != nil && data.InPath != "" {
-			configCtx.Mutex.Lock()
-			configCtx.ResultMap[data.InPath] = data.InData
-			configCtx.Mutex.Unlock()
+			configCtx.ResultMap.Set(data.InPath, data.InData)
 		}
 	}
 }
@@ -92,12 +90,11 @@ func CommonMain(envDefaultPtr *string,
 	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
 	configCtx := &config.ConfigContext{
-		ResultMap:     make(map[string]*string),
+		ResultMap:     cmap.New[*string](),
 		EnvSlice:      make([]string, 0),
 		ResultChannel: make(chan *config.ResultData, 5),
 		FileSysIndex:  -1,
 		ConfigWg:      sync.WaitGroup{},
-		Mutex:         &sync.Mutex{},
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
@@ -526,6 +523,13 @@ func CommonMain(envDefaultPtr *string,
 		fileFilterSlice[0] = *fileFilterPtr
 	}
 
+	selectedServicesWanted := driverConfigBase.ServicesWanted
+	if *wantCertsPtr {
+		selectedServicesWanted = nil
+	} else if *servicesWanted != "" {
+		selectedServicesWanted = strings.Split(*servicesWanted, ",")
+	}
+
 	certOverrides := make(map[string]string, strings.Count(*certDestPathPtr, ",")+1)
 	if *certDestPathPtr != "" {
 		for rebind := range strings.SplitSeq(*certDestPathPtr, ",") {
@@ -546,7 +550,6 @@ func CommonMain(envDefaultPtr *string,
 	// channel receiver
 	go receiver(configCtx)
 	if *diffPtr && !driverConfigBase.CoreConfig.IsShell {
-		configSlice := make([]config.DriverConfig, 0, len(configCtx.EnvSlice)-1)
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
@@ -588,7 +591,7 @@ func CommonMain(envDefaultPtr *string,
 				},
 				IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
 				SecretMode:          *secretMode,
-				ServicesWanted:      driverConfigBase.ServicesWanted,
+				ServicesWanted:      selectedServicesWanted,
 				StartDir:            driverConfigBase.StartDir,
 				EndDir:              driverConfigBase.EndDir,
 				WantKeystore:        *keyStorePtr,
@@ -605,15 +608,15 @@ func CommonMain(envDefaultPtr *string,
 				FileFilter:          fileFilterSlice,
 			}
 
-			configSlice = append(configSlice, driverConfig)
+			driverConfigCopy := driverConfig
 			configCtx.ConfigWg.Add(1)
-			go func(cs *[]config.DriverConfig) {
+			go func(dc *config.DriverConfig) {
 				defer configCtx.ConfigWg.Done()
-				config.ConfigControl(nil, configCtx, &(*cs)[len(*cs)-1], vcutils.GenerateConfigsFromVault)
-				if int(configCtx.GetDiffFileCount()) < (*cs)[len(*cs)-1].DiffCounter { // Without this, resultMap may be missing data when diffing.
-					configCtx.SetDiffFileCount((*cs)[len(*cs)-1].DiffCounter) // This counter helps the diff wait for results
+				config.ConfigControl(nil, configCtx, dc, vcutils.GenerateConfigsFromVault)
+				if int(configCtx.GetDiffFileCount()) < dc.DiffCounter { // Without this, resultMap may be missing data when diffing.
+					configCtx.SetDiffFileCount(dc.DiffCounter) // This counter helps the diff wait for results
 				}
-			}(&configSlice)
+			}(&driverConfigCopy)
 		}
 	} else {
 		if *templateInfoPtr {
@@ -642,7 +645,7 @@ func CommonMain(envDefaultPtr *string,
 			},
 			IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
 			SecretMode:          *secretMode,
-			ServicesWanted:      driverConfigBase.ServicesWanted,
+			ServicesWanted:      selectedServicesWanted,
 			StartDir:            driverConfigBase.StartDir,
 			EndDir:              driverConfigBase.EndDir,
 			WantKeystore:        *keyStorePtr,
@@ -658,12 +661,6 @@ func CommonMain(envDefaultPtr *string,
 			Diff:                *diffPtr,
 			FileFilter:          fileFilterSlice,
 			VersionInfo:         eUtils.VersionHelper,
-		}
-
-		if *wantCertsPtr {
-			dConfig.ServicesWanted = nil
-		} else if *servicesWanted != "" {
-			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
 		if *wantCertsPtr {

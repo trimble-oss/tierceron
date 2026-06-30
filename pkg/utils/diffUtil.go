@@ -36,6 +36,14 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	Green := "\033[32m"
 	Cyan := "\033[36m"
 	var result string
+	if stringA == nil {
+		empty := ""
+		stringA = &empty
+	}
+	if stringB == nil {
+		empty := ""
+		stringB = &empty
+	}
 
 	if IsWindows() {
 		Reset = "\x1b[0m"
@@ -101,10 +109,6 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	// Diff Calculation
 	diffTimeout := false
 	timeOut := time.Now().Add(time.Minute * 1)
-	if stringA == nil || stringB == nil {
-		fmt.Println("A null string was found while diffing")
-		return ""
-	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
 
@@ -368,8 +372,22 @@ func RemoveDuplicateValues(intSlice []string) []string {
 func DiffHelper(configCtx *config.ConfigContext, config bool) {
 	fileIndex := 0
 	keys := []string{}
-	configCtx.Mutex.Lock()
-	if len(configCtx.ResultMap) == 0 {
+	getResult := func(key string) *string {
+		if value, ok := configCtx.ResultMap.Get(key); ok {
+			return value
+		}
+
+		keySplit := strings.SplitN(key, "||", 2)
+		if len(keySplit) == 2 {
+			if value, ok := configCtx.ResultMap.Get("||" + keySplit[1]); ok {
+				return value
+			}
+		}
+
+		return nil
+	}
+
+	if configCtx.ResultMap.Count() == 0 {
 		fmt.Println("Couldn't find any data to diff")
 		return
 	}
@@ -405,18 +423,19 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 		}
 	}
 
-	fileList := make([]string, configCtx.DiffFileCount)
-	configCtx.Mutex.Unlock()
+	fileList := make([]string, int(configCtx.GetDiffFileCount()))
 
+	expectedResultCount := int(configCtx.GetDiffFileCount()) * configCtx.EnvLength
 	sleepCount := 0
-	if len(configCtx.ResultMap) != int(configCtx.DiffFileCount) {
+	if expectedResultCount > 0 && configCtx.ResultMap.Count() != expectedResultCount {
 		for {
 			time.Sleep(time.Second)
 			sleepCount++
+			resultCount := configCtx.ResultMap.Count()
 			if sleepCount >= 5 {
 				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
 				break
-			} else if len(configCtx.ResultMap) == int(configCtx.DiffFileCount)*configCtx.EnvLength {
+			} else if resultCount == expectedResultCount {
 				break
 			}
 		}
@@ -424,7 +443,8 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 
 	if config {
 		// Make fileList
-		for key := range configCtx.ResultMap {
+		for tuple := range configCtx.ResultMap.IterBuffered() {
+			key := tuple.Key
 			found := false
 			keySplit := strings.Split(key, "||")
 
@@ -478,20 +498,9 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 		keyB := keys[1]
 		keySplitA := strings.Split(keyA, "||")
 		keySplitB := strings.Split(keyB, "||")
-		configCtx.Mutex.Lock()
 
-		sortedKeyA := keyA
-		sortedKeyB := keyB
-		if _, ok := configCtx.ResultMap[sortedKeyA]; !ok {
-			sortedKeyA = "||" + keySplitA[1]
-		}
-		if _, ok := configCtx.ResultMap[sortedKeyB]; !ok {
-			sortedKeyB = "||" + keySplitB[1]
-		}
-
-		envFileKeyA := configCtx.ResultMap[sortedKeyA]
-		envFileKeyB := configCtx.ResultMap[sortedKeyB]
-		configCtx.Mutex.Unlock()
+		envFileKeyA := getResult(keyA)
+		envFileKeyB := getResult(keyB)
 
 		latestVersionACheck := strings.Split(keySplitA[0], "_")
 		if len(latestVersionACheck) > 1 && latestVersionACheck[1] == "0" {
@@ -517,10 +526,8 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 			keyD := keys[3]
 			keySplitC := strings.Split(keyC, "||")
 			keySplitD := strings.Split(keyD, "||")
-			configCtx.Mutex.Lock()
-			envFileKeyC := configCtx.ResultMap[keyC]
-			envFileKeyD := configCtx.ResultMap[keyD]
-			configCtx.Mutex.Unlock()
+			envFileKeyC := getResult(keyC)
+			envFileKeyD := getResult(keyD)
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
@@ -556,9 +563,7 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 		case 3:
 			keyC := keys[2]
 			keySplitC := strings.Split(keyC, "||")
-			configCtx.Mutex.Lock()
-			envFileKeyC := configCtx.ResultMap[keyC]
-			configCtx.Mutex.Unlock()
+			envFileKeyC := getResult(keyC)
 
 			latestVersionCCheck := strings.Split(keySplitC[0], "_")
 			if len(latestVersionCCheck) > 1 && latestVersionCCheck[1] == "0" {
