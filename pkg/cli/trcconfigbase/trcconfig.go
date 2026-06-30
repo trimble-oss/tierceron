@@ -543,7 +543,6 @@ func CommonMain(envDefaultPtr *string,
 	// channel receiver
 	go receiver(configCtx)
 	if *diffPtr && !driverConfigBase.CoreConfig.IsShell {
-		configSlice := make([]config.DriverConfig, 0, len(configCtx.EnvSlice)-1)
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
@@ -602,15 +601,15 @@ func CommonMain(envDefaultPtr *string,
 				FileFilter:          fileFilterSlice,
 			}
 
-			configSlice = append(configSlice, driverConfig)
+			driverConfigCopy := driverConfig
 			configCtx.ConfigWg.Add(1)
-			go func(cs *[]config.DriverConfig) {
+			go func(dc *config.DriverConfig) {
 				defer configCtx.ConfigWg.Done()
-				config.ConfigControl(nil, configCtx, &(*cs)[len(*cs)-1], vcutils.GenerateConfigsFromVault)
-				if int(configCtx.GetDiffFileCount()) < (*cs)[len(*cs)-1].DiffCounter { // Without this, resultMap may be missing data when diffing.
-					configCtx.SetDiffFileCount((*cs)[len(*cs)-1].DiffCounter) // This counter helps the diff wait for results
+				config.ConfigControl(nil, configCtx, dc, vcutils.GenerateConfigsFromVault)
+				if int(configCtx.GetDiffFileCount()) < dc.DiffCounter { // Without this, resultMap may be missing data when diffing.
+					configCtx.SetDiffFileCount(dc.DiffCounter) // This counter helps the diff wait for results
 				}
-			}(&configSlice)
+			}(&driverConfigCopy)
 		}
 	} else {
 		if *templateInfoPtr {
