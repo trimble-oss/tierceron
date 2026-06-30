@@ -523,6 +523,13 @@ func CommonMain(envDefaultPtr *string,
 		fileFilterSlice[0] = *fileFilterPtr
 	}
 
+	selectedServicesWanted := driverConfigBase.ServicesWanted
+	if *wantCertsPtr {
+		selectedServicesWanted = nil
+	} else if *servicesWanted != "" {
+		selectedServicesWanted = strings.Split(*servicesWanted, ",")
+	}
+
 	certOverrides := make(map[string]string, strings.Count(*certDestPathPtr, ",")+1)
 	if *certDestPathPtr != "" {
 		for rebind := range strings.SplitSeq(*certDestPathPtr, ",") {
@@ -584,7 +591,7 @@ func CommonMain(envDefaultPtr *string,
 				},
 				IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
 				SecretMode:          *secretMode,
-				ServicesWanted:      driverConfigBase.ServicesWanted,
+				ServicesWanted:      selectedServicesWanted,
 				StartDir:            driverConfigBase.StartDir,
 				EndDir:              driverConfigBase.EndDir,
 				WantKeystore:        *keyStorePtr,
@@ -638,7 +645,7 @@ func CommonMain(envDefaultPtr *string,
 			},
 			IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
 			SecretMode:          *secretMode,
-			ServicesWanted:      driverConfigBase.ServicesWanted,
+			ServicesWanted:      selectedServicesWanted,
 			StartDir:            driverConfigBase.StartDir,
 			EndDir:              driverConfigBase.EndDir,
 			WantKeystore:        *keyStorePtr,
@@ -654,12 +661,6 @@ func CommonMain(envDefaultPtr *string,
 			Diff:                *diffPtr,
 			FileFilter:          fileFilterSlice,
 			VersionInfo:         eUtils.VersionHelper,
-		}
-
-		if *wantCertsPtr {
-			dConfig.ServicesWanted = nil
-		} else if *servicesWanted != "" {
-			dConfig.ServicesWanted = strings.Split(*servicesWanted, ",")
 		}
 
 		if *wantCertsPtr {
