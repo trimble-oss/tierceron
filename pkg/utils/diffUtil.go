@@ -36,6 +36,14 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	Green := "\033[32m"
 	Cyan := "\033[36m"
 	var result string
+	if stringA == nil {
+		empty := ""
+		stringA = &empty
+	}
+	if stringB == nil {
+		empty := ""
+		stringB = &empty
+	}
 
 	if IsWindows() {
 		Reset = "\x1b[0m"
@@ -101,10 +109,6 @@ func LineByLineDiff(stringA *string, stringB *string, patchData bool, colorSkip 
 	// Diff Calculation
 	diffTimeout := false
 	timeOut := time.Now().Add(time.Minute * 1)
-	if stringA == nil || stringB == nil {
-		fmt.Println("A null string was found while diffing")
-		return ""
-	}
 	diffs := dmp.DiffBisect(*stringA, *stringB, timeOut)
 	diffs = dmp.DiffCleanupSemantic(diffs)
 
@@ -421,8 +425,9 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 
 	fileList := make([]string, int(configCtx.GetDiffFileCount()))
 
+	expectedResultCount := int(configCtx.GetDiffFileCount()) * configCtx.EnvLength
 	sleepCount := 0
-	if configCtx.ResultMap.Count() != int(configCtx.GetDiffFileCount()) {
+	if expectedResultCount > 0 && configCtx.ResultMap.Count() != expectedResultCount {
 		for {
 			time.Sleep(time.Second)
 			sleepCount++
@@ -430,7 +435,7 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 			if sleepCount >= 5 {
 				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
 				break
-			} else if resultCount == int(configCtx.GetDiffFileCount())*configCtx.EnvLength {
+			} else if resultCount == expectedResultCount {
 				break
 			}
 		}
