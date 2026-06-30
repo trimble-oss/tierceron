@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
@@ -33,9 +34,8 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 	data.InData = inData
 	data.InPath = inPath
 	inPathSplit := strings.Split(inPath, "||.")
-	configCtx.Mutex.Lock()
-	_, present := configCtx.ResultMap["filesys||."+inPathSplit[1]]
-	configCtx.Mutex.Unlock()
+	_, present := configCtx.ResultMap.Get("filesys||." + inPathSplit[1])
+	//If data is filesys - skip fileSys loop
 	// If data is filesys - skip fileSys loop
 	if strings.Contains(inPath, "filesys") {
 		goto skipSwitch
@@ -63,9 +63,7 @@ func receiver(configCtx *config.ConfigContext) {
 			return
 		}
 		if data != nil && data.InData != nil && data.InPath != "" {
-			configCtx.Mutex.Lock()
-			configCtx.ResultMap[data.InPath] = data.InData
-			configCtx.Mutex.Unlock()
+			configCtx.ResultMap.Set(data.InPath, data.InData)
 		}
 	}
 }
@@ -92,12 +90,11 @@ func CommonMain(envDefaultPtr *string,
 	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
 	configCtx := &config.ConfigContext{
-		ResultMap:     make(map[string]*string),
+		ResultMap:     cmap.New[*string](),
 		EnvSlice:      make([]string, 0),
 		ResultChannel: make(chan *config.ResultData, 5),
 		FileSysIndex:  -1,
 		ConfigWg:      sync.WaitGroup{},
-		Mutex:         &sync.Mutex{},
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
