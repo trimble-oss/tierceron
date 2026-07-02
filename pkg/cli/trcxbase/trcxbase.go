@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
@@ -31,9 +32,7 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 func receiver(configCtx *config.ConfigContext) {
 	for data := range configCtx.ResultChannel {
 		if data != nil && data.InData != nil && data.InPath != "" {
-			configCtx.Mutex.Lock()
-			configCtx.ResultMap[data.InPath] = data.InData
-			configCtx.Mutex.Unlock()
+			configCtx.ResultMap.Set(data.InPath, data.InData)
 		}
 	}
 }
@@ -164,13 +163,12 @@ func CommonMain(ctx config.ProcessContext,
 	}
 
 	configCtx := &config.ConfigContext{
-		ResultMap:            make(map[string]*string),
+		ResultMap:            cmap.New[*string](),
 		EnvSlice:             make([]string, 0),
 		ProjectSectionsSlice: make([]string, 0),
 		ResultChannel:        make(chan *config.ResultData, 5),
 		FileSysIndex:         -1,
 		ConfigWg:             sync.WaitGroup{},
-		Mutex:                &sync.Mutex{},
 	}
 	if envPtr == nil {
 		env := "dev"
@@ -940,17 +938,14 @@ skipDiff:
 			defer waitg.Done()
 			retry := 0
 			for {
-				cctx.Mutex.Lock()
-				if len(cctx.ResultMap) == len(cctx.EnvSlice)*len(sectionSlice) || retry == 3 {
-					cctx.Mutex.Unlock()
+				if cctx.ResultMap.Count() == len(cctx.EnvSlice)*len(sectionSlice) || retry == 3 {
 					break
 				}
-				cctx.Mutex.Unlock()
 				time.Sleep(time.Duration(time.Second))
 				retry++
 			}
 			configCtx.FileSysIndex = -1
-			cctx.SetDiffFileCount(len(configCtx.ResultMap) / configCtx.EnvLength)
+			cctx.SetDiffFileCount(cctx.ResultMap.Count() / configCtx.EnvLength)
 			eUtils.DiffHelper(cctx, false)
 		}(configCtx)
 	}
