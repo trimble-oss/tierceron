@@ -1215,7 +1215,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				tfmContext.(flow.FlowMachineContext).WaitAllFlowsLoaded()
 				driverConfig.CoreConfig.Log.Printf("Plugin %s flows loaded and ready\n", pluginHandler.Name)
 				// kick off reload process from vault
-				go reloadFlows(tfmContext.(flow.FlowMachineContext), mod)
+				_, flowMod, _, err := eUtils.InitVaultMod(bootDriverConfig)
+				if err != nil {
+					driverConfig.CoreConfig.Log.Printf("Problem initializing mod: %s\n", err)
+					return
+				}
+				go reloadFlows(tfmContext.(flow.FlowMachineContext), flowMod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
 			} else {
 				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
