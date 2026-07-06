@@ -298,20 +298,20 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 				if driverConfig.CertPathOverrides[filename] != "" {
 					certDestPath = driverConfig.CertPathOverrides[filename]
 				} else {
-					legacyFilename := filename
-					legacyBaseName := filename
-					legacyPrefix := ""
+					resolvedFilename := filename
+					baseName := filename
+					prefix := ""
 					if slashIndex := strings.LastIndex(filename, "/"); slashIndex >= 0 {
-						legacyPrefix = filename[:slashIndex+1]
-						legacyBaseName = filename[slashIndex+1:]
+						prefix = filename[:slashIndex+1]
+						baseName = filename[slashIndex+1:]
 					}
-					if !(strings.HasPrefix(legacyBaseName, ".") && !strings.Contains(legacyBaseName[1:], ".")) {
-						if dotIndex := strings.Index(legacyBaseName, "."); dotIndex > 0 {
-							legacyFilename = legacyPrefix + legacyBaseName[:dotIndex]
+					if !(strings.HasPrefix(baseName, ".") && !strings.Contains(baseName[1:], ".")) {
+						if dotIndex := strings.Index(baseName, "."); dotIndex > 0 {
+							resolvedFilename = prefix + baseName[:dotIndex]
 						}
 					}
-					if legacyFilename != filename && driverConfig.CertPathOverrides[legacyFilename] != "" {
-						certDestPath = driverConfig.CertPathOverrides[legacyFilename]
+					if resolvedFilename != filename && driverConfig.CertPathOverrides[resolvedFilename] != "" {
+						certDestPath = driverConfig.CertPathOverrides[resolvedFilename]
 					}
 				}
 
