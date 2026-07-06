@@ -11,7 +11,7 @@ require (
 	github.com/trimble-oss/tierceron-core/v2 v2.11.5
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20260213004917-d8ac158aacc6
 	golang.org/x/term v0.42.0
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.81.1
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -38,13 +38,11 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.6 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
-	google.golang.org/protobuf v1.36.10 // indirect
+	golang.org/x/text v0.37.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260401024825-9d38bb4040a9 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 )
 
 // Uncomment for local debugging
