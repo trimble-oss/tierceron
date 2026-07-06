@@ -13,8 +13,8 @@ require (
 	github.com/sergi/go-diff v1.4.0
 	github.com/twitchtv/twirp v8.1.3+incompatible
 	github.com/xo/dburl v0.9.0
-	golang.org/x/crypto v0.50.0
-	golang.org/x/sys v0.43.0 // indirect
+	golang.org/x/crypto v0.51.0
+	golang.org/x/sys v0.45.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -34,7 +34,7 @@ require (
 	github.com/graphql-go/graphql v0.8.1
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
-	github.com/trimble-oss/tierceron-core/v2 v2.11.5
+	github.com/trimble-oss/tierceron-core/v2 v2.11.6
 	github.com/trimble-oss/tierceron-hat v1.3.2
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
@@ -195,8 +195,8 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.1.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.6 // indirect
+	github.com/trimble-oss/tierceron-nute v1.1.2 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.7 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
@@ -259,8 +259,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	golang.org/x/net v0.53.0 // indirect
-	golang.org/x/term v0.42.0
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/term v0.43.0
 	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/grpc v1.81.1
