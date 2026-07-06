@@ -153,6 +153,8 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	var filename string
 	if strings.HasPrefix(baseName, ".") && !strings.Contains(baseName[1:], ".") {
 		filename = baseName
+	} else if cert {
+		filename = strings.SplitN(baseName, ".", 2)[0]
 	} else if dotIdx := strings.LastIndex(baseName, "."); dotIdx > 0 {
 		filename = baseName[:dotIdx]
 	} else {
