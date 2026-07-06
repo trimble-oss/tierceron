@@ -101,7 +101,8 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	project string,
 	service string,
 	cert bool,
-	zc bool) (string, map[int]string, bool, error) {
+	zc bool,
+) (string, map[int]string, bool, error) {
 	var template string
 	var err error
 
@@ -146,10 +147,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	// Construct path for vault
 	s := strings.Split(emptyFilePath, "/")
 
-	baseName := s[len(s)-1]
-	if strings.HasSuffix(baseName, ".tmpl") {
-		baseName = baseName[:len(baseName)-len(".tmpl")]
-	}
+	baseName := strings.TrimSuffix(s[len(s)-1], ".tmpl")
 	var filename string
 	if strings.HasPrefix(baseName, ".") && !strings.Contains(baseName[1:], ".") {
 		filename = baseName
@@ -179,7 +177,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	if extra != "" {
 		filename = extra + "/" + filename
 	}
-	//populate template
+	// populate template
 	template, certData, err = PopulateTemplate(driverConfig, template, modifier, secretMode, project, service, filename, cert)
 	return template, certData, true, err
 }
@@ -198,7 +196,8 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	project string,
 	service string,
 	filename string,
-	cert bool) (string, map[int]string, error) {
+	cert bool,
+) (string, map[int]string, error) {
 	values := make(map[string]any, 0)
 	ok := false
 	str := emptyTemplate
@@ -256,16 +255,16 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	}
 
 	if ok {
-		//create new template from template string
+		// create new template from template string
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 		var doc bytes.Buffer
-		//configure the template
+		// configure the template
 
-		//Check if filename exists in values map
+		// Check if filename exists in values map
 
 		_, hasData := values[filename]
 		if !hasData && !driverConfig.CoreConfig.WantCerts {
@@ -298,6 +297,22 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 
 				if driverConfig.CertPathOverrides[filename] != "" {
 					certDestPath = driverConfig.CertPathOverrides[filename]
+				} else {
+					legacyFilename := filename
+					legacyBaseName := filename
+					legacyPrefix := ""
+					if slashIndex := strings.LastIndex(filename, "/"); slashIndex >= 0 {
+						legacyPrefix = filename[:slashIndex+1]
+						legacyBaseName = filename[slashIndex+1:]
+					}
+					if !(strings.HasPrefix(legacyBaseName, ".") && !strings.Contains(legacyBaseName[1:], ".")) {
+						if dotIndex := strings.Index(legacyBaseName, "."); dotIndex > 0 {
+							legacyFilename = legacyPrefix + legacyBaseName[:dotIndex]
+						}
+					}
+					if legacyFilename != filename && driverConfig.CertPathOverrides[legacyFilename] != "" {
+						certDestPath = driverConfig.CertPathOverrides[legacyFilename]
+					}
 				}
 
 				if hasCertDefinition && hasCertSourcePath {
@@ -314,11 +329,13 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 						return "", nil, vaultCertErr
 					}
 					encoded := fmt.Sprintf("%s", data)
-					//Decode cert as it was encoded in trcinit
+					// Decode cert as it was encoded in trcinit
 					decoded, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
 						eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 					}
+					certData[1] = string(decoded)
+					certData[2] = certSourcePath.(string)
 
 					// Add support for jks encoding...
 					if hasCertBundleJks && driverConfig.WantKeystore != "" {
@@ -335,14 +352,9 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 						if ksErr != nil {
 							eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 							return "", nil, ksErr
-						} else {
-							return "", nil, nil
 						}
-					} else {
-						certData[1] = string(decoded)
 					}
 
-					certData[2] = certSourcePath.(string)
 					return "", certData, nil
 				}
 			}
