@@ -64,7 +64,7 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/trimble-oss/tierceron-nute v1.1.2 // indirect
 	github.com/yuin/goldmark v1.7.1 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/exp/shiny v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/image v0.41.0 // indirect

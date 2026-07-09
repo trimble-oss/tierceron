@@ -14,7 +14,7 @@ require (
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/twitchtv/twirp v8.1.3+incompatible // indirect
 	github.com/xo/dburl v0.9.0 // indirect
-	golang.org/x/crypto v0.51.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/sys v0.45.0
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -24,7 +24,7 @@ require (
 	github.com/pavlo-v-chernykh/keystore-go/v4 v4.5.0 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
-	github.com/trimble-oss/tierceron-hat v1.3.2
+	github.com/trimble-oss/tierceron-hat v1.3.5
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
 )
 
