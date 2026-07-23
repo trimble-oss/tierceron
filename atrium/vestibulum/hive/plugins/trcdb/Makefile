@@ -25,7 +25,7 @@ trcdb:
 	$(GO_VARS) $(GO) build -o="$(GOBIN)/trcdb" -ldflags="$(LD_FLAGS)" $(ROOT)/trcdb.go
 
 trcdbplugin:
-	go build -buildmode=plugin -trimpath -o="./trcdb.so" -tags "tc memonly trcshkernel" $(ROOT)/trcdb.go
+	go build -buildmode=plugin -trimpath -o="./trcdb.so" -tags "tc memonly trcshkernel fips" $(ROOT)/trcdb.go
 install:
 	cp trcdb.so /usr/local/trcshk/plugins
 

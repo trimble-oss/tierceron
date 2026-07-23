@@ -35,7 +35,7 @@ require (
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
 	github.com/trimble-oss/tierceron-core/v2 v2.11.6
-	github.com/trimble-oss/tierceron-hat v1.3.5
+	github.com/trimble-oss/tierceron-hat v1.3.6
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20251103195122-175ade98adff

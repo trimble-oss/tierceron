@@ -36,5 +36,5 @@ protobuf: $(PROTO_FILES)
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative $(PROTO_FILES)
 
 trcshtalk:
-	go build -buildmode=plugin -trimpath -o="./trcshtalk.so" -tags "tc azrcr memonly kernel" trcshtalk.go
+	go build -buildmode=plugin -trimpath -o="./trcshtalk.so" -tags "tc azrcr memonly kernel fips" trcshtalk.go
 

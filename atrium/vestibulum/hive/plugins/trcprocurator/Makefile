@@ -28,7 +28,7 @@ clean:
 	rm -f procurator.so
 
 procurator:
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=plugin -o="./procurator.so" -tags "tc azrcr memonly trcshkernel" $(ROOT)/procurator.go
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -buildmode=plugin -o="./procurator.so" -tags "tc azrcr memonly trcshkernel fips" $(ROOT)/procurator.go
 
 install:
 	cp procurator.so /usr/local/trcshk/plugins

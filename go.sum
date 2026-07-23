@@ -1247,8 +1247,8 @@ github.com/trimble-oss/kubectl v0.35.3-trc.2 h1:DuU17btWZCIvLW5mIi8mxRKCTNEPhDpj
 github.com/trimble-oss/kubectl v0.35.3-trc.2/go.mod h1:KIzW1vg5f28O/bRX26CcuFO+dXCnHvlbHAYFXO3+y+0=
 github.com/trimble-oss/tierceron-core/v2 v2.11.6 h1:glSe1PlTVFscg4B1d5LUfrM+ABCX/D62kO6zPtPtNio=
 github.com/trimble-oss/tierceron-core/v2 v2.11.6/go.mod h1:rIpIaNikSpmtocczjyZxyAQ9qqm6Qdav1xHIvsdzKKI=
-github.com/trimble-oss/tierceron-hat v1.3.5 h1:PJC3+oAksjpjwk+ARsPxsmqpuY8/2iCGTdOKCiZ7Fhw=
-github.com/trimble-oss/tierceron-hat v1.3.5/go.mod h1:5hzXVeHbQTPRIiAJQSTv22jt7r7HwkeyKwz7cM/m5RU=
+github.com/trimble-oss/tierceron-hat v1.3.6 h1:gHXn4ecKkzqb320C6CM2sWWNu1EsvFskuSMuczx1NTI=
+github.com/trimble-oss/tierceron-hat v1.3.6/go.mod h1:5hzXVeHbQTPRIiAJQSTv22jt7r7HwkeyKwz7cM/m5RU=
 github.com/trimble-oss/tierceron-nute v1.1.2 h1:05W/ehmuo1ICLuBejYQpCKayKuzqRZejtPpOWAiH9Ww=
 github.com/trimble-oss/tierceron-nute v1.1.2/go.mod h1:8OYMzcvvq57DYbF/lek620QKh/HegDh5l3R6CKsDpKA=
 github.com/trimble-oss/tierceron-nute-core v1.0.7 h1:U6XoFu+sf77uZ8N1+790WBJvv1n4ugX2N5mKL3Tl9To=
