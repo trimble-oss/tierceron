@@ -7,5 +7,5 @@ output "public_ip_address" {
 }
 
 output "run_project" {
-  value = "Login: ssh -i private_key.pem ubuntu@${azurerm_linux_virtual_machine.az-vm.public_ip_address}"
+  value = "Login: ssh -i private_key.pem ${var.vm_admin_username}@${azurerm_linux_virtual_machine.az-vm.public_ip_address}"
 }

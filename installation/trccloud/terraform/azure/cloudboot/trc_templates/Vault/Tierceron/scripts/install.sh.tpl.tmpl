@@ -1,12 +1,64 @@
 #!/bin/bash -e
 
-# Install packages
-sudo apt-get update -y
-sudo apt-get install -y curl unzip dos2unix
-sudo apt-get install -y coreutils
-sudo apt-get install uuid-runtime
-sudo apt-get install -y docker.io
-sudo apt-get install -y openjdk-11-jre-headless
+VM_ADMIN_USERNAME="${VM_ADMIN_USERNAME}"
+VM_IMAGE_URN="${VM_IMAGE_URN}"
+
+if [[ "$VM_IMAGE_URN" == microsoftcblmariner:azure-linux-3:* ]]; then
+	VM_OS_FAMILY="azurelinux"
+else
+	VM_OS_FAMILY="ubuntu"
+fi
+
+install_base_packages() {
+	if [[ "$VM_OS_FAMILY" == "azurelinux" ]]; then
+		sudo tdnf install -y ca-certificates curl unzip dos2unix coreutils util-linux shadow-utils wget tar gzip
+		sudo tdnf install -y moby-engine || sudo tdnf install -y docker
+		sudo tdnf install -y msopenjdk-11 || sudo tdnf install -y java-11-openjdk-headless
+	else
+		sudo apt-get update -y
+		sudo apt-get install -y curl unzip dos2unix
+		sudo apt-get install -y coreutils
+		sudo apt-get install uuid-runtime
+		sudo apt-get install -y docker.io
+		sudo apt-get install -y openjdk-11-jre-headless
+	fi
+}
+
+configure_microsoft_repo() {
+	if [[ "$VM_OS_FAMILY" == "ubuntu" ]]; then
+		local ubuntu_repo_version="20.04"
+		case "$VM_IMAGE_URN" in
+			*:22_04-*) ubuntu_repo_version="22.04" ;;
+			*:24_04-*) ubuntu_repo_version="24.04" ;;
+		esac
+		curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+		curl "https://packages.microsoft.com/config/ubuntu/${ubuntu_repo_version}/prod.list" | sudo tee /etc/apt/sources.list.d/msprod.list
+		sudo apt-get update
+	fi
+}
+
+install_azure_cli() {
+	if [[ "$VM_OS_FAMILY" == "azurelinux" ]]; then
+		sudo tdnf install -y azure-cli
+	else
+		curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+	fi
+}
+
+ensure_agent_user() {
+	if id -u azuredeploy >/dev/null 2>&1; then
+		return
+	fi
+
+	if command -v adduser >/dev/null 2>&1; then
+		sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
+	else
+		sudo groupadd --system azuredeploy 2>/dev/null || true
+		sudo useradd --system --shell /bin/bash --create-home --gid azuredeploy --home-dir /home/azuredeploy azuredeploy
+	fi
+}
+
+install_base_packages
 # sudo apt-get install -y maven
 # Azure linux doesn't use latest maven.
 curl -L https://dlcdn.apache.org/maven/maven-3/3.9.6/binaries/apache-maven-3.9.6-bin.tar.gz > /opt/apache-maven-3.9.6-bin.tar.gz
@@ -15,11 +67,7 @@ tar xzvf apache-maven-3.9.6-bin.tar.gz
 rm /usr/bin/mvn
 ln -s /opt/apache-maven-3.9.6/bin/mvn /usr/bin/mvn
 
-
-curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
-
-sudo apt-get update
+configure_microsoft_repo
 # Because of licensing, this step has to be done manually. 
 # sudo apt-get install -y mssql-tools unixodbc-dev
 
@@ -75,7 +123,7 @@ sudo chmod -R 0700 {{or .vaultRoot "/usr/local/vault"}}/
 
 # AGENT BLOCK: begin
 # When building out TrcDb instances, remove this AGENT BLOCK section from .tpl....
-sudo adduser --disabled-password --system --shell /bin/bash --group --home /home/azuredeploy azuredeploy
+ensure_agent_user
 sudo mkdir -p /home/azuredeploy/bin
 sudo mkdir -p /home/azuredeploy/myagent
 
@@ -92,7 +140,7 @@ sudo chown root:azuredeploy /home/azuredeploy/bin
 #sudo chown root:kubedeploy /home/kubedeploy/bin
 
 # Install az
-curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+install_azure_cli
 
 # Install compatible kubectl
 wget https://dl.k8s.io/release/v1.26.1/bin/linux/amd64/kubectl -O /tmp/kubectl
@@ -127,7 +175,7 @@ sudo chmod 750 /usr/bin/docker
 # Get a PAT from https://viewpointvso.visualstudio.com/_usersSettings/tokens with Agent Pools (Read + Manage) permissions.
 # 
 
-# SSH and sudo/su ubuntu->root->azuredeploy
+# SSH and sudo/su ${VM_ADMIN_USERNAME}->root->azuredeploy
 # Run following as azuredeploy:
 # cd /home/azuredeploy/myagent
 # ./config.sh #Provide PAT from above.
