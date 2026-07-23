@@ -23,6 +23,18 @@ variable "vault_vm_size" {
   default = {{.vault_vm_size}}
 }
 
+variable "vm_image_urn" {
+  type        = string
+  default     = "{{.vm_image_urn}}"
+  description = "VM image URN. Use microsoftcblmariner:azure-linux-3:azure-linux-3-gen2-fips:latest for Azure Linux FIPS."
+}
+
+variable "vm_admin_username" {
+  type        = string
+  default     = "{{.vm_admin_username}}"
+  description = "Admin username used for the VM and Terraform provisioner SSH connections."
+}
+
 variable "org_name" {
   type    = string
   default = {{.org_name}}

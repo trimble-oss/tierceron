@@ -323,14 +323,14 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   }
 
   source_image_reference {
-    publisher = "Canonical"
-    offer     = "0001-com-ubuntu-server-focal"
-    sku       = "20_04-lts-gen2"
-    version   = "20.04.202302070"
+    publisher = split(":", var.vm_image_urn)[0]
+    offer     = split(":", var.vm_image_urn)[1]
+    sku       = split(":", var.vm_image_urn)[2]
+    version   = split(":", var.vm_image_urn)[3]
   }
 
   computer_name         = "${var.tierceronname}"
-  admin_username                  = "ubuntu"
+  admin_username                  = var.vm_admin_username
   disable_password_authentication = true
 
   tags = {
@@ -347,7 +347,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   }
 
   admin_ssh_key {
-    username   = "ubuntu"
+    username   = var.vm_admin_username
     public_key = file("${var.public_key_directory}")
   }
 
@@ -366,7 +366,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   provisioner "file" {
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       timeout     = "30s"
@@ -378,7 +378,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   provisioner "file" {
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       timeout     = "30s"
@@ -390,7 +390,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   provisioner "file" {
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       timeout     = "30s"
@@ -402,7 +402,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     provisioner "file" {
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       timeout     = "30s"
@@ -414,7 +414,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
   provisioner "file" {
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       timeout     = "30s"
@@ -433,6 +433,8 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
         "TRCDBA_PORT"     = var.trcdba_port
         "TRCDBB_PORT"     = var.trcdbb_port
         "HOST"            = var.host
+        "VM_ADMIN_USERNAME" = var.vm_admin_username
+        "VM_IMAGE_URN"    = var.vm_image_urn
         "write_service"   = var.write_service
         "SSH_PORT"        = var.ssh_port
         "SCRIPT_CIDR_BLOCK" = var.script_cidr_block
@@ -446,15 +448,15 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
       "sudo mkdir /tmp/public",
       "sudo chown ubuntu /tmp/public",
       "sudo mkdir /tmp/policy_files",
-      "sudo chown ubuntu /tmp/policy_files",
+      "sudo chown ${var.vm_admin_username} /tmp/policy_files",
       "sudo mkdir /tmp/token_files",
-      "sudo chown ubuntu /tmp/token_files",
+      "sudo chown ${var.vm_admin_username} /tmp/token_files",
       "sudo mkdir /tmp/template_files",
-      "sudo chown ubuntu /tmp/template_files",
+      "sudo chown ${var.vm_admin_username} /tmp/template_files",
     ]
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       agent       = false
@@ -469,7 +471,7 @@ resource "azurerm_linux_virtual_machine" "az-vm" {
     ]
     connection {
       host        = "${var.vm_private_ip}"
-      user        = "ubuntu"
+      user        = var.vm_admin_username
       type        = "ssh"
       private_key = file("${var.private_key_directory}")
       agent       = false
