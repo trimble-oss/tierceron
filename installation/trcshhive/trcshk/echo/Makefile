@@ -28,14 +28,14 @@ trcshtalksdk: */*.proto
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative trcshtalksdk/trcshtalksdk.proto
 
 plugintrcshtalk:
-	go build -buildmode=plugin -trimpath -o="./echo.so" -tags "tc azrcr memonly kernel" echo.go
+	go build -buildmode=plugin -trimpath -o="./echo.so" -tags "tc azrcr memonly kernel fips" echo.go
 
 tconfig:
 	trcconfig -certs -certDestPath=MashupKey:tls/mashup.key,MashupCert:tls/mashup.crt
 tcconfig:
 	 trcconfig -servicesWanted=Hive/PluginEcho
 tback:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -buildmode=plugin -o="./echo.so" -tags "tc azrcr memonly kernel" echo.go
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -buildmode=plugin -o="./echo.so" -tags "tc azrcr memonly kernel fips" echo.go
 
 tdeploy:
 	gcloud app deploy
