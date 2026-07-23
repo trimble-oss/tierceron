@@ -13,6 +13,16 @@ variable "vm_size" {
   default = "{{.vault_vm_size}}"
 }
 
+variable "aks_node_os_sku" {
+  type = string
+  default = "{{.aks_node_os_sku}}"
+}
+
+variable "aks_enable_fips_image" {
+  type = bool
+  default = {{.aks_enable_fips_image}}
+}
+
 variable "environment" {
   type = string
   default = "{{.env}}"
