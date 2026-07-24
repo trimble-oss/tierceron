@@ -13,9 +13,9 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
-	"github.com/trimble-oss/tierceron/pkg/tls"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var onceMemo sync.Once
@@ -26,6 +26,8 @@ type FeatherAuth struct {
 	HandshakePort string
 	SecretsPort   string
 	HandshakeCode string
+	TLSConfig     *cap.FeatherTLSConfig
+	TapCreds      credentials.TransportCredentials
 }
 
 // ValidateTrcshPathSha - if at least one plugin is properly certified, return true.
@@ -120,7 +122,11 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 		// Feathering not supported in staging/prod non messenger at this time.
 		featherMap, _ := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
 		if _, ok := featherMap["trcHatSecretsPort"].(string); ok {
-			featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
+			featherTLSConfig, tapCreds, tlsErr := capauth.LoadFeatherServerTLSMaterial(nil, mod, "", logger)
+			if tlsErr != nil {
+				return nil, tlsErr
+			}
+			featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: "", TLSConfig: featherTLSConfig, TapCreds: tapCreds}
 			return featherAuth, nil
 		} else {
 			logger.Println("Invalid format non string trcHatSecretsPort")
@@ -137,6 +143,10 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 	// 	return nil, err
 	// }
 	if featherMap != nil {
+		featherTLSConfig, tapCreds, tlsErr := capauth.LoadFeatherServerTLSMaterial(nil, mod, "", logger)
+		if tlsErr != nil {
+			return nil, tlsErr
+		}
 		okMap := true
 		for _, key := range []string{
 			"trcHatEncryptPass",
@@ -160,12 +170,12 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 
 		if okMap {
 			logger.Println("Feathering provided.")
-			featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string)}
+			featherAuth := &FeatherAuth{EncryptPass: featherMap["trcHatEncryptPass"].(string), EncryptSalt: featherMap["trcHatEncryptSalt"].(string), HandshakePort: featherMap["trcHatHandshakePort"].(string), SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: featherMap["trcHatHandshakeCode"].(string), TLSConfig: featherTLSConfig, TapCreds: tapCreds}
 			return featherAuth, nil
 		} else {
 			logger.Println("Feathering skipped.  Not available.")
 			if _, ok := featherMap["trcHatSecretsPort"].(string); ok {
-				featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: ""}
+				featherAuth := &FeatherAuth{EncryptPass: "", EncryptSalt: "", HandshakePort: "", SecretsPort: featherMap["trcHatSecretsPort"].(string), HandshakeCode: "", TLSConfig: featherTLSConfig, TapCreds: tapCreds}
 				return featherAuth, nil
 			} else {
 				logger.Println("Invalid format non string trcHatSecretsPort")
@@ -215,12 +225,10 @@ func Memorize(memorizeFields map[string]any, logger *log.Logger) {
 // Things to make available to trusted agent.
 func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 	logger.Println("Cap server.")
-
-	creds, credErr := tls.GetServerCredentials(false, logger)
-	if credErr != nil {
-		logger.Printf("Couldn't server creds: %v\n", creds)
-		return credErr
+	if featherAuth == nil || featherAuth.TapCreds == nil {
+		return errors.New("missing cap TLS credentials")
 	}
+	creds := featherAuth.TapCreds
 
 	logger.Println("Cap creds.")
 
@@ -239,10 +247,12 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 			return err
 		}
 
-		go cap.Feather(featherAuth.EncryptPass,
+		go cap.FeatherWithTLS(
+			featherAuth.EncryptPass,
 			featherAuth.EncryptSalt,
 			fmt.Sprintf("%s:%s", netIpAddr, featherAuth.HandshakePort),
 			featherAuth.HandshakeCode,
+			featherAuth.TLSConfig,
 			func(int, string) bool {
 				return true
 			},
