@@ -3,7 +3,7 @@ GOBIN=$(shell pwd)/bin
 GOFILES=$(wildcard *.go)
 
 askflume:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatproxy -tags "insecure tc fips" github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/cmd
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOFIPS140=certified go build -o $(GOBIN)/trcchatproxy -tags "insecure tc fips" github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy/cmd
 
 askflumeserver:
-	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) go build -o $(GOBIN)/trcchatserver -tags "insecure tc fips" github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow
+	@GOPATH=$(GOPATH) GOBIN=$(GOBIN) GOFIPS140=certified go build -o $(GOBIN)/trcchatserver -tags "insecure tc fips" github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow

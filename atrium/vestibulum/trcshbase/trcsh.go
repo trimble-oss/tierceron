@@ -338,7 +338,8 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 	tracelessPtr *bool,
 	projectService ...*string,
 ) {
-	trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+	trcshDriverConfig, err := TrcshInitConfig(
+		driverConfigPtr,
 		env,
 		region,
 		"",
@@ -386,6 +387,7 @@ func EnableDeployer(driverConfigPtr *config.DriverConfig,
 			gAgentConfig.HandshakeCode,
 			&sessionIDentifier, /*Session identifier */
 			&env,
+			gAgentConfig.TLSConfig,
 			deployerAcceptRemoteNoTimeout,
 			deployerInterrupted)
 		trcshDriverConfig.FeatherCtx.Log = trcshDriverConfig.DriverConfig.CoreConfig.Log
@@ -526,7 +528,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		pathParam := os.Getenv("PATH_PARAM")
-		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+		trcshDriverConfig, err := TrcshInitConfig(
+			driverConfigPtr,
 			*envPtr,
 			*regionPtr,
 			pathParam,
@@ -800,7 +803,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			gCertCache = driverConfigPtr.CoreConfig.CertCache
 		}
 		// Preload agent synchronization configs...
-		trcshDriverConfig, err := TrcshInitConfig(driverConfigPtr,
+		trcshDriverConfig, err := TrcshInitConfig(
+			driverConfigPtr,
 			agentEnv,
 			*regionPtr,
 			"",
@@ -849,7 +853,8 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			true,
 			isShellRunner,
 			driverConfigPtr.CoreConfig.Log,
-			dronePtr)
+			dronePtr,
+		)
 		if errAgentLoad != nil {
 			// check os.env for another token
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error()), 124)
@@ -1470,7 +1475,8 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				deployCtlInterrupted,
 				false,
 				gTrcshConfig.IsShellRunner,
-				trcshDriverConfig.DriverConfig.CoreConfig.Log)
+				trcshDriverConfig.DriverConfig.CoreConfig.Log,
+			)
 			if errAgentLoad != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Permissions failure.  Incorrect deployment\n")
 				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Permissions failure.  Incorrect deployment\n", 126)
@@ -1490,6 +1496,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				gAgentConfig.HandshakeCode,
 				new(string),
 				&env,
+				gAgentConfig.TLSConfig,
 				deployCtlAcceptRemote,
 				deployCtlInterrupted)
 			if trcshDriverConfig.DriverConfig.CoreConfig.Log != nil {
@@ -1955,7 +1962,8 @@ collaboratorReRun:
 					control,
 					argsOrig,
 					strings.Split(deployLine, " "),
-					&configCount)
+					&configCount,
+				)
 				if err != nil {
 					if strings.Contains(err.Error(), "Forbidden") {
 						// Critical agent setup error.
@@ -1990,7 +1998,8 @@ collaboratorReRun:
 					control,
 					argsOrig,
 					strings.Split(deployLine, " "),
-					&configCount)
+					&configCount,
+				)
 			}
 		}
 	}

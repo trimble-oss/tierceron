@@ -32,6 +32,26 @@ import (
 
 var logger *log.Logger
 
+func resolvePluginTLSFiles() (string, string) {
+	candidatePairs := [][2]string{
+		{"./local_config/servicecert.crt", "./local_config/servicekey.key"},
+		{"../local_config/servicecert.crt", "../local_config/servicekey.key"},
+		{"../certs/serv_cert.pem", "../certs/serv_key.pem"},
+	}
+
+	for _, candidatePair := range candidatePairs {
+		if _, certErr := os.Stat(candidatePair[0]); certErr != nil {
+			continue
+		}
+		if _, keyErr := os.Stat(candidatePair[1]); keyErr != nil {
+			continue
+		}
+		return candidatePair[0], candidatePair[1]
+	}
+
+	return "../certs/serv_cert.pem", "../certs/serv_key.pem"
+}
+
 func main() {
 	executableName := os.Args[0]
 	if memonly.IsMemonly() {
@@ -86,8 +106,10 @@ func main() {
 	logger.Println("Running plugin with cert validation...")
 
 	args := os.Args
-	args = append(args, fmt.Sprintf("--client-cert=%s", "../certs/serv_cert.pem"))
-	args = append(args, fmt.Sprintf("--client-key=%s", "../certs/serv_key.pem"))
+	clientCertPath, clientKeyPath := resolvePluginTLSFiles()
+	logger.Printf("Using plugin TLS files cert=%s key=%s", clientCertPath, clientKeyPath)
+	args = append(args, fmt.Sprintf("--client-cert=%s", clientCertPath))
+	args = append(args, fmt.Sprintf("--client-key=%s", clientKeyPath))
 
 	argErr := flags.Parse(args[1:])
 	if argErr != nil {

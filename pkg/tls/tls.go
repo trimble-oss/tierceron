@@ -66,6 +66,9 @@ func GetTlsConfigFromCertBytes(certBytes []byte) (*tls.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	if rootCertPool == nil {
+		rootCertPool = x509.NewCertPool()
+	}
 	if ok := rootCertPool.AppendCertsFromPEM(certBytes); !ok {
 		return nil, errors.New("couldn't append certs to root")
 	}
@@ -89,6 +92,18 @@ func GetTlsConfig(certName string) (*tls.Config, error) {
 		return nil, err
 	}
 	return GetTlsConfigFromCertBytes(pem)
+}
+
+func GetTransportCredentialsFromCertBytes(certBytes []byte, insecureSkipVerify bool, serverName string) (credentials.TransportCredentials, error) {
+	tlsConfig, err := GetTlsConfigFromCertBytes(certBytes)
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig.InsecureSkipVerify = insecureSkipVerify
+	if len(serverName) > 0 {
+		tlsConfig.ServerName = serverName
+	}
+	return credentials.NewTLS(tlsConfig), nil
 }
 
 func initCertificates() {
@@ -139,6 +154,14 @@ func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, 
 			InsecureSkipVerify: insecureSkipVerify,
 		}), nil
 	}
+}
+
+func GetServerCredentialsFromPEM(certPEM []byte, keyPEM []byte, insecureSkipVerify bool) (credentials.TransportCredentials, error) {
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return nil, err
+	}
+	return GetTransportCredentialsByCert(insecureSkipVerify, nil, &cert)
 }
 
 func GetServerCredentials(insecureSkipVerify bool, logger *log.Logger) (credentials.TransportCredentials, error) {

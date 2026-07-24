@@ -268,16 +268,16 @@ func GetPluginRestrictedMappings() map[string][][]string {
 			[]string{"-templateFilter=APIMConfig/APIMConfig", "-restricted=APIMConfig", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"trcsh-cursor-bw": {
-			[]string{"-templateFilter=TrcVault/TrcshCursorBW", "-restricted=TrcshCursorBW", "-serviceFilter=config", "-indexFilter=config"},
+			[]string{"-templateFilter=Common/serviceclientcert.pem,Common/servicecert.crt,Common/servicekey.key,TrcVault/TrcshCursorBW", "-restricted=TrcshCursorBW", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"trcsh-cursor-aw": {
-			[]string{"-templateFilter=TrcVault/TrcshCursorAW", "-restricted=TrcshCursorAW", "-serviceFilter=config", "-indexFilter=config"},
+			[]string{"-templateFilter=Common/serviceclientcert.pem,Common/servicecert.crt,Common/servicekey.key,TrcVault/TrcshCursorAW", "-restricted=TrcshCursorAW", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"trcsh-cursor-k": {
-			[]string{"-templateFilter=TrcVault/TrcshCursorK", "-restricted=TrcshCursorK", "-serviceFilter=config", "-indexFilter=config"},
+			[]string{"-templateFilter=Common/serviceclientcert.pem,Common/servicecert.crt,Common/servicekey.key,TrcVault/TrcshCursorK", "-restricted=TrcshCursorK", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"trcsh-cursor-z": {
-			[]string{"-templateFilter=TrcVault/TrcshCursorZ", "-restricted=TrcshCursorZ", "-serviceFilter=config", "-indexFilter=config"},
+			[]string{"-templateFilter=Common/serviceclientcert.pem,Common/servicecert.crt,Common/servicekey.key,TrcVault/TrcshCursorZ", "-restricted=TrcshCursorZ", "-serviceFilter=config", "-indexFilter=config"},
 		},
 		"trc-vault-plugin": {
 			[]string{"-templateFilter=FlumeDatabase/TierceronFlow", "-indexed=FlumeDatabase", "-serviceFilter=TierceronFlow", "-indexFilter=flowName"},
