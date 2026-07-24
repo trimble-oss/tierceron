@@ -31,5 +31,3 @@ use ./atrium/vestibulum/hive/plugins/trcprocurator
 use ./atrium/vestibulum/hive/plugins/trctrcsh
 
 use ./atrium/vestibulum/trcchatproxy
-
-use ../tierceron-hat
