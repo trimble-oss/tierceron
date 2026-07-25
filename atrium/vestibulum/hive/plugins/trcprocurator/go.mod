@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocur
 go 1.26.4
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.11.6
+	github.com/trimble-oss/tierceron-core/v2 v2.11.7
 	gopkg.in/yaml.v2 v2.4.0
 )
 
