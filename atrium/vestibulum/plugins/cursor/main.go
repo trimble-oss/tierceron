@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"os"
@@ -98,10 +99,25 @@ func main() {
 	tlsConfig := apiClientMeta.GetTLSConfig()
 	tlsProviderFunc := api.VaultPluginTLSProvider(tlsConfig)
 
+	// Enforce FIPS 140-3 by wrapping provider to enforce MinVersion
+	tlsProviderOverrideFunc := func() (*tls.Config, error) {
+		if tlsProviderFunc == nil {
+			return nil, nil
+		}
+		cfg, err := tlsProviderFunc()
+		if err != nil {
+			return nil, err
+		}
+		if cfg != nil {
+			cfg.MinVersion = tls.VersionTLS12
+		}
+		return cfg, nil
+	}
+
 	pluginName := cursoropts.BuildOptions.GetPluginName(true)
 
 	logger.Print("Starting server...")
-	err := plugin.Serve(cursorlib.GetCursorPluginOpts(pluginName, tlsProviderFunc))
+	err := plugin.Serve(cursorlib.GetCursorPluginOpts(pluginName, tlsProviderOverrideFunc))
 	if err != nil {
 		logger.Fatal("Plugin shutting down")
 	}
