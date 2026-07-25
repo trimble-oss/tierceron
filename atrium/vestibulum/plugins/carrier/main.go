@@ -115,6 +115,10 @@ func main() {
 			if err != nil {
 				return nil, err
 			}
+			// Enforce FIPS 140-3 settings on returned config
+			if tlsConfigProvidedConfig != nil {
+				tlsConfigProvidedConfig.MinVersion = tls.VersionTLS12
+			}
 			logger.Print("Tls provide local...")
 			tlsConfigProvidedConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
 				for _, certChain := range verifiedChains {
@@ -129,7 +133,20 @@ func main() {
 			return tlsConfigProvidedConfig, nil
 		}
 	} else {
-		tlsProviderOverrideFunc = tlsProviderFunc
+		// Non-local: wrap the provider to enforce FIPS 140-3 settings
+		tlsProviderOverrideFunc = func() (*tls.Config, error) {
+			if tlsProviderFunc == nil {
+				return nil, nil
+			}
+			cfg, err := tlsProviderFunc()
+			if err != nil {
+				return nil, err
+			}
+			if cfg != nil {
+				cfg.MinVersion = tls.VersionTLS12
+			}
+			return cfg, nil
+		}
 	}
 
 	logger.Print("Starting server...")

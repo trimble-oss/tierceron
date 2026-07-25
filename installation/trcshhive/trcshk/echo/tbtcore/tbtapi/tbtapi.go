@@ -101,7 +101,7 @@ func getReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, err
 		return nil, err
 	}
 	certPool.AppendCertsFromPEM(cert)
-	tlsConfig := &tls.Config{RootCAs: certPool}
+	tlsConfig := &tls.Config{RootCAs: certPool, MinVersion: tls.VersionTLS12}
 
 	tlsOpt := grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 	opts = append(opts, tlsOpt)
@@ -380,6 +380,7 @@ func InitHttpServer(configContext *tccore.ConfigContext, send_err func(error)) {
 			} else {
 				tlsConfig := &tls.Config{
 					Certificates: []tls.Certificate{cert},
+					MinVersion:   tls.VersionTLS12,
 				}
 				log.Printf("main: listening on port %d", echoPort)
 				tlsListener, err = tls.Listen("tcp", fmt.Sprintf(":%d", echoPort), tlsConfig)

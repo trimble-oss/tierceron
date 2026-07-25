@@ -27,10 +27,10 @@ func InitSchemaManager(schemaCert []byte, schemaSource string, schemaUser string
 		if ok := caCertPool.AppendCertsFromPEM(schemaCert); !ok {
 			// Log warning - certificates may be invalid but continue
 		}
-		tlsConfig = &tls.Config{RootCAs: caCertPool}
+		tlsConfig = &tls.Config{RootCAs: caCertPool, MinVersion: tls.VersionTLS12}
 	} else {
 		// Use system root CAs
-		tlsConfig = &tls.Config{}
+		tlsConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
 
 	httpsClientTransport := &http.Transport{

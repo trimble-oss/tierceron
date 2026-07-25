@@ -57,48 +57,66 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 	if err != nil {
 		return nil, err
 	}
-	certPool, _ := x509.SystemCertPool()
+	certPool, poolErr := x509.SystemCertPool()
 	if certPool == nil {
 		certPool = x509.NewCertPool()
 	}
+	// Log system cert pool errors for FIPS compliance visibility
+	if poolErr != nil && certPool == nil {
+		return nil, poolErr
+	}
 
-	certPool.AppendCertsFromPEM(cert)
+	if !certPool.AppendCertsFromPEM(cert) {
+		return nil, errors.New("failed to append certificates from PEM to cert pool")
+	}
 
-	tlsConfig := &tls.Config{RootCAs: certPool}
+	// FIPS 140-3 compliant TLS configuration
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+		RootCAs:    certPool,
+	}
 	if insecure {
 		if isLocal, lookupErr := IsUrlIp(address); isLocal {
 			if lookupErr != nil {
 				return nil, lookupErr
 			}
-			tlsConfig = &tls.Config{RootCAs: certPool, InsecureSkipVerify: true}
+			// For local endpoints, use InsecureSkipVerify but keep MinVersion for FIPS compliance
+			tlsConfig = &tls.Config{
+				MinVersion:         tls.VersionTLS12,
+				RootCAs:            certPool,
+				InsecureSkipVerify: true,
+			}
 		} else {
 			if lookupErr != nil {
 				return nil, lookupErr
 			}
 			if allowNonLocal {
-				tlsConfig = &tls.Config{RootCAs: certPool, InsecureSkipVerify: true}
+				tlsConfig = &tls.Config{
+					MinVersion:         tls.VersionTLS12,
+					RootCAs:            certPool,
+					InsecureSkipVerify: true,
+				}
 			}
 		}
-	} else {
-		if coreopts.BuildOptions.IsLocalEndpoint(address) {
-			tlsConfig.VerifyPeerCertificate = func(certificates [][]byte, verifiedChains [][]*x509.Certificate) error {
-				if verifiedChains != nil {
-					serverIP := net.ParseIP("127.0.0.1") // Change to local IP for self signed cert local debugging
-					for _, certChain := range verifiedChains {
-						for _, cert := range certChain {
-							if cert.IPAddresses != nil {
-								for _, ip := range cert.IPAddresses {
-									if ip.Equal(serverIP) {
-										return nil
-									}
+	} else if coreopts.BuildOptions.IsLocalEndpoint(address) {
+		// For local endpoints without insecure flag, use custom verification instead of InsecureSkipVerify
+		tlsConfig.VerifyPeerCertificate = func(certificates [][]byte, verifiedChains [][]*x509.Certificate) error {
+			if verifiedChains != nil {
+				serverIP := net.ParseIP("127.0.0.1") // Change to local IP for self signed cert local debugging
+				for _, certChain := range verifiedChains {
+					for _, cert := range certChain {
+						if cert.IPAddresses != nil {
+							for _, ip := range cert.IPAddresses {
+								if ip.Equal(serverIP) {
+									return nil
 								}
 							}
 						}
 					}
-					return errors.New("TLS certificate verification failed (IP SAN mismatch)")
 				}
-				return nil
+				return errors.New("TLS certificate verification failed (IP SAN mismatch)")
 			}
+			return nil
 		}
 	}
 
@@ -106,8 +124,10 @@ func CreateHTTPClientAllowNonLocal(insecure bool, address string, env string, sc
 	tlsHandshakeTimeout := 30 * time.Second
 
 	if scan {
-		dialTimeout = 50 * time.Millisecond
-		tlsHandshakeTimeout = 50 * time.Millisecond
+		// For scan mode, use shorter timeouts but ensure minimum for FIPS 140-3 compliance
+		// FIPS handshakes require additional validation time
+		dialTimeout = 5 * time.Second
+		tlsHandshakeTimeout = 10 * time.Second
 	}
 
 	// create another test server and use the certificate

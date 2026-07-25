@@ -79,7 +79,8 @@ func GetTlsConfigFromCertBytes(certBytes []byte) (*tls.Config, error) {
 	// }
 	// clientCert = append(clientCert, certs)
 	return &tls.Config{
-		RootCAs: rootCertPool,
+		RootCAs:    rootCertPool,
+		MinVersion: tls.VersionTLS12,
 		//		Certificates: clientCert,
 	}, nil
 }
@@ -140,18 +141,16 @@ func GetTransportCredentials(insecureSkipVerify bool, drone ...*bool) (credentia
 func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, cert *tls.Certificate) (credentials.TransportCredentials, error) {
 	if utils.RefLength(serverName) > 0 {
 		return credentials.NewTLS(&tls.Config{
-			ServerName: *serverName,
-			Certificates: []tls.Certificate{
-				*cert,
-			},
+			ServerName:         *serverName,
+			Certificates:       []tls.Certificate{*cert},
 			InsecureSkipVerify: insecureSkipVerify,
+			MinVersion:         tls.VersionTLS12,
 		}), nil
 	} else {
 		return credentials.NewTLS(&tls.Config{
-			Certificates: []tls.Certificate{
-				*cert,
-			},
+			Certificates:       []tls.Certificate{*cert},
 			InsecureSkipVerify: insecureSkipVerify,
+			MinVersion:         tls.VersionTLS12,
 		}), nil
 	}
 }

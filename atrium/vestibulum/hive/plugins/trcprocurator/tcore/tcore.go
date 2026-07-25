@@ -212,7 +212,8 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 	// Create TLS configuration
 	cert, err := tls.X509KeyPair(
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT],
-		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
+		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY],
+	)
 	if err != nil {
 		configContext.Log.Printf("Failed to load TLS certificate: %v", err)
 		return nil, err
@@ -243,6 +244,7 @@ func setUpProxy(listenPort int, targetPort int, listenTexts []string, targetText
 	proxy.Transport = &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true, // Required for 127.0.0.1 backend
+			MinVersion:         tls.VersionTLS12,
 		},
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
@@ -498,7 +500,8 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext { return configCo
 
 func Init(pluginName string, properties *map[string]any) {
 	var err error
-	configContext, err = tccore.Init(properties,
+	configContext, err = tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,

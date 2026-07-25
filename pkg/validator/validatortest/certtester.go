@@ -30,7 +30,7 @@ func main() {
 		cert, _ := x509.ParseCertificate(block.Bytes)
 		certPool := x509.NewCertPool()
 		certPool.AddCert(cert)
-		conn, err := tls.Dial("tcp", os.Args[3], &tls.Config{RootCAs: certPool})
+		conn, err := tls.Dial("tcp", os.Args[3], &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: certPool})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Connection failed: %v\n", err)
 			os.Exit(1)
