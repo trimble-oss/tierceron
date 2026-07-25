@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -107,6 +108,13 @@ func main() {
 	var tlsProviderOverrideFunc func() (*tls.Config, error)
 	if localopts.IsLocal() {
 		tlsProviderOverrideFunc = func() (*tls.Config, error) {
+			// Patch http.DefaultClient to enforce FIPS during token unwrap
+			if transport, ok := http.DefaultClient.Transport.(*http.Transport); ok {
+				if transport.TLSClientConfig == nil {
+					transport.TLSClientConfig = &tls.Config{}
+				}
+				transport.TLSClientConfig.MinVersion = tls.VersionTLS12
+			}
 			if tlsProviderFunc == nil {
 				return nil, nil
 			}
@@ -135,6 +143,13 @@ func main() {
 	} else {
 		// Non-local: wrap the provider to enforce FIPS 140-3 settings
 		tlsProviderOverrideFunc = func() (*tls.Config, error) {
+			// Patch http.DefaultClient to enforce FIPS during token unwrap
+			if transport, ok := http.DefaultClient.Transport.(*http.Transport); ok {
+				if transport.TLSClientConfig == nil {
+					transport.TLSClientConfig = &tls.Config{}
+				}
+				transport.TLSClientConfig.MinVersion = tls.VersionTLS12
+			}
 			if tlsProviderFunc == nil {
 				return nil, nil
 			}
