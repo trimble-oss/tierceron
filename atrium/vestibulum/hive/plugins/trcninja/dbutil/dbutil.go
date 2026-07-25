@@ -75,7 +75,8 @@ func OpenDirectConnection(configContext *core.ConfigContext) (*sql.DB, error) {
 	}
 
 	tlsConfig = &tls.Config{
-		RootCAs: rootCertPool,
+		MinVersion: tls.VersionTLS12,
+		RootCAs:    rootCertPool,
 	}
 	tlsConfig.ServerName = server
 

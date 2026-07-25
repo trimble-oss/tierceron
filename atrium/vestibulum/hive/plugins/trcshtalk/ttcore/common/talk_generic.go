@@ -269,7 +269,7 @@ func ProcessTrcshTalkRequestGeneric(
 		}
 		mashupCertPool := x509.NewCertPool()
 		mashupCertPool.AddCert(mashupClientCert)
-		tlsCfg = &tls.Config{ServerName: serverName, RootCAs: mashupCertPool}
+		tlsCfg = &tls.Config{ServerName: serverName, RootCAs: mashupCertPool, MinVersion: tls.VersionTLS12}
 	}
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", serverName, port),
 		grpc.WithDefaultCallOptions(),

@@ -113,7 +113,7 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.D
 			configContext.Log.Printf("Received response from query: %s\n", *(*event).Query)
 			if len(*(*event).Query) == 1 && event.Response != nil && (*event).Response != nil {
 				configContext.Log.Printf("Processing response from query: %s\n", *(*event).Query)
-				finished_queries[(*event.Query)[0]] = *((*event).Response)
+				finished_queries[(*event.Query)[0]] = *(*event).Response
 			}
 			if len(finished_queries) == len(queries) {
 				configContext.Log.Println("Formatting responses.")
@@ -220,7 +220,7 @@ func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRe
 			}
 			pool := x509.NewCertPool()
 			pool.AddCert(parsed)
-			return &tls.Config{ServerName: serverName, RootCAs: pool}, nil
+			return &tls.Config{ServerName: serverName, RootCAs: pool, MinVersion: tls.VersionTLS12}, nil
 		},
 		func(conn *grpc.ClientConn) any { return pb.NewTrcshTalkServiceClient(conn) },
 		func(client any, ctx context.Context, req proto.Message) (proto.Message, error) {

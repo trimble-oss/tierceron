@@ -246,7 +246,7 @@ func createKafkaReaderConfig(topicName string, consumerGroupID ...string) (*kgo.
 		caPool.AppendCertsFromPEM(confighelper.KafkaCert)
 	}
 
-	tlsConfig := &tls.Config{RootCAs: caPool}
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: caPool}
 
 	// Use provided consumer group ID or generate a new one
 	var groupID string
@@ -1268,7 +1268,8 @@ func KafkaTestInit(argosID string,
 	multiBarLock.Lock()
 	multibar := MultiBarInstance()
 
-	bar := multibar.Mpb.AddBar(int64(100),
+	bar := multibar.Mpb.AddBar(
+		int64(100),
 		mpb.PrependDecorators(
 			decor.Name(testNameFormatted, decor.WCSyncSpace),
 			decor.Name(" "),
