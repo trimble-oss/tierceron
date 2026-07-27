@@ -48,7 +48,6 @@ func PluginInitNewRelic(driverConfig *config.DriverConfig, mod *helperkv.Modifie
 					newrelic.ConfigDebugLogger(os.Stdout),
 					newrelic.ConfigInfoLogger(os.Stdout),
 				)
-
 				if err != nil {
 					driverConfig.CoreConfig.Log.Println("Error setting up newrelic:", err)
 					os.Exit(-1)
@@ -67,8 +66,10 @@ func PluginInitNewRelic(driverConfig *config.DriverConfig, mod *helperkv.Modifie
 	}
 }
 
-var onceAuth sync.Once
-var gCapInitted bool = false
+var (
+	onceAuth    sync.Once
+	gCapInitted bool = false
+)
 
 func IsCapInitted() bool { return gCapInitted }
 
@@ -77,7 +78,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	var vault *sys.Vault
 	var err error
 
-	//Grabbing configs
+	// Grabbing configs
 	tempAddr := pluginConfig["vaddress"]
 	tempTokenPtr := pluginConfig["tokenptr"]
 	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
@@ -119,7 +120,7 @@ func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, p
 	var ok bool
 	logger.Printf("TapFeatherInit\n")
 
-	if ok, err = servercapauth.ValidateTrcshPathSha(mod, pluginConfig, logger); ok {
+	if ok, err = servercapauth.ValidateTrcshPathSha(driverConfig, mod, pluginConfig, logger); ok {
 		// Only start up if trcsh is up to date....
 		onceAuth.Do(func() {
 			logger.Printf("Initiating tap.\n")
@@ -130,7 +131,7 @@ func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, p
 
 				var featherAuth *servercapauth.FeatherAuth = nil
 				if pluginConfig["env"].(string) == "dev" || pluginConfig["env"].(string) == "staging" {
-					featherAuth, err = servercapauth.Init(mod, pluginConfig, wantsFeathering, logger)
+					featherAuth, err = servercapauth.Init(driverConfig, mod, pluginConfig, wantsFeathering, logger)
 					if err != nil {
 						eUtils.LogErrorMessage(driverConfig.CoreConfig, "Skipping cap auth init.", false)
 						return
@@ -142,10 +143,15 @@ func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, p
 						pluginConfig["trcHatWantsFeathering"] = "true"
 					}
 				}
-				servercapauth.Memorize(pluginConfig, logger)
+				servercapauth.Memorize(driverConfig, pluginConfig, logger)
 
 				// Not really clear how cap auth would do this...
-				go servercapauth.Start(featherAuth, pluginConfig["env"].(string), logger)
+				var startReady sync.WaitGroup
+				if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
+					startReady.Add(1)
+				}
+				go servercapauth.Start(driverConfig, featherAuth, pluginConfig["env"].(string), logger, &startReady)
+				startReady.Wait() // Wait for server to bind port
 				logger.Printf("Cap auth feather init complete for env: %s\n", pluginConfig["env"].(string))
 
 				gCapInitted = true

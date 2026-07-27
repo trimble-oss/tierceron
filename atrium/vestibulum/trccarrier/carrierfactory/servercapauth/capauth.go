@@ -13,6 +13,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -31,7 +32,7 @@ type FeatherAuth struct {
 }
 
 // ValidateTrcshPathSha - if at least one plugin is properly certified, return true.
-func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger *log.Logger) (bool, error) {
+func ValidateTrcshPathSha(driverConfig *config.DriverConfig, mod *kv.Modifier, pluginConfig map[string]any, logger *log.Logger) (bool, error) {
 	logger.Printf("ValidateTrcshPathSha start\n")
 
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
@@ -49,14 +50,14 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 		certifyMap, err := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", trustData[0]))
 		if err != nil {
 			logger.Printf("Validating Certification failure for %s %s\n", trustData[0], err)
-			return false, fmt.Errorf("missing certification for required trust %s: %v", trustData[0], err)
+			continue
 		}
 
 		if _, ok := certifyMap["trcsha256"]; ok {
 			peerExe, err := os.Open(trustData[1])
 			if err != nil {
-				logger.Printf("ValidateTrcshPathSha complete with file open error %s\n", err.Error())
-				return false, err
+				logger.Printf("ValidateTrcshPathSha failed to open %s: %s\n", trustData[1], err.Error())
+				continue
 			}
 			defer peerExe.Close()
 
@@ -65,7 +66,7 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 			// return ok....
 
 			// if _, err := io.Copy(h, peerExe); err != nil {
-			// 	return false, err
+			// 	continue
 			// }
 			// if certifyMap["trcsha256"].(string) == hex.EncodeToString(h.Sum(nil)) {
 			// 	return true, nil
@@ -76,11 +77,11 @@ func ValidateTrcshPathSha(mod *kv.Modifier, pluginConfig map[string]any, logger 
 		}
 	}
 
-	logger.Printf("ValidateTrcshPathSha completing with failure\n")
-	return false, errors.New("missing certification")
+	logger.Printf("ValidateTrcshPathSha completing with failure - no valid trusts found\n")
+	return false, errors.New("no valid certification found in any trust")
 }
 
-func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) (*FeatherAuth, error) {
+func Init(driverConfig *config.DriverConfig, mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) (*FeatherAuth, error) {
 	trustsMap := cursoropts.BuildOptions.GetTrusts()
 	tapMap := map[string]string{}
 	tapGroup := "azuredeploy"
@@ -122,7 +123,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 		// Feathering not supported in staging/prod non messenger at this time.
 		featherMap, _ := mod.ReadData(cursoropts.BuildOptions.GetCursorConfigPath())
 		if _, ok := featherMap["trcHatSecretsPort"].(string); ok {
-			featherTLSConfig, tapCreds, tlsErr := capauth.LoadFeatherServerTLSMaterial(nil, mod, "", logger)
+			featherTLSConfig, tapCreds, _, tlsErr := capauth.LoadFeatherServerTLSMaterial(driverConfig, mod, "", logger)
 			if tlsErr != nil {
 				return nil, tlsErr
 			}
@@ -143,7 +144,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 	// 	return nil, err
 	// }
 	if featherMap != nil {
-		featherTLSConfig, tapCreds, tlsErr := capauth.LoadFeatherServerTLSMaterial(nil, mod, "", logger)
+		featherTLSConfig, tapCreds, _, tlsErr := capauth.LoadFeatherServerTLSMaterial(driverConfig, mod, "", logger)
 		if tlsErr != nil {
 			return nil, tlsErr
 		}
@@ -190,7 +191,7 @@ func Init(mod *kv.Modifier, pluginConfig map[string]any, wantsFeathering bool, l
 	return nil, nil
 }
 
-func Memorize(memorizeFields map[string]any, logger *log.Logger) {
+func Memorize(driverConfig *config.DriverConfig, memorizeFields map[string]any, logger *log.Logger) {
 	for key, value := range memorizeFields {
 		switch key {
 		case "trcHatSecretsPort":
@@ -223,7 +224,7 @@ func Memorize(memorizeFields map[string]any, logger *log.Logger) {
 }
 
 // Things to make available to trusted agent.
-func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
+func Start(driverConfig *config.DriverConfig, featherAuth *FeatherAuth, env string, logger *log.Logger, readyWg ...*sync.WaitGroup) error {
 	logger.Println("Cap server.")
 	if featherAuth == nil || featherAuth.TapCreds == nil {
 		return errors.New("missing cap TLS credentials")
@@ -264,8 +265,11 @@ func Start(featherAuth *FeatherAuth, env string, logger *log.Logger) error {
 
 	if featherAuth != nil && len(featherAuth.SecretsPort) > 0 {
 		logger.Println("Tapping server.")
-		cap.TapServer(fmt.Sprintf("%s:%s", netIpAddr, featherAuth.SecretsPort), grpc.Creds(creds))
+		go cap.TapServer(fmt.Sprintf("%s:%s", netIpAddr, featherAuth.SecretsPort), grpc.Creds(creds))
 		logger.Println("Server tapped.")
+		if len(readyWg) > 0 && readyWg[0] != nil {
+			readyWg[0].Done()
+		}
 	} else {
 		logger.Println("Missing optional detailed feather configuration.  trcsh virtual machine based service deployments will be disabled.")
 	}
