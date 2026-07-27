@@ -76,6 +76,9 @@ func newFeatherTLSDriverConfig(driverConfig *config.DriverConfig, mod *helperkv.
 		if driverCopy.CoreConfig.CertCache == nil {
 			driverCopy.CoreConfig.CertCache = cache.NewCertCache()
 		}
+		if driverCopy.CoreConfig.TokenCache == nil {
+			driverCopy.CoreConfig.TokenCache = cache.NewTokenCacheEmpty()
+		}
 		if driverCopy.CoreConfig.Log == nil {
 			driverCopy.CoreConfig.Log = logger
 		}
@@ -106,20 +109,22 @@ func newFeatherTLSDriverConfig(driverConfig *config.DriverConfig, mod *helperkv.
 	}
 
 	return &config.DriverConfig{CoreConfig: &coreconfig.CoreConfig{
-		Env:       env,
-		EnvBasis:  envBasis,
-		Log:       logger,
-		CertCache: cache.NewCertCache(),
+		Env:        env,
+		EnvBasis:   envBasis,
+		Log:        logger,
+		TokenCache: cache.NewTokenCacheEmpty(),
+		CertCache:  cache.NewCertCache(),
 	}}
 }
 
-func loadFeatherCertComponent(driverConfig *config.DriverConfig, mod *helperkv.Modifier, logger *log.Logger, certPath string) ([]byte, error) {
+func loadFeatherCertComponent(driverConfig *config.DriverConfig, mod *helperkv.Modifier, logger *log.Logger, certPath string) ([]byte, *config.DriverConfig, error) {
 	if mod == nil {
-		return nil, errors.New("missing vault modifier for feather TLS")
+		return nil, nil, errors.New("missing vault modifier for feather TLS")
 	}
 	certDriverConfig := newFeatherTLSDriverConfig(driverConfig, mod, logger)
 	mod.Reset()
-	return certutil.LoadCertComponent(certDriverConfig, mod, certPath)
+	certBytes, err := certutil.LoadCertComponent(certDriverConfig, mod, certPath)
+	return certBytes, certDriverConfig, err
 }
 
 func applyFeatherServerName(tlsConfig *cap.FeatherTLSConfig, serverName string) *cap.FeatherTLSConfig {
@@ -130,33 +135,33 @@ func applyFeatherServerName(tlsConfig *cap.FeatherTLSConfig, serverName string) 
 }
 
 func LoadFeatherTLSConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, serverName string, logger *log.Logger) (*cap.FeatherTLSConfig, error) {
-	rootCertBytes, err := loadFeatherCertComponent(driverConfig, mod, logger, featherRootCertTemplatePath)
+	rootCertBytes, _, err := loadFeatherCertComponent(driverConfig, mod, logger, featherRootCertTemplatePath)
 	if err != nil {
 		return nil, err
 	}
 	return applyFeatherServerName(cap.NewFeatherPEMTLSConfig(nil, nil, &rootCertBytes), serverName), nil
 }
 
-func LoadFeatherServerTLSMaterial(driverConfig *config.DriverConfig, mod *helperkv.Modifier, serverName string, logger *log.Logger) (*cap.FeatherTLSConfig, credentials.TransportCredentials, error) {
-	listenerCertBytes, err := loadFeatherCertComponent(driverConfig, mod, logger, featherListenerCertTemplatePath)
+func LoadFeatherServerTLSMaterial(driverConfig *config.DriverConfig, mod *helperkv.Modifier, serverName string, logger *log.Logger) (*cap.FeatherTLSConfig, credentials.TransportCredentials, *config.DriverConfig, error) {
+	listenerCertBytes, certDriverConfig, err := loadFeatherCertComponent(driverConfig, mod, logger, featherListenerCertTemplatePath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	listenerKeyBytes, err := loadFeatherCertComponent(driverConfig, mod, logger, featherListenerKeyTemplatePath)
+	listenerKeyBytes, certDriverConfig, err := loadFeatherCertComponent(certDriverConfig, mod, logger, featherListenerKeyTemplatePath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	rootCertBytes, err := loadFeatherCertComponent(driverConfig, mod, logger, featherRootCertTemplatePath)
+	rootCertBytes, _, err := loadFeatherCertComponent(certDriverConfig, mod, logger, featherRootCertTemplatePath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	featherTLSConfig := applyFeatherServerName(cap.NewFeatherPEMTLSConfig(&listenerCertBytes, &listenerKeyBytes, &rootCertBytes), serverName)
 	tapCredentials, err := tls.GetServerCredentialsFromPEM(listenerCertBytes, listenerKeyBytes, false)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return featherTLSConfig, tapCredentials, nil
+	return featherTLSConfig, tapCredentials, certDriverConfig, nil
 }
 
 func getTransportCredentialsFromTLSConfig(featherTLSConfig *cap.FeatherTLSConfig, insecureSkipVerify bool) (credentials.TransportCredentials, error) {

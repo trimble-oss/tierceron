@@ -101,7 +101,8 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	project string,
 	service string,
 	cert bool,
-	zc bool) (string, map[int]string, bool, error) {
+	zc bool,
+) (string, map[int]string, bool, error) {
 	var template string
 	var err error
 
@@ -181,7 +182,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	if extra != "" {
 		filename = extra + "/" + filename
 	}
-	//populate template
+	// populate template
 	template, certData, err = PopulateTemplate(driverConfig, template, modifier, secretMode, project, service, filename, cert)
 	return template, certData, true, err
 }
@@ -200,12 +201,13 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	project string,
 	service string,
 	filename string,
-	cert bool) (string, map[int]string, error) {
+	cert bool,
+) (string, map[int]string, error) {
 	values := make(map[string]any, 0)
 	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
-	if !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
+	if driverConfig.CoreConfig.TokenCache != nil && !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
 		cds.Init(driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
 	} else {
 		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.CoreConfig.Env + "/" + driverConfig.CoreConfig.Env + "_seed.yml")
@@ -258,16 +260,16 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	}
 
 	if ok {
-		//create new template from template string
+		// create new template from template string
 		t := template.New("template")
 		t, err := t.Parse(emptyTemplate)
 		if err != nil {
 			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 		}
 		var doc bytes.Buffer
-		//configure the template
+		// configure the template
 
-		//Check if filename exists in values map
+		// Check if filename exists in values map
 
 		_, hasData := values[filename]
 		if !hasData && !driverConfig.CoreConfig.WantCerts {
@@ -316,7 +318,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 						return "", nil, vaultCertErr
 					}
 					encoded := fmt.Sprintf("%s", data)
-					//Decode cert as it was encoded in trcinit
+					// Decode cert as it was encoded in trcinit
 					decoded, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
 						eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
