@@ -16,8 +16,6 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
-	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
-	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron-hat/cap"
 	"github.com/trimble-oss/tierceron-hat/cap/tap"
@@ -65,42 +63,6 @@ const (
 	featherListenerCertTemplatePath = "Common/servicecert.crt.mf.tmpl"
 	featherListenerKeyTemplatePath  = "Common/servicekey.key.mf.tmpl"
 )
-
-func newFeatherTLSDriverConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, logger *log.Logger) *config.DriverConfig {
-	// Use kernel's driverConfig directly if provided, which has all proper tokens and caches initialized
-	if driverConfig != nil && driverConfig.CoreConfig != nil {
-		// Ensure caches are initialized but use the kernel's existing ones
-		if driverConfig.CoreConfig.CertCache == nil {
-			driverConfig.CoreConfig.CertCache = cache.NewCertCache()
-		}
-		if driverConfig.CoreConfig.TokenCache == nil {
-			driverConfig.CoreConfig.TokenCache = cache.NewTokenCacheEmpty()
-		}
-		if driverConfig.CoreConfig.Log == nil {
-			driverConfig.CoreConfig.Log = logger
-		}
-		return driverConfig
-	}
-
-	env := ""
-	envBasis := ""
-	if mod != nil {
-		env = mod.Env
-		envBasis = mod.EnvBasis
-		if len(envBasis) == 0 {
-			envParts := strings.Split(env, "-")
-			envBasis = envParts[0]
-		}
-	}
-
-	return &config.DriverConfig{CoreConfig: &coreconfig.CoreConfig{
-		Env:        env,
-		EnvBasis:   envBasis,
-		Log:        logger,
-		TokenCache: cache.NewTokenCacheEmpty(),
-		CertCache:  cache.NewCertCache(),
-	}}
-}
 
 func LoadFeatherTLSConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, serverName string, logger *log.Logger) (*cap.FeatherTLSConfig, error) {
 	if mod == nil {
@@ -179,34 +141,6 @@ func getTransportCredentialsFromTLSConfig(featherTLSConfig *cap.FeatherTLSConfig
 		serverName = *featherTLSConfig.ServerName
 	}
 	return tls.GetTransportCredentialsFromCertBytes(*featherTLSConfig.RootCertPEM, insecureSkipVerify, serverName)
-}
-
-func loadPenseTransportCredentials(trcshDriverConfig *TrcshDriverConfig, insecureSkipVerify bool) (credentials.TransportCredentials, error) {
-	if trcshDriverConfig == nil || trcshDriverConfig.DriverConfig == nil || trcshDriverConfig.DriverConfig.CoreConfig == nil {
-		return nil, errors.New("missing driver config for cap transport credentials")
-	}
-	coreConfig := trcshDriverConfig.DriverConfig.CoreConfig
-	if coreConfig.TokenCache == nil || eUtils.RefLength(coreConfig.TokenCache.VaultAddressPtr) == 0 {
-		return nil, errors.New("missing vault address for cap transport credentials")
-	}
-	tokenName := ""
-	if eUtils.RefLength(coreConfig.CurrentTokenNamePtr) > 0 && coreConfig.TokenCache.GetToken(*coreConfig.CurrentTokenNamePtr) != nil {
-		tokenName = *coreConfig.CurrentTokenNamePtr
-	} else if coreConfig.TokenCache.GetToken("config_token_pluginany") != nil {
-		tokenName = "config_token_pluginany"
-	}
-	if len(tokenName) == 0 {
-		return nil, errors.New("missing token for cap transport credentials")
-	}
-	mod, err := helperkv.NewModifierFromCoreConfig(coreConfig, tokenName, coreConfig.Env, true)
-	if err != nil {
-		return nil, err
-	}
-	featherTLSConfig, err := LoadFeatherTLSConfig(trcshDriverConfig.DriverConfig, mod, "", coreConfig.Log)
-	if err != nil {
-		return nil, err
-	}
-	return getTransportCredentialsFromTLSConfig(featherTLSConfig, insecureSkipVerify)
 }
 
 func randomString(n int) string {
@@ -718,7 +652,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 		return new(string), errors.New("tap writer error")
 	}
 
-	creds, err := loadPenseTransportCredentials(trcshDriverConfig, true)
+	creds, err := tls.GetLoopBackTransportCredentials()
 	if err != nil {
 		return nil, err
 	}

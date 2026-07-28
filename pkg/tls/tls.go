@@ -138,6 +138,15 @@ func GetTransportCredentials(insecureSkipVerify bool, drone ...*bool) (credentia
 	return GetTransportCredentialsByCert(insecureSkipVerify, &serverName, &tls.Certificate{Certificate: [][]byte{mashupKeyBytes}})
 }
 
+func GetLoopBackTransportCredentials(drone ...*bool) (credentials.TransportCredentials, error) {
+	mashupKeyBytes, err := ReadServerCert("", drone...)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetTransportCredentialsFromCertBytes(mashupKeyBytes, false, "127.0.0.1")
+}
+
 func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, cert *tls.Certificate) (credentials.TransportCredentials, error) {
 	if utils.RefLength(serverName) > 0 {
 		return credentials.NewTLS(&tls.Config{
