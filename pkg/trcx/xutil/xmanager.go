@@ -330,7 +330,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 	// Configure each template in directory
 	for _, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(tp string, multiService bool, dc *config.DriverConfig, cPaths []string) {
+		go func(tp string, multiService bool, dc *config.DriverConfig, cPaths []string, wantCerts bool) {
 			var project, service, env, version, innerProject string
 			var errSeed error
 			project = ""
@@ -362,7 +362,8 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 					dc.CoreConfig,
 					fmt.Sprintf("config_token_%s", dc.CoreConfig.EnvBasis),
 					env,
-					useCache)
+					useCache,
+				)
 				goMod.Env = dc.CoreConfig.Env
 				if err != nil {
 					if useCache && goMod != nil {
@@ -414,7 +415,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 					}
 				}
 				if !utils.RefEquals(dc.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
-					if dc.CoreConfig.WantCerts {
+					if wantCerts {
 						var formattedTPath string
 						tempList := make([]string, 0)
 						// TODO: Chebacca Monday!
@@ -435,7 +436,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 						}
 						cPaths = tempList
 					}
-					cds.Init(dc.CoreConfig, goMod, dc.SecretMode, true, project, cPaths, service)
+					cds.Init(dc.CoreConfig, goMod, dc.SecretMode, true, project, false, cPaths, service)
 				}
 				if len(goMod.VersionFilter) >= 1 && strings.Contains(goMod.VersionFilter[len(goMod.VersionFilter)-1], "!=!") {
 					// TODO: should this be before cds.Init???
@@ -449,15 +450,16 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 
 			}
 
-			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(dc, goMod,
+			_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(
+				dc, goMod,
 				cds,
 				tp,
 				project,
 				service,
 				templateFromVault,
-				&(templateResult.InterfaceTemplateSection),
-				&(templateResult.ValueSection),
-				&(templateResult.SecretSection),
+				&templateResult.InterfaceTemplateSection,
+				&templateResult.ValueSection,
+				&templateResult.SecretSection,
 			)
 			if len(dc.CoreConfig.DynamicPathFilter) > 0 {
 				// Pass explicit desitination indiciated in gomod.
@@ -480,7 +482,7 @@ func GenerateSeedSectionFromVaultRaw(driverConfig *config.DriverConfig, template
 			}
 			templateResult.SubSectionValue = dc.SubSectionValue
 			templateResultChan <- &templateResult
-		}(templatePath, multiService, driverConfig, commonPaths)
+		}(templatePath, multiService, driverConfig, commonPaths, driverConfig.CoreConfig.WantCerts)
 	}
 	wg.Wait()
 
@@ -773,7 +775,8 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			certMod.Version = envVersion[1]
 
 			var ctErr error
-			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(driverConfig, certMod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, false)
+
+			_, certData, certLoaded, ctErr = vcutils.ConfigTemplate(driverConfig, certMod, templatePath, driverConfig.SecretMode, project, service, true, false)
 			if ctErr != nil {
 				if !strings.Contains(strings.ToLower(ctErr.Error()), "missing .certdata") {
 					eUtils.CheckError(driverConfig.CoreConfig, ctErr, true)
@@ -807,7 +810,7 @@ func GenerateSeedsFromVault(ctx config.ProcessContext, configCtx *config.ConfigC
 			eUtils.LogInfo(driverConfig.CoreConfig, "Writing certificate: "+certPath+".")
 
 			if strings.Contains(certPath, "ENV") {
-				if len(certMod.Env) >= 5 && (certMod.Env)[:5] == "local" {
+				if len(certMod.Env) >= 5 && certMod.Env[:5] == "local" {
 					envParts := strings.SplitN(certMod.Env, "/", 3)
 					certPath = strings.Replace(certPath, "ENV", envParts[1], 1)
 				} else {

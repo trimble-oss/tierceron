@@ -845,7 +845,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		var errAgentLoad error
 		gAgentConfig, gTrcshConfig, errAgentLoad = capauth.NewAgentConfig(
-			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
+			trcshDriverConfig.DriverConfig,
 			fmt.Sprintf("trcsh_agent_%s", trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis),
 			agentEnv,
 			deployCtlAcceptRemoteNoTimeout,
@@ -858,6 +858,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		if errAgentLoad != nil {
 			// check os.env for another token
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error()), 124)
+		}
+
+		errTls := capauth.NewTlsFeatherConfig(gAgentConfig, trcshDriverConfig.DriverConfig, "", driverConfigPtr.CoreConfig.Log)
+		if errTls != nil {
+			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("trcsh TLS config failure: %s\n", errTls.Error()), 125)
 		}
 
 		if !gTrcshConfig.IsShellRunner {
@@ -1468,7 +1473,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			// Prepare the configuration triggering mechanism.
 			// Bootstrap deployment is replaced during callback with the agent name.
 			gAgentConfig, _, errAgentLoad = capauth.NewAgentConfig(
-				gTrcshConfig.TokenCache,
+				trcshDriverConfig.DriverConfig,
 				"config_token_pluginany",
 				env,
 				deployCtlAcceptRemote,
@@ -1480,6 +1485,12 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 			if errAgentLoad != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Permissions failure.  Incorrect deployment\n")
 				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Permissions failure.  Incorrect deployment\n", 126)
+			}
+
+			errTls := capauth.NewTlsFeatherConfig(gAgentConfig, trcshDriverConfig.DriverConfig, "", trcshDriverConfig.DriverConfig.CoreConfig.Log)
+			if errTls != nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("TLS config failure: %s\n", errTls.Error())
+				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "TLS config failure\n", 127)
 			}
 			if gAgentConfig.FeatherContext == nil {
 				fmt.Fprintf(os.Stderr, "Warning!  Permissions failure.  Incorrect feathering\n")

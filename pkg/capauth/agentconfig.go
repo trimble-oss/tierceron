@@ -69,32 +69,19 @@ const (
 )
 
 func newFeatherTLSDriverConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, logger *log.Logger) *config.DriverConfig {
+	// Use kernel's driverConfig directly if provided, which has all proper tokens and caches initialized
 	if driverConfig != nil && driverConfig.CoreConfig != nil {
-		coreCopy := *driverConfig.CoreConfig
-		driverCopy := *driverConfig
-		driverCopy.CoreConfig = &coreCopy
-		if driverCopy.CoreConfig.CertCache == nil {
-			driverCopy.CoreConfig.CertCache = cache.NewCertCache()
+		// Ensure caches are initialized but use the kernel's existing ones
+		if driverConfig.CoreConfig.CertCache == nil {
+			driverConfig.CoreConfig.CertCache = cache.NewCertCache()
 		}
-		if driverCopy.CoreConfig.TokenCache == nil {
-			driverCopy.CoreConfig.TokenCache = cache.NewTokenCacheEmpty()
+		if driverConfig.CoreConfig.TokenCache == nil {
+			driverConfig.CoreConfig.TokenCache = cache.NewTokenCacheEmpty()
 		}
-		if driverCopy.CoreConfig.Log == nil {
-			driverCopy.CoreConfig.Log = logger
+		if driverConfig.CoreConfig.Log == nil {
+			driverConfig.CoreConfig.Log = logger
 		}
-		if mod != nil {
-			if len(driverCopy.CoreConfig.Env) == 0 {
-				driverCopy.CoreConfig.Env = mod.Env
-			}
-			if len(driverCopy.CoreConfig.EnvBasis) == 0 {
-				driverCopy.CoreConfig.EnvBasis = mod.EnvBasis
-				if len(driverCopy.CoreConfig.EnvBasis) == 0 {
-					envParts := strings.Split(mod.Env, "-")
-					driverCopy.CoreConfig.EnvBasis = envParts[0]
-				}
-			}
-		}
-		return &driverCopy
+		return driverConfig
 	}
 
 	env := ""
@@ -117,51 +104,61 @@ func newFeatherTLSDriverConfig(driverConfig *config.DriverConfig, mod *helperkv.
 	}}
 }
 
-func loadFeatherCertComponent(driverConfig *config.DriverConfig, mod *helperkv.Modifier, logger *log.Logger, certPath string) ([]byte, *config.DriverConfig, error) {
-	if mod == nil {
-		return nil, nil, errors.New("missing vault modifier for feather TLS")
-	}
-	certDriverConfig := newFeatherTLSDriverConfig(driverConfig, mod, logger)
-	mod.Reset()
-	certBytes, err := certutil.LoadCertComponent(certDriverConfig, mod, certPath)
-	return certBytes, certDriverConfig, err
-}
-
-func applyFeatherServerName(tlsConfig *cap.FeatherTLSConfig, serverName string) *cap.FeatherTLSConfig {
-	if tlsConfig != nil && len(serverName) > 0 {
-		tlsConfig.ServerName = &serverName
-	}
-	return tlsConfig
-}
-
 func LoadFeatherTLSConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifier, serverName string, logger *log.Logger) (*cap.FeatherTLSConfig, error) {
-	rootCertBytes, _, err := loadFeatherCertComponent(driverConfig, mod, logger, featherRootCertTemplatePath)
+	if mod == nil {
+		return nil, errors.New("missing vault modifier for feather TLS")
+	}
+	rootCertPath := featherRootCertTemplatePath
+	if prod.IsProd() {
+		rootCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+	}
+	mod.Reset()
+	rootCertBytes, err := certutil.LoadCertComponent(driverConfig, mod, rootCertPath)
 	if err != nil {
 		return nil, err
 	}
-	return applyFeatherServerName(cap.NewFeatherPEMTLSConfig(nil, nil, &rootCertBytes), serverName), nil
+	tlsConfig := cap.NewFeatherPEMTLSConfig(nil, nil, &rootCertBytes)
+	if tlsConfig != nil && len(serverName) > 0 {
+		tlsConfig.ServerName = &serverName
+	}
+	return tlsConfig, nil
 }
 
 func LoadFeatherServerTLSMaterial(driverConfig *config.DriverConfig, mod *helperkv.Modifier, serverName string, logger *log.Logger) (*cap.FeatherTLSConfig, credentials.TransportCredentials, *config.DriverConfig, error) {
-	listenerCertBytes, certDriverConfig, err := loadFeatherCertComponent(driverConfig, mod, logger, featherListenerCertTemplatePath)
+	if mod == nil {
+		return nil, nil, nil, errors.New("missing vault modifier for feather TLS")
+	}
+	listenerCertPath := featherListenerCertTemplatePath
+	listenerKeyPath := featherListenerKeyTemplatePath
+	rootCertPath := featherRootCertTemplatePath
+	if prod.IsProd() {
+		listenerCertPath = "Common/servicecert.crt.mf.tmpl"
+		listenerKeyPath = "Common/servicekey.key.mf.tmpl"
+		rootCertPath = "Common/serviceclientcert.pem.mf.tmpl"
+	}
+	mod.Reset()
+	listenerCertBytes, err := certutil.LoadCertComponent(driverConfig, mod, listenerCertPath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	listenerKeyBytes, certDriverConfig, err := loadFeatherCertComponent(certDriverConfig, mod, logger, featherListenerKeyTemplatePath)
+	listenerKeyBytes, err := certutil.LoadCertComponent(driverConfig, mod, listenerKeyPath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	rootCertBytes, _, err := loadFeatherCertComponent(certDriverConfig, mod, logger, featherRootCertTemplatePath)
+	rootCertBytes, err := certutil.LoadCertComponent(driverConfig, mod, rootCertPath)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	featherTLSConfig := applyFeatherServerName(cap.NewFeatherPEMTLSConfig(&listenerCertBytes, &listenerKeyBytes, &rootCertBytes), serverName)
+	featherTLSConfig := cap.NewFeatherPEMTLSConfig(&listenerCertBytes, &listenerKeyBytes, &rootCertBytes)
+	if featherTLSConfig != nil && len(serverName) > 0 {
+		featherTLSConfig.ServerName = &serverName
+	}
 	tapCredentials, err := tls.GetServerCredentialsFromPEM(listenerCertBytes, listenerKeyBytes, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	return featherTLSConfig, tapCredentials, certDriverConfig, nil
+	return featherTLSConfig, tapCredentials, driverConfig, nil
 }
 
 func getTransportCredentialsFromTLSConfig(featherTLSConfig *cap.FeatherTLSConfig, insecureSkipVerify bool) (credentials.TransportCredentials, error) {
@@ -472,7 +469,7 @@ func (agentconfig *AgentConfigs) PenseFeatherQuery(featherCtx *cap.FeatherContex
 	return agentconfig.penseFeatherQueryWithClient(featherCtx, pense, cap.NewCapClient(conn))
 }
 
-func NewAgentConfig(tokenCache *cache.TokenCache,
+func NewAgentConfig(driverConfig *config.DriverConfig,
 	agentTokenName string,
 	env string,
 	acceptRemoteFunc func(*cap.FeatherContext, int, string) (bool, error),
@@ -482,6 +479,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 	logger *log.Logger,
 	drone ...*bool,
 ) (*AgentConfigs, *TrcShConfig, error) {
+	tokenCache := driverConfig.CoreConfig.TokenCache
 	if isShellRunner {
 		tokenCache.SetVaultAddress(tokenCache.VaultAddressPtr)
 		return &AgentConfigs{Env: &env}, &TrcShConfig{
@@ -573,7 +571,7 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 		if len(drone) > 0 {
 			isDrone = *drone[0]
 		}
-		featherTLSConfig, tlsErr := LoadFeatherTLSConfig(nil, mod, data["trcHatHost"].(string), logger)
+		featherTLSConfig, tlsErr := LoadFeatherTLSConfig(driverConfig, mod, data["trcHatHost"].(string), logger)
 		if tlsErr != nil {
 			return nil, nil, tlsErr
 		}
@@ -663,8 +661,57 @@ func NewAgentConfig(tokenCache *cache.TokenCache,
 		}
 		tokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 
+		// Fetch config_token_dev for certificate loading
+		envBasis := trcHatEnv
+		envParts := strings.Split(trcHatEnv, "-")
+		if len(envParts) > 0 {
+			envBasis = envParts[0]
+		}
+		configTokenName := "config_token_" + envBasis
+		if tokenCache.GetToken(configTokenName) == nil {
+			configTokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("configtoken")
+			if penseError != nil {
+				return nil, nil, penseError
+			}
+			if logger != nil {
+				logger.Printf(".")
+			} else {
+				fmt.Fprintf(os.Stderr, ".")
+			}
+			tokenCache.AddToken(configTokenName, configTokenPtr)
+		}
+
 		return agentconfig, trcshConfig, nil
 	}
+}
+
+func NewTlsFeatherConfig(agentconfig *AgentConfigs, driverConfig *config.DriverConfig, serverName string, logger *log.Logger) error {
+	if agentconfig == nil || agentconfig.FeatherContext == nil {
+		return errors.New("missing agent config for TLS setup")
+	}
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		return errors.New("missing driver config for TLS setup")
+	}
+
+	// Use config_token_* that's now in cache from pense
+	configTokenName := "config_token_" + driverConfig.CoreConfig.EnvBasis
+	configToken := driverConfig.CoreConfig.TokenCache.GetToken(configTokenName)
+	if configToken == nil {
+		return errors.New("missing config token for TLS setup")
+	}
+
+	mod, modErr := helperkv.NewModifier(false, configToken, driverConfig.CoreConfig.TokenCache.VaultAddressPtr, driverConfig.CoreConfig.Env, nil, true, nil)
+	if modErr != nil {
+		return modErr
+	}
+
+	featherTLSConfig, tlsErr := LoadFeatherTLSConfig(driverConfig, mod, serverName, logger)
+	if tlsErr != nil {
+		return tlsErr
+	}
+
+	agentconfig.FeatherContext.TLSConfig = featherTLSConfig
+	return nil
 }
 
 func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense string) (*string, error) {

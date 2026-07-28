@@ -49,8 +49,10 @@ func KernelShutdownWatcher(logger *log.Logger) {
 					os.Exit(0)
 				}
 			case err := <-watcher.Errors:
-				l.Printf("Pidfile watch error: %s.  Shutting down\n", err.Error())
-				os.Exit(0)
+				if err != nil {
+					l.Printf("Pidfile watch error: %s.  Shutting down\n", err.Error())
+					os.Exit(0)
+				}
 			}
 		}
 	}(logger)
@@ -88,7 +90,8 @@ func LoadPluginDeploymentScript(trcshDriverConfig *capauth.TrcshDriverConfig, tr
 				trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
 				trcshDriverConfig.DriverConfig.CoreConfig.Regions,
 				true,
-				trcshDriverConfig.DriverConfig.CoreConfig.Log)
+				trcshDriverConfig.DriverConfig.CoreConfig.Log,
+			)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Unable to obtain resources for deployment")
 				return nil, err

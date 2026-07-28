@@ -341,7 +341,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 	driverConfig.DiffCounter = len(templatePaths)
 	for i, templatePath := range templatePaths {
 		wg.Add(1)
-		go func(i int, templatePath string, version string, versionData map[string]any) error {
+		go func(i int, templatePath string, version string, versionData map[string]any, wantCerts bool) error {
 			defer wg.Done()
 
 			tokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
@@ -369,7 +369,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					isCert = true
 				}
 
-				if driverConfig.CoreConfig.WantCerts != isCert {
+				if wantCerts != isCert {
 					goto wait
 				}
 
@@ -377,7 +377,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
+					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i], wantCerts)
 					if errTemplateVersion != nil {
 						return errTemplateVersion
 					}
@@ -391,7 +391,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 					goto wait
 				} else {
 					var ctErr error
-					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, driverConfig.CoreConfig.WantCerts, driverConfig.ZeroConfig)
+					configuredTemplate, certData, certLoaded, ctErr = ConfigTemplate(driverConfig, mod, templatePath, driverConfig.SecretMode, project, service, wantCerts, driverConfig.ZeroConfig)
 					if ctErr != nil {
 						if !strings.Contains(ctErr.Error(), "Missing .certData") {
 							eUtils.LogErrorObject(driverConfig.CoreConfig, ctErr, false)
@@ -447,7 +447,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 				var certData map[int]string
 				certLoaded := false
 				if templateInfo {
-					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i])
+					data, errTemplateVersion := getTemplateVersionData(driverConfig.CoreConfig, mod, project, service, endPaths[i], wantCerts)
 					if errTemplateVersion != nil {
 						goto wait
 					}
@@ -506,7 +506,7 @@ func GenerateConfigsFromVault(ctx config.ProcessContext, configCtx *config.Confi
 			mod.Close()
 
 			return nil
-		}(i, templatePath, version, versionData)
+		}(i, templatePath, version, versionData, driverConfig.CoreConfig.WantCerts)
 	}
 	wg.Wait()
 	if templateInfo {

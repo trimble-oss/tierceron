@@ -123,7 +123,7 @@ func templateToTableRowHelper(goMod *helperkv.Modifier, te *engine.TierceronEngi
 	templateResult.SecretSection = map[string]map[string]map[string]string{}
 	templateResult.SecretSection["super-secrets"] = map[string]map[string]string{}
 
-	err := cds.Init(config, goMod, config.SecretMode, true, project, nil, service)
+	err := cds.Init(config, goMod, config.SecretMode, true, project, false, nil, service)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
 	}

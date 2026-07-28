@@ -93,7 +93,26 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	if tokenPtr, tokPtrOk := pluginConfig["tokenptr"].(*string); tokPtrOk && eUtils.RefLength(tokenPtr) < 5 {
 		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
-	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
+	// Create modifier from kernel's TokenCache for cert loading (use kernel's env-based token with full permissions)
+	kernelTokenCache := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
+	kernelTokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	kernelMod, modErr := helperkv.NewModifier(
+		trcshDriverConfig.DriverConfig.CoreConfig.Insecure,
+		kernelTokenCache.GetToken(kernelTokenName),
+		kernelTokenCache.VaultAddressPtr,
+		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
+		trcshDriverConfig.DriverConfig.CoreConfig.Regions,
+		true,
+		trcshDriverConfig.DriverConfig.CoreConfig.Log,
+	)
+	if modErr != nil {
+		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not create kernel modifier for feather init.", true)
+		return modErr
+	}
+	if kernelMod != nil {
+		defer kernelMod.Release()
+	}
+	_, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
 		cache.NewTokenCache("config_token_pluginany",
 			eUtils.RefMap(pluginConfig, "tokenptr"),
 			eUtils.RefMap(pluginConfig, "vaddress")),
@@ -112,7 +131,8 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not access vault.  Failure to start.", true)
 		return err
 	}
-	return TapFeatherInit(trcshDriverConfig.DriverConfig, goMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+	// Use kernel's modifier from kernel's TokenCache for cert loading (has full-permission token)
+	return TapFeatherInit(trcshDriverConfig.DriverConfig, kernelMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 }
 
 func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) error {
