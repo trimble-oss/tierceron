@@ -3,9 +3,7 @@ package capauth
 import (
 	"context"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/hex"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"log"
@@ -113,11 +111,13 @@ func LoadFeatherTLSConfig(driverConfig *config.DriverConfig, mod *helperkv.Modif
 		rootCertPath = "Common/serviceclientcert.pem.mf.tmpl"
 	}
 	mod.Reset()
-	rootCertBytes, err := certutil.LoadCertComponent(driverConfig, mod, rootCertPath)
+
+	rootCertBytes, err := certutil.AddToCache(rootCertPath, driverConfig, mod)
 	if err != nil {
 		return nil, err
 	}
-	tlsConfig := cap.NewFeatherPEMTLSConfig(nil, nil, &rootCertBytes)
+
+	tlsConfig := cap.NewFeatherPEMTLSConfig(nil, nil, rootCertBytes)
 	if tlsConfig != nil && len(serverName) > 0 {
 		tlsConfig.ServerName = &serverName
 	}
@@ -219,29 +219,6 @@ func ValidateVhostDomain(host string) error {
 		}
 	}
 	return errors.New("Bad host: " + host)
-}
-
-// IsCertValidBySupportedDomains accepts a certificate
-func IsCertValidBySupportedDomains(byteCert []byte,
-	certValidationHelper func(cert *x509.Certificate, host string, selfSignedOk bool) (bool, error),
-) (bool, *x509.Certificate, error) {
-	var ok bool
-	var err error
-	block, _ := pem.Decode(byteCert)
-	if block == nil {
-		return false, nil, errors.New("failed to parse certificate PEM")
-	}
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		return false, nil, errors.New("failed to parse certificate: " + err.Error())
-	}
-
-	for _, domain := range coreopts.BuildOptions.GetSupportedDomains(prod.IsProd()) {
-		if ok, err = certValidationHelper(cert, domain, prod.IsProd()); ok {
-			return ok, cert, err
-		}
-	}
-	return ok, cert, err
 }
 
 func ValidateVhostInverse(host string, protocol string, inverse bool, skipPort bool, logger ...*log.Logger) error {
