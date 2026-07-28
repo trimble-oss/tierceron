@@ -1871,8 +1871,23 @@ collaboratorReRun:
 
 		content, err = deployutil.LoadPluginDeploymentScript(trcshDriverConfig, gTrcshConfig, pwd)
 		if err != nil {
+			deploymentName := "<unknown>"
 			if trcshDriverConfig.DriverConfig.DeploymentConfig != nil {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s\n", (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"])
+				if plugin, ok := (*trcshDriverConfig.DriverConfig.DeploymentConfig)["trcplugin"]; ok {
+					deploymentName = plugin.(string)
+				}
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: %s - Error: %s\n", deploymentName, err.Error())
+				// Check for missing projectservice - fail fast instead of infinite retry
+				if strings.Contains(err.Error(), "missing projectservice") {
+					trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("FATAL: Plugin deployment configuration incomplete. Missing trcprojectservice field in Certify data for plugin: %s\n", deploymentName)
+					cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+					if eUtils.IsWindows() {
+						trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Deployment configuration error - exiting")
+						return
+					} else {
+						eUtils.LogSyncAndExit(featherCtx.Log, "Deployment configuration error - missing trcprojectservice\n", 1)
+					}
+				}
 			} else {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Failure to load deployment: <unknown>\n")
 			}
