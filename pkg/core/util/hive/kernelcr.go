@@ -50,8 +50,10 @@ var dfstat *tccore.TTDINode
 
 var m sync.Mutex
 
-var globalPluginStatusChan chan string
-var msgFailureBroadcastCounter atomic.Int32
+var (
+	globalPluginStatusChan     chan string
+	msgFailureBroadcastCounter atomic.Int32
+)
 
 type PluginHandler struct {
 	Name             string // service
@@ -245,7 +247,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for cert reload check")
 							}
 							if certSha256 != v.Sha256 {
-								if pluginHandler.Services == nil {
+								if pluginHandler.Services == nil || len(*pluginHandler.Services) == 0 {
 									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
 									v.CreatedTime = t
 									driverConfig.CoreConfig.CertCache.Set(k, v)
@@ -1061,11 +1063,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
 				return
 			}
-			(serviceConfig)["certify"] = pluginHandler.DeploymentConfig
+			serviceConfig["certify"] = pluginHandler.DeploymentConfig
 
 			// Add driverConfig for kernel plugins only
 			if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok && trctype == "kernelplugin" {
-				(serviceConfig)["driverConfig"] = driverConfig
+				serviceConfig["driverConfig"] = driverConfig
 			}
 
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
@@ -1588,7 +1590,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			driverConfig.CoreConfig.Log.Println("Kernel received nil message")
 			continue
 		}
-		if msg.KernelId == nil || *(msg.KernelId) == "" {
+		if msg.KernelId == nil || *msg.KernelId == "" {
 			msg.KernelId = &pluginHandler.Id
 		}
 		driverConfig.CoreConfig.Log.Println("Kernel received message from chat.")
