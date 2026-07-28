@@ -660,27 +660,6 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 			}
 		}
 		tokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
-
-		// Fetch config_token_dev for certificate loading
-		envBasis := trcHatEnv
-		envParts := strings.Split(trcHatEnv, "-")
-		if len(envParts) > 0 {
-			envBasis = envParts[0]
-		}
-		configTokenName := "config_token_" + envBasis
-		if tokenCache.GetToken(configTokenName) == nil {
-			configTokenPtr, penseError := agentconfig.RetryingPenseFeatherQuery("configtoken")
-			if penseError != nil {
-				return nil, nil, penseError
-			}
-			if logger != nil {
-				logger.Printf(".")
-			} else {
-				fmt.Fprintf(os.Stderr, ".")
-			}
-			tokenCache.AddToken(configTokenName, configTokenPtr)
-		}
-
 		return agentconfig, trcshConfig, nil
 	}
 }
@@ -693,11 +672,26 @@ func NewTlsFeatherConfig(agentconfig *AgentConfigs, driverConfig *config.DriverC
 		return errors.New("missing driver config for TLS setup")
 	}
 
-	// Use config_token_* that's now in cache from pense
-	configTokenName := "config_token_" + driverConfig.CoreConfig.EnvBasis
-	configToken := driverConfig.CoreConfig.TokenCache.GetToken(configTokenName)
+	wantedTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
+	configToken := driverConfig.CoreConfig.TokenCache.GetToken(wantedTokenName)
+
+	// If token not in cache, fetch it using AutoAuth
 	if configToken == nil {
-		return errors.New("missing config token for TLS setup")
+		var tokenPtr *string
+		roleEntity := "bamboo"
+		autoAuthErr := eUtils.AutoAuth(driverConfig, &wantedTokenName, &tokenPtr, &driverConfig.CoreConfig.Env, &driverConfig.CoreConfig.EnvBasis, &roleEntity, false)
+		if autoAuthErr != nil {
+			return errors.New("failed to fetch config token via AutoAuth: " + autoAuthErr.Error())
+		}
+
+		if tokenPtr == nil {
+			return errors.New("failed to fetch config token via AutoAuth.")
+		}
+
+		configToken = tokenPtr
+
+		// Cache the token for future use
+		driverConfig.CoreConfig.TokenCache.AddToken(wantedTokenName, configToken)
 	}
 
 	mod, modErr := helperkv.NewModifier(false, configToken, driverConfig.CoreConfig.TokenCache.VaultAddressPtr, driverConfig.CoreConfig.Env, nil, true, nil)
