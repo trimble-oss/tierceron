@@ -98,7 +98,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 		trcshDriverConfig.DriverConfig.CoreConfig.Log,
 	)
 	if modErr != nil {
-		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not create kernel modifier for feather init.", true)
+		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not create feather modifier for feather init.", true)
 		return modErr
 	}
 	if featherMod != nil {
@@ -108,7 +108,7 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	pluginConfig["vaddress"] = tempAddr
 	pluginConfig["tokenptr"] = tempTokenPtr
 
-	// Use kernel's modifier from kernel's TokenCache for cert loading (has full-permission token)
+	// Use feather's modifier from TokenCache for cert loading (has full-permission token)
 	return TapFeatherInit(trcshDriverConfig.DriverConfig, featherMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 }
 
