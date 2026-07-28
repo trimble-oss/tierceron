@@ -718,7 +718,7 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 		return new(string), errors.New("tap writer error")
 	}
 
-	creds, err := loadPenseTransportCredentials(trcshDriverConfig, true)
+	creds, err := tls.GetTransportCredentials(true)
 	if err != nil {
 		return nil, err
 	}
