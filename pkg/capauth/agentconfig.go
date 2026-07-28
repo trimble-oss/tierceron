@@ -479,17 +479,16 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 	logger *log.Logger,
 	drone ...*bool,
 ) (*AgentConfigs, *TrcShConfig, error) {
-	tokenCache := driverConfig.CoreConfig.TokenCache
 	if isShellRunner {
-		tokenCache.SetVaultAddress(tokenCache.VaultAddressPtr)
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(driverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 		return &AgentConfigs{Env: &env}, &TrcShConfig{
 			IsShellRunner: isShellRunner,
 			Env:           env,
 			EnvContext:    env,
-			TokenCache:    tokenCache,
+			TokenCache:    driverConfig.CoreConfig.TokenCache,
 		}, nil
 	}
-	agentTokenPtr := tokenCache.GetToken(agentTokenName)
+	agentTokenPtr := driverConfig.CoreConfig.TokenCache.GetToken(agentTokenName)
 	if agentTokenPtr == nil {
 		logger.Println("trcsh Failed to bootstrap")
 		return nil, nil, errors.New("missing required agent auth")
@@ -500,7 +499,7 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 		fmt.Fprintf(os.Stderr, ".")
 	}
 
-	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, tokenCache.VaultAddressPtr, env, nil, true, nil)
+	mod, modErr := helperkv.NewModifier(false, agentTokenPtr, driverConfig.CoreConfig.TokenCache.VaultAddressPtr, env, nil, true, nil)
 	if modErr != nil {
 		logger.Println("trcsh Failed to bootstrap")
 		os.Exit(-1)
@@ -602,7 +601,7 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 			Env:           trcHatEnv,
 			IsShellRunner: isShellRunner,
 			EnvContext:    trcHatEnv,
-			TokenCache:    tokenCache,
+			TokenCache:    driverConfig.CoreConfig.TokenCache,
 		}
 
 		var bambooRolePtr *string
@@ -630,7 +629,7 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 				fmt.Fprintf(os.Stderr, ".")
 			}
 		}
-		tokenCache.AddRoleStr("bamboo", bambooRolePtr)
+		driverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", bambooRolePtr)
 
 		if eUtils.RefLength(vaultAddressPtr) == 0 {
 			vaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
@@ -643,10 +642,10 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 				fmt.Fprintf(os.Stderr, ".")
 			}
 		}
-		tokenCache.SetVaultAddress(vaultAddressPtr)
+		driverConfig.CoreConfig.TokenCache.SetVaultAddress(vaultAddressPtr)
 
 		if eUtils.RefLength(pluginAnyPtr) == 0 {
-			if kernelopts.BuildOptions.IsKernel() && tokenCache.GetToken("config_token_pluginany") == nil {
+			if kernelopts.BuildOptions.IsKernel() && driverConfig.CoreConfig.TokenCache.GetToken("config_token_pluginany") == nil {
 				pluginAnyPtr, penseError = agentconfig.RetryingPenseFeatherQuery("token")
 				if penseError != nil {
 					return nil, nil, penseError
@@ -659,7 +658,7 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 				}
 			}
 		}
-		tokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
+		driverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
 		return agentconfig, trcshConfig, nil
 	}
 }
