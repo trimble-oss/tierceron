@@ -187,7 +187,7 @@ func loadPenseTransportCredentials(trcshDriverConfig *TrcshDriverConfig, insecur
 	}
 	coreConfig := trcshDriverConfig.DriverConfig.CoreConfig
 	if coreConfig.TokenCache == nil || eUtils.RefLength(coreConfig.TokenCache.VaultAddressPtr) == 0 {
-		return nil, errors.New("missing vault address for cap transport credentials")
+		return tls.GetTransportCredentials(insecureSkipVerify)
 	}
 	tokenName := ""
 	if eUtils.RefLength(coreConfig.CurrentTokenNamePtr) > 0 && coreConfig.TokenCache.GetToken(*coreConfig.CurrentTokenNamePtr) != nil {
@@ -196,7 +196,7 @@ func loadPenseTransportCredentials(trcshDriverConfig *TrcshDriverConfig, insecur
 		tokenName = "config_token_pluginany"
 	}
 	if len(tokenName) == 0 {
-		return nil, errors.New("missing token for cap transport credentials")
+		return tls.GetTransportCredentials(insecureSkipVerify)
 	}
 	mod, err := helperkv.NewModifierFromCoreConfig(coreConfig, tokenName, coreConfig.Env, true)
 	if err != nil {
