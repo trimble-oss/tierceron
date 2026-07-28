@@ -137,24 +137,33 @@ func LoadFeatherServerTLSMaterial(driverConfig *config.DriverConfig, mod *helper
 		rootCertPath = "Common/serviceclientcert.pem.mf.tmpl"
 	}
 	mod.Reset()
-	listenerCertBytes, err := certutil.LoadCertComponent(driverConfig, mod, listenerCertPath)
-	if err != nil {
+	listenerCertBytes, err := certutil.AddToCache(listenerCertPath, driverConfig, mod)
+	if err != nil || listenerCertBytes == nil || len(*listenerCertBytes) == 0 {
+		if err == nil {
+			err = errors.New("missing listener cert bytes for feather TLS")
+		}
 		return nil, nil, nil, err
 	}
-	listenerKeyBytes, err := certutil.LoadCertComponent(driverConfig, mod, listenerKeyPath)
-	if err != nil {
+	listenerKeyBytes, err := certutil.AddToCache(listenerKeyPath, driverConfig, mod)
+	if err != nil || listenerKeyBytes == nil || len(*listenerKeyBytes) == 0 {
+		if err == nil {
+			err = errors.New("missing listener key bytes for feather TLS")
+		}
 		return nil, nil, nil, err
 	}
-	rootCertBytes, err := certutil.LoadCertComponent(driverConfig, mod, rootCertPath)
-	if err != nil {
+	rootCertBytes, err := certutil.AddToCache(rootCertPath, driverConfig, mod)
+	if err != nil || rootCertBytes == nil || len(*rootCertBytes) == 0 {
+		if err == nil {
+			err = errors.New("missing root cert bytes for feather TLS")
+		}
 		return nil, nil, nil, err
 	}
 
-	featherTLSConfig := cap.NewFeatherPEMTLSConfig(&listenerCertBytes, &listenerKeyBytes, &rootCertBytes)
+	featherTLSConfig := cap.NewFeatherPEMTLSConfig(listenerCertBytes, listenerKeyBytes, rootCertBytes)
 	if featherTLSConfig != nil && len(serverName) > 0 {
 		featherTLSConfig.ServerName = &serverName
 	}
-	tapCredentials, err := tls.GetServerCredentialsFromPEM(listenerCertBytes, listenerKeyBytes, false)
+	tapCredentials, err := tls.GetServerCredentialsFromPEM(*listenerCertBytes, *listenerKeyBytes, false)
 	if err != nil {
 		return nil, nil, nil, err
 	}

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
@@ -20,6 +21,13 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
+
+var certPathLocks sync.Map
+
+func getCertPathLock(certPath string) *sync.Mutex {
+	pathLock, _ := certPathLocks.LoadOrStore(certPath, &sync.Mutex{})
+	return pathLock.(*sync.Mutex)
+}
 
 // IsCertValidBySupportedDomains accepts a certificate
 func IsCertValidBySupportedDomains(byteCert []byte,
@@ -45,6 +53,9 @@ func IsCertValidBySupportedDomains(byteCert []byte,
 }
 
 func LoadCertComponent(driverConfig *config.DriverConfig, goMod *helperkv.Modifier, certPath string) ([]byte, error) {
+	pathLock := getCertPathLock(certPath)
+	pathLock.Lock()
+	defer pathLock.Unlock()
 	if driverConfig.CoreConfig.CertCache != nil {
 		if v, ok := driverConfig.CoreConfig.CertCache.Get(certPath); ok && v != nil && v.CertBytes != nil {
 			return *v.CertBytes, nil
@@ -66,12 +77,6 @@ func LoadCertComponent(driverConfig *config.DriverConfig, goMod *helperkv.Modifi
 		return nil, errors.New("No certificate data found")
 	}
 	certBytes := []byte(configuredCert[1])
-	if driverConfig.CoreConfig.CertCache == nil {
-		driverConfig.CoreConfig.CertCache = cache.NewCertCache()
-	}
-	driverConfig.CoreConfig.CertCache.Set(certPath, &cache.CertValue{
-		CertBytes: &certBytes,
-	})
 	return certBytes, nil
 }
 

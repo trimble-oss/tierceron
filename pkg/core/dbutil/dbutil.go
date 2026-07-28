@@ -38,7 +38,7 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 	var tlsConfig *tls.Config
 
 	if goMod != nil && (kernelopts.BuildOptions.IsKernel() || !prod.IsProd()) {
-		var clientCertBytes []byte
+		var clientCertBytes *[]byte
 		var clientCertPath string
 		switch driver {
 		case "mysql", "mariadb":
@@ -55,20 +55,20 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 		}
 		goMod.Reset()
 
-		// Clone driverConfig so that LoadCertComponent's WantCerts mutation
-		// is isolated to this call and does not race with other goroutines
-		// sharing the original driverConfig.CoreConfig.
 		coreCopy := *driverConfig.CoreConfig
 		driverConfigCopy := *driverConfig
 		driverConfigCopy.CoreConfig = &coreCopy
-		clientCertBytes, err = certutil.LoadCertComponent(&driverConfigCopy,
-			goMod,
-			clientCertPath)
-		if err != nil {
+		clientCertBytes, err = certutil.AddToCache(clientCertPath,
+			&driverConfigCopy,
+			goMod)
+		if err != nil || clientCertBytes == nil {
+			if err == nil {
+				err = errors.New("clientCertBytes is nil")
+			}
 			return nil, err
 		}
 		driverConfig.CoreConfig.CertCache = driverConfigCopy.CoreConfig.CertCache
-		tlsConfig, err = trctls.GetTlsConfigFromCertBytes(clientCertBytes)
+		tlsConfig, err = trctls.GetTlsConfigFromCertBytes(*clientCertBytes)
 	} else {
 		cacheKey := certName
 		if cacheKey == "" {

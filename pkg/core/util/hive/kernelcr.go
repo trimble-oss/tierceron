@@ -13,7 +13,6 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -45,8 +44,6 @@ import (
 
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
 var dfstat *tccore.TTDINode
-
-var m sync.Mutex
 
 var (
 	globalPluginStatusChan     chan string
