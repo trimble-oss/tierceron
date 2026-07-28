@@ -145,19 +145,20 @@ func LoadBaseTemplate(driverConfig *config.DriverConfig, templateResult *extract
 		cds = new(vcutils.ConfigDataStore)
 		goMod.Version = goMod.Version + "***X-Mode"
 		servicePath := fmt.Sprintf("%s/%s", service, service)
-		cds.Init(driverConfig.CoreConfig, goMod, true, true, project, commonPaths, servicePath) // CommonPaths = "" - empty - not needed for tenant config
+		cds.Init(driverConfig.CoreConfig, goMod, true, true, project, false, commonPaths, servicePath) // CommonPaths = "" - empty - not needed for tenant config
 	}
 
 	var errSeed error
-	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(driverConfig, goMod,
+	_, _, _, templateResult.TemplateDepth, errSeed = extract.ToSeed(
+		driverConfig, goMod,
 		cds,
 		templatePath,
 		project,
 		service,
 		true,
-		&(templateResult.InterfaceTemplateSection),
-		&(templateResult.ValueSection),
-		&(templateResult.SecretSection),
+		&templateResult.InterfaceTemplateSection,
+		&templateResult.ValueSection,
+		&templateResult.SecretSection,
 	)
 
 	return errSeed

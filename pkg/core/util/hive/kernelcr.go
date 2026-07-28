@@ -2,7 +2,6 @@ package hive
 
 import (
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"flag"
@@ -14,7 +13,6 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -32,7 +30,6 @@ import (
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
-	"github.com/trimble-oss/tierceron/pkg/capauth"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcsubbase"
 	trcvutils "github.com/trimble-oss/tierceron/pkg/core/util"
@@ -48,10 +45,10 @@ import (
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
 var dfstat *tccore.TTDINode
 
-var m sync.Mutex
-
-var globalPluginStatusChan chan string
-var msgFailureBroadcastCounter atomic.Int32
+var (
+	globalPluginStatusChan     chan string
+	msgFailureBroadcastCounter atomic.Int32
+)
 
 type PluginHandler struct {
 	Name             string // service
@@ -229,7 +226,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 						valid := false
 
 						if strings.HasSuffix(k, ".crt.mf.tmpl") {
-							valid, _, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
+							valid, _, err = certutil.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
 							if err != nil {
 								eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
 							}
@@ -245,7 +242,7 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 								driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for cert reload check")
 							}
 							if certSha256 != v.Sha256 {
-								if pluginHandler.Services == nil {
+								if pluginHandler.Services == nil || len(*pluginHandler.Services) == 0 {
 									driverConfig.CoreConfig.Log.Println("Services map is nil, cannot iterate for cert reload")
 									v.CreatedTime = t
 									driverConfig.CoreConfig.CertCache.Set(k, v)
@@ -433,79 +430,6 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 	waitToReload:
 		time.Sleep(time.Minute)
 	}
-}
-
-func addToCache(path string, driverConfig *config.DriverConfig, mod *kv.Modifier) (*[]byte, error) {
-	// Trim path
-	m.Lock()
-	defer m.Unlock()
-	if driverConfig.CoreConfig.CertCache == nil {
-		driverConfig.CoreConfig.CertCache = cache.NewCertCache()
-	}
-	if v, ok := driverConfig.CoreConfig.CertCache.Get(path); ok {
-		driverConfig.CoreConfig.WantCerts = false
-		return v.CertBytes, nil
-	}
-	certPath := strings.TrimPrefix(path, "Common/")
-	certPath = strings.TrimSuffix(certPath, ".crt.mf.tmpl")
-	certPath = strings.TrimSuffix(certPath, ".key.mf.tmpl")
-	certPath = strings.TrimSuffix(certPath, ".pem.mf.tmpl")
-	certPath = strings.TrimSuffix(certPath, ".asc.mf.tmpl")
-	metadata, err := mod.ReadMetadata(fmt.Sprintf("values/%s", certPath), driverConfig.CoreConfig.Log)
-	if err != nil {
-		eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-		return nil, err
-	}
-	if t, ok := metadata["created_time"]; ok {
-		configuredCert, err := certutil.LoadCertComponent(driverConfig,
-			mod,
-			path)
-		if err != nil {
-			eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-			return nil, err
-		}
-		valid := false
-		var cert *x509.Certificate
-		var certNotAfter *time.Time
-		if strings.HasSuffix(path, ".crt.mf.tmpl") {
-			valid, cert, err = capauth.IsCertValidBySupportedDomains(configuredCert, validator.VerifyCertificate)
-			if err != nil || cert == nil {
-				eUtils.LogErrorObject(driverConfig.CoreConfig, err, false)
-				return nil, err
-			}
-			certNotAfter = &cert.NotAfter
-		} else {
-			valid = true
-			certNotAfter = &time.Time{}
-		}
-
-		if valid {
-			var zeroTime time.Time
-			certSha256 := ""
-			if len(configuredCert) > 0 {
-				certHash := sha256.Sum256(configuredCert)
-				certSha256 = hex.EncodeToString(certHash[:])
-			} else {
-				driverConfig.CoreConfig.Log.Println("Empty cert bytes loaded for adding to cert cache")
-			}
-			driverConfig.CoreConfig.CertCache.Set(path, &cache.CertValue{
-				CreatedTime: t,
-				CertBytes:   &configuredCert,
-				NotAfter:    certNotAfter,
-				LastUpdate:  &zeroTime,
-				Sha256:      certSha256,
-			})
-
-			driverConfig.CoreConfig.WantCerts = false
-
-			return &configuredCert, nil
-		} else {
-			driverConfig.CoreConfig.Log.Println("Invalid cert")
-			return nil, errors.New("invalid cert")
-		}
-	}
-	driverConfig.CoreConfig.Log.Println("Unable to access created time for cert.")
-	return nil, errors.New("no created time for cert")
 }
 
 func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig *config.DriverConfig, deploymentConfig *map[string]any) {
@@ -862,7 +786,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 						driverConfig.CoreConfig.WantCerts = false
 						serviceConfig[path] = *v.CertBytes
 					} else {
-						configuredCert, err := addToCache(path, driverConfig, mod)
+						configuredCert, err := certutil.AddToCache(path, driverConfig, mod)
 						if err != nil {
 							driverConfig.CoreConfig.Log.Printf("Unable to load cert: %v for plugin: %s\n", err, service)
 							if pluginHandler.ConfigContext.ChatReceiverChan != nil {
@@ -1061,11 +985,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				fmt.Fprintf(os.Stderr, "Kernel Missing plugin certification: %s.\n", pluginHandler.Name)
 				return
 			}
-			(serviceConfig)["certify"] = pluginHandler.DeploymentConfig
+			serviceConfig["certify"] = pluginHandler.DeploymentConfig
 
 			// Add driverConfig for kernel plugins only
 			if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok && trctype == "kernelplugin" {
-				(serviceConfig)["driverConfig"] = driverConfig
+				serviceConfig["driverConfig"] = driverConfig
 			}
 
 			// Once configurations are retrieved from the plugin, start the flow service if this is it's type.
@@ -1588,7 +1512,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			driverConfig.CoreConfig.Log.Println("Kernel received nil message")
 			continue
 		}
-		if msg.KernelId == nil || *(msg.KernelId) == "" {
+		if msg.KernelId == nil || *msg.KernelId == "" {
 			msg.KernelId = &pluginHandler.Id
 		}
 		driverConfig.CoreConfig.Log.Println("Kernel received message from chat.")

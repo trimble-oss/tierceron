@@ -10,14 +10,12 @@ import (
 
 	"github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter"
 	"github.com/newrelic/go-agent/v3/newrelic"
-	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trccarrier/carrierfactory/servercapauth"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
-	sys "github.com/trimble-oss/tierceron/pkg/vaulthelper/system"
 
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 )
@@ -74,11 +72,6 @@ var (
 func IsCapInitted() bool { return gCapInitted }
 
 func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig map[string]any) error {
-	var goMod *helperkv.Modifier
-	var vault *sys.Vault
-	var err error
-
-	// Grabbing configs
 	tempAddr := pluginConfig["vaddress"]
 	tempTokenPtr := pluginConfig["tokenptr"]
 	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
@@ -93,26 +86,30 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	if tokenPtr, tokPtrOk := pluginConfig["tokenptr"].(*string); tokPtrOk && eUtils.RefLength(tokenPtr) < 5 {
 		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
-	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany",
-			eUtils.RefMap(pluginConfig, "tokenptr"),
-			eUtils.RefMap(pluginConfig, "vaddress")),
-		"config_token_pluginany", trcshDriverConfig.DriverConfig.CoreConfig.Log)
-	if vault != nil {
-		defer vault.Close()
+	// Create modifier from kernel's TokenCache for cert loading (use kernel's env-based token with full permissions)
+	tokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
+	featherMod, modErr := helperkv.NewModifier(
+		trcshDriverConfig.DriverConfig.CoreConfig.Insecure,
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(tokenName),
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
+		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
+		trcshDriverConfig.DriverConfig.CoreConfig.Regions,
+		true,
+		trcshDriverConfig.DriverConfig.CoreConfig.Log,
+	)
+	if modErr != nil {
+		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not create feather modifier for feather init.", true)
+		return modErr
+	}
+	if featherMod != nil {
+		defer featherMod.Release()
 	}
 
-	if goMod != nil {
-		defer goMod.Release()
-	}
 	pluginConfig["vaddress"] = tempAddr
 	pluginConfig["tokenptr"] = tempTokenPtr
 
-	if err != nil {
-		eUtils.LogErrorMessage(trcshDriverConfig.DriverConfig.CoreConfig, "Could not access vault.  Failure to start.", true)
-		return err
-	}
-	return TapFeatherInit(trcshDriverConfig.DriverConfig, goMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
+	// Use feather's modifier from TokenCache for cert loading (has full-permission token)
+	return TapFeatherInit(trcshDriverConfig.DriverConfig, featherMod, pluginConfig, true, trcshDriverConfig.DriverConfig.CoreConfig.Log)
 }
 
 func TapFeatherInit(driverConfig *config.DriverConfig, mod *helperkv.Modifier, pluginConfig map[string]any, wantsFeathering bool, logger *log.Logger) error {

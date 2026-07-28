@@ -157,14 +157,14 @@ func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, dri
 		sqles.NewDatabaseProvider(
 			tfmContext.TierceronEngine.Database,
 			information_schema.NewInformationSchemaDatabase(),
-		))
+		),
+	)
 	engine.Analyzer.Catalog.MySQLDb.SetPersister(&mysql_db.NoopPersister{})
 
 	eUtils.LogInfo(driverConfig.CoreConfig, "Loading cert from vault.")
 	pwd, _ := os.Getwd()
 
 	// Grab certs
-	driverConfig.CoreConfig.WantCerts = true
 	_, certData, certLoaded, ctErr := trcutil.ConfigTemplate(driverConfig, goMod, strings.Split(pwd, "tierceron")[0]+"tierceron/trcvault/trc_templates/Common/servicecert.crt.mf.tmpl", true, "Common", "servicecert", true, true)
 	if ctErr != nil || !certLoaded || len(certData) == 0 {
 		if ctErr != nil {

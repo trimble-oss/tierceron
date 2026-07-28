@@ -55,7 +55,9 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 		// No service for Common project...
 		path = "templates/" + project + "/" + templateFile + "/template-file"
 	} else {
-		if driverConfig.ZeroConfig && mod.TemplatePath != "" && !driverConfig.CoreConfig.WantCerts {
+		// If TemplatePath was set in ConfigTemplate, use it (indicates we're NOT loading certs)
+		// Otherwise use standard path (indicates we ARE loading certs or this is a regular config)
+		if driverConfig.ZeroConfig && mod.TemplatePath != "" {
 			path = mod.TemplatePath + "/template-file"
 		} else {
 			path = "templates/" + project + "/" + service + "/" + templateFile + "/template-file"
@@ -80,7 +82,7 @@ func GetTemplate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, temp
 }
 
 // ConfigTemplateRaw - gets a raw unpopulated template.
-func ConfigTemplateRaw(driverConfig *config.DriverConfig, mod *helperkv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, cert bool, zc bool, exitOnFailure bool) ([]byte, error) {
+func ConfigTemplateRaw(driverConfig *config.DriverConfig, mod *helperkv.Modifier, emptyFilePath string, configuredFilePath string, secretMode bool, project string, service string, wantCerts bool, zc bool, exitOnFailure bool) ([]byte, error) {
 	var err error
 
 	var templateEncoded string
@@ -100,13 +102,13 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	secretMode bool,
 	project string,
 	service string,
-	cert bool,
+	wantCerts bool,
 	zc bool,
 ) (string, map[int]string, bool, error) {
 	var template string
 	var err error
 
-	if !driverConfig.CoreConfig.WantCerts {
+	if !wantCerts {
 		relativeTemplatePathParts := strings.Split(emptyFilePath, coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_templates")
 		if len(relativeTemplatePathParts) == 1 {
 			driverConfig.CoreConfig.Log.Println("Unable to split relative template path:" + relativeTemplatePathParts[0])
@@ -116,7 +118,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		templatePathTrimmed, _ := eUtils.TrimLastDotAfterLastSlash(relativeTemplatePathParts[1])
 		modifier.TemplatePath = "templates" + templatePathTrimmed
 	} else {
-		driverConfig.CoreConfig.Log.Println("Configuring cert")
+		driverConfig.CoreConfig.Log.Println("Loading certificate")
 	}
 
 	if zc {
@@ -138,9 +140,9 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	}
 	// cert map
 	certData := make(map[int]string)
-	if cert && !strings.Contains(template, ".certData") {
+	if wantCerts && !strings.Contains(template, ".certData") {
 		return "", certData, false, errors.New("missing .certData")
-	} else if !cert && strings.Contains(template, ".certData") {
+	} else if !wantCerts && strings.Contains(template, ".certData") {
 		return "", certData, false, errors.New("template with cert provided, but cert not requested: " + emptyFilePath)
 	}
 
@@ -154,7 +156,7 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 	var filename string
 	if strings.HasPrefix(baseName, ".") && !strings.Contains(baseName[1:], ".") {
 		filename = baseName
-	} else if cert {
+	} else if wantCerts {
 		filename = strings.SplitN(baseName, ".", 2)[0]
 	} else if dotIdx := strings.LastIndex(baseName, "."); dotIdx > 0 {
 		filename = baseName[:dotIdx]
@@ -183,13 +185,13 @@ func ConfigTemplate(driverConfig *config.DriverConfig,
 		filename = extra + "/" + filename
 	}
 	// populate template
-	template, certData, err = PopulateTemplate(driverConfig, template, modifier, secretMode, project, service, filename, cert)
+	template, certData, err = PopulateTemplate(driverConfig, template, modifier, secretMode, project, service, filename, wantCerts)
 	return template, certData, true, err
 }
 
-func getTemplateVersionData(config *coreconfig.CoreConfig, modifier *helperkv.Modifier, project string, service string, file string) (map[string]any, error) {
+func getTemplateVersionData(config *coreconfig.CoreConfig, modifier *helperkv.Modifier, project string, service string, file string, wantCerts bool) (map[string]any, error) {
 	cds := new(ConfigDataStore)
-	return cds.InitTemplateVersionData(config, modifier, true, project, file, service)
+	return cds.InitTemplateVersionData(config, modifier, true, project, file, wantCerts, service)
 }
 
 // PopulateTemplate takes an empty template and a modifier.
@@ -201,14 +203,14 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 	project string,
 	service string,
 	filename string,
-	cert bool,
+	wantCerts bool,
 ) (string, map[int]string, error) {
 	values := make(map[string]any, 0)
 	ok := false
 	str := emptyTemplate
 	cds := new(ConfigDataStore)
 	if driverConfig.CoreConfig.TokenCache != nil && !utils.RefEquals(driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", driverConfig.CoreConfig.EnvBasis)), "novault") {
-		cds.Init(driverConfig.CoreConfig, modifier, secretMode, true, project, nil, service)
+		cds.Init(driverConfig.CoreConfig, modifier, secretMode, true, project, wantCerts, nil, service)
 	} else {
 		rawFile, err := os.ReadFile(strings.Split(driverConfig.StartDir[0], coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir)+"_")[0] + coreopts.BuildOptions.GetFolderPrefix(driverConfig.StartDir) + "_seeds/" + driverConfig.CoreConfig.Env + "/" + driverConfig.CoreConfig.Env + "_seed.yml")
 		if err != nil {
@@ -272,7 +274,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 		// Check if filename exists in values map
 
 		_, hasData := values[filename]
-		if !hasData && !driverConfig.CoreConfig.WantCerts {
+		if !hasData && !wantCerts {
 			eUtils.LogInfo(driverConfig.CoreConfig, filename+" does not exist in values. Please check seed files to verify that folder structures are correct.")
 		}
 
@@ -292,7 +294,7 @@ func PopulateTemplate(driverConfig *config.DriverConfig,
 			}
 		}
 
-		if cert {
+		if wantCerts {
 			if serviceValues, ok := values[serviceLookup]; ok {
 				valueData := serviceValues.(map[string]any)
 				certDestPath, hasCertDefinition := valueData["certDestPath"]

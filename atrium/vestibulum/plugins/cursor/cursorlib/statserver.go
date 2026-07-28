@@ -355,17 +355,23 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 			}
 		}
 		fmt.Fprintf(os.Stderr, "Server listening on :%d\n", trcstatsport)
-		statCert, err := certutil.LoadCertComponent(trcshDriverConfig.DriverConfig,
-			goMod,
-			tccore.TRCSHHIVEK_CERT)
-		if err != nil {
+		statCert, err := certutil.AddToCache(tccore.TRCSHHIVEK_CERT,
+			trcshDriverConfig.DriverConfig,
+			goMod)
+		if err != nil || statCert == nil {
+			if err == nil {
+				err = errors.New("statCert is nil")
+			}
 			log.Printf("Couldn't load cert: %v", err)
 			return err
 		}
-		statKey, err := certutil.LoadCertComponent(trcshDriverConfig.DriverConfig,
-			goMod,
-			tccore.TRCSHHIVEK_KEY)
-		if err != nil {
+		statKey, err := certutil.AddToCache(tccore.TRCSHHIVEK_KEY,
+			trcshDriverConfig.DriverConfig,
+			goMod)
+		if err != nil || statKey == nil {
+			if err == nil {
+				err = errors.New("statKey is nil")
+			}
 			log.Printf("Couldn't load key: %v", err)
 			return err
 		}
@@ -374,8 +380,8 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 		InitStats()
 
 		lis, gServer, err := InitServer(trcstatsport,
-			statCert,
-			statKey)
+			*statCert,
+			*statKey)
 		if err != nil {
 			logger.Printf("Failed to start server: %v", err)
 			return err

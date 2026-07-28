@@ -23,7 +23,8 @@ func ConfigCertLibHelper(token string,
 	configuredFilePath string,
 	project string,
 	service string,
-	wantCerts bool) (string, string, error) {
+	wantCerts bool,
+) (string, string, error) {
 	logger := log.New(os.Stdout, "[configCertLibHelper]", log.LstdFlags)
 	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
 	driverConfig := &config.DriverConfig{

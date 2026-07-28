@@ -43,7 +43,7 @@ func NewProperties(config *coreconfig.CoreConfig, v *sys.Vault, mod *helperkv.Mo
 	}
 	properties.cds = new(vcutils.ConfigDataStore)
 	var commonPaths []string
-	propertyerr := properties.cds.Init(config, properties.mod, true, true, project, commonPaths, service)
+	propertyerr := properties.cds.Init(config, properties.mod, true, true, project, false, commonPaths, service)
 	if propertyerr != nil {
 		return &properties, propertyerr
 	}
@@ -71,7 +71,7 @@ func (p *Properties) GetRegionConfigValues(service string, config string) (map[s
 	if valueMap == nil {
 		valueMap = make(map[string]any)
 	}
-	//Grabs region fields and replaces into base fields if region is available.
+	// Grabs region fields and replaces into base fields if region is available.
 	if len(p.mod.Regions) > 0 {
 		regionFields := make(map[string]any)
 		region := "~" + p.mod.Regions[0]
@@ -120,7 +120,7 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 		valueMap = make(map[string]any)
 	}
 	replacedDefaultFields := make(map[string]any)
-	//Grabs region fields and replaces into base fields if region is available.
+	// Grabs region fields and replaces into base fields if region is available.
 	if region != "" {
 		regionFields := make(map[string]any)
 		region = "~" + region
@@ -138,7 +138,7 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 		if len(regionFields) == 0 {
 			log.Println("Region was provided, but no regional data. Continuing with base data.")
 			regionDefaultList := []string{"trcsha256", "copied", "deployed", "trcservicename"}
-			for _, field := range regionDefaultList { //Create regioned defaults
+			for _, field := range regionDefaultList { // Create regioned defaults
 				if _, valueOK := valueMap[field]; valueOK {
 					replacedDefaultFields[field] = valueMap[field]
 					valueMap[field+region] = valueMap[field]
@@ -157,23 +157,22 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 			for field, value := range regionFields {
 				valueMap[strings.TrimSuffix(field, region)] = value
 			}
-
 		}
 	}
 
-	//String to bool conversion
-	//Bools come in as strings from GetConfigValues
+	// String to bool conversion
+	// Bools come in as strings from GetConfigValues
 	boolValuesList := []string{"copied", "deployed"}
 	for _, boolVal := range boolValuesList {
 		if copiedInterface, valueOK := valueMap[boolVal]; valueOK {
 			switch copiedVal := copiedInterface.(type) {
 			case string:
-				if region != "" { //save defaults if regioned before bool conversion
+				if region != "" { // save defaults if regioned before bool conversion
 					if _, valueOK := valueMap[strings.TrimSuffix(boolVal, region)]; valueOK {
 						replacedDefaultFields[strings.TrimSuffix(boolVal, region)] = valueMap[strings.TrimSuffix(boolVal, region)]
 					}
 				}
-				boolValue, _ := strconv.ParseBool(copiedVal) //throws false so it's ok to ignore error.
+				boolValue, _ := strconv.ParseBool(copiedVal) // throws false so it's ok to ignore error.
 				valueMap[boolVal] = boolValue
 			default:
 			}
@@ -184,7 +183,7 @@ func (p *Properties) GetPluginData(region string, service string, config string,
 }
 
 func (p *Properties) WritePluginData(pluginData map[string]any, replacedFields map[string]any, mod *helperkv.Modifier, log *log.Logger, hostRegion string, pluginName string) error {
-	//writeMap := make(map[string]any)
+	// writeMap := make(map[string]any)
 	// If SectionPath is set like
 	mod.SectionPath = ""
 	regionSuffix := ""
@@ -199,7 +198,7 @@ func (p *Properties) WritePluginData(pluginData map[string]any, replacedFields m
 		}
 	}
 
-	writeMap, readErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName)) //This read is need to avoid overwritting un-used region data.
+	writeMap, readErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", pluginName)) // This read is need to avoid overwritting un-used region data.
 	if readErr != nil {
 		return readErr
 	}
