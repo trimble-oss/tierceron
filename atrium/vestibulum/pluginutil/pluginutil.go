@@ -94,12 +94,11 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
 	// Create modifier from kernel's TokenCache for cert loading (use kernel's env-based token with full permissions)
-	kernelTokenCache := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
 	kernelTokenName := "config_token_" + trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis
 	kernelMod, modErr := helperkv.NewModifier(
 		trcshDriverConfig.DriverConfig.CoreConfig.Insecure,
-		kernelTokenCache.GetToken(kernelTokenName),
-		kernelTokenCache.VaultAddressPtr,
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.GetToken(kernelTokenName),
+		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr,
 		trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
 		trcshDriverConfig.DriverConfig.CoreConfig.Regions,
 		true,
