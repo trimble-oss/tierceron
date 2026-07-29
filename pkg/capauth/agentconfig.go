@@ -295,16 +295,21 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQueryWithContext(featherCtx
 	defer conn.Close()
 	c := cap.NewCapClient(conn)
 
+	var featherErr error
 	retry := 0
 	for retry < maxRetries {
 		result, err := agentconfig.penseFeatherQueryWithClient(featherCtx, pense, c)
 
 		if err != nil || result == nil || *result == "...." {
+			featherErr = err
 			time.Sleep(retrySleep)
 			retry = retry + 1
 		} else {
 			return result, err
 		}
+	}
+	if featherErr != nil && featherCtx.Log != nil {
+		featherCtx.Log.Println("RetryingPenseFeatherQueryWithContext: " + featherErr.Error())
 	}
 	return nil, errors.New("unavailable secrets")
 }
@@ -321,7 +326,7 @@ func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.Fea
 
 	for {
 		// Contact the server and print out its response.
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 		_, err := c.Pense(ctx, &cap.PenseRequest{Pense: "", PenseIndex: ""})
 		if err != nil {
@@ -344,7 +349,7 @@ func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.Fea
 	}
 
 	for {
-		penseCtx, penseCancel := context.WithTimeout(context.Background(), time.Second*3)
+		penseCtx, penseCancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer penseCancel()
 		r, err = c.Pense(penseCtx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
 		if err != nil {
@@ -512,6 +517,7 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 			Env:             &trcHatEnv,
 			Drone:           &isDrone,
 		}
+		agentconfig.FeatherContext.Log = driverConfig.CoreConfig.Log
 
 		if !initNewTrcsh {
 			return agentconfig, nil, nil
