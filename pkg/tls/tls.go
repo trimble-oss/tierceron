@@ -9,6 +9,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
@@ -107,6 +108,72 @@ func GetTransportCredentialsFromCertBytes(certBytes []byte, insecureSkipVerify b
 	return credentials.NewTLS(tlsConfig), nil
 }
 
+func parseServerCertificate(certBytes []byte) (*x509.Certificate, error) {
+	var blockTypes []string
+	var firstParseErr error
+	remaining := certBytes
+
+	for len(remaining) > 0 {
+		var certBlock *pem.Block
+		certBlock, remaining = pem.Decode(remaining)
+		if certBlock == nil {
+			break
+		}
+
+		blockTypes = append(blockTypes, certBlock.Type)
+		if certBlock.Type != "CERTIFICATE" {
+			continue
+		}
+
+		cert, err := x509.ParseCertificate(certBlock.Bytes)
+		if err != nil {
+			if firstParseErr == nil {
+				firstParseErr = err
+			}
+			continue
+		}
+
+		return cert, nil
+	}
+
+	if len(blockTypes) == 0 {
+		return nil, errors.New("failed to decode any PEM blocks from server cert")
+	}
+	if firstParseErr != nil {
+		return nil, fmt.Errorf("failed to parse CERTIFICATE block from server cert; pem block types: %s; first parse error: %w", strings.Join(blockTypes, ", "), firstParseErr)
+	}
+
+	return nil, fmt.Errorf("found no CERTIFICATE PEM block in server cert; pem block types: %s", strings.Join(blockTypes, ", "))
+}
+
+func getLoopBackServerName(cert *x509.Certificate) (string, error) {
+	wildcardDNSName := ""
+	for _, dnsName := range cert.DNSNames {
+		dnsName = strings.TrimSpace(dnsName)
+		if len(dnsName) == 0 {
+			continue
+		}
+		if !strings.Contains(dnsName, "*") {
+			return dnsName, nil
+		}
+		if len(wildcardDNSName) == 0 {
+			wildcardDNSName = dnsName
+		}
+	}
+
+	if len(wildcardDNSName) > 0 {
+		return wildcardDNSName, nil
+	}
+
+	for _, ipAddr := range cert.IPAddresses {
+		if ipAddr.String() == "127.0.0.1" {
+			return "127.0.0.1", nil
+		}
+	}
+
+	return "", errors.New("failed to derive loopback server name from cert SANs")
+}
+
 func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := ReadServerCert("")
@@ -117,9 +184,7 @@ func initCertificates() {
 		return
 	}
 
-	mashupBlock, _ := pem.Decode([]byte(mashupCertBytes))
-
-	mashupClientCert, parseErr := x509.ParseCertificate(mashupBlock.Bytes)
+	mashupClientCert, parseErr := parseServerCertificate(mashupCertBytes)
 	if parseErr != nil {
 		fmt.Fprintln(os.Stderr, "Cert parse read failure.")
 		return
@@ -144,7 +209,17 @@ func GetLoopBackTransportCredentials(drone ...*bool) (credentials.TransportCrede
 		return nil, err
 	}
 
-	return GetTransportCredentialsFromCertBytes(mashupKeyBytes, false, "127.0.0.1")
+	serverCert, err := parseServerCertificate(mashupKeyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	serverName, err := getLoopBackServerName(serverCert)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetTransportCredentialsFromCertBytes(mashupKeyBytes, false, serverName)
 }
 
 func GetTransportCredentialsByCert(insecureSkipVerify bool, serverName *string, cert *tls.Certificate) (credentials.TransportCredentials, error) {
