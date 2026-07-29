@@ -86,10 +86,6 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil {
 		return errors.New("missing core config log for feather init")
 	}
-	if trcshDriverConfig.DriverConfig.CoreConfig.TokenCache == nil {
-		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("PluginTapFeatherInit missing token cache.")
-		return errors.New("missing token cache for feather init")
-	}
 	if pluginConfig == nil {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("PluginTapFeatherInit missing plugin config.")
 		return errors.New("missing plugin config for feather init")
