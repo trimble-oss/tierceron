@@ -681,9 +681,9 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
 
 	r, penseErr := c.Pense(ctx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+	defer cancel()
 	if penseErr != nil {
 		return new(string), errors.Join(errors.New("pense error"), penseErr)
 	}
