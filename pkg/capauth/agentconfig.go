@@ -287,7 +287,6 @@ func (agentconfig *AgentConfigs) RetryingPenseFeatherQueryWithContext(featherCtx
 	if err != nil {
 		return nil, err
 	}
-
 	conn, err := grpc.Dial(*agentconfig.FeatherHostPort, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
@@ -327,8 +326,8 @@ func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.Fea
 	for {
 		// Contact the server and print out its response.
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer cancel()
 		_, err := c.Pense(ctx, &cap.PenseRequest{Pense: "", PenseIndex: ""})
+		cancel()
 		if err != nil {
 			st, ok := status.FromError(err)
 
@@ -350,8 +349,8 @@ func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.Fea
 
 	for {
 		penseCtx, penseCancel := context.WithTimeout(context.Background(), time.Second*5)
-		defer penseCancel()
 		r, err = c.Pense(penseCtx, &cap.PenseRequest{Pense: penseCode, PenseIndex: pense})
+		penseCancel()
 		if err != nil {
 			st, ok := status.FromError(err)
 
