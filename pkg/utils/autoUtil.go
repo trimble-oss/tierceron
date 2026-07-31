@@ -879,6 +879,15 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 				}
 			}
 		}
+	} else {
+		if v != nil && *v == nil {
+			if envPtr != nil {
+				LogInfo(driverConfig.CoreConfig, fmt.Sprintf("Auth connecting to vault @ %s\n", *addrPtr))
+				*v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+			} else {
+				return nil, false, nil, errors.New("envPtr is nil")
+			}
+		}
 	}
 	return appRoleSecret, IsApproleEmpty, addrPtr, nil
 }

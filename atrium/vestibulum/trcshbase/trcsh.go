@@ -860,11 +860,6 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("drone trcsh agent bootstrap agent config failure: %s\n", errAgentLoad.Error()), 124)
 		}
 
-		errTls := capauth.NewTlsFeatherConfig(gAgentConfig, trcshDriverConfig.DriverConfig, "", driverConfigPtr.CoreConfig.Log)
-		if errTls != nil {
-			eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("trcsh TLS config failure: %s\n", errTls.Error()), 125)
-		}
-
 		if !gTrcshConfig.IsShellRunner {
 			driverConfigPtr.CoreConfig.Log.Println("Drone trcsh agent bootstrap successful.")
 		}
