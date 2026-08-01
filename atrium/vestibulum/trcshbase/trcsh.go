@@ -1482,11 +1482,6 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Permissions failure.  Incorrect deployment\n", 126)
 			}
 
-			errTls := capauth.NewTlsFeatherConfig(gAgentConfig, trcshDriverConfig.DriverConfig, "", trcshDriverConfig.DriverConfig.CoreConfig.Log)
-			if errTls != nil {
-				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("TLS config failure: %s\n", errTls.Error())
-				eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "TLS config failure\n", 127)
-			}
 			if gAgentConfig.FeatherContext == nil {
 				fmt.Fprintf(os.Stderr, "Warning!  Permissions failure.  Incorrect feathering\n")
 			}
