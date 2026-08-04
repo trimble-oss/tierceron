@@ -1,3 +1,8 @@
 grpc_server_port: {{or .grpc_server_port "12345"}}
 grpc_server_name: {{.grpc_server_name}}
-mode: {{or .server_mode "trcshtalk"}}
+grpc_server_remote_name: {{.grpc_server_remote_name}}
+grpc_server_remote_port: {{.grpc_server_remote_port}}
+trcshtalk_hub_name: {{or .trcshtalk_hub_name .grpc_server_name}}
+trcshtalk_hub_port: {{or .trcshtalk_hub_port .grpc_server_port}}
+mode: {{or .trcshtalk_mode .server_mode "trcshtalk"}}
+ttb_token: '{{.ttb_token}}'
