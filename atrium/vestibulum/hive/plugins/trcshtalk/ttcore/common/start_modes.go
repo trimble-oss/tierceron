@@ -99,10 +99,6 @@ func StartWithServerModes(
 				if rsn, ok := serverNameInterface.(string); ok {
 					remoteServerName = rsn
 				}
-			} else if serverNameInterface, ok := (*ctx.Config)[CfgServerName]; ok {
-				if rsn, ok := serverNameInterface.(string); ok {
-					remoteServerName = rsn
-				}
 			}
 		} else if serverNameInterface, ok := (*ctx.Config)[CfgRemoteName]; ok {
 			if rsn, ok := serverNameInterface.(string); ok {

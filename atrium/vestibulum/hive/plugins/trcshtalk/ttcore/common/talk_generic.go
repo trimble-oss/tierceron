@@ -187,6 +187,9 @@ func ProcessTrcshTalkRequestGeneric(
 		if ttbToken != nil {
 			req.Header.Set("Authorization", *ttbToken)
 		}
+		if supportedDeployments := SupportedDeploymentsCSV(ctx); supportedDeployments != "" {
+			req.Header.Set("X-Trc-Supported-Deployments", supportedDeployments)
+		}
 	retrypostgrpc:
 		client := &http.Client{Timeout: time.Minute}
 		resp, err := client.Do(req)
@@ -280,7 +283,11 @@ func ProcessTrcshTalkRequestGeneric(
 	}
 	defer conn.Close()
 	client := newClient(conn)
-	diagRes, err := invokeDiagnostics(client, context.Background(), diagReq)
+	callCtx := context.Background()
+	if supportedDeployments := SupportedDeploymentsCSV(ctx); supportedDeployments != "" {
+		callCtx = WithSupportedDeploymentsOutgoingContext(callCtx, supportedDeployments)
+	}
+	diagRes, err := invokeDiagnostics(client, callCtx, diagReq)
 	if err != nil {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: bad response: %v\n", err)
 		return nil, err

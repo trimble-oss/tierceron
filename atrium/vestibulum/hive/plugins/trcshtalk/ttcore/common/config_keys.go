@@ -4,7 +4,6 @@ package common
 const (
 	CfgServerMode       = "server_mode"
 	CfgMode             = "mode"
-	CfgServerName       = "grpc_server_name"
 	CfgRemotePort       = "grpc_server_remote_port"
 	CfgRemoteName       = "grpc_server_remote_name"
 	CfgTrcshTalkHubPort = "trcshtalk_hub_port"
