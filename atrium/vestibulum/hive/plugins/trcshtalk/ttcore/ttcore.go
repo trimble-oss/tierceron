@@ -32,17 +32,29 @@ var (
 )
 
 var (
-	shutdownChan        chan bool = make(chan bool)
-	shutdownConfirmChan chan bool = make(chan bool)
+	shutdownChan        chan bool                  = make(chan bool)
+	shutdownConfirmChan chan bool                  = make(chan bool)
+	proxyRequestChan    chan *pb.DiagnosticRequest = make(chan *pb.DiagnosticRequest, 128)
+	proxyResponseChans  sync.Map
 )
 
 // Runs diagnostic services for each Diagnostic within the DiagnosticRequest.
 // Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
 // and providing the results of the diagnostics ran.
 func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
-	// TODO: Implement diagnostics plugin
-	// if req.Diagnostics contains 0, run all
-	// else run each
+	if len(req.GetDiagnostics()) == 0 {
+		if response, handled := postProxyResponse(req); handled {
+			return response, nil
+		}
+		return dequeueProxyRequest(ctx, req)
+	}
+	if requestSupportedByDeployments(req.GetDiagnostics(), common.SupportedDeploymentsSet(configContext)) {
+		return runLocalDiagnostics(req)
+	}
+	return enqueueProxyRequest(ctx, req)
+}
+
+func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
 	cmds := req.GetDiagnostics()
 	queries := []string{}
 	queryTest := req.GetQueryId() + ":"
@@ -91,7 +103,6 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.D
 		Name:      &name,
 		Query:     &queries,
 	}
-	// Placeholder code
 	results := ""
 	finished_queries := make(map[string]string)
 	configContext.Log.Printf("Sent queries to kernel: %d\n", len(queries))
@@ -128,13 +139,97 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.D
 			}
 		}
 	}
-	// res := &pb.DiagnosticResponse{
-	// 	MessageId: req.MessageId,
-	// 	Results:   "gRPCS client/server successful. Diagnostic service not yet implemented.",
-	// }
-	// // End placeholder code
+}
 
-	// return res, nil
+func enqueueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+	responseChan := make(chan *pb.DiagnosticResponse, 1)
+	proxyResponseChans.Store(req.GetMessageId(), responseChan)
+	defer proxyResponseChans.Delete(req.GetMessageId())
+
+	select {
+	case proxyRequestChan <- req:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	select {
+	case response := <-responseChan:
+		return response, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func dequeueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+	supportedDeployments := common.SupportedDeploymentsFromIncomingContext(ctx)
+	var proxyRequest *pb.DiagnosticRequest
+	pendingRequests := len(proxyRequestChan)
+	if pendingRequests == 0 {
+		select {
+		case proxyRequest = <-proxyRequestChan:
+			if !requestSupportedByDeployments(proxyRequest.GetDiagnostics(), supportedDeployments) {
+				proxyRequestChan <- proxyRequest
+				return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
+			}
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	} else {
+		for i := 0; i < pendingRequests; i++ {
+			proxyRequest = <-proxyRequestChan
+			if requestSupportedByDeployments(proxyRequest.GetDiagnostics(), supportedDeployments) {
+				break
+			}
+			proxyRequestChan <- proxyRequest
+			proxyRequest = nil
+		}
+		if proxyRequest == nil {
+			return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
+		}
+	}
+
+	requestBytes, err := protojson.Marshal(proxyRequest)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: string(requestBytes)}, nil
+}
+
+func postProxyResponse(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, bool) {
+	if len(req.GetData()) == 0 {
+		return nil, false
+	}
+	responseChanValue, ok := proxyResponseChans.Load(req.GetMessageId())
+	if !ok {
+		return nil, false
+	}
+	response := &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: req.GetData()[0]}
+	responseChanValue.(chan *pb.DiagnosticResponse) <- response
+	return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
+}
+
+func requestSupportedByDeployments(diagnostics []pb.Diagnostics, supportedDeployments map[string]struct{}) bool {
+	if len(supportedDeployments) == 0 {
+		return true
+	}
+	requiredDeployments := map[string]struct{}{}
+	for _, diagnostic := range diagnostics {
+		switch diagnostic {
+		case pb.Diagnostics_ALL, pb.Diagnostics_HEALTH_CHECK:
+			requiredDeployments["healthcheck"] = struct{}{}
+		case pb.Diagnostics_TRCDB:
+			requiredDeployments["trcdb"] = struct{}{}
+		}
+	}
+	if len(requiredDeployments) == 0 {
+		return true
+	}
+	for deployment := range requiredDeployments {
+		if _, ok := supportedDeployments[deployment]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 func GetConfigContext(pluginName string) *tccore.ConfigContext { return configContext }
@@ -325,6 +420,8 @@ func stop(pluginName string) {
 	common.StopServer(configContext, grpcServer, dfstat, shutdownChan, shutdownConfirmChan, pluginName)
 	grpcServer = nil
 	dfstat = nil
+	proxyRequestChan = make(chan *pb.DiagnosticRequest, 128)
+	proxyResponseChans = sync.Map{}
 	// Reset once so start can happen again if needed.
 	startOnce = &sync.Once{}
 }

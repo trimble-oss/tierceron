@@ -1049,6 +1049,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 
 		deploymentsCDL := strings.Join(deployments, ",")
 		gAgentConfig.Deployments = &deploymentsCDL
+		for _, pluginConfig := range pluginDeployments {
+			if pluginConfig != nil {
+				(*pluginConfig)["deployments"] = deploymentsCDL
+			}
+		}
 
 		deployopts.BuildOptions.InitSupportedDeployers(deployments)
 

@@ -596,6 +596,13 @@ func (pluginHandler *PluginHandler) RunPlugin(
 		return
 	}
 	(*serviceConfig)["certify"] = pluginHandler.DeploymentConfig
+	if service == "trcshtalk" {
+		if configMap, ok := (*serviceConfig)["config"].(*map[string]any); ok {
+			if deployments, ok := pluginHandler.DeploymentConfig["deployments"].(string); ok && deployments != "" {
+				(*configMap)["deployments"] = deployments
+			}
+		}
+	}
 
 	// Determine kernel plugin type before starting receiver to avoid race
 	var isKernelPlugin bool
