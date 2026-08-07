@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/buildopts/coreopts"
@@ -108,12 +109,15 @@ func StartWithServerModes(
 		var ttbTokenPtr *string
 		if ttbTokenInterface, ok := (*ctx.Config)[CfgTTBToken]; ok {
 			if ttbToken, ok := ttbTokenInterface.(string); ok {
-				ttbTokenPtr = &ttbToken
+				ttbToken = strings.TrimSpace(ttbToken)
+				if ttbToken != "" {
+					ttbTokenPtr = &ttbToken
+				}
 			}
 		}
 		canStartTalkback := false
 		if usesDirectGRPC {
-			canStartTalkback = remoteServerName != "" && talkbackPort > 0
+			canStartTalkback = remoteServerName != "" && talkbackPort > 0 && ttbTokenPtr != nil
 		} else {
 			canStartTalkback = remoteServerName != "" && ttbTokenPtr != nil
 		}
@@ -130,9 +134,9 @@ func StartWithServerModes(
 		} else if runsTalkback {
 			if usesDirectGRPC {
 				if usesHubConfig {
-					ctx.Log.Printf("Talkback not started: missing trcshtalk hub name (%s) or trcshtalk hub port (%d).", remoteServerName, talkbackPort)
+					ctx.Log.Printf("Talkback not started: missing trcshtalk hub name (%s), trcshtalk hub port (%d), or token present=%t.", remoteServerName, talkbackPort, ttbTokenPtr != nil)
 				} else {
-					ctx.Log.Printf("Talkback not started: missing remote name (%s) or remote port (%d).", remoteServerName, talkbackPort)
+					ctx.Log.Printf("Talkback not started: missing remote name (%s), remote port (%d), or token present=%t.", remoteServerName, talkbackPort, ttbTokenPtr != nil)
 				}
 			} else {
 				ctx.Log.Printf("Talkback not started: missing remote name (%s) or token present=%t.", remoteServerName, ttbTokenPtr != nil)

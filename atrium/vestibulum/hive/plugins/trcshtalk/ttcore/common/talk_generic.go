@@ -284,6 +284,9 @@ func ProcessTrcshTalkRequestGeneric(
 	defer conn.Close()
 	client := newClient(conn)
 	callCtx := context.Background()
+	if ttbToken != nil {
+		callCtx = WithTTBTokenOutgoingContext(callCtx, *ttbToken)
+	}
 	if supportedDeployments := SupportedDeploymentsCSV(ctx); supportedDeployments != "" {
 		callCtx = WithSupportedDeploymentsOutgoingContext(callCtx, supportedDeployments)
 	}

@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -17,9 +18,12 @@ import (
 	ttsdk "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/trcshtalksdk"
 	util "github.com/trimble-oss/tierceron/installation/trcshhive/trcshk/echo/util" // Update package path as needed
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -105,10 +109,31 @@ func send_err(err error) {
 	*configContext.ErrorChan <- err
 }
 
+func validateTalkbackToken(ctx context.Context) error {
+	expectedToken := strings.TrimSpace(echocore.GetTTBToken())
+	if expectedToken == "" {
+		return errors.New("missing configured ttb_token")
+	}
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return errors.New("missing incoming metadata")
+	}
+	for _, value := range md.Get("authorization") {
+		if strings.TrimSpace(value) == expectedToken {
+			return nil
+		}
+	}
+	return errors.New("invalid talkback token")
+}
+
 // Runs diagnostic services for each Diagnostic within the DiagnosticRequest.
 // Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
 // and providing the results of the diagnostics ran.
 func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+	if err := validateTalkbackToken(ctx); err != nil {
+		configContext.Log.Printf("Rejecting RunDiagnostics request: %v", err)
+		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
+	}
 	response, _, err := echocore.RunDiagnostics(ctx, req)
 	if err != nil {
 		configContext.Log.Printf("Diagnostics error: %v", err)
@@ -248,6 +273,7 @@ func HelloWorldDiagnostic() string {
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
+	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("authorization", echocore.GetTTBToken()))
 	s := &diagnosticsServiceServer{}
 	r, err := s.RunDiagnostics(ctx, &ttsdk.DiagnosticRequest{
 		MessageId:   util.GenMsgId("dev"),
