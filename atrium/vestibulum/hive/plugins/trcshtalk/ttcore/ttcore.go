@@ -17,6 +17,8 @@ import (
 
 	// removed rand; now using common.GenMsgID
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -42,6 +44,12 @@ var (
 // Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
 // and providing the results of the diagnostics ran.
 func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+	if err := common.ValidateIncomingTTBToken(configContext, ctx); err != nil {
+		if configContext != nil {
+			configContext.Log.Printf("Rejecting RunDiagnostics request: %v", err)
+		}
+		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
+	}
 	if len(req.GetDiagnostics()) == 0 {
 		if response, handled := postProxyResponse(req); handled {
 			return response, nil

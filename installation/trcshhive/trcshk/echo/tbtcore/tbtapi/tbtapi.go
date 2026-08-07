@@ -126,9 +126,10 @@ func getReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, err
 }
 
 func grpcHandler(w http.ResponseWriter, r *http.Request) {
-	token := r.Header.Get("Authorization")
+	expectedToken := strings.TrimSpace(echocore.GetTTBToken())
+	token := strings.TrimSpace(r.Header.Get("Authorization"))
 
-	if token != echocore.GetTTBToken() {
+	if expectedToken == "" || token == "" || token != expectedToken {
 		http.NotFound(w, r)
 		return
 	}
