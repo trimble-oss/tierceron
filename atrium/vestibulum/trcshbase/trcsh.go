@@ -567,7 +567,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() {
-			go deployutil.KernelShutdownWatcher(driverConfigPtr.CoreConfig.Log)
+			go deployutil.KernelShutdownWatcher(driverConfigPtr, func() *hive.PluginHandler { return kernelPluginHandler })
 		}
 		var agentEnv string
 		var deploymentsShard string
@@ -1052,6 +1052,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		for _, pluginConfig := range pluginDeployments {
 			if pluginConfig != nil {
 				(*pluginConfig)["deployments"] = deploymentsCDL
+				if trcPlugin, ok := (*pluginConfig)["trcplugin"].(string); ok && trcPlugin == "trcshtalk" {
+					if trcshtalkMode, ok := (*configMap)["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
+						(*pluginConfig)["trcshtalk_mode"] = trcshtalkMode
+					}
+				}
 			}
 		}
 

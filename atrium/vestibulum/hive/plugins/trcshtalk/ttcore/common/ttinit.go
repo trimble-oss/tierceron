@@ -42,7 +42,8 @@ func GetConfigPaths(isLocal bool) []string {
 
 // InitTrcshTalk contains the original Init logic; caller assigns returned context to its package variable.
 func InitTrcshTalk(pluginName string, properties *map[string]interface{}, startFn func(string), receiverFn func(chan tccore.KernelCmd), chatReceiverFn func(chan *tccore.ChatMsg)) (*tccore.ConfigContext, error) {
-	ctx, err := tccore.Init(properties,
+	ctx, err := tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
@@ -226,7 +227,7 @@ func StartCore(
 		return "", nil, nil, errors.New("invalid port type")
 	}
 
-	// server_mode currently not influencing generic start behavior; ignored here.
+	// trcshtalk_mode currently not influencing generic start behavior here; StartWithServerModes handles it.
 
 	ctx.Log.Printf("Server listening on :%d\n", trcshtalkPort)
 	lis, gServer, serr := InitServer(trcshtalkPort,

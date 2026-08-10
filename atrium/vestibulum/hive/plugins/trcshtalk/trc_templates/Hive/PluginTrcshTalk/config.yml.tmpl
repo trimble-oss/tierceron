@@ -3,6 +3,6 @@ grpc_server_remote_name: {{.grpc_server_remote_name}}
 grpc_server_remote_port: {{.grpc_server_remote_port}}
 trcshtalk_hub_name: {{.trcshtalk_hub_name}}
 trcshtalk_hub_port: {{.trcshtalk_hub_port}}
-mode: {{or .trcshtalk_mode .server_mode "trcshtalk"}}
+trcshtalk_mode: {{or .trcshtalk_mode "trcshtalk"}}
 ttb_token: '{{.ttb_token}}'
 region: '{{.region}}'

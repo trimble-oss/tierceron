@@ -1,5 +1,6 @@
 agent_role: {{ .agent_role }}
 vault_addr: {{ .vault_addr }}
 agent_env: {{ .agent_env }} 
+trcshtalk_mode: {{or .trcshtalk_mode "trcshtalkback"}}
 deployments: {{ .deployments }}
 region: {{ .region }}

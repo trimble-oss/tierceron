@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -24,8 +25,44 @@ const (
 	KERNEL_PIDFILE = "/tmp/trcshk.pid"
 )
 
-// Watches for pidfile deletion and exits  Used by kubernetes to manage pods
-func KernelShutdownWatcher(logger *log.Logger) {
+func gracefulKernelShutdown(driverConfig *config.DriverConfig, logger *log.Logger, kernelPluginHandler *hive.PluginHandler) {
+	if kernelPluginHandler == nil || kernelPluginHandler.Services == nil {
+		return
+	}
+
+	servicesToStop := []*hive.PluginHandler{}
+	for _, serviceHandler := range *kernelPluginHandler.Services {
+		if serviceHandler == nil {
+			continue
+		}
+		if serviceHandler.State == 0 && serviceHandler.PluginMod == nil {
+			continue
+		}
+		servicesToStop = append(servicesToStop, serviceHandler)
+	}
+
+	for _, serviceHandler := range servicesToStop {
+		serviceHandler.PluginserviceStop(driverConfig)
+	}
+
+	for {
+		allStopped := true
+		for _, serviceHandler := range servicesToStop {
+			if serviceHandler != nil && serviceHandler.State != 0 {
+				allStopped = false
+				break
+			}
+		}
+		if allStopped {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// Watches for pidfile deletion and exits. Used by kubernetes to manage pods.
+func KernelShutdownWatcher(driverConfig *config.DriverConfig, getKernelPluginHandler func() *hive.PluginHandler) {
+	logger := driverConfig.CoreConfig.Log
 	if _, err := os.Stat(KERNEL_PIDFILE); os.IsNotExist(err) {
 		_, mkErr := os.Create(KERNEL_PIDFILE)
 		if mkErr != nil {
@@ -46,11 +83,13 @@ func KernelShutdownWatcher(logger *log.Logger) {
 			select {
 			case event := <-watcher.Events:
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
+					gracefulKernelShutdown(driverConfig, l, getKernelPluginHandler())
 					os.Exit(0)
 				}
 			case err := <-watcher.Errors:
 				if err != nil {
 					l.Printf("Pidfile watch error: %s.  Shutting down\n", err.Error())
+					gracefulKernelShutdown(driverConfig, l, getKernelPluginHandler())
 					os.Exit(0)
 				}
 			}
