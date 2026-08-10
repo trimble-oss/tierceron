@@ -601,6 +601,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 			if deployments, ok := pluginHandler.DeploymentConfig["deployments"].(string); ok && deployments != "" {
 				(*configMap)["deployments"] = deployments
 			}
+			if trcshtalkMode, ok := pluginHandler.DeploymentConfig["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
+				(*configMap)["trcshtalk_mode"] = trcshtalkMode
+			}
 		}
 	}
 
