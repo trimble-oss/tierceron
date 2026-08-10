@@ -370,7 +370,7 @@ func KubeCtl(trcKubeDeploymentConfig *TrcKubeConfig, driverConfig *config.Driver
 			var memFile trcshio.TrcshReadWriteCloser
 			var memFileErr error
 
-			if memFile, memFileErr = driverConfig.MemFs.Open(fileSource); memFileErr == nil {
+			if memFile, memFileErr = driverConfig.MemFs.Open(filePath); memFileErr == nil {
 				buf := bytes.NewBuffer(nil)
 				io.Copy(buf, memFile) // Error handling elided for brevity.
 				data = buf.Bytes()
