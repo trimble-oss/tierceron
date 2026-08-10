@@ -11,7 +11,26 @@ import (
 	"google.golang.org/grpc"
 )
 
-// StartWithServerModes consolidates legacy server_mode logic
+func resolveTrcshTalkMode(config *map[string]interface{}) string {
+	if config == nil {
+		return ModeStandard
+	}
+
+	for _, key := range []string{CfgTrcshTalkMode, CfgMode} {
+		if modeInterface, ok := (*config)[key]; ok {
+			if mode, ok := modeInterface.(string); ok && mode != "" {
+				if mode == ModeTrcshTalk {
+					return ModeBoth
+				}
+				return mode
+			}
+		}
+	}
+
+	return ModeStandard
+}
+
+// StartWithServerModes consolidates trcshtalk mode logic
 // (standard | trcshtalkback | talkback-kernel-plugin | both | trcshtalk | client | client-both)
 // and delegates plugin-specific pieces (service registration, talkback loop, client cert init) via callbacks.
 // Returns the started gRPC server (if any), the dataflow stat (if initialized), and any error.
@@ -28,24 +47,11 @@ func StartWithServerModes(
 		return nil, nil, nil
 	}
 
-	// Determine server_mode (legacy modes: standard | trcshtalkback | talkback-kernel-plugin | both | trcshtalk | client | client-both)
-	serverMode := ModeStandard
-	if modeInterface, ok := (*ctx.Config)[CfgServerMode]; ok {
-		if m, ok := modeInterface.(string); ok && m != "" {
-			serverMode = m
-		}
-	} else if modeInterface, ok := (*ctx.Config)[CfgMode]; ok {
-		if m, ok := modeInterface.(string); ok && m != "" {
-			serverMode = m
-		}
-	}
-	if serverMode == ModeTrcshTalk {
-		serverMode = ModeBoth
-	}
-	usesDirectGRPC := serverMode == ModeTalkbackKernel || serverMode == ModeClient || serverMode == ModeClientBoth
-	usesHubConfig := serverMode == ModeClient || serverMode == ModeClientBoth
-	runsTalkback := serverMode == ModeTalkback || serverMode == ModeTalkbackKernel || serverMode == ModeBoth || serverMode == ModeClient || serverMode == ModeClientBoth
-	runsServer := serverMode == ModeStandard || serverMode == ModeBoth || serverMode == ModeClientBoth
+	trcshtalkMode := resolveTrcshTalkMode(ctx.Config)
+	usesDirectGRPC := trcshtalkMode == ModeTalkbackKernel || trcshtalkMode == ModeClient || trcshtalkMode == ModeClientBoth
+	usesHubConfig := trcshtalkMode == ModeClient || trcshtalkMode == ModeClientBoth
+	runsTalkback := trcshtalkMode == ModeTalkback || trcshtalkMode == ModeTalkbackKernel || trcshtalkMode == ModeBoth || trcshtalkMode == ModeClient || trcshtalkMode == ModeClientBoth
+	runsServer := trcshtalkMode == ModeStandard || trcshtalkMode == ModeBoth || trcshtalkMode == ModeClientBoth
 
 	var dfstat *tccore.TTDINode
 	initializedDF := false
@@ -130,7 +136,7 @@ func StartWithServerModes(
 				}
 				startTrashTalking(remoteServerName, port, ttbt, remote)
 				shutdownConfirmChan <- true
-			}(ttbTokenPtr, talkbackPort, isRemote, serverMode)
+			}(ttbTokenPtr, talkbackPort, isRemote, trcshtalkMode)
 		} else if runsTalkback {
 			if usesDirectGRPC {
 				if usesHubConfig {
@@ -168,7 +174,7 @@ func StartWithServerModes(
 		dfstat = df
 		initializedDF = true
 	} else {
-		ctx.Log.Printf("Server not started due to server_mode=%s", serverMode)
+		ctx.Log.Printf("Server not started due to trcshtalk_mode=%s", trcshtalkMode)
 	}
 
 	return grpcServer, dfstat, nil

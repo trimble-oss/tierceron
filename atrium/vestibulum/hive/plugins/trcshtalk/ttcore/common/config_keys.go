@@ -2,7 +2,7 @@ package common
 
 // Configuration keys
 const (
-	CfgServerMode       = "server_mode"
+	CfgTrcshTalkMode    = "trcshtalk_mode"
 	CfgMode             = "mode"
 	CfgRemotePort       = "grpc_server_remote_port"
 	CfgRemoteName       = "grpc_server_remote_name"

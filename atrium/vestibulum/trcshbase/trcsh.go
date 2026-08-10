@@ -1052,6 +1052,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		for _, pluginConfig := range pluginDeployments {
 			if pluginConfig != nil {
 				(*pluginConfig)["deployments"] = deploymentsCDL
+				if trcPlugin, ok := (*pluginConfig)["trcplugin"].(string); ok && trcPlugin == "trcshtalk" {
+					if trcshtalkMode, ok := (*configMap)["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
+						(*pluginConfig)["trcshtalk_mode"] = trcshtalkMode
+					}
+				}
 			}
 		}
 
