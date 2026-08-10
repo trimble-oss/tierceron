@@ -567,7 +567,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 		}
 
 		if kernelopts.BuildOptions.IsKernel() {
-			go deployutil.KernelShutdownWatcher(driverConfigPtr.CoreConfig.Log)
+			go deployutil.KernelShutdownWatcher(driverConfigPtr, func() *hive.PluginHandler { return kernelPluginHandler })
 		}
 		var agentEnv string
 		var deploymentsShard string
