@@ -1156,6 +1156,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				}
 				go reloadFlows(tfmContext.(flow.FlowMachineContext), flowMod)
 				serviceConfig[tccore.TRCDB_RESOURCE] = tfmContext
+				if len(bootDriverConfig.CoreConfig.Regions) > 0 {
+					serviceConfig["region"] = bootDriverConfig.CoreConfig.Regions[0]
+				} else {
+					bootDriverConfig.CoreConfig.Log.Printf("Warning: No regions configured for flow plugin %s", pluginHandler.Name)
+				}
 			} else {
 				// Initialize vault mod for non-flow plugins that need it (e.g., dataflow statistics)
 				_, kernelmod, kernelvault, err := eUtils.InitVaultMod(driverConfig)
