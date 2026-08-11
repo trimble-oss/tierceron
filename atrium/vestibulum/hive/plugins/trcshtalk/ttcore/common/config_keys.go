@@ -13,11 +13,7 @@ const (
 
 // Supported server modes
 const (
-	ModeStandard       = "standard"
-	ModeTalkback       = "trcshtalkback"
-	ModeTalkbackKernel = "talkback-kernel-plugin"
-	ModeBoth           = "both"
-	ModeTrcshTalk      = "trcshtalk"
-	ModeClient         = "client"
-	ModeClientBoth     = "client-both"
+	ModeTalkback  = "trcshtalkback"
+	ModeHub       = "trcshtalkhub"
+	ModeHubClient = "trcshtalkhubclient"
 )

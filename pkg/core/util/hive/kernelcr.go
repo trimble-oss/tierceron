@@ -601,9 +601,6 @@ func (pluginHandler *PluginHandler) RunPlugin(
 			if deployments, ok := pluginHandler.DeploymentConfig["deployments"].(string); ok && deployments != "" {
 				(*configMap)["deployments"] = deployments
 			}
-			if trcshtalkMode, ok := pluginHandler.DeploymentConfig["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
-				(*configMap)["trcshtalk_mode"] = trcshtalkMode
-			}
 		}
 	}
 
@@ -996,6 +993,17 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				return
 			}
 			serviceConfig["certify"] = pluginHandler.DeploymentConfig
+			if service == "trcshtalk" {
+				if configMap, ok := serviceConfig["config"].(*map[string]any); ok {
+					if trcshtalkMode, ok := pluginToolConfig["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
+						(*configMap)["trcshtalk_mode"] = trcshtalkMode
+					} else if driverConfig.DeploymentConfig != nil {
+						if trcshtalkMode, ok := (*driverConfig.DeploymentConfig)["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
+							(*configMap)["trcshtalk_mode"] = trcshtalkMode
+						}
+					}
+				}
+			}
 
 			// Add driverConfig for kernel plugins only
 			if trctype, ok := pluginHandler.DeploymentConfig["trctype"].(string); ok && trctype == "kernelplugin" {

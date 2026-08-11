@@ -13,26 +13,30 @@ import (
 
 func resolveTrcshTalkMode(config *map[string]interface{}) string {
 	if config == nil {
-		return ModeStandard
+		return ModeTalkback
 	}
 
 	for _, key := range []string{CfgTrcshTalkMode, CfgMode} {
 		if modeInterface, ok := (*config)[key]; ok {
 			if mode, ok := modeInterface.(string); ok && mode != "" {
-				if mode == ModeTrcshTalk {
-					return ModeBoth
+				switch mode {
+				case ModeTalkback, ModeHub, ModeHubClient:
+					return mode
 				}
-				return mode
+				return ModeTalkback
 			}
 		}
 	}
 
-	return ModeStandard
+	return ModeTalkback
 }
 
-// StartWithServerModes consolidates trcshtalk mode logic
-// (standard | trcshtalkback | talkback-kernel-plugin | both | trcshtalk | client | client-both)
-// and delegates plugin-specific pieces (service registration, talkback loop, client cert init) via callbacks.
+// StartWithServerModes consolidates trcshtalk mode logic.
+// Public modes are:
+// - trcshtalkback: start only the outbound talkback loop to the remote system.
+// - trcshtalkhubclient: start only a client that connects to the local hub.
+// - trcshtalkhub: start the remote talkback loop and the local gRPC hub service.
+// It delegates plugin-specific pieces (service registration, talkback loop, client cert init) via callbacks.
 // Returns the started gRPC server (if any), the dataflow stat (if initialized), and any error.
 func StartWithServerModes(
 	pluginName string,
@@ -48,10 +52,10 @@ func StartWithServerModes(
 	}
 
 	trcshtalkMode := resolveTrcshTalkMode(ctx.Config)
-	usesDirectGRPC := trcshtalkMode == ModeTalkbackKernel || trcshtalkMode == ModeClient || trcshtalkMode == ModeClientBoth
-	usesHubConfig := trcshtalkMode == ModeClient || trcshtalkMode == ModeClientBoth
-	runsTalkback := trcshtalkMode == ModeTalkback || trcshtalkMode == ModeTalkbackKernel || trcshtalkMode == ModeBoth || trcshtalkMode == ModeClient || trcshtalkMode == ModeClientBoth
-	runsServer := trcshtalkMode == ModeStandard || trcshtalkMode == ModeBoth || trcshtalkMode == ModeClientBoth
+	usesDirectGRPC := trcshtalkMode == ModeHubClient
+	usesHubConfig := trcshtalkMode == ModeHubClient
+	runsTalkback := trcshtalkMode == ModeTalkback || trcshtalkMode == ModeHub || trcshtalkMode == ModeHubClient
+	runsServer := trcshtalkMode == ModeHub
 
 	var dfstat *tccore.TTDINode
 	initializedDF := false
@@ -123,15 +127,15 @@ func StartWithServerModes(
 		}
 		canStartTalkback := false
 		if usesDirectGRPC {
-			canStartTalkback = remoteServerName != "" && talkbackPort > 0 && ttbTokenPtr != nil
+			canStartTalkback = remoteServerName != "" && talkbackPort > 0
 		} else {
-			canStartTalkback = remoteServerName != "" && ttbTokenPtr != nil
+			canStartTalkback = remoteServerName != ""
 		}
 		if canStartTalkback {
 			// Launch talkback loop
 			go func(ttbt *string, port int, remote bool, mode string) {
 				// Emit start event if we are NOT also starting the server (pure talkback modes)
-				if mode == ModeTalkback || mode == ModeTalkbackKernel || mode == ModeClient {
+				if mode == ModeTalkback || mode == ModeHubClient {
 					*ctx.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 				}
 				startTrashTalking(remoteServerName, port, ttbt, remote)
@@ -140,12 +144,12 @@ func StartWithServerModes(
 		} else if runsTalkback {
 			if usesDirectGRPC {
 				if usesHubConfig {
-					ctx.Log.Printf("Talkback not started: missing trcshtalk hub name (%s), trcshtalk hub port (%d), or token present=%t.", remoteServerName, talkbackPort, ttbTokenPtr != nil)
+					ctx.Log.Printf("Talkback not started: missing trcshtalk hub name (%s) or trcshtalk hub port (%d).", remoteServerName, talkbackPort)
 				} else {
-					ctx.Log.Printf("Talkback not started: missing remote name (%s), remote port (%d), or token present=%t.", remoteServerName, talkbackPort, ttbTokenPtr != nil)
+					ctx.Log.Printf("Talkback not started: missing remote name (%s) or remote port (%d).", remoteServerName, talkbackPort)
 				}
 			} else {
-				ctx.Log.Printf("Talkback not started: missing remote name (%s) or token present=%t.", remoteServerName, ttbTokenPtr != nil)
+				ctx.Log.Printf("Talkback not started: missing remote name (%s).", remoteServerName)
 			}
 		}
 
