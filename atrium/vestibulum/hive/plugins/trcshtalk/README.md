@@ -1,20 +1,23 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
+# trcshtalk
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+`trcshtalk` is the Tierceron diagnostics and talkback plugin used by `trcshk` and related bootstrap flows. It can expose a local gRPC diagnostics service, run an outbound talkback loop to the external trcshtalk system, or do both depending on `trcshtalk_mode`.
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+## trcshtalk_mode
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+The supported public run modes are:
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://docs.microsoft.com/en-us/azure/devops/repos/git/create-a-readme?view=azure-devops). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+- `trcshtalkback`: starts only the outbound talkback loop to the external trcshtalk system. It does not start the local gRPC server.
+- `trcshtalkhubclient`: starts only a client that connects to the local hub. It does not start the remote talkback loop or the local gRPC server.
+- `trcshtalkhub`: starts the remote talkback loop and the local gRPC hub service for other clients to connect to. Clients querying a server running in `trcshtalkhub` mode must provide a matching `ttb_token`.
+
+## Build
+
+```sh
+make trcshtalk
+```
+
+## Test
+
+```sh
+go test ./ttcore/common
+```
