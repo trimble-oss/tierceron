@@ -1466,12 +1466,23 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		time.Sleep(5 * time.Second)
 	}
 	response := ""
+	region := ""
+	if len(driverConfig.CoreConfig.Regions) > 0 {
+		region = driverConfig.CoreConfig.Regions[0]
+		if region == "" {
+			region = "west"
+		}
+	}
 	for k, v := range driverConfig.CoreConfig.CertCache.Items() {
 		if v != nil && v.NotAfter != nil && !(*v.NotAfter).IsZero() && (*v.LastUpdate).IsZero() {
 			info := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
 				v.NotAfter.Year(), v.NotAfter.Month(), v.NotAfter.Day(),
 				v.NotAfter.Hour(), v.NotAfter.Minute(), v.NotAfter.Second())
-			response = response + fmt.Sprintf("Cert %s expires on %s\n", k, info)
+			if region != "" {
+				response = response + fmt.Sprintf("Cert %s expires on %s for region %s\n", k, info, region)
+			} else {
+				response = response + fmt.Sprintf("Cert %s expires on %s\n", k, info)
+			}
 			tiNow := time.Now()
 			v.LastUpdate = &tiNow
 		}
@@ -1524,7 +1535,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 		pluginHandler.State = 1
 	}
 
-	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
+	if true || !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
 		go pluginHandler.sendInitBroadcast(driverConfig)
 	}
