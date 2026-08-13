@@ -49,7 +49,7 @@ func CommonMain(ctx config.ProcessContext,
 	argLines []string,
 	driverConfig *config.DriverConfig,
 ) {
-	isProd := strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")
+	isProd := false
 	// Executable input arguments(flags)
 	if flagset == nil {
 		// Use ContinueOnError in shell/kernelz mode to avoid exiting, otherwise ExitOnError
@@ -174,6 +174,7 @@ func CommonMain(ctx config.ProcessContext,
 		env := "dev"
 		envPtr = &env
 	}
+	isProd = strings.HasPrefix(*envPtr, "staging") || strings.HasPrefix(*envPtr, "prod")
 	envBasis := eUtils.GetEnvBasis(*envPtr)
 
 	// Update tokenNamePtr to match current environment
