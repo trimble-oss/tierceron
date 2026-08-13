@@ -1535,7 +1535,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 		pluginHandler.State = 1
 	}
 
-	if true || !plugincoreopts.BuildOptions.IsPluginHardwired() {
+	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		driverConfig.CoreConfig.Log.Println("All plugins have loaded, sending broadcast message...")
 		go pluginHandler.sendInitBroadcast(driverConfig)
 	}
