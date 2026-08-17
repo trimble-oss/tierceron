@@ -175,12 +175,14 @@ func (cds *ConfigDataStore) Init(config *coreconfig.CoreConfig,
 						}
 					}
 
-					// TODO: improve this M*N complexity algorithm.
-					for _, region := range mod.Regions {
-						regionPath := link[1].(string) + "~" + region
-						newVaultValue, readErr := mod.ReadMapValue(secretBucket, bucket, regionPath)
-						if readErr == nil {
-							values[k+"~"+region] = newVaultValue
+					for secretKey := range secretBucket {
+						regionPathPrefix := link[1].(string) + "~"
+						if strings.HasPrefix(secretKey, regionPathPrefix) {
+							regionSuffix := strings.TrimPrefix(secretKey, link[1].(string))
+							newVaultValue, readErr := mod.ReadMapValue(secretBucket, bucket, secretKey)
+							if readErr == nil {
+								values[k+regionSuffix] = newVaultValue
+							}
 						}
 					}
 
@@ -321,63 +323,81 @@ func (cds *ConfigDataStore) InitTemplateVersionData(config *coreconfig.CoreConfi
 
 // GetValue Provides data from the vault
 func (cds *ConfigDataStore) GetValue(service string, keyPath []string, key string) (string, error) {
-	serviceData, ok := cds.dataMap[service]
-	if ok {
-
-		configPart, configPartOk := serviceData.(map[string]any)
-		if configPartOk {
-			for _, keyPathPart := range keyPath {
-				for configPathKey, configPathValues := range configPart {
-					if configPathKey == keyPathPart {
-						configPart, configPartOk = configPathValues.(map[string]any)
-						break
-					} else {
-						configPartOk = false
-					}
-				}
-				if !configPartOk {
-					break
-				}
+	configPart, configPartOk := cds.getConfigPart(service, keyPath)
+	if configPartOk && configPart != nil {
+		configValue, okValue := configPart[key]
+		if okValue {
+			resultValue, okResultValue := configValue.(string)
+			if okResultValue {
+				return resultValue, nil
 			}
-			if configPartOk && configPart != nil {
-				configValue, okValue := configPart[key]
-				if okValue {
-					resultValue, okResultValue := configValue.(string)
-					if okResultValue {
-						return resultValue, nil
-					} else {
-						return "", errors.New("value not found in store")
-					}
-				}
-			} else {
-				// Try nested algorithm.
-				keyPathKey := "/" + strings.Join(keyPath, "/")
-				for configPathKey, configPathValues := range configPart {
-					if configPathKey == keyPathKey {
-						configPart, configPartOk = configPathValues.(map[string]any)
-
-						if configPartOk {
-							configValue, okValue := configPart[key]
-							if okValue {
-								resultValue, okResultValue := configValue.(string)
-								if okResultValue {
-									return resultValue, nil
-								} else {
-									resultValuePtr, okResultValuePtr := configValue.(*string)
-									if okResultValuePtr {
-										return *resultValuePtr, nil
-									} else {
-										return "", errors.New("value not found in store")
-									}
-								}
-							}
-						}
-					}
-				}
+			resultValuePtr, okResultValuePtr := configValue.(*string)
+			if okResultValuePtr {
+				return *resultValuePtr, nil
 			}
 		}
 	}
 	return "", errors.New("value not found in store")
+}
+
+func (cds *ConfigDataStore) ForEachRegionValue(service string, keyPath []string, key string, visit func(string)) {
+	configPart, configPartOk := cds.getConfigPart(service, keyPath)
+	if !configPartOk || configPart == nil {
+		return
+	}
+
+	regionPrefix := key + "~"
+	for configKey, configValue := range configPart {
+		if strings.HasPrefix(configKey, regionPrefix) {
+			switch configValue.(type) {
+			case string, *string:
+				visit(configKey)
+			}
+		}
+	}
+}
+
+func (cds *ConfigDataStore) getConfigPart(service string, keyPath []string) (map[string]any, bool) {
+	serviceData, ok := cds.dataMap[service]
+	if !ok {
+		return nil, false
+	}
+
+	configPart, configPartOk := serviceData.(map[string]any)
+	if !configPartOk {
+		return nil, false
+	}
+
+	currentConfigPart := configPart
+	for _, keyPathPart := range keyPath {
+		nextConfigPartOk := false
+		for configPathKey, configPathValues := range currentConfigPart {
+			if configPathKey == keyPathPart {
+				currentConfigPart, nextConfigPartOk = configPathValues.(map[string]any)
+				break
+			}
+		}
+		if !nextConfigPartOk {
+			currentConfigPart = nil
+			break
+		}
+	}
+
+	if currentConfigPart != nil {
+		return currentConfigPart, true
+	}
+
+	keyPathKey := "/" + strings.Join(keyPath, "/")
+	for configPathKey, configPathValues := range configPart {
+		if configPathKey == keyPathKey {
+			currentConfigPart, configPartOk = configPathValues.(map[string]any)
+			if configPartOk {
+				return currentConfigPart, true
+			}
+		}
+	}
+
+	return nil, false
 }
 
 // GetConfigValues gets a set of configuration values for a service from the data store.

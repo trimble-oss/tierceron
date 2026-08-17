@@ -49,7 +49,6 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
 ) (*any, *map[string]map[string]map[string]string, *map[string]map[string]map[string]string, int, error) {
-
 	// TODO: replace string sections with maps
 	templatePath = strings.ReplaceAll(templatePath, "\\", "/")
 	pathSlice := strings.SplitN(templatePath, "/", -1)
@@ -114,7 +113,8 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 			}
 
 			// Gets the parsed file line
-			errParse := Parse(driverConfig.CoreConfig, cds,
+			errParse := Parse(
+				driverConfig.CoreConfig, cds,
 				args,
 				pathSlice[len(pathSlice)-2],
 				templatePathSlice,
@@ -141,7 +141,6 @@ func ToSeed(driverConfig *config.DriverConfig, mod *helperkv.Modifier,
 // Output:
 //   - String(s) containing the structure of the template section
 func GetInitialTemplateStructure(driverConfig *config.DriverConfig, templatePathSlice []string) ([]string, int, int) {
-
 	var templateDir int
 	var templateDepth int
 
@@ -170,8 +169,8 @@ func parseAndSetSection(cds *vcutils.ConfigDataStore,
 	keyPath []string,
 	keyName string,
 	value string,
-	existingDefault string) {
-
+	existingDefault string,
+) {
 	var okValue bool
 	var existingValue string
 
@@ -230,7 +229,7 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 	valueSection *map[string]map[string]map[string]string,
 	secretSection *map[string]map[string]map[string]string,
 ) error {
-	if len(args) == 3 { //value
+	if len(args) == 3 { // value
 		keySlice := args[1]
 		keyName := keySlice[1:]
 		valueSlice := args[2]
@@ -246,7 +245,8 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 		}
 		keyPath := templatePathSlice[templateDir+fileOffsetIndex:]
 
-		AppendToTemplateSection(interfaceTemplateSection,
+		AppendToTemplateSection(
+			interfaceTemplateSection,
 			valueSection,
 			secretSection,
 			templatePathSlice,
@@ -267,13 +267,20 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 			defaultSecret)
 
 		if cds != nil {
+			regionKeyMap := map[string]struct{}{}
 			for _, region := range cds.Regions {
+				regionKeyMap[keyName+"~"+region] = struct{}{}
+			}
+			cds.ForEachRegionValue(service, keyPath, keyName, func(regionKey string) {
+				regionKeyMap[regionKey] = struct{}{}
+			})
+			for regionKey := range regionKeyMap {
 				parseAndSetSection(cds,
 					valueSection,
 					"values",
 					service,
 					keyPath,
-					keyName+"~"+region,
+					regionKey,
 					value,
 					defaultSecret)
 			}
@@ -307,24 +314,20 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 			defaultSecret)
 
 		if cds != nil {
-			if len(cds.Regions) > 0 {
-				for _, region := range cds.Regions {
-					parseAndSetSection(cds,
-						secretSection,
-						"super-secrets",
-						service,
-						keyPath,
-						keyName+"~"+region,
-						secret,
-						defaultSecret)
-				}
-			} else {
+			regionKeyMap := map[string]struct{}{}
+			for _, region := range cds.Regions {
+				regionKeyMap[keyName+"~"+region] = struct{}{}
+			}
+			cds.ForEachRegionValue(service, keyPath, keyName, func(regionKey string) {
+				regionKeyMap[regionKey] = struct{}{}
+			})
+			for regionKey := range regionKeyMap {
 				parseAndSetSection(cds,
 					secretSection,
 					"super-secrets",
 					service,
 					keyPath,
-					keyName,
+					regionKey,
 					secret,
 					defaultSecret)
 			}
@@ -345,7 +348,8 @@ func AppendToTemplateSection(
 	templateDir int,
 	templateDepth int,
 	isSecret bool,
-	name ...string) {
+	name ...string,
+) {
 	subSection := "[values/"
 	if isSecret {
 		subSection = "[super-secrets/"
@@ -368,7 +372,7 @@ func AppendToTemplateSection(
 		}
 		itLevel = itLevel[currentEntry].(map[string]any)
 	}
-	//name[0] = keyName, name[1] = service name
+	// name[0] = keyName, name[1] = service name
 	if wholeName {
 		itLevel[name[0]] = subSection + name[1] + ", " + name[0] + "]"
 	} else {
