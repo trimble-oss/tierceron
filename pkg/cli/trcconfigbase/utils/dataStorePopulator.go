@@ -357,6 +357,16 @@ func (cds *ConfigDataStore) ForEachRegionValue(service string, keyPath []string,
 	}
 }
 
+func (cds *ConfigDataStore) HasValue(service string, keyPath []string, key string) bool {
+	configPart, configPartOk := cds.getConfigPart(service, keyPath)
+	if !configPartOk || configPart == nil {
+		return false
+	}
+
+	_, ok := configPart[key]
+	return ok
+}
+
 func (cds *ConfigDataStore) getConfigPart(service string, keyPath []string) (map[string]any, bool) {
 	serviceData, ok := cds.dataMap[service]
 	if !ok {

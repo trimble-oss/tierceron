@@ -267,14 +267,21 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 			defaultSecret)
 
 		if cds != nil {
-			regionKeyMap := map[string]struct{}{}
-			for _, region := range cds.Regions {
-				regionKeyMap[keyName+"~"+region] = struct{}{}
-			}
 			cds.ForEachRegionValue(service, keyPath, keyName, func(regionKey string) {
-				regionKeyMap[regionKey] = struct{}{}
+				parseAndSetSection(cds,
+					valueSection,
+					"values",
+					service,
+					keyPath,
+					regionKey,
+					value,
+					defaultSecret)
 			})
-			for regionKey := range regionKeyMap {
+			for _, region := range cds.Regions {
+				regionKey := keyName + "~" + region
+				if cds.HasValue(service, keyPath, regionKey) {
+					continue
+				}
 				parseAndSetSection(cds,
 					valueSection,
 					"values",
@@ -314,14 +321,21 @@ func Parse(config *coreconfig.CoreConfig, cds *vcutils.ConfigDataStore,
 			defaultSecret)
 
 		if cds != nil {
-			regionKeyMap := map[string]struct{}{}
-			for _, region := range cds.Regions {
-				regionKeyMap[keyName+"~"+region] = struct{}{}
-			}
 			cds.ForEachRegionValue(service, keyPath, keyName, func(regionKey string) {
-				regionKeyMap[regionKey] = struct{}{}
+				parseAndSetSection(cds,
+					secretSection,
+					"super-secrets",
+					service,
+					keyPath,
+					regionKey,
+					secret,
+					defaultSecret)
 			})
-			for regionKey := range regionKeyMap {
+			for _, region := range cds.Regions {
+				regionKey := keyName + "~" + region
+				if cds.HasValue(service, keyPath, regionKey) {
+					continue
+				}
 				parseAndSetSection(cds,
 					secretSection,
 					"super-secrets",
