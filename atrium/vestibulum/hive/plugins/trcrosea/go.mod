@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 
-go 1.26.4
+go 1.27.0
 
 require (
 	github.com/charmbracelet/bubbles v0.21.1
