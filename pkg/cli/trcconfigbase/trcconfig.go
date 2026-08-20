@@ -536,12 +536,12 @@ func CommonMain(envDefaultPtr *string,
 			split := strings.Split(rebind, ":")
 			if len(split) != 2 {
 				fmt.Fprintln(outWriter, "Incorrect format for certDestPath: "+rebind)
-				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
+				return fmt.Errorf("Incorrect format for certDestPath: %s", rebind)
 			}
 			certFileName, certFileDest := split[0], split[1]
 			if split[0] == "" || split[1] == "" {
 				fmt.Fprintln(outWriter, "Incorrect format for certDestPath: "+rebind)
-				return fmt.Errorf("Incorrect format for certDestPath: " + rebind)
+				return fmt.Errorf("Incorrect format for certDestPath: %s", rebind)
 			}
 			certOverrides[certFileName] = certFileDest
 		}
@@ -578,6 +578,10 @@ func CommonMain(envDefaultPtr *string,
 				*envPtr = envVersion[0] + "_0"
 			}
 
+			envStartDir := append([]string{}, driverConfigBase.StartDir...)
+			envServicesWanted := append([]string{}, selectedServicesWanted...)
+			envFileFilter := append([]string{}, fileFilterSlice...)
+
 			driverConfig := config.DriverConfig{
 				CoreConfig: &coreconfig.CoreConfig{
 					IsShell:             isShell,
@@ -593,8 +597,8 @@ func CommonMain(envDefaultPtr *string,
 				},
 				IsShellSubProcess:   driverConfigBase.IsShellSubProcess,
 				SecretMode:          *secretMode,
-				ServicesWanted:      selectedServicesWanted,
-				StartDir:            driverConfigBase.StartDir,
+				ServicesWanted:      envServicesWanted,
+				StartDir:            envStartDir,
 				EndDir:              driverConfigBase.EndDir,
 				WantKeystore:        *keyStorePtr,
 				ZeroConfig:          *zcPtr,
@@ -607,7 +611,7 @@ func CommonMain(envDefaultPtr *string,
 				CertPathOverrides:   certOverrides,
 				Diff:                *diffPtr,
 				Update:              messenger,
-				FileFilter:          fileFilterSlice,
+				FileFilter:          envFileFilter,
 			}
 
 			driverConfig.CoreConfig.CurrentTokenNamePtr = &envTokenName
