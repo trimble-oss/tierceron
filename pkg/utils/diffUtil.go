@@ -370,7 +370,6 @@ func RemoveDuplicateValues(intSlice []string) []string {
 }
 
 func DiffHelper(configCtx *config.ConfigContext, config bool) {
-	fileIndex := 0
 	keys := []string{}
 	getResult := func(key string) *string {
 		if value, ok := configCtx.ResultMap.Get(key); ok {
@@ -423,41 +422,44 @@ func DiffHelper(configCtx *config.ConfigContext, config bool) {
 		}
 	}
 
-	fileList := make([]string, int(configCtx.GetDiffFileCount()))
+	fileList := []string{}
 
 	expectedResultCount := int(configCtx.GetDiffFileCount()) * configCtx.EnvLength
 	sleepCount := 0
 	if expectedResultCount > 0 && configCtx.ResultMap.Count() != expectedResultCount {
+		lastResultCount := configCtx.ResultMap.Count()
 		for {
 			time.Sleep(time.Second)
 			sleepCount++
 			resultCount := configCtx.ResultMap.Count()
+			if resultCount == expectedResultCount {
+				break
+			}
+			if resultCount == lastResultCount {
+				break
+			}
 			if sleepCount >= 5 {
 				fmt.Println("Timeout: Attempted to wait for remaining configs to come in. Attempting incomplete diff.")
 				break
-			} else if resultCount == expectedResultCount {
-				break
 			}
+			lastResultCount = resultCount
 		}
 	}
 
 	if config {
-		// Make fileList
+		seenFiles := map[string]struct{}{}
+		// Make fileList from observed results so we do not diff placeholder files.
 		for tuple := range configCtx.ResultMap.IterBuffered() {
 			key := tuple.Key
-			found := false
-			keySplit := strings.Split(key, "||")
-
-			for _, fileName := range fileList {
-				if fileName == keySplit[1] {
-					found = true
-				}
+			keySplit := strings.SplitN(key, "||", 2)
+			if len(keySplit) != 2 || keySplit[1] == "" {
+				continue
 			}
-
-			if !found && len(fileList) > 0 && fileIndex < len(fileList) {
-				fileList[fileIndex] = keySplit[1]
-				fileIndex++
+			if _, found := seenFiles[keySplit[1]]; found {
+				continue
 			}
+			seenFiles[keySplit[1]] = struct{}{}
+			fileList = append(fileList, keySplit[1])
 		}
 	} else {
 		for _, env := range configCtx.EnvSlice { // Arranges keys for ordered output
