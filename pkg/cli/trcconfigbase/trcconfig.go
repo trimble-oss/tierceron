@@ -35,7 +35,7 @@ func messenger(configCtx *config.ConfigContext, inData *string, inPath string) {
 	data.InPath = inPath
 	inPathSplit := strings.Split(inPath, "||.")
 	_, present := configCtx.ResultMap.Get("filesys||." + inPathSplit[1])
-	//If data is filesys - skip fileSys loop
+	// If data is filesys - skip fileSys loop
 	// If data is filesys - skip fileSys loop
 	if strings.Contains(inPath, "filesys") {
 		goto skipSwitch
@@ -321,7 +321,7 @@ func CommonMain(envDefaultPtr *string,
 		*insecurePtr = driverConfigBase.CoreConfig.Insecure
 		currentRoleEntityPtr = driverConfigBase.CoreConfig.CurrentRoleEntityPtr
 		if driverConfigBase.FileFilter != nil {
-			fileFilterPtr = &(driverConfigBase.FileFilter[0])
+			fileFilterPtr = &driverConfigBase.FileFilter[0]
 		}
 
 		if driverConfigBase.CoreConfig.Log == nil {
@@ -553,8 +553,10 @@ func CommonMain(envDefaultPtr *string,
 		for _, env := range configCtx.EnvSlice {
 			envVersion := eUtils.SplitEnv(env)
 			*envPtr = envVersion[0]
+			envTokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
+			var envTokenPtr *string
 			if !*noVaultPtr {
-				autoErr := eUtils.AutoAuth(driverConfigBase, tokenNamePtr, &tokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, *pingPtr)
+				autoErr := eUtils.AutoAuth(driverConfigBase, &envTokenName, &envTokenPtr, envPtr, envCtxPtr, currentRoleEntityPtr, *pingPtr)
 				if autoErr != nil {
 					fmt.Fprintln(outWriter, "Missing auth components.")
 					return errors.New("missing auth components")
@@ -608,6 +610,7 @@ func CommonMain(envDefaultPtr *string,
 				FileFilter:          fileFilterSlice,
 			}
 
+			driverConfig.CoreConfig.CurrentTokenNamePtr = &envTokenName
 			driverConfigCopy := driverConfig
 			configCtx.ConfigWg.Add(1)
 			go func(dc *config.DriverConfig) {
