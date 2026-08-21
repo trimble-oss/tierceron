@@ -104,7 +104,23 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 			}
 		}
 		if err == nil {
-			tlsConfig, err = trctls.GetTlsConfigFromCertBytes(certBytes)
+			rootCertPool := x509.NewCertPool()
+			if len(certBytes) == 0 {
+				return nil, errors.New("client certificate bytes are empty")
+			}
+			if ok := rootCertPool.AppendCertsFromPEM(certBytes); !ok {
+				return nil, errors.New("couldn't append certs to root")
+			}
+
+			tlsConfig = &tls.Config{
+				RootCAs:                     rootCertPool,
+				MinVersion:                  tls.VersionTLS12,
+				DynamicRecordSizingDisabled: true,
+				CipherSuites: []uint16{
+					tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+					tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				},
+			}
 		}
 	}
 	if err != nil {
