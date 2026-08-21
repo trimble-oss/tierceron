@@ -171,9 +171,9 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 			port = "1433"
 		}
 		if net.ParseIP(server) == nil {
-			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls")
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls&encrypt=true")
 		} else {
-			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
+			conn, err = dburl.Open(driver + "://" + username + ":" + password + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify&encrypt=true")
 		}
 	}
 
