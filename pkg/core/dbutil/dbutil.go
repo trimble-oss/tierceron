@@ -3,6 +3,7 @@ package dbutil
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"errors"
 	"net"
@@ -68,7 +69,23 @@ func OpenDirectConnection(driverConfig *config.DriverConfig,
 			return nil, err
 		}
 		driverConfig.CoreConfig.CertCache = driverConfigCopy.CoreConfig.CertCache
-		tlsConfig, err = trctls.GetTlsConfigFromCertBytes(*clientCertBytes)
+		rootCertPool := x509.NewCertPool()
+		if len(*clientCertBytes) == 0 {
+			return nil, errors.New("client certificate bytes are empty")
+		}
+		if ok := rootCertPool.AppendCertsFromPEM(*clientCertBytes); !ok {
+			return nil, errors.New("couldn't append certs to root")
+		}
+
+		tlsConfig = &tls.Config{
+			RootCAs:                     rootCertPool,
+			MinVersion:                  tls.VersionTLS12,
+			DynamicRecordSizingDisabled: true,
+			CipherSuites: []uint16{
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+		}
 	} else {
 		cacheKey := certName
 		if cacheKey == "" {
