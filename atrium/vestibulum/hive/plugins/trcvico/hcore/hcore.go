@@ -277,6 +277,10 @@ func Init(pluginName string, properties *map[string]any) {
 	}
 }
 
+func GetPluginMessages(pluginName string) []string {
+	return []string{}
+}
+
 func getCommonConfig() map[string]any {
 	if configContext == nil || configContext.Config == nil {
 		return nil
