@@ -1,0 +1,19 @@
+#!/bin/bash -e
+
+VAULT_ROOT_INSTALL="{{.vault_root_install}}"
+VAULT_SERVICE_LABEL="com.tierceron.vault"
+VAULT_PLIST="/Library/LaunchDaemons/${VAULT_SERVICE_LABEL}.plist"
+
+if sudo launchctl print "system/${VAULT_SERVICE_LABEL}" >/dev/null 2>&1; then
+    sudo launchctl bootout system "${VAULT_PLIST}"
+fi
+
+sudo launchctl disable "system/${VAULT_SERVICE_LABEL}" >/dev/null 2>&1 || true
+
+if [[ -f "${VAULT_PLIST}" ]]; then
+    sudo rm -f "${VAULT_PLIST}"
+fi
+
+if [[ "$1" == "--purge" ]]; then
+    sudo rm -rf "${VAULT_ROOT_INSTALL}"
+fi

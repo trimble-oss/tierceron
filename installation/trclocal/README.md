@@ -29,6 +29,19 @@ sudo chown root:root /usr/local/vault/vault
 sudo setcap cap_ipc_lock=+ep /usr/local/vault/vault
 ```
 
+On macOS, use the matching Vault darwin archive for your CPU instead of the linux archive above, and skip `setcap`.
+For example:
+
+```
+curl -L "https://releases.hashicorp.com/vault/1.3.6/vault_1.3.6_darwin_amd64.zip" > /tmp/vault.zip
+cd /tmp
+sudo unzip vault.zip
+sudo mkdir -p /usr/local/vault
+sudo mv vault /usr/local/vault/vault
+sudo chmod 0700 /usr/local/vault/vault
+sudo chown root:wheel /usr/local/vault/vault
+```
+
 # Generating empty seed files
 ```
 mkdir trc_seeds
@@ -75,9 +88,36 @@ chmod 700 ./scripts/install.sh
 sudo ./scripts/install.sh
 ```
 
+On macOS, the generated launchd installer creates the vault application directory under `vault_root_install`, copies `resources/vault_properties.hcl` and the generated certs into it, installs `/Library/LaunchDaemons/com.tierceron.vault.plist`, and loads the daemon.
+
+```
+trcconfig -env=dev -novault
+chmod 700 ./scripts/install_mac.sh
+sudo ./scripts/install_mac.sh
+```
+
 # Start vault as a service
 ```
 sudo service vault start
+```
+
+On macOS, `install_mac.sh` loads the daemon immediately.  To stop it later:
+
+```
+sudo launchctl bootout system /Library/LaunchDaemons/com.tierceron.vault.plist
+```
+
+To uninstall the macOS daemon and remove the launchd plist:
+
+```
+chmod 700 ./scripts/uninstall_mac.sh
+sudo ./scripts/uninstall_mac.sh
+```
+
+To also remove the Vault application directory at `vault_root_install`:
+
+```
+sudo ./scripts/uninstall_mac.sh --purge
 ```
 
 Continue with the trcvault step to initialize vault and set up some tokens for utilization.

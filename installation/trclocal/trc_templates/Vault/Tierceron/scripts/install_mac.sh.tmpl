@@ -1,0 +1,63 @@
+#!/bin/bash -e
+
+VAULT_ROOT_INSTALL="{{.vault_root_install}}"
+VAULT_SERVICE_LABEL="com.tierceron.vault"
+VAULT_PLIST="/Library/LaunchDaemons/${VAULT_SERVICE_LABEL}.plist"
+
+if [[ ! -x "${VAULT_ROOT_INSTALL}/vault" ]]; then
+    echo "Vault binary not found at ${VAULT_ROOT_INSTALL}/vault"
+    exit 1
+fi
+
+sudo mkdir -p "${VAULT_ROOT_INSTALL}"
+sudo mkdir -p "${VAULT_ROOT_INSTALL}/certs"
+sudo mkdir -p "${VAULT_ROOT_INSTALL}/plugins"
+sudo mkdir -p "${VAULT_ROOT_INSTALL}/vault_data/data"
+
+sudo cp resources/vault_properties.hcl "${VAULT_ROOT_INSTALL}/vault_properties.hcl"
+sudo cp trc_seeds/certs/* "${VAULT_ROOT_INSTALL}/certs/"
+
+cat << EOF > "/tmp/${VAULT_SERVICE_LABEL}.plist"
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${VAULT_SERVICE_LABEL}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${VAULT_ROOT_INSTALL}/vault</string>
+        <string>server</string>
+        <string>-config</string>
+        <string>${VAULT_ROOT_INSTALL}/vault_properties.hcl</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>VAULT_API_ADDR</key>
+        <string>https://{{.vault_ip}}:{{.hostport}}</string>
+    </dict>
+    <key>WorkingDirectory</key>
+    <string>${VAULT_ROOT_INSTALL}</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>${VAULT_ROOT_INSTALL}/vault.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>${VAULT_ROOT_INSTALL}/vault.stderr.log</string>
+</dict>
+</plist>
+EOF
+
+sudo mv "/tmp/${VAULT_SERVICE_LABEL}.plist" "${VAULT_PLIST}"
+sudo chown root:wheel "${VAULT_PLIST}"
+sudo chmod 0644 "${VAULT_PLIST}"
+
+if sudo launchctl print "system/${VAULT_SERVICE_LABEL}" >/dev/null 2>&1; then
+    sudo launchctl bootout system "${VAULT_PLIST}"
+fi
+
+sudo launchctl bootstrap system "${VAULT_PLIST}"
+sudo launchctl enable "system/${VAULT_SERVICE_LABEL}"
+sudo launchctl kickstart -k "system/${VAULT_SERVICE_LABEL}"
