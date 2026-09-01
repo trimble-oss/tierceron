@@ -540,7 +540,11 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	} else {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell))
+			if kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernel() {
+				LogInfo(driverConfig.CoreConfig, "No override auth connecting to vault\n")
+			} else {
+				LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell))
+			}
 		} else {
 			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("AutoAuth: Creating vault connection to %s\n", *addrPtr))
 		}
