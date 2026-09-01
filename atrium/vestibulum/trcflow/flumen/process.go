@@ -38,6 +38,25 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
+func rawTrcdbModeEnabled(driverConfig *config.DriverConfig) bool {
+	if driverConfig == nil || driverConfig.DeploymentConfig == nil {
+		return false
+	}
+	rawValue, ok := (*driverConfig.DeploymentConfig)["raw_trcdb_mode"]
+	if !ok {
+		return false
+	}
+	switch typed := rawValue.(type) {
+	case bool:
+		return typed
+	case string:
+		enabled, err := strconv.ParseBool(typed)
+		return err == nil && enabled
+	default:
+		return false
+	}
+}
+
 func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error) {
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
@@ -270,7 +289,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
-	for _, enhancement := range flowMachineInitContext.GetFilteredBusinessFlows(kernelID) {
+	businessFlows := flowMachineInitContext.GetFilteredBusinessFlows(kernelID)
+	if rawTrcdbModeEnabled(driverConfig) {
+		logger.Println("raw_trcdb_mode enabled; skipping business flow startup")
+		businessFlows = nil
+	}
+
+	for _, enhancement := range businessFlows {
 		flowStateControllerMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.CurrentFlowState, 1)
 		flowStateReceiverMap[enhancement.FlowHeader.TableName()] = make(chan flowcore.FlowStateUpdate, 1)
 	}
@@ -393,7 +418,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		sourceDatabaseConnectionsMap,
 		[]string{flowcore.TierceronControllerFlow.FlowName()},
 		[]flowcore.FlowNameType{},
-		[]flowcore.FlowNameType{})
+		[]flowcore.FlowNameType{},
+	)
 	tfmFlumeContext.ExtensionAuthData = tfmContext.ExtensionAuthData
 	var flowWG sync.WaitGroup
 
@@ -557,7 +583,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}(&tfContext, &driverConfigBasis)
 	}
 
-	for _, businessFlow := range flowMachineInitContext.GetFilteredBusinessFlows(kernelID) {
+	for _, businessFlow := range businessFlows {
 		if !flowMachineInitContext.IsSupportedFlow(businessFlow.FlowHeader.FlowName()) {
 			if !driverConfigBasis.CoreConfig.IsEditor {
 				eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, "Skipping unsupported business flow: "+businessFlow.FlowHeader.FlowName())
