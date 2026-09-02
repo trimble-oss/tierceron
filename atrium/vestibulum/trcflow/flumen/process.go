@@ -39,11 +39,11 @@ import (
 	sqle "github.com/dolthub/go-mysql-server/sql"
 )
 
-func rawTrcdbModeEnabled(driverConfig *config.DriverConfig) bool {
-	if driverConfig == nil || driverConfig.DeploymentConfig == nil {
+func rawTrcdbModeEnabled(pluginConfig map[string]any) bool {
+	if pluginConfig == nil {
 		return false
 	}
-	rawValue, ok := (*driverConfig.DeploymentConfig)["raw_trcdb_mode"]
+	rawValue, ok := pluginConfig["raw_trcdb_mode"]
 	if !ok {
 		return false
 	}
@@ -135,6 +135,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
 		KernelId:                  kernelID,
+		RawTrcdbMode:              rawTrcdbModeEnabled(pluginConfig),
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
@@ -264,7 +265,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			ExitOnFailure:       driverConfig.CoreConfig.ExitOnFailure,
 			Log:                 driverConfig.CoreConfig.Log,
 		},
-		DeploymentConfig: driverConfig.DeploymentConfig,
 	}
 
 	// Need to create askflumeflow template --> fill with default vals
@@ -291,7 +291,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
-	rawTrcdbMode := rawTrcdbModeEnabled(driverConfig)
+	rawTrcdbMode := tfmContext.RawTrcdbMode
 	var businessFlows []flow.FlowDefinition
 	if !rawTrcdbMode {
 		businessFlows = flowMachineInitContext.GetFilteredBusinessFlows(kernelID)
@@ -392,6 +392,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
 		KernelId:                  kernelID,
+		RawTrcdbMode:              rawTrcdbMode,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   tfmContext.FlowMap, // In order to support flow notifications, we need this here.

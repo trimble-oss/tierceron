@@ -75,6 +75,7 @@ type TrcFlowMachineContext struct {
 	Region                    string
 	Env                       string
 	KernelId                  int
+	RawTrcdbMode              bool
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
 	FlowControllerUpdateAlert chan string
@@ -1731,15 +1732,7 @@ func (tfmContext *TrcFlowMachineContext) LogInfo(msg string) {
 }
 
 func (tfmContext *TrcFlowMachineContext) rawTrcdbModeEnabled() bool {
-	if tfmContext == nil || tfmContext.DriverConfig == nil || tfmContext.DriverConfig.DeploymentConfig == nil {
-		return false
-	}
-	rawValue, ok := (*tfmContext.DriverConfig.DeploymentConfig)["raw_trcdb_mode"]
-	if !ok {
-		return false
-	}
-	rawTrcdbMode, ok := rawValue.(bool)
-	return ok && rawTrcdbMode
+	return tfmContext != nil && tfmContext.RawTrcdbMode
 }
 
 func (tfmContext *TrcFlowMachineContext) GetLogger() *log.Logger {

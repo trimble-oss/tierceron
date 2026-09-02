@@ -717,6 +717,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 	driverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr
 	pluginConfig["env"] = driverConfig.CoreConfig.EnvBasis
+	if pluginHandler.DeploymentConfig != nil {
+		if rawTrcdbMode, ok := pluginHandler.DeploymentConfig["raw_trcdb_mode"]; ok {
+			pluginConfig["raw_trcdb_mode"] = rawTrcdbMode
+		}
+	}
 
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
 		if pluginHandler.PluginMod != nil {
@@ -994,6 +999,14 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				return
 			}
 			serviceConfig["certify"] = pluginHandler.DeploymentConfig
+			if rawTrcdbMode, ok := pluginHandler.DeploymentConfig["raw_trcdb_mode"]; ok {
+				serviceConfig["raw_trcdb_mode"] = rawTrcdbMode
+				for _, configValue := range serviceConfig {
+					if configMap, ok := configValue.(*map[string]any); ok {
+						(*configMap)["raw_trcdb_mode"] = rawTrcdbMode
+					}
+				}
+			}
 			if service == "trcshtalk" {
 				if configMap, ok := serviceConfig["config"].(*map[string]any); ok {
 					if trcshtalkMode, ok := pluginToolConfig["trcshtalk_mode"].(string); ok && trcshtalkMode != "" {
@@ -1074,7 +1087,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 											Env:           rattanEnv,
 											EnvBasis:      rattanEnv,
 										},
-										DeploymentConfig: driverConfig.DeploymentConfig,
 									}
 									bootDriverConfig.CoreConfig.TokenCache.AddRoleStr("rattan", &rattanRole)
 									tokenPtr := fmt.Sprintf("config_token_plugin%s", rattanEnv)
