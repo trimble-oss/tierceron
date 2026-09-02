@@ -322,7 +322,7 @@ func chat_receiver(chat_receive_chan chan *core.ChatMsg) {
 		case *event.Name == "SHUTDOWN":
 			configContext.Log.Println("trcdb shutting down message receiver")
 			return
-		case event.Response != nil && *((*event).Response) == "Service unavailable":
+		case event.Response != nil && *(*event).Response == "Service unavailable":
 			configContext.Log.Println("Trcdb unable to access chat service.")
 			return
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
@@ -497,7 +497,8 @@ func GetConfigPaths(pluginName string) []string {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 
-	configContext, err = core.Init(properties,
+	configContext, err = core.Init(
+		properties,
 		core.TRCSHHIVEK_CERT,
 		core.TRCSHHIVEK_KEY,
 		"",           // No additional config file used/managed by the trcdb plugin itself.
