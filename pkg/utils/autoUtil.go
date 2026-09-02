@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -540,11 +542,34 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 	} else {
 		if driverConfig == nil || driverConfig.CoreConfig == nil || !driverConfig.CoreConfig.IsEditor {
-			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell))
+			if kernelopts.BuildOptions != nil && kernelopts.BuildOptions.IsKernel() {
+				LogInfo(driverConfig.CoreConfig, "No override auth connecting to vault\n")
+			} else {
+				LogInfo(driverConfig.CoreConfig, fmt.Sprintf("No override auth connecting to vault @ %s (IsShell=%v)\n", *addrPtr, driverConfig.CoreConfig.IsShell))
+			}
 		} else {
 			LogInfo(driverConfig.CoreConfig, fmt.Sprintf("AutoAuth: Creating vault connection to %s\n", *addrPtr))
 		}
+		retries := 0
+		retryableNewVaultError := func(err error) bool {
+			if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
+				return true
+			}
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() {
+				return true
+			}
+			if errors.Is(err, io.EOF) || strings.Contains(err.Error(), "EOF") {
+				return true
+			}
+			return false
+		}
+	retryNewVault:
 		v, err = sys.NewVault(driverConfig.CoreConfig.Insecure, addrPtr, *envPtr, false, ping, false, driverConfig.CoreConfig.Log)
+		if err != nil && retries < 3 && retryableNewVaultError(err) {
+			retries = retries + 1
+			goto retryNewVault
+		}
 
 		if v != nil {
 			defer v.Close()
