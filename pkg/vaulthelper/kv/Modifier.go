@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -320,7 +322,31 @@ func (m *Modifier) ValidateEnvironment(environment string, init bool, policySuff
 		desiredPolicy = "vault_pub_" + strings.ToLower(environment)
 	}
 
+	retries := 0
+
+	retryableLookupEOF := func(err error) bool {
+		if errors.Is(err, context.DeadlineExceeded) || os.IsTimeout(err) {
+			return true
+		}
+		var netErr net.Error
+		if errors.As(err, &netErr) && netErr.Timeout() {
+			return true
+		}
+		if errors.Is(err, io.EOF) {
+			return true
+		}
+		if urlErr, urlErrOk := err.(*url.Error); urlErrOk && urlErr.Unwrap() != nil && urlErr.Unwrap().Error() == "EOF" {
+			return true
+		}
+		return false
+	}
+
+retryLookupSelf:
 	secret, err := m.client.Auth().Token().LookupSelf()
+	if retryableLookupEOF(err) && retries < 3 {
+		retries = retries + 1
+		goto retryLookupSelf
+	}
 	if err != nil {
 		logger.Printf("LookupSelf Auth failure: %v\n", err)
 		if urlErr, urlErrOk := err.(*url.Error); urlErrOk {
@@ -655,7 +681,7 @@ func (m *Modifier) ReadMapValue(valueMap map[string]any, path string, key string
 			mapval := stringer.GoString()
 			memprotectopts.MemProtect(nil, &mapval)
 			return mapval, nil
-		} else if stringer, ok := valueMap[key].((json.Number)); ok {
+		} else if stringer, ok := valueMap[key].(json.Number); ok {
 			return stringer.String(), nil
 		} else {
 			return EMPTY_STRING, fmt.Errorf("cannot convert value at %s to string", key)

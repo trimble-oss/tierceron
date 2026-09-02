@@ -220,7 +220,8 @@ func (tfmContext *TrcFlowMachineContext) Init(
 		changeTableName := tableName + "_Changes"
 		if _, ok, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName); !ok {
 			tfmContext.LogInfo("Creating tierceron sql table: " + changeTableName)
-			err := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName,
+			err := tfmContext.TierceronEngine.Database.CreateTable(
+				tfmContext.TierceronEngine.Context, changeTableName,
 				sqle.NewPrimaryKeySchema(sqle.Schema{
 					{Name: "id", Type: flowMachineInitContext.GetIdColumnType(tableName).(sqle.Type), Source: changeTableName, PrimaryKey: true},
 					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
@@ -563,7 +564,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					indexColumnNames,
 					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
 					getIndexedPathExt,
-					flowPushRemote)
+					flowPushRemote,
+				)
 				// Chewbacca: This is only 1 flow.  All flows should be persisted before exiting.
 			}
 			os.Exit(0)
@@ -595,7 +597,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 						indexColumnNames,
 						syncPushRemoteEnabled,
 						getIndexedPathExt,
-						flowPushRemote)
+						flowPushRemote,
+					)
 				} else {
 					tfmContext.Log(fmt.Sprintf("Could not find flow for channel: %p", flowChangedChannel), nil)
 				}
@@ -607,7 +610,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					indexColumnNames,
 					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeFlowDataChanged),
 					getIndexedPathExt,
-					flowPushRemote)
+					flowPushRemote,
+				)
 			}
 		case <-tfContext.Context.Done():
 			tfmContext.Log(fmt.Sprintf("Flow shutdown: %s", tfContext.FlowHeader.Name), nil)
@@ -617,11 +621,13 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 				indexColumnNames,
 				syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
 				getIndexedPathExt,
-				flowPushRemote)
+				flowPushRemote,
+			)
 			if tfContext.Restart {
 				tfmContext.Log(fmt.Sprintf("Restarting flow: %s", tfContext.FlowHeader.Name), nil)
 				// Reload table from vault...
-				go tfmContext.SyncTableCycle(tfContext,
+				go tfmContext.SyncTableCycle(
+					tfContext,
 					identityColumnNames,
 					indexColumnNames,
 					getIndexedPathExt,
@@ -815,6 +821,9 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 		tfmContext.InitConfigWG.Done()
 	}
 	tfmContext.FlowControllerLock.Unlock()
+	if tfContext.WantsInitNotify && tfmContext.rawTrcdbModeEnabled() {
+		tfContext.NotifyFlowComponentLoaded()
+	}
 	if tfContext.WantsInitNotify { // Alert interface that the table is ready for permissions
 		tfContext.WantsInitNotify = false
 		tfContext.Preloaded = true
@@ -1719,6 +1728,18 @@ func (tfmContext *TrcFlowMachineContext) Log(msg string, err error) {
 
 func (tfmContext *TrcFlowMachineContext) LogInfo(msg string) {
 	eUtils.LogInfo(tfmContext.DriverConfig.CoreConfig, msg)
+}
+
+func (tfmContext *TrcFlowMachineContext) rawTrcdbModeEnabled() bool {
+	if tfmContext == nil || tfmContext.DriverConfig == nil || tfmContext.DriverConfig.DeploymentConfig == nil {
+		return false
+	}
+	rawValue, ok := (*tfmContext.DriverConfig.DeploymentConfig)["raw_trcdb_mode"]
+	if !ok {
+		return false
+	}
+	rawTrcdbMode, ok := rawValue.(bool)
+	return ok && rawTrcdbMode
 }
 
 func (tfmContext *TrcFlowMachineContext) GetLogger() *log.Logger {

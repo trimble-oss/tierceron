@@ -12,6 +12,7 @@ import (
 
 	"github.com/glycerine/bchan"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
@@ -263,6 +264,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			ExitOnFailure:       driverConfig.CoreConfig.ExitOnFailure,
 			Log:                 driverConfig.CoreConfig.Log,
 		},
+		DeploymentConfig: driverConfig.DeploymentConfig,
 	}
 
 	// Need to create askflumeflow template --> fill with default vals
@@ -289,10 +291,12 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowStateReceiverMap[tableName] = make(chan flowcore.FlowStateUpdate, 1)
 	}
 
-	businessFlows := flowMachineInitContext.GetFilteredBusinessFlows(kernelID)
-	if rawTrcdbModeEnabled(driverConfig) {
+	rawTrcdbMode := rawTrcdbModeEnabled(driverConfig)
+	var businessFlows []flow.FlowDefinition
+	if !rawTrcdbMode {
+		businessFlows = flowMachineInitContext.GetFilteredBusinessFlows(kernelID)
+	} else {
 		logger.Println("raw_trcdb_mode enabled; skipping business flow startup")
-		businessFlows = nil
 	}
 
 	for _, enhancement := range businessFlows {
@@ -338,7 +342,13 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	// Http query resources include:
 	// 1. Auth -- Auth is provided by the external library.
 	// 2. Get json by Api call.
-	extensionAuthComponents := buildopts.BuildOptions.GetExtensionAuthComponents(trcIdentityConfig)
+	var extensionAuthComponents map[string]any
+	if !rawTrcdbMode {
+		extensionAuthComponents = buildopts.BuildOptions.GetExtensionAuthComponents(trcIdentityConfig)
+	} else {
+		logger.Println("raw_trcdb_mode enabled; skipping extensionAuthComponents startup")
+	}
+
 	if len(extensionAuthComponents) > 0 {
 
 		if !strings.HasPrefix(extensionAuthComponents["authDomain"].(string), "https://") {
@@ -365,9 +375,8 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		tfmContext.ExtensionAuthDataReloader = make(map[string]any, 1)
 		tfmContext.ExtensionAuthDataReloader["config"] = driverConfig
 		tfmContext.ExtensionAuthDataReloader["identityConfig"] = trcIdentityConfig
+		eUtils.LogInfo(driverConfig.CoreConfig, "Finished building source extension configs")
 	}
-
-	eUtils.LogInfo(driverConfig.CoreConfig, "Finished building source extension configs")
 
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
@@ -627,7 +636,14 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	}
 
 	if testopts.BuildOptions != nil {
-		for _, test := range flowMachineInitContext.GetTestFlows() {
+		var testFlows []flowcore.FlowDefinition
+		if !rawTrcdbMode {
+			testFlows = flowMachineInitContext.GetTestFlows()
+		} else {
+			logger.Println("raw_trcdb_mode enabled; skipping testFlows startup")
+		}
+
+		for _, test := range testFlows {
 			flowWG.Add(1)
 			go func(testFlow flowcore.FlowDefinition, dc *config.DriverConfig, tfmc *trcflowcore.TrcFlowMachineContext) {
 				eUtils.LogInfo(dc.CoreConfig, "Beginning test flow: "+testFlow.FlowHeader.ServiceName())
@@ -657,12 +673,14 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		}
 	}
 
-	go func() {
-		err := BuildFlumeDatabaseInterface(flowMachineInitContext, tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
-		if err != nil {
-			tfmContext.DriverConfig.CoreConfig.Log.Println("Error building flume database interface:", err)
-		}
-	}()
+	if !rawTrcdbMode {
+		go func() {
+			err := BuildFlumeDatabaseInterface(flowMachineInitContext, tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
+			if err != nil {
+				tfmContext.DriverConfig.CoreConfig.Log.Println("Error building flume database interface:", err)
+			}
+		}()
+	}
 
 	logger.Println("ProcessFlows complete.")
 	return tfmContext, nil

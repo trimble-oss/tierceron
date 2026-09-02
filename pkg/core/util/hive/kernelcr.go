@@ -1074,6 +1074,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 											Env:           rattanEnv,
 											EnvBasis:      rattanEnv,
 										},
+										DeploymentConfig: driverConfig.DeploymentConfig,
 									}
 									bootDriverConfig.CoreConfig.TokenCache.AddRoleStr("rattan", &rattanRole)
 									tokenPtr := fmt.Sprintf("config_token_plugin%s", rattanEnv)
