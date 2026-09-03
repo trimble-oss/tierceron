@@ -11,13 +11,14 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkatesting"
 )
 
-func TestSequenceBundleBuilder(expeditionID string,
+func TestSequenceBundleBuilder(sociiID string,
 	topicSequence [][]string,
 	readerSequence []*kafkatesting.SeededKafkaReader,
 	expectedLogicalKey map[string]interface{},
 	expectedLogicalValue map[string]interface{},
 	successFun func(err error),
 ) []*kafkatesting.KafkaTestBundle {
+
 	kafkaTestSequence := []*kafkatesting.KafkaTestBundle{}
 
 	agnosticExpectedLogicKey := map[string]interface{}{}
@@ -39,7 +40,7 @@ func TestSequenceBundleBuilder(expeditionID string,
 		CompletionStatus: "",
 		Message:          "Failure to find expected message.",
 		ExpectedAvroKey: map[string]interface{}{
-			etlcore.SociiKeyField: expeditionID,
+			etlcore.SociiKeyField: sociiID,
 		},
 		ExpectedLogicalKey: agnosticExpectedLogicKey,
 		ExpectedValue:      agnosticExpectedLogicValue,

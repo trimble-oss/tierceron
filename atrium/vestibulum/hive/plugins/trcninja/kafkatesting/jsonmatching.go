@@ -228,17 +228,32 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 
 func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 	if !GetPlugin() {
-		etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value)))
+		etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v\n", m.Topic, m.Partition, m.Offset))
+	}
+	if etlcore.GetConfigContext() != nil && etlcore.GetConfigContext().Log != nil {
+		etlcore.GetConfigContext().Log.Println("Topic reader received json message from EMS topic.")
 	}
 	// TODO: Implement testExpected for JSON output.
 	var kafkaKey map[string]interface{}
-	json.Unmarshal(m.Key, &kafkaKey)
+	keyErr := json.Unmarshal(m.Key, &kafkaKey)
+	if keyErr != nil {
+		etlcore.LogError(fmt.Sprintf("Failed to unmarshal kafka message key: %v", keyErr))
+		return
+	}
 
-	if r.HandleEventFunc != nil {
+	if r.HandleRecordFunc != nil || r.HandleEventFunc != nil {
 		// Non-test kafka topic reader for processing json messages
 		var kafkaValue map[string]interface{}
-		json.Unmarshal(m.Value, &kafkaValue)
-		r.HandleEventFunc(kafkaKey, kafkaValue)
+		err := json.Unmarshal(m.Value, &kafkaValue)
+		if err != nil {
+			etlcore.LogError(fmt.Sprintf("Failed to unmarshal kafka message value: %v", err))
+			return
+		}
+		if r.HandleRecordFunc != nil {
+			r.HandleRecordFunc(m, kafkaKey, kafkaValue)
+		} else {
+			r.HandleEventFunc(kafkaKey, kafkaValue)
+		}
 		return
 	}
 
@@ -306,7 +321,7 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 		}
 	}
 
-	// etlcore.LogError(fmt.Sprintf("%d %s", kafkaKey["EnterpriseId"].(int32), m.Time.UTC().Format(time.UnixDate)))
+	// etlcore.LogError(fmt.Sprintf("%d %s", kafkaKey[etlcore.SociiKeyField].(int32), m.Time.UTC().Format(time.UnixDate)))
 
 	if err != nil {
 		etlcore.LogError(fmt.Sprintf("Failure to parse kafka item.  Ending error: %v", err))

@@ -19,8 +19,9 @@ import (
 )
 
 const (
-	MASHUP_CERT = "Common/MashupCert.crt.mf.tmpl"
-	COMMON_PATH = "config"
+	MASHUP_CERT            = "Common/MashupCert.crt.mf.tmpl"
+	SERVICE_CLIENT_ROOT_CA = "Common/serviceclientcert.pem.mf.tmpl"
+	COMMON_PATH            = "config"
 )
 
 // GetConfigPaths builds the list of config cert paths depending on locality.
@@ -30,12 +31,14 @@ func GetConfigPaths(isLocal bool) []string {
 			COMMON_PATH,
 			tccore.TRCSHHIVEK_CERT,
 			tccore.TRCSHHIVEK_KEY,
+			SERVICE_CLIENT_ROOT_CA,
 		}
 	}
 	return []string{
 		COMMON_PATH,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
+		SERVICE_CLIENT_ROOT_CA,
 		MASHUP_CERT,
 	}
 }
@@ -73,6 +76,20 @@ func AttachMashupCert(ctx *tccore.ConfigContext, properties *map[string]interfac
 	}
 	ctx.Log.Println("Failed to attach mashup cert")
 	return errors.New("missing mashup cert")
+}
+
+func AttachServiceClientRootCA(ctx *tccore.ConfigContext, properties *map[string]interface{}) error {
+	if ctx == nil || properties == nil {
+		return errors.New("nil context or properties")
+	}
+	if cert, ok := (*properties)[SERVICE_CLIENT_ROOT_CA]; ok {
+		certbytes := cert.([]byte)
+		(*ctx.ConfigCerts)[SERVICE_CLIENT_ROOT_CA] = certbytes
+		ctx.Log.Println("Attached service client root CA")
+		return nil
+	}
+	ctx.Log.Println("Failed to attach service client root CA")
+	return errors.New("missing service client root CA")
 }
 
 // SendDFStat finalizes and sends the provided dataflow stat copy.

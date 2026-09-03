@@ -5,8 +5,8 @@ go 1.27.0
 require (
 	github.com/hanwen/go-fuse/v2 v2.7.2
 	github.com/trimble-oss/tierceron v1.55.1
-	github.com/trimble-oss/tierceron-core/v2 v2.11.7
-	google.golang.org/grpc v1.82.1
+	github.com/trimble-oss/tierceron-core/v2 v2.11.9
+	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -15,11 +15,11 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.7 // indirect
-	golang.org/x/net v0.56.0 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.8 // indirect
+	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.40.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
+	golang.org/x/text v0.41.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 

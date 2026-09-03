@@ -68,7 +68,7 @@ func StartWithServerModes(
 		var haveCert bool
 		if usesDirectGRPC { // direct gRPC dial path
 			isRemote = false
-			clientCert, haveCert = (*ctx.ConfigCerts)[tccore.TRCSHHIVEK_CERT]
+			clientCert, haveCert = (*ctx.ConfigCerts)[SERVICE_CLIENT_ROOT_CA]
 		} else if coreopts.IsTrcshTalkBackLocal() { // remote talkback w/ mashup cert when running locally
 			clientCert, haveCert = (*ctx.ConfigCerts)[MASHUP_CERT]
 		}
@@ -99,7 +99,10 @@ func StartWithServerModes(
 
 		if haveCert {
 			initClientCert(clientCert)
-		} else if !isRemote && coreopts.IsTrcshTalkBackLocal() { // strict requirement for local mashup cert
+		} else if usesDirectGRPC {
+			SendErr(ctx, dfstat, errors.New("missing service client root CA"))
+			return nil, dfstat, errors.New("missing service client root CA")
+		} else if coreopts.IsTrcshTalkBackLocal() { // strict requirement for local mashup cert
 			SendErr(ctx, dfstat, errors.New("missing mashup cert"))
 			return nil, dfstat, errors.New("missing mashup cert")
 		}

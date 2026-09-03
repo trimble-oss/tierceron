@@ -60,6 +60,9 @@ func main() {
 	if key, err := os.ReadFile("./local_config/hivekey.key"); err == nil {
 		config[tccore.TRCSHHIVEK_KEY] = key
 	}
+	if rootCA, err := os.ReadFile("./local_config/serviceclientcert.pem"); err == nil {
+		config[common.SERVICE_CLIENT_ROOT_CA] = rootCA
+	}
 
 	Init("trcshtalk", &config)
 	if ctx := GetConfigContext("trcshtalk"); ctx != nil {

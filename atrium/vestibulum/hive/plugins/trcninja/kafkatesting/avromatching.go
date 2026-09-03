@@ -16,7 +16,7 @@ import (
 
 // FilterByAvroKeyMap -- Ensure we only look at messages for a specific key.  Returns true if a test is found, false otherwise.
 // Presently only matches on integer index keys.  So, in this case allows
-// rejection of further processing of messages based on for instance EnterpriseId.
+// rejection of further processing of messages based on for instance sociiId.
 func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) bool {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
@@ -244,7 +244,7 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 		return
 	}
 	// etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value)))
-	if r.HandleEventFunc != nil {
+	if r.HandleRecordFunc != nil || r.HandleEventFunc != nil {
 		// Non-test kafka topic reader for processing avro messages
 		avroData := m.Value[5:]
 		schemaID := binary.BigEndian.Uint32(m.Value[1:5])
@@ -253,12 +253,16 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 			etlcore.LogError(fmt.Sprintf("Failure to parse message value, Schema parse error: %v", err))
 			return
 		}
-		r.HandleEventFunc(kafkaKey, kafkaValue)
+		if r.HandleRecordFunc != nil {
+			r.HandleRecordFunc(m, kafkaKey, kafkaValue)
+		} else {
+			r.HandleEventFunc(kafkaKey, kafkaValue)
+		}
 		return
 	}
 	if !r.FilterByAvroKeyMap(kafkaKey) {
 		// sociiId mismatch for tests we are running.
-		// This is a common occurrence in a topic with a lot of data from different socii...
+		// This is a common occurrence in a topic with a lot of data from different enterprises...
 		// Don't log here because it clutters the logs and makes the test appear to be
 		// failing..   You can uncomment for debugging sometimes.
 		// etlcore.LogError(fmt.Sprintf("Mismatched socii: %v", kafkaKey))
@@ -275,7 +279,7 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 
 	kafkaTestBundle := r.FindByAvroKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
-		// EnterpriseId mismatch for tests we are running.
+		// sociiId mismatch for tests we are running.
 		if !GetPlugin() {
 			etlcore.LogError(fmt.Sprintf("Couldn't find bundle for keyset: %v", kafkaKey))
 		}
