@@ -20,7 +20,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/trimble-oss/tierceron-core/v2 v2.11.9 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.8 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
 	github.com/twmb/franz-go v1.20.7 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	github.com/wildbeavers/schema-registry v0.3.0 // indirect

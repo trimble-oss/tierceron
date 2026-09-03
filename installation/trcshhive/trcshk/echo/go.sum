@@ -90,8 +90,8 @@ github.com/trimble-oss/tierceron v1.55.1 h1:pMhPKcVIgRDYDF3hKqQUoir0ihfnTSeLb3P2
 github.com/trimble-oss/tierceron v1.55.1/go.mod h1:HKMx0XX8QyzIc8OUuDJC/cDRE/b96hDrJBPXsRgbcd0=
 github.com/trimble-oss/tierceron-core/v2 v2.11.9 h1:LawJvlmFgr3PBEcDekudM/Tj/Js5f5NiBCiFS7Aw6p0=
 github.com/trimble-oss/tierceron-core/v2 v2.11.9/go.mod h1:6+HhhuluOxHaPnr30G6vvKoQP+pM5J5ruhNGVTTvYs0=
-github.com/trimble-oss/tierceron-nute-core v1.0.8 h1:QcZi6tYGdq4X5EYJA/3hXzCU7UDYMncfL2nRlI13Esk=
-github.com/trimble-oss/tierceron-nute-core v1.0.8/go.mod h1:u0eMiv4AjXY5iHvaWCQX26/DsuhNoNajVkgQWuuFxpc=
+github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
+github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=
 go.opentelemetry.io/auto/sdk v1.2.1/go.mod h1:KRTj+aOaElaLi+wW1kO/DZRXwkF4C5xPbEe3ZiIhN7Y=

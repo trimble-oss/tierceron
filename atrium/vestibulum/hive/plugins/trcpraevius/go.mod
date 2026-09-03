@@ -13,7 +13,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.8 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
