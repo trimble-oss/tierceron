@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	schemaregistry "github.com/wildbeavers/schema-registry" // github.com/landoop/schema-registry
+	schemaregistry "github.com/wildbeavers/schema-registry" //github.com/landoop/schema-registry
 )
 
 type SchemaManager struct {
@@ -14,11 +14,8 @@ type SchemaManager struct {
 }
 
 func InitSchemaManager(schemaCert []byte, schemaSource string, schemaUser string, schemaPassword string) *SchemaManager {
-	var schemaManager SchemaManager
-
-	if len(schemaCert) == 0 {
-		// Log error but continue with empty cert pool
-		// This allows for development/testing scenarios
+	if schemaSource == "" {
+		return nil
 	}
 
 	var tlsConfig *tls.Config
@@ -41,15 +38,12 @@ func InitSchemaManager(schemaCert []byte, schemaSource string, schemaUser string
 		Transport: httpsClientTransport,
 	}
 
-	// Create the Schema Registry client - now capture error
-	var err error
-	schemaManager.SchemaClient, err = schemaregistry.NewClientWithBasicAuth(schemaSource, schemaUser, schemaPassword, schemaregistry.UsingClient(httpsClient))
+	schemaClient, err := schemaregistry.NewClientWithBasicAuth(schemaSource, schemaUser, schemaPassword, schemaregistry.UsingClient(httpsClient))
 	if err != nil {
-		// Return manager with nil client - callers should check before use
-		return &schemaManager
+		return nil
 	}
 
-	return &schemaManager
+	return &SchemaManager{SchemaClient: schemaClient}
 }
 
 // LoadSchema - loads provided schema

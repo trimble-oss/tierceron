@@ -1,341 +1,262 @@
+//go:build seedsetup
+// +build seedsetup
+
 package seed_setup
 
 import (
-	"context"
-	"database/sql"
 	"fmt"
-	"strings"
-	"sync"
-	"sync/atomic"
+	"strconv"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/seed_setup/models"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/util"
 
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkatesting"
-	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
-var pluginLog = false
-
 const (
-// boTopic    = "bu_topic"
-// boPrefix   = ""
-// boRangeMin = 1
-// boRangeMax = 9999
+	boTopic    = "bu_topic"
+	boPrefix   = ""
+	boRangeMin = 1
+	boRangeMax = 9999
 )
 
-// BuildBusinessObject - Builds a BusinessObject object
-func BuildBusinessObject() models.BusinessObject {
-	return models.BusinessObject{
-		Description: "Description",
-		Field1:      "Field1",
-		Field2:      "Field2",
-		Field3:      "Field3",
+// BuildJcBusinessObjectMasterMc Builds a BusinessObject object
+func BuildBusinessObjectMasterMc() models.JcBusinessObjectMasterMc {
+	return models.JcBusinessObjectMasterMc{
+		Field1: "Field1",
+		Field2: "Field2",
+		Field3: "Field3",
 	}
 }
-
-var (
-	BusinessObjectStateMapLock sync.Mutex
-	BusinessObjectStateMap     map[string]interface{}
-)
-
-var BusinessObjectTopicSequence = [][]string{
-	{"kafkatopicone", "json"},
-	{"kafkatopictwo", "avro"},
-}
-
-type Pool struct{}
 
 // AddBusinessObject -- adds a new business object, then deletes when finished adding.
-func AddBusinessObject(readerGroupPrefix string, testReadyWG *sync.WaitGroup) error {
-	var currentState atomic.Value
-	argosID := "recordId"
-	start := time.Now()
-	currentState.Store(kafkatesting.STATE_INIT)
+func AddBusinessObject() error {
+	currentState := "init"
 	currentStateFunc := func(s decor.Statistics) string {
-		return currentState.Load().(string)
+		return currentState
 	}
-	readerSequence, bar, sociiID, _, dbConn, err := kafkatesting.KafkaTestInit(argosID, etlcore.GetConfigContext("ninja"), &currentState, BusinessObjectTopicSequence, currentStateFunc, BusinessObjectStateMap, start, testReadyWG)
+	reader, bar, sociiID, _, spectrumConn, err := kafkatesting.KafkaTestInit(&currentState, BusinessObjectTopic, currentStateFunc)
 	if err != nil {
-		currentState.Store(kafkatesting.STATE_FAILED_SETUP)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		if bar != nil {
-			bar.Abort(false)
-		}
-		if strings.Contains(err.Error(), "somePipelineError") {
-			BusinessObjectStateMapLock.Lock()
-			BusinessObjectStateMap["Pipeline is not in a Testable State"] = time.Since(start)
-			BusinessObjectStateMapLock.Unlock()
-		} else {
-			err = fmt.Errorf("setup failure")
-		}
+		currentState = "failed setup"
+		bar.Abort(false)
+		err = fmt.Errorf("setup failure")
 		return err
 	}
 
 	// 0. Create a new BusinessObject record
-	BusinessObject := BuildBusinessObject()
+	BusinessObject := BuildJcBusinessObjectMasterMc()
 
-	var resultError error
-	kafkaTestSequence := util.TestSequenceBundleBuilder(sociiID,
-		BusinessObjectTopicSequence,
-		readerSequence,
-		map[string]interface{}{
-			"Field1":    BusinessObject.Field1,
-			"Field2":    BusinessObject.Field2,
-			"Field3":    BusinessObject.Field3,
-			"EventType": "UPDATED",
-		},
-		map[string]interface{}{
-			"Description": strings.TrimSpace(BusinessObject.Description),
-		},
-		func(err error) {
-			if err != nil {
-				etlcore.LogError(fmt.Sprintf("%s Kafka error.  %v", sociiID, err))
-				currentState.Store(kafkatesting.STATE_FAILED)
-				BusinessObjectStateMapLock.Lock()
-				BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-				BusinessObjectStateMapLock.Unlock()
-				resultError = err
-			}
-		},
-	)
-
+	// 1. Setup test requested read record.
+	expectedValueIndex := map[string]interface{}{
+		"KeyMap.Field1": BusinessObject.Field1,
+		"KeyMap.Field2": BusinessObject.Field2,
+		"EventType":     "CREATED",
+	}
+	expectedKey := map[string]interface{}{
+		etlcore.SociiKeyField: sociiID,
+	}
 	bar.IncrBy(25)
 	// 2. Lookup existing record from database and exit with error if found
-	_, err = models.BusinessObjectByField1Field2(context.Background(),
-		dbConn,
-		kafkaTestSequence[1].ExpectedLogicalKey["KeyMap.Field1"].(string), // CompanyCode string,
-		kafkaTestSequence[1].ExpectedLogicalKey["KeyMap.Field2"].(string), // CustomerCode string,
+	_, err = models.JcBusinessObjectMasterMcByField1Field2(spectrumConn,
+		expectedValueIndex["KeyMap.Field1"].(string), //
+		expectedValueIndex["KeyMap.Field2"].(string), //
 	)
 	if err == nil {
-		currentState.Store(kafkatesting.STATE_FAILED_MISSING_RECORD)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		bar.Abort(pluginLog)
+		currentState = "failed missing record"
+		bar.Abort(false)
 		err = fmt.Errorf("record already exists in database")
 		return err
 	}
 
 	// 3. Make sure parent exists
-	_, err = models.BusinessObjectByField1Field2(context.Background(),
-		dbConn,
+	_, err = models.BusinessObjectByField1Field2(spectrumConn,
 		BusinessObject.Field1,
 		BusinessObject.Field2,
 	)
 	if err != nil {
-		currentState.Store(kafkatesting.STATE_FAILED_PARENT_RECORD)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		bar.Abort(pluginLog)
-		etlcore.LogError(fmt.Sprintf("Business Object"+"Parent does not exist in database. Error: %v", err))
+		currentState = "failed missing parent record"
+		bar.Abort(false)
+		etlcore.LogError(fmt.Sprintf("Parent does not exist in database. Error: %v", err))
 		return err
 	}
 
-	// 5. Kick off an asynchronous test.
-	kafkatesting.TestSequenceExpected(sociiID, readerSequence, kafkaTestSequence, testReadyWG)
-
-	// 6. Insert existing record and cleanup.
-	if !pluginLog {
-		etlcore.LogError(fmt.Sprintf("%s Inserting into database", sociiID))
+	// 4. Update expected value.
+	BusinessObject.Comment = strconv.FormatInt(time.Now().UnixNano(), 10)
+	expectedValue := map[string]interface{}{
+		"Field3": BusinessObject.Field3,
 	}
-	currentState.Store(kafkatesting.STATE_DBINIT)
-	BusinessObjectStateMapLock.Lock()
-	BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-	BusinessObjectStateMapLock.Unlock()
-	insertError := BusinessObject.Insert(context.Background(), dbConn)
+
+	// 5. Kick off an asynchronous test.
+	var resultError error
+	if !kafkatesting.GetPlugin() {
+		etlcore.LogError(fmt.Sprintf("%s Going to kafka.", sociiID))
+	}
+	wg := kafkatesting.TestExpected(reader, "Failure to find expected message.", expectedKey, expectedValueIndex, expectedValue, func(err error) {
+		if err != nil {
+			etlcore.LogError(fmt.Sprintf("%s Kafka error.  %v", sociiID, err))
+			currentState = "failed to connect to kafka"
+			resultError = err
+		}
+	})
+
+	// 8. Insert existing record and cleanup.
+	etlcore.LogError(fmt.Sprintf("%s Inserting to database", sociiID))
+	currentState = "dbinit"
+	insertError := BusinessObject.Insert(spectrumConn)
 	if insertError != nil {
-		currentState.Store(kafkatesting.STATE_FAILED_INSERT_RECORD)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		bar.Abort(pluginLog)
+		currentState = "failed insert record"
+		bar.Abort(false)
 		etlcore.LogError(fmt.Sprintf("%s Database insert error.", sociiID))
 		return insertError
 	}
 
+	spectrumConn.Close()
+	currentState = "dbupdated"
+
 	bar.IncrBy(25)
-	// Delete added record
+	// 7. Clean up.
 	var p Pool
-	defer p.cleanBusinessObjectHelper(argosID, readerGroupPrefix, &currentState, bar, sociiID, dbConn, testReadyWG)
+	defer p.CleanBusinessObject()
+	etlcore.LogError(fmt.Sprintf("%s Database insert complete", sociiID))
 
-	// 7. Wait for results.
-	kafkatesting.TestWait(&currentState, kafkaTestSequence, bar, resultError, BusinessObjectStateMap, start, &BusinessObjectStateMapLock)
-
+	// 8. Wait for result.
+	wg.Wait()
+	if resultError != nil {
+		bar.IncrBy(50)
+		currentState = "failed"
+		bar.Abort(false)
+	} else {
+		bar.IncrBy(50)
+		currentState = "complete"
+		bar.Completed()
+	}
+	time.Sleep(100 * time.Millisecond)
 	return resultError
 }
 
 // UpdateBusinessObject -- updates and reads an BusinessObject.
-func UpdateBusinessObject(readerGroupPrefix string, testReadyWG *sync.WaitGroup) error {
-	argosID := "recordId"
-	var currentState atomic.Value
-	start := time.Now()
-	currentState.Store(kafkatesting.STATE_INIT)
+func UpdateBusinessObject() error {
+	currentState := "init"
 	currentStateFunc := func(s decor.Statistics) string {
-		return currentState.Load().(string)
+		return currentState
 	}
-	readerSequence, bar, sociiID, _, dbConn, err := kafkatesting.KafkaTestInit(argosID, etlcore.GetConfigContext("ninja"), &currentState, BusinessObjectTopicSequence, currentStateFunc, BusinessObjectStateMap, start, testReadyWG)
-	BusinessObjectStateMapLock.Lock()
-	BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-	BusinessObjectStateMapLock.Unlock()
+	reader, bar, sociiID, _, spectrumConn, err := kafkatesting.KafkaTestInit(&currentState, BusinessObjectTopic, currentStateFunc)
 	if err != nil {
-		currentState.Store(kafkatesting.STATE_FAILED_SETUP)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		if bar != nil {
-			bar.Abort(pluginLog)
-		}
-		if strings.Contains(err.Error(), "snapshotted") {
-			BusinessObjectStateMapLock.Lock()
-			BusinessObjectStateMap["Pipeline is not in a Testable State"] = time.Since(start)
-			BusinessObjectStateMapLock.Unlock()
-		} else {
-			err = fmt.Errorf("setup failure")
-		}
+		currentState = "failed setup"
+		bar.Abort(false)
+		err = fmt.Errorf("setup failure")
 		return err
 	}
-	var resultError error
-	kafkaTestSequence := util.TestSequenceBundleBuilder(sociiID,
-		BusinessObjectTopicSequence,
-		readerSequence,
-		map[string]interface{}{
-			"Field1":    "Field1Update",
-			"Field2":    "Field2Update",
-			"Field3":    "Field3Update",
-			"EventType": "UPDATED",
-		},
-		map[string]interface{}{},
-		func(err error) {
-			if err != nil {
-				etlcore.LogError(fmt.Sprintf("%s Kafka error.  %v", sociiID, err))
-				currentState.Store(kafkatesting.STATE_FAILED)
-				BusinessObjectStateMapLock.Lock()
-				BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-				BusinessObjectStateMapLock.Unlock()
-				resultError = err
-			}
-		},
-	)
+	// expectedValueIndex["KeyMap.Field1"].(string), //
+	// expectedValueIndex["KeyMap.Field2"].(string), //
+
+	// 1. Setup test requested read record.
+	expectedValueIndex := map[string]interface{}{
+		"KeyMap.Field1": "Field1",
+		"KeyMap.Field2": "Field2",
+		"EventType":     "UPDATED",
+	}
+	expectedKey := map[string]interface{}{
+		etlcore.SociiKeyField: sociiID,
+	}
 
 	// 2. Lookup existing record from database.
-	businessObject, err := models.BusinessObjectByField1Field2(context.Background(), dbConn,
-		kafkaTestSequence[1].ExpectedLogicalKey["KeyMap.Field1"].(string), // Field1 string,
-		kafkaTestSequence[1].ExpectedLogicalKey["KeyMap.Field2"].(string), // Field2 string
+	BusinessObject, err := models.BusinessObjectByField1Field2(spectrumConn,
+		expectedValueIndex["KeyMap.Field1"].(string), // Field1 string,
+		expectedValueIndex["KeyMap.Field2"].(string), // Field2 string,
 	)
 	if err != nil {
-		currentState.Store(kafkatesting.STATE_FAILED_MISSING_RECORD)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		bar.Abort(pluginLog)
+		currentState = "failed missing record"
+		bar.Abort(false)
 		return err
 	}
 
 	// 3. Make a change
-	description, err := uuid.NewRandom()
-	if err != nil {
-		return err
-	}
-	businessObject.Description = strings.ToUpper(description.String())
+	BusinessObject.Description = strconv.FormatInt(time.Now().UnixNano(), 10)
 	bar.IncrBy(25)
+
 	// 4. Update expected value.
-	kafkaTestSequence[0].ExpectedValue["Description"] = strings.TrimSpace(businessObject.Description)
-	kafkaTestSequence[1].ExpectedValue["Description"] = strings.TrimSpace(businessObject.Description)
+	expectedValue := map[string]interface{}{
+		"BusinessObjectDescription": BusinessObject.Description,
+	}
 
 	// 5. Kick off an asynchronous test.
-	kafkatesting.TestSequenceExpected(sociiID, readerSequence, kafkaTestSequence, testReadyWG)
-
-	// 6. Update existing record and cleanup.
-	if !pluginLog {
-		etlcore.LogError(fmt.Sprintf("%s Updating database", sociiID))
+	var resultError error
+	if !kafkatesting.GetPlugin() {
+		etlcore.LogError(fmt.Sprintf("%s Going to kafka.", sociiID))
 	}
-	currentState.Store(kafkatesting.STATE_DBINIT)
-	BusinessObjectStateMapLock.Lock()
-	BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-	BusinessObjectStateMapLock.Unlock()
-	updateError := businessObject.Update(context.Background(), dbConn)
-	dbConn.Close()
+	wg := kafkatesting.TestExpected(reader, "Failure to find expected BusinessObject.", expectedKey, expectedValueIndex, expectedValue, func(err error) {
+		if err != nil {
+			etlcore.LogError(fmt.Sprintf("%s Kafka error.  %v", sociiID, err))
+			resultError = err
+		} else {
+			etlcore.LogError(fmt.Sprintf("%s Kafka successful test result.", sociiID))
+		}
+	})
+
+	// 6. Update existing record in database and cleanup.
+	etlcore.LogError(fmt.Sprintf("%s Updating database", sociiID))
+	currentState = "dbinit"
+	updateError := BusinessObject.Update(spectrumConn)
+	spectrumConn.Close()
 	if updateError != nil {
-		currentState.Store(kafkatesting.STATE_FAILED_UPDATE_RECORD)
-		BusinessObjectStateMapLock.Lock()
-		BusinessObjectStateMap[currentState.Load().(string)] = time.Since(start)
-		BusinessObjectStateMapLock.Unlock()
-		bar.Abort(pluginLog)
+		currentState = "failed update record"
+		bar.Abort(false)
 		etlcore.LogError(fmt.Sprintf("%s Database update error.", sociiID))
 		return updateError
 	}
-	if !pluginLog {
-		etlcore.LogError(fmt.Sprintf("%s Database update complete", sociiID))
+	etlcore.LogError(fmt.Sprintf("%s Database update complete", sociiID))
+
+	// 7. Wait for result
+	currentState = "dbupdated"
+	bar.IncrBy(25)
+	wg.Wait()
+	if resultError != nil {
+		bar.IncrBy(50)
+		currentState = "failed"
+		bar.Abort(false)
+	} else {
+		bar.IncrBy(50)
+		currentState = "complete"
+		bar.Completed()
 	}
-	// 7. Wait for results.
-	kafkatesting.TestWait(&currentState, kafkaTestSequence, bar, resultError, BusinessObjectStateMap, start, &BusinessObjectStateMapLock)
-	bar.Abort(pluginLog)
+	time.Sleep(100 * time.Millisecond)
 	return resultError
 }
 
-func (p *Pool) CleanBusinessObject(argosID string, readerGroupPrefix string, testReadyWG *sync.WaitGroup) error {
-	etlcore.LogError("Clean Business Object proxying...")
-	return p.cleanBusinessObjectHelper(argosID, readerGroupPrefix, nil, nil, "", nil, testReadyWG)
-}
-
-func (p *Pool) cleanBusinessObjectHelper(argosID string, readerGroupPrefix string, currentState *atomic.Value, bar *mpb.Bar, sociiID string, dbConn *sql.DB, testReadyWG *sync.WaitGroup) error {
-	etlcore.LogError("Business Object Clean - starting...")
-	endState := kafkatesting.STATE_COMPLETE_CLEANED
-	start := time.Now()
-	if currentState == nil {
-		endState = kafkatesting.STATE_COMPLETE
-		currentState = &atomic.Value{}
-		currentState.Store(kafkatesting.STATE_INIT)
-		currentStateFunc := func(s decor.Statistics) string {
-			return currentState.Load().(string)
-		}
-		var err error
-		// 1. Setup connections to database and kafka.
-		_, bar, sociiID, _, dbConn, err = kafkatesting.KafkaTestInit(argosID, etlcore.GetConfigContext("ninja"), currentState, [][]string{}, currentStateFunc, nil, start, testReadyWG)
-		if err != nil {
-			currentState.Store(kafkatesting.STATE_CLEAN_SETUP_FAILURE)
-			if bar != nil {
-				bar.Abort(pluginLog)
-			}
-			err = fmt.Errorf("clean setup failure")
-			return err
-		}
-
+// CleanBusinessObject is used to clean up BusinessObject records made from our tests
+func (p *Pool) CleanBusinessObject() error {
+	currentState := "clean"
+	currentStateFunc := func(s decor.Statistics) string {
+		return currentState
 	}
-	etlcore.LogError("Business Object Clean - Setup Succeeded")
+	// 1. Setup connections to database and kafka.
+	_, bar, sociiID, _, spectrumConn, err := kafkatesting.KafkaTestInit(&currentState, "", currentStateFunc)
+	if err != nil {
+		currentState = "Clean failed setup"
+		bar.Abort(false)
+		err = fmt.Errorf("clean setup failure")
+		return err
+	}
 
 	// 2. Delete added record
-	if !pluginLog {
-		etlcore.LogError(fmt.Sprintf("%s Deleting database records", sociiID))
-	}
-	// Create a business object for deletion
-	businessObject := BuildBusinessObject()
-	coCtx, coDoneChannel := util.CleanupCanceller()
-	etlcore.LogError("Business Object Clean - attempting delete query")
-	deleteError := businessObject.Delete(coCtx, dbConn)
-	coDoneChannel <- true
-	dbConn.Close()
+	etlcore.LogError(fmt.Sprintf("%s Deleting database records", sociiID))
+	rangeLength := strconv.Itoa(len(strconv.Itoa(BusinessObjectRangeMax)))
+	from := fmt.Sprintf(BusinessObjectPrefix+"%0"+rangeLength+"d", BusinessObjectRangeMin)
+	to := fmt.Sprintf(BusinessObjectPrefix+"%0"+rangeLength+"d", BusinessObjectRangeMax)
+	BusinessObject := BuildJcBusinessObjectMasterMc()
+	deleteError := BusinessObject.DeleteRange(spectrumConn, from, to)
+	spectrumConn.Close()
 	if deleteError != nil {
 		etlcore.LogError(fmt.Sprintf("%s Database delete error.", sociiID))
 		bar.IncrBy(50)
 		return deleteError
 	}
-	etlcore.LogError("Business Object Clean - delete query succeeded")
-	if !pluginLog {
-		etlcore.LogError(fmt.Sprintf("%s Delete database records complete", sociiID))
-	}
+	etlcore.LogError(fmt.Sprintf("%s Delete database records complete", sociiID))
 	bar.IncrBy(75)
-	currentState.Store(endState)
-	bar.Abort(pluginLog)
+	bar.Completed()
 	time.Sleep(100 * time.Millisecond)
-	etlcore.LogError("Business Object Clean - ending clean")
 	return nil
 }

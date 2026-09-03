@@ -1,11 +1,19 @@
 package kafkautil
 
 import (
+	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/binary"
 	"fmt"
+	"io"
 	"sync"
+	"time"
 
-	goavro "github.com/linkedin/goavro/v2"
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
+	goavro "github.com/linkedin/goavro/v2"
+	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl/plain"
 	schemaregistry "github.com/wildbeavers/schema-registry"
 )
 
@@ -30,8 +38,10 @@ type KafkaManager struct {
 
 // InitKafkaManager - initialize kafka with defaults.
 func InitKafkaManager(schemaCert []byte, schemaSource string, schemaUser string, schemaPassword string) *KafkaManager {
-	var schemaManager *SchemaManager
-	schemaManager = InitSchemaManager(schemaCert, schemaSource, schemaUser, schemaPassword)
+	schemaManager := InitSchemaManager(schemaCert, schemaSource, schemaUser, schemaPassword)
+	if schemaManager == nil {
+		return nil
+	}
 
 	kafkaManager := new(KafkaManager)
 	kafkaManager.schemaManager = schemaManager
@@ -98,6 +108,98 @@ func (kafkaManager *KafkaManager) LoadAvroCodecByID(schemaID uint32) (*schemareg
 	kafkaManager.schemaCacheLock.Unlock()
 
 	return &schemaSubject, codec, nil
+}
+
+func (kafkaManager *KafkaManager) LoadSchema(schemaSubject string, version int) (schemaregistry.Schema, error) {
+	if kafkaManager == nil {
+		return schemaregistry.Schema{}, fmt.Errorf("kafkaManager is nil")
+	}
+	if kafkaManager.schemaManager == nil {
+		return schemaregistry.Schema{}, fmt.Errorf("schemaManager is nil")
+	}
+	return kafkaManager.schemaManager.LoadSchema(schemaSubject, version)
+}
+
+func (kafkaManager *KafkaManager) EncodeSubjectMessage(schemaSubject string, version int, value map[string]interface{}) ([]byte, error) {
+	schema, err := kafkaManager.LoadSchema(schemaSubject, version)
+	if err != nil {
+		return nil, err
+	}
+	return EncodeConfluentAvroMessage(schema, value)
+}
+
+func EncodeConfluentAvroMessage(schema schemaregistry.Schema, value map[string]interface{}) ([]byte, error) {
+	codec, err := goavro.NewCodec(schema.Schema)
+	if err != nil {
+		return nil, err
+	}
+
+	binaryValue, err := codec.BinaryFromNative(nil, value)
+	if err != nil {
+		return nil, err
+	}
+
+	payload := make([]byte, 1+4+len(binaryValue))
+	binary.BigEndian.PutUint32(payload[1:5], uint32(schema.ID))
+	copy(payload[5:], binaryValue)
+	return payload, nil
+}
+
+func NewProducer(bootstrapServers string, kafkaUsername string, kafkaPassword string, kafkaCert []byte) (*kgo.Client, error) {
+	if bootstrapServers == "" {
+		return nil, fmt.Errorf("bootstrapServers is empty")
+	}
+	if kafkaUsername == "" {
+		return nil, fmt.Errorf("kafkaUsername is empty")
+	}
+	if kafkaPassword == "" {
+		return nil, fmt.Errorf("kafkaPassword is empty")
+	}
+
+	caPool := x509.NewCertPool()
+	if len(kafkaCert) > 0 {
+		caPool.AppendCertsFromPEM(kafkaCert)
+	}
+
+	client, err := kgo.NewClient(
+		kgo.SeedBrokers(bootstrapServers),
+		kgo.SASL(plain.Auth{
+			User: kafkaUsername,
+			Pass: kafkaPassword,
+		}.AsMechanism()),
+		kgo.DialTLSConfig(&tls.Config{RootCAs: caPool, MinVersion: tls.VersionTLS12}),
+		kgo.WithLogger(kgo.BasicLogger(io.Discard, kgo.LogLevelNone, nil)),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func ProduceMessage(topic string, key []byte, value []byte, bootstrapServers string, kafkaUsername string, kafkaPassword string, kafkaCert []byte, timeout time.Duration) error {
+	if topic == "" {
+		return fmt.Errorf("topic is empty")
+	}
+	producer, err := NewProducer(bootstrapServers, kafkaUsername, kafkaPassword, kafkaCert)
+	if err != nil {
+		return err
+	}
+	defer producer.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	result := producer.ProduceSync(ctx, &kgo.Record{
+		Topic: topic,
+		Key:   key,
+		Value: value,
+	})
+	if err := result.FirstErr(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeserializeMessage - loads provided schema codec

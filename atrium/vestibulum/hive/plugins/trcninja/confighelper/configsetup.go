@@ -3,10 +3,11 @@ package confighelper
 import (
 	"flag"
 	"fmt"
+	"strings"
 	"sync"
 
-	"github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkautil"
+	"github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 var properties *map[string]interface{}
@@ -20,6 +21,11 @@ var configInit = false
 
 // var config *core.CoreConfig
 var configLock sync.Mutex
+
+const (
+	kafkaClientCertSuffix = "kafka-confluent.pem.mf.tmpl"
+	kafkaSchemaCertSuffix = "schema-confluent.pem.mf.tmpl"
+)
 
 func InitKafkaPropertiesWithConfig(configContext *core.ConfigContext,
 	kafkaClientCertPath string,
@@ -84,6 +90,9 @@ func InitKafkaProperties(configContext *core.ConfigContext,
 	if !ok {
 		return fmt.Errorf("schemaRegistryUrl is not a string")
 	}
+	if schemaURL == "" {
+		return fmt.Errorf("schemaRegistryUrl is empty")
+	}
 	schemaUser, ok := (*configContext.Config)["schemaRegistryUsername"].(string)
 	if !ok {
 		return fmt.Errorf("schemaRegistryUsername is not a string")
@@ -139,6 +148,66 @@ func InitCommon() error {
 // GetProperties -- returns vault configured properties.
 func GetProperties() *map[string]interface{} {
 	return properties
+}
+
+func findConfigCertWithSuffix(configContext *core.ConfigContext, suffix string) ([]byte, bool) {
+	if configContext == nil {
+		return nil, false
+	}
+	if configContext.ConfigCerts != nil {
+		for certPath, certBytes := range *configContext.ConfigCerts {
+			if strings.HasSuffix(certPath, suffix) && len(certBytes) > 0 {
+				return certBytes, true
+			}
+		}
+	}
+	if configContext.Config != nil {
+		for configKey, configValue := range *configContext.Config {
+			if strings.HasSuffix(configKey, suffix) {
+				if certBytes, ok := configValue.([]byte); ok && len(certBytes) > 0 {
+					return certBytes, true
+				}
+			}
+		}
+	}
+	return nil, false
+}
+
+func GetKafkaClientCertWithConfig(configContext *core.ConfigContext) ([]byte, error) {
+	if certBytes, ok := findConfigCertWithSuffix(configContext, kafkaClientCertSuffix); ok {
+		return certBytes, nil
+	}
+	return nil, fmt.Errorf("kafka cert not found in config context")
+}
+
+func NewKafkaManagerWithConfig(configContext *core.ConfigContext) (*kafkautil.KafkaManager, error) {
+	if configContext == nil {
+		return nil, fmt.Errorf("configContext is nil")
+	}
+	if configContext.Config == nil {
+		return nil, fmt.Errorf("configContext.Config is nil")
+	}
+	schemaCert, ok := findConfigCertWithSuffix(configContext, kafkaSchemaCertSuffix)
+	if !ok {
+		return nil, fmt.Errorf("schema cert not found in config context")
+	}
+	schemaURL, ok := (*configContext.Config)["schemaRegistryUrl"].(string)
+	if !ok || schemaURL == "" {
+		return nil, fmt.Errorf("schemaRegistryUrl is not configured")
+	}
+	schemaUser, ok := (*configContext.Config)["schemaRegistryUsername"].(string)
+	if !ok {
+		return nil, fmt.Errorf("schemaRegistryUsername is not configured")
+	}
+	schemaPass, ok := (*configContext.Config)["schemaRegistryPassword"].(string)
+	if !ok {
+		return nil, fmt.Errorf("schemaRegistryPassword is not configured")
+	}
+	kafkaManager := kafkautil.InitKafkaManager(schemaCert, schemaURL, schemaUser, schemaPass)
+	if kafkaManager == nil {
+		return nil, fmt.Errorf("failed to initialize KafkaManager")
+	}
+	return kafkaManager, nil
 }
 
 func resolveTokenName(env string) string {

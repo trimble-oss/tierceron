@@ -17,11 +17,15 @@ OUT_DIR := .
 .PHONY: help clean 
 help:
 	@echo "Please use \`make <ROOT>' where <ROOT> is one of"
-	@echo "  depend...........install all dependencies"
+	@echo "  dependencies...........install all dependencies"
+	@echo "  depend.................install all dependencies"
 	@echo "  clean..................remove all binaries"
 	@echo "  clean.protobuf.........remove all diagnostic protobuf files"
 	@echo "  protobuf...............create all diagnostics protobufs for TrcshTalk"
 	@echo "  trcshtalk..............create the TrcshTalk plugin"
+
+dependencies:
+	go mod tidy
 
 depend:
 	go mod tidy
@@ -31,6 +35,10 @@ clean:
 
 clean.protobuf:
 	rm $(PROTO_DIR)/*.pb.go
+
+healthymod:
+	rm go.sum
+	go mod tidy
 
 protobuf: $(PROTO_FILES)
 	protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative $(PROTO_FILES)

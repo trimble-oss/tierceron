@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"errors"
+	"net"
 	"net/url"
 	"regexp"
 
@@ -75,8 +76,13 @@ func OpenDirectConnection(configContext *core.ConfigContext) (*sql.DB, error) {
 	}
 
 	tlsConfig = &tls.Config{
-		MinVersion: tls.VersionTLS12,
-		RootCAs:    rootCertPool,
+		RootCAs:                     rootCertPool,
+		MinVersion:                  tls.VersionTLS12,
+		DynamicRecordSizingDisabled: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
 	}
 	tlsConfig.ServerName = server
 
@@ -96,7 +102,11 @@ func OpenDirectConnection(configContext *core.ConfigContext) (*sql.DB, error) {
 		if len(port) == 0 {
 			port = "1433"
 		}
-		conn, err = dburl.Open(driver + "://" + sqlUsername + ":" + sqlPassword + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify")
+		if net.ParseIP(server) == nil {
+			conn, err = dburl.Open(driver + "://" + sqlUsername + ":" + sqlPassword + "@" + server + ":" + port + "/" + dbname + "?tls=tiercerontls&encrypt=true")
+		} else {
+			conn, err = dburl.Open(driver + "://" + sqlUsername + ":" + sqlPassword + "@" + server + ":" + port + "/" + dbname + "?tls=skip-verify&encrypt=true")
+		}
 	} else if driver == "mariadb" {
 		if len(port) == 0 {
 			// protocol+transport://user:pass@host/dbname?option1=a&option2=b
