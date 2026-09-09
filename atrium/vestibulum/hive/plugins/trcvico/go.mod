@@ -3,6 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcvico
 go 1.27.0
 
 require (
+	github.com/townsendmerino/goinfer v0.17.2
 	github.com/trimble-oss/tierceron-core/v2 v2.11.9
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -11,6 +12,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/townsendmerino/aikit v1.37.0 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

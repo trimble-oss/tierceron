@@ -875,6 +875,11 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 				eUtils.LogSyncAndExit(driverConfigPtr.CoreConfig.Log, fmt.Sprintf("trcsh agent bootstrap agent auth failure: %s\n", autoErr.Error()), 124)
 			}
 		}
+		if kernelopts.BuildOptions.IsKernel() && gAgentConfig.FeatherContext != nil {
+			if _, featherErr := cap.FeatherCtlEmit(gAgentConfig.FeatherContext, string(cap.MODE_GLIDE), *gAgentConfig.FeatherContext.SessionIdentifier, true); featherErr != nil {
+				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Kernel bootstrap feather glide ignored: %v\n", featherErr)
+			}
+		}
 
 		gTokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
 		gCertCache = trcshDriverConfig.DriverConfig.CoreConfig.CertCache

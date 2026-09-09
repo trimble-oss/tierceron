@@ -25,7 +25,7 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
 	github.com/trimble-oss/tierceron-core/v2 v2.11.9
-	github.com/trimble-oss/tierceron-hat v1.4.0
+	github.com/trimble-oss/tierceron-hat v1.4.2
 	github.com/trimble-oss/tierceron-nute v1.1.3
 	github.com/trimble-oss/tierceron-nute-core v1.0.9
 	golang.org/x/oauth2 v0.36.0
