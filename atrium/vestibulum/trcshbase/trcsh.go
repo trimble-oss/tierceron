@@ -262,7 +262,7 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	if strings.HasSuffix(ctlFlapMode, cap.CTL_COMPLETE) {
 		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		if eUtils.IsWindows() {
+		if eUtils.IsWindows() || kernelopts.BuildOptions.IsKernel() {
 			featherCtx.Log.Println("Deployment controller complete")
 			return
 		} else {
@@ -281,7 +281,7 @@ func deployerCtlEmote(featherCtx *cap.FeatherContext, ctlFlapMode string, msg st
 	if strings.Contains(msg, "encountered errors") {
 		deployCtlSeenLines.Clear()
 		cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
-		if eUtils.IsWindows() {
+		if eUtils.IsWindows() || kernelopts.BuildOptions.IsKernel() {
 			featherCtx.Log.Println("Deployment encountered errors")
 			return
 		} else {
@@ -307,6 +307,9 @@ func deployCtlAcceptRemoteNoTimeout(featherCtx *cap.FeatherContext, x int, y str
 
 // deployCtl -- is the deployment controller or manager if you will.
 func deployCtlInterrupted(featherCtx *cap.FeatherContext) error {
+	if kernelopts.BuildOptions.IsKernel() {
+		featherCtx.CloseQUICConnections()
+	}
 	eUtils.LogSyncAndExit(featherCtx.Log, "Deployment controller interrupted - exiting with code -1", -1)
 	return nil
 }
@@ -318,6 +321,9 @@ func deployerAcceptRemoteNoTimeout(featherCtx *cap.FeatherContext, x int, y stri
 // deployer -- does the work of deploying..
 func deployerInterrupted(featherCtx *cap.FeatherContext) error {
 	cap.FeatherCtlEmit(featherCtx, MODE_PERCH_STR, *featherCtx.SessionIdentifier, true)
+	if kernelopts.BuildOptions.IsKernel() {
+		featherCtx.CloseQUICConnections()
+	}
 	return nil
 }
 
@@ -879,6 +885,7 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			if _, featherErr := cap.FeatherCtlEmit(gAgentConfig.FeatherContext, string(cap.MODE_GLIDE), *gAgentConfig.FeatherContext.SessionIdentifier, true); featherErr != nil {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Kernel bootstrap feather glide ignored: %v\n", featherErr)
 			}
+			gAgentConfig.FeatherContext.CloseQUICConnections()
 		}
 
 		gTokenCache = trcshDriverConfig.DriverConfig.CoreConfig.TokenCache
@@ -1299,6 +1306,12 @@ func featherCtlCb(featherCtx *cap.FeatherContext, agentName string) error {
 		featherCtx.SessionIdentifier = &sessionIDentifier
 		featherCtx.Log.Printf("Starting deploy ctl session: %s\n", sessionIDentifier)
 		captiplib.FeatherCtl(featherCtx, deployerCtlEmote)
+		if kernelopts.BuildOptions.IsKernel() {
+			if _, featherErr := cap.FeatherCtlEmit(featherCtx, string([]byte{cap.MODE_GLIDE, '_'})+cap.CTL_COMPLETE, *featherCtx.SessionIdentifier, true); featherErr != nil {
+				featherCtx.Log.Printf("Failed to close deploy ctl session: %s\n", featherErr.Error())
+			}
+			featherCtx.CloseQUICConnections()
+		}
 	} else {
 		eUtils.LogSyncAndExit(featherCtx.Log, fmt.Sprintf("Unsupported agent: %s\n", agentName), 123)
 	}
@@ -2053,6 +2066,9 @@ collaboratorReRun:
 			}
 			time.Sleep(100 * time.Millisecond)
 		}
+	}
+	if kernelopts.BuildOptions.IsKernel() && featherCtx != nil {
+		closeCleanupMessaging(trcshDriverConfig)
 	}
 	// Make the arguments in the script -> os.args.
 }
