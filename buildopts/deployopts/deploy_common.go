@@ -1,11 +1,16 @@
 package deployopts
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/trimble-oss/tierceron-succinctly/succinctly"
 )
+
+const deployerMachineSuffixBytes = 3
 
 // InitSupportedDeployers - initializes a list of supported deployers.  These are the
 // plugins defined under: super-secrets/Index/TrcVault/trcplugin/
@@ -21,10 +26,13 @@ func InitSupportedDeployers(supportedDeployers []string) []string {
 // Override if you wish to provide a different encoding.
 func GetDecodedDeployerId(deployerCode string) (string, bool) {
 	deployerIdParts := strings.Split(deployerCode, "~")
-	if len(deployerIdParts) != 2 {
+	if len(deployerIdParts) != 2 && len(deployerIdParts) != 3 {
 		return "", false
 	}
 	if word, ok := succinctly.QWord(deployerIdParts[0]); ok {
+		if len(deployerIdParts) == 3 {
+			return fmt.Sprintf("%s~%s~%s", word, deployerIdParts[1], deployerIdParts[2]), true
+		}
 		return fmt.Sprintf("%s~%s", word, deployerIdParts[1]), true
 	} else {
 		return "", false
@@ -38,8 +46,20 @@ func GetDecodedDeployerId(deployerCode string) (string, bool) {
 func GetEncodedDeployerId(deployer string, env string) (string, bool) {
 	if code, ok := succinctly.QCode(deployer); ok {
 		env = strings.Split(env, "_")[0]
-		return fmt.Sprintf("%s~%s", code, env), true
+		return fmt.Sprintf("%s~%s~%s", code, env, getMachineSessionSuffix()), true
 	} else {
 		return "", false
 	}
+}
+
+func getMachineSessionSuffix() string {
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		hostname = os.Getenv("HOSTNAME")
+	}
+	if hostname == "" {
+		hostname = "unknown-host"
+	}
+	hash := sha256.Sum256([]byte(hostname))
+	return hex.EncodeToString(hash[:deployerMachineSuffixBytes])
 }

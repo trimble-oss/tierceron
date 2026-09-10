@@ -26,7 +26,7 @@ require (
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/sergi/go-diff v1.4.0
 	github.com/trimble-oss/tierceron-core/v2 v2.11.9
-	github.com/trimble-oss/tierceron-hat v1.4.2
+	github.com/trimble-oss/tierceron-hat v1.4.3
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
