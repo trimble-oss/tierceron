@@ -1,10 +1,38 @@
 package utils
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"testing"
 )
+
+func TestHasInvalidAddrFlag(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		invalid bool
+	}{
+		{name: "omitted", args: nil},
+		{name: "https", args: []string{"-addr=https://vault.example.test"}},
+		{name: "http", args: []string{"-addr=http://vault.example.test"}, invalid: true},
+		{name: "token", args: []string{"-addr=token-value"}, invalid: true},
+		{name: "empty", args: []string{"-addr="}, invalid: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			flagset := flag.NewFlagSet(test.name, flag.ContinueOnError)
+			flagset.String("addr", "", "")
+			if err := flagset.Parse(test.args); err != nil {
+				t.Fatal(err)
+			}
+			if invalid := HasInvalidAddrFlag(flagset); invalid != test.invalid {
+				t.Fatalf("HasInvalidAddrFlag() = %t, want %t", invalid, test.invalid)
+			}
+		})
+	}
+}
 
 func TestRefMap(t *testing.T) {
 	pluginParams := map[string]any{}

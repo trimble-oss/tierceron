@@ -177,6 +177,9 @@ func CommonMain(envPtr *string,
 		}
 		flagset.Parse(nil)
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return
+	}
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 	}
@@ -1108,7 +1111,8 @@ func CommonMain(envPtr *string,
 		// Seed the vault with given seed directory
 		mod, _ := helperkv.NewModifierFromCoreConfig(
 			driverConfigBase.CoreConfig,
-			*tokenNamePtr, *envPtr, true) // Connect to vault
+			*tokenNamePtr, *envPtr, true,
+		) // Connect to vault
 		if mod != nil {
 			defer mod.Release()
 		}

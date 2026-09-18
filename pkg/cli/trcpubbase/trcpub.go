@@ -128,6 +128,9 @@ func CommonMain(envPtr *string,
 		flagset.Usage()
 		return
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return
+	}
 
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)

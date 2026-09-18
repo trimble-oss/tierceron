@@ -144,6 +144,9 @@ func CommonMain(ctx config.ProcessContext,
 		fmt.Fprintf(outWriter, "%s\n", parseErr.Error())
 		return
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return
+	}
 
 	// After parsing, retrieve the actual env flag value if it was explicitly provided by user
 	// Check if -env flag was actually present in argLines (not just using default)
