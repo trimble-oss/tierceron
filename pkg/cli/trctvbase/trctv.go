@@ -177,6 +177,9 @@ func CommonMain(
 		flagset.Usage()
 		return nil
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 
 	if *versionPtr != "" {
 		versionNum, convErr := strconv.Atoi(*versionPtr)

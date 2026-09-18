@@ -222,6 +222,9 @@ func CommonMain(envPtr *string,
 		}
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 
 	if trcshDriverConfig.DriverConfig.CoreConfig.Log == nil && logFilePtr != nil {
 		f, err := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)

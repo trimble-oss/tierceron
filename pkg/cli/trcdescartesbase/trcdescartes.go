@@ -109,6 +109,9 @@ func CommonMain(envDefaultPtr *string,
 		}
 		flagset.Parse(nil)
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
 		envPtr = envDefaultPtr
 	}

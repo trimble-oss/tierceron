@@ -506,6 +506,9 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 	}
 
 	flagset.Parse(argLines[1:])
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 	driverConfigPtr.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
 
 	if kernelopts.BuildOptions.IsKernel() && !driverConfigPtr.CoreConfig.IsEditor {

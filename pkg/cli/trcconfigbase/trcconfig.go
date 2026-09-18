@@ -266,6 +266,9 @@ func CommonMain(envDefaultPtr *string,
 			*wantCertsPtr = true
 		}
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 
 	if eUtils.RefLength(addrPtr) > 0 {
 		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)

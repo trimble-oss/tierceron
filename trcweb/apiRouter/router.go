@@ -227,6 +227,9 @@ func main() {
 	prodPtr := flag.Bool("production", false, "Run in production mode")
 
 	flag.Parse()
+	if eUtils.HasInvalidAddrFlag(flag.CommandLine) {
+		return
+	}
 
 	s = server.NewServer(addrPtr, tokenPtr)
 	localHost = *localPtr

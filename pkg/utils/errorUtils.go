@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -262,4 +263,17 @@ func SanitizeForLogging(errMsg string) string {
 	errMsgSanitized := strings.ReplaceAll(errMsg, "\n", "")
 	errMsgSanitized = strings.ReplaceAll(errMsgSanitized, "\r", "")
 	return errMsgSanitized
+}
+
+func HasInvalidAddrFlag(flagset *flag.FlagSet) bool {
+	invalid := false
+	flagset.Visit(func(flagValue *flag.Flag) {
+		if flagValue.Name == "addr" && !strings.HasPrefix(flagValue.Value.String(), "https://") {
+			invalid = true
+		}
+	})
+	if invalid {
+		fmt.Fprintln(os.Stderr, "Invalid -addr")
+	}
+	return invalid
 }

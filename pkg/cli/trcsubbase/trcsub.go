@@ -134,6 +134,9 @@ func CommonMain(envDefaultPtr *string,
 		flagset.Usage()
 		return nil
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 
 	// Handle -sw override for -templateFilter
 	if len(*swPtr) > 0 {

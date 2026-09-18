@@ -87,6 +87,9 @@ func CommonMain(envDefaultPtr *string,
 		flagset.Parse(argLines[2:])
 		envPtr = envDefaultPtr
 	}
+	if eUtils.HasInvalidAddrFlag(flagset) {
+		return nil
+	}
 
 	f, logErr := os.OpenFile(*logFilePtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	if logErr != nil {
