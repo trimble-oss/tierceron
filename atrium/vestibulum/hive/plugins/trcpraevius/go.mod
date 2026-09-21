@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcpraevi
 go 1.27.0
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.11.9
+	github.com/trimble-oss/tierceron-core/v2 v2.11.10
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0

@@ -24,8 +24,8 @@ github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsK
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
-github.com/trimble-oss/tierceron-core/v2 v2.11.9 h1:LawJvlmFgr3PBEcDekudM/Tj/Js5f5NiBCiFS7Aw6p0=
-github.com/trimble-oss/tierceron-core/v2 v2.11.9/go.mod h1:6+HhhuluOxHaPnr30G6vvKoQP+pM5J5ruhNGVTTvYs0=
+github.com/trimble-oss/tierceron-core/v2 v2.11.10 h1:iO2oCIGs4ELvaJ5tGQz/2fAM10hHj7ucOYTL8xoRT5k=
+github.com/trimble-oss/tierceron-core/v2 v2.11.10/go.mod h1:6+HhhuluOxHaPnr30G6vvKoQP+pM5J5ruhNGVTTvYs0=
 github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
 github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
 go.opentelemetry.io/auto/sdk v1.2.1 h1:jXsnJ4Lmnqd11kwkBV2LgLoFMZKizbCi5fNZ/ipaZ64=

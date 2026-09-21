@@ -89,6 +89,7 @@ type TrcFlowMachineContext struct {
 	ExtensionAuthDataReloader map[string]any
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
 	IsSupportedFlow           func(flowName string) bool // Required
+	ShouldLoadRow             func(flowcore.FlowMachineContext, flowcore.FlowContext, map[string]string) (bool, error)
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
 	FlowMap                   map[flowcore.FlowNameType]*TrcFlowContext // Map of all running flows for engine
 	FlowMapLock               sync.RWMutex
@@ -1561,6 +1562,15 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 				continue
 			}
 			return nil, errors.New("Found data that was not a string - unable to write columnName: " + columnName + " to " + tfContext.FlowHeader.TableName())
+		}
+	}
+	if tfmContext.ShouldLoadRow != nil {
+		load, err := tfmContext.ShouldLoadRow(tfmContext, tfContext, rowDataMap)
+		if err != nil {
+			return nil, err
+		}
+		if !load {
+			return nil, &SkipRowError{Reason: "row excluded by flow startup filter"}
 		}
 	}
 	row := tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
