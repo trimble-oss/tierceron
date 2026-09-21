@@ -34,13 +34,16 @@ import (
 )
 
 var (
-	configContext *tccore.ConfigContext
-	sender        chan error
-	dfstat        *tccore.TTDINode
-	grpcServer    *grpc.Server
-	localModel    *localModelRuntime
-	proxyRequests chan *ttsdk.DiagnosticRequest = make(chan *ttsdk.DiagnosticRequest, 128)
-	proxyReplies  sync.Map
+	configContext              *tccore.ConfigContext
+	sender                     chan error
+	dfstat                     *tccore.TTDINode
+	grpcServer                 *grpc.Server
+	localModel                 *localModelRuntime
+	proxyRequests              chan *ttsdk.DiagnosticRequest = make(chan *ttsdk.DiagnosticRequest, 128)
+	proxyReplies               sync.Map
+	registerDiagnosticsService = func(server *grpc.Server) {
+		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
+	}
 )
 
 const (
@@ -59,6 +62,35 @@ type localModelRuntime struct {
 
 type diagnosticsServiceServer struct {
 	ttsdk.UnimplementedTrcshTalkServiceServer
+}
+
+// SetDiagnosticsServiceRegistrar overrides the SDK used to register Vico's diagnostics service.
+func SetDiagnosticsServiceRegistrar(register func(server *grpc.Server)) {
+	if register == nil {
+		registerDiagnosticsService = func(server *grpc.Server) {
+			ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
+		}
+		return
+	}
+	registerDiagnosticsService = register
+}
+
+// RunDiagnostics invokes Vico's diagnostics implementation without exposing its generated SDK types.
+func RunDiagnostics(ctx context.Context, messageID string, queryID string, data []string, queries []int32) (string, error) {
+	pluginQueries := make([]ttsdk.PluginQuery, len(queries))
+	for index, query := range queries {
+		pluginQueries[index] = ttsdk.PluginQuery(query)
+	}
+	response, err := (&diagnosticsServiceServer{}).RunDiagnostics(ctx, &ttsdk.DiagnosticRequest{
+		MessageId: messageID,
+		QueryId:   queryID,
+		Data:      data,
+		Queries:   pluginQueries,
+	})
+	if err != nil || response == nil {
+		return "", err
+	}
+	return response.GetResults(), nil
 }
 
 func receiver(receive_chan chan tccore.KernelCmd) {
@@ -184,12 +216,8 @@ func localModelActiveCount() string {
 	return "0"
 }
 
-func normalizePluginName(name string) string {
-	return strings.ToLower(strings.TrimSpace(name))
-}
-
 func isLocalPlugin(name string) bool {
-	switch normalizePluginName(name) {
+	switch name {
 	case "vico":
 		return true
 	default:
@@ -198,17 +226,17 @@ func isLocalPlugin(name string) bool {
 }
 
 func targetPluginForEvent(event *tccore.ChatMsg) string {
-	if event == nil || event.Query == nil || len(*event.Query) != 1 {
+	if event == nil || event.Name == nil || len(*event.Name) != 1 {
 		return ""
 	}
 	if event.Response != nil && strings.TrimSpace(*event.Response) != "" {
 		return ""
 	}
-	targetPlugin := normalizePluginName((*event.Query)[0])
+	targetPlugin := (*event.Name)
 	if targetPlugin == "" || targetPlugin == "trcshcmd" || isLocalPlugin(targetPlugin) {
 		return ""
 	}
-	if event.Name != nil && normalizePluginName(*event.Name) == targetPlugin {
+	if event.Name != nil && *event.Name == targetPlugin {
 		return ""
 	}
 	return targetPlugin
@@ -225,7 +253,6 @@ func supportedPluginsFromIncomingContext(ctx context.Context) map[string]struct{
 	plugins := map[string]struct{}{}
 	for _, value := range md.Get(hubClientPluginsMetadataKey) {
 		for _, plugin := range strings.Split(value, ",") {
-			plugin = normalizePluginName(plugin)
 			if plugin != "" {
 				plugins[plugin] = struct{}{}
 			}
@@ -238,7 +265,7 @@ func supportedPluginsFromIncomingContext(ctx context.Context) map[string]struct{
 }
 
 func requestSupportedByPlugins(req *ttsdk.DiagnosticRequest, supportedPlugins map[string]struct{}) bool {
-	targetPlugin := normalizePluginName(req.GetQueryId())
+	targetPlugin := req.GetQueryId()
 	if targetPlugin == "" {
 		return true
 	}
@@ -340,7 +367,8 @@ func buildProxyDiagnosticRequest(event *tccore.ChatMsg, targetPlugin string) *tt
 }
 
 func forwardToHubClient(event *tccore.ChatMsg, targetPlugin string) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
+	// ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
+	ctx, cancel := context.WithCancel(context.Background()) // for debugging
 	defer cancel()
 
 	response, err := enqueueProxyRequest(ctx, buildProxyDiagnosticRequest(event, targetPlugin))
@@ -695,8 +723,8 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			progressResp := "Running Vico Diagnostics..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
-		case targetPluginForEvent(event) != "":
-			targetPlugin := targetPluginForEvent(event)
+		case event.Name != nil && *event.Name != "":
+			targetPlugin := *event.Name
 			configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
 			response, err := forwardToHubClient(event, targetPlugin)
 			if err != nil {
@@ -734,9 +762,7 @@ func start(pluginName string) {
 	// 	return
 	// }
 
-	_, gServer, startedDF, err := startCore(pluginName, func(gs *grpc.Server) {
-		ttsdk.RegisterTrcshTalkServiceServer(gs, &diagnosticsServiceServer{})
-	})
+	_, gServer, startedDF, err := startCore(pluginName, registerDiagnosticsService)
 	if err != nil {
 		send_err(err)
 		return
