@@ -396,7 +396,12 @@ func ProcessTrcdb(trcdbExchange *core.TrcdbExchange) {
 		}
 		query := make(map[string]any)
 		query["TrcQuery"] = trcdbExchange.Query
-		trcdbExchange, _ = tfmContext.CallDBQueryN(trcdbExchange, query, nil, false, trcdbExchange.Operation, nil, "")
+		processedExchange, changed := tfmContext.CallDBQueryN(trcdbExchange, query, nil, false, trcdbExchange.Operation, nil, "")
+		if processedExchange != nil {
+			trcdbExchange.Response = processedExchange.Response
+		} else {
+			trcdbExchange.Response.Success = changed
+		}
 		if len(trcdbExchange.Response.Rows) == 0 {
 			configContext.Log.Println("TrcdbExchange operation did not get any results.  returning empty response.")
 		}
