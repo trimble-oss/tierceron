@@ -200,6 +200,46 @@ func TableCollationIdGen(tableName string) sqle.CollationID {
 	return sqle.CollationID(sqle.Collation_utf8mb4_unicode_ci)
 }
 
+func changeTypeColumn(tableName string) *sqle.Column {
+	defaultValue, _ := sqle.NewColumnDefaultValue(sqlee.NewLiteral(ChangeTypeUpdate, sqle.Text), sqle.Text, true, false, false)
+	return &sqle.Column{Name: ChangeTypeColumnName, Type: sqle.Text, Source: tableName, Default: defaultValue}
+}
+
+func (tfmContext *TrcFlowMachineContext) ensureChangeTypeColumn(changeTableName string) error {
+	table, ok, err := tfmContext.TierceronEngine.Database.GetTableInsensitive(tfmContext.TierceronEngine.Context, changeTableName)
+	if err != nil || !ok {
+		return err
+	}
+	for _, column := range table.Schema() {
+		if column.Name == ChangeTypeColumnName {
+			return nil
+		}
+	}
+	memoryTable, ok := table.(*sqlememory.Table)
+	if !ok {
+		return fmt.Errorf("change table %s does not support schema migration", changeTableName)
+	}
+	return memoryTable.AddColumn(tfmContext.TierceronEngine.Context, changeTypeColumn(changeTableName), nil)
+}
+
+func getManualChangeUpsertQuery(databaseName string, changeTableName string, keyColumns []string, changeType string) string {
+	placeholders := make([]string, len(keyColumns))
+	for index, column := range keyColumns {
+		placeholders[index] = ":" + column
+	}
+	return fmt.Sprintf(
+		"INSERT IGNORE INTO %s.%s (%s, %s, updateTime) VALUES (%s, '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)",
+		databaseName,
+		changeTableName,
+		strings.Join(keyColumns, ","),
+		ChangeTypeColumnName,
+		strings.Join(placeholders, ","),
+		changeType,
+		ChangeTypeColumnName,
+		ChangeTypeColumnName,
+	)
+}
+
 func (tfmContext *TrcFlowMachineContext) Init(
 	flowMachineInitContext *flowcore.FlowMachineInitContext,
 	sdbConnMap map[string]map[string]any,
@@ -226,6 +266,7 @@ func (tfmContext *TrcFlowMachineContext) Init(
 				tfmContext.TierceronEngine.Context, changeTableName,
 				sqle.NewPrimaryKeySchema(sqle.Schema{
 					{Name: "id", Type: flowMachineInitContext.GetIdColumnType(tableName).(sqle.Type), Source: changeTableName, PrimaryKey: true},
+					changeTypeColumn(changeTableName),
 					{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
 				}),
 				TableCollationIdGen(tableName),
@@ -235,6 +276,10 @@ func (tfmContext *TrcFlowMachineContext) Init(
 				tfmContext.Log("Could not create table.", err)
 				return err
 			}
+		} else if err := tfmContext.ensureChangeTypeColumn(changeTableName); err != nil {
+			tfmContext.GetTableModifierLock().Unlock()
+			tfmContext.Log("Could not migrate change table.", err)
+			return err
 		}
 	}
 	tfmContext.GetTableModifierLock().Unlock()
@@ -397,29 +442,30 @@ func (tfmContext *TrcFlowMachineContext) CreateTableTriggers(tcflowContext flowc
 		eUtils.CheckError(tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 
-	triggerExist := false
 	for _, trigger := range existingTriggers {
 		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name || trigger.Name == delTrigger.Name {
-			triggerExist = true
+			if err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name); err != nil {
+				tfmContext.GetTableModifierLock().Unlock()
+				eUtils.CheckError(tfmContext.DriverConfig.CoreConfig, err, false)
+				return
+			}
 		}
 	}
-	if !triggerExist {
-		tableName := tfContext.FlowHeader.TableName()
-		updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
-		insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
-		delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
-		// Wire a Go callback so that any direct SQL write to this table immediately
-		// wakes seedVaultCycle without requiring a polling tick.
-		if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tableName)]; ok {
-			triggerCallback := func() { notificationFlowChannel.Bcast(true) }
-			updTrigger.Callback = triggerCallback
-			insTrigger.Callback = triggerCallback
-			delTrigger.Callback = triggerCallback
-		}
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
+	tableName := tfContext.FlowHeader.TableName()
+	updTrigger.CreateStatement = getUpdateTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+	insTrigger.CreateStatement = getInsertTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+	delTrigger.CreateStatement = getDeleteTrigger(tfmContext.TierceronEngine.Database.Name(), tableName, identityColumnNames)
+	// Wire a Go callback so that any direct SQL write to this table immediately
+	// wakes seedVaultCycle without requiring a polling tick.
+	if notificationFlowChannel, ok := tfmContext.ChannelMap[flowcore.FlowNameType(tableName)]; ok {
+		triggerCallback := func() { notificationFlowChannel.Bcast(true) }
+		updTrigger.Callback = triggerCallback
+		insTrigger.Callback = triggerCallback
+		delTrigger.Callback = triggerCallback
 	}
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
 	tfmContext.GetTableModifierLock().Unlock()
 }
 
@@ -441,21 +487,22 @@ func (tfmContext *TrcFlowMachineContext) CreateCompositeTableTriggers(tcflowCont
 		eUtils.CheckError(tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 
-	triggerExist := false
 	for _, trigger := range existingTriggers {
 		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name || trigger.Name == delTrigger.Name {
-			triggerExist = true
+			if err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name); err != nil {
+				tfmContext.GetTableModifierLock().Unlock()
+				eUtils.CheckError(tfmContext.DriverConfig.CoreConfig, err, false)
+				return
+			}
 		}
 	}
-	if !triggerExist {
-		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2)
-		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2)
-		delTrigger.CreateStatement = deleteT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2)
+	updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2)
+	insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2)
+	delTrigger.CreateStatement = deleteT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2)
 
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
-	}
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
 }
 
 // CreateDataFlowTableTriggers - set up call back to enable a trigger to track
@@ -484,20 +531,21 @@ func (tfmContext *TrcFlowMachineContext) CreateDataFlowTableTriggers(tcflowConte
 		eUtils.CheckError(tfmContext.DriverConfig.CoreConfig, err, false)
 	}
 
-	triggerExist := false
 	for _, trigger := range existingTriggers {
 		if trigger.Name == insTrigger.Name || trigger.Name == updTrigger.Name || trigger.Name == delTrigger.Name {
-			triggerExist = true
+			if err := tfmContext.TierceronEngine.Database.DropTrigger(tfmContext.TierceronEngine.Context, trigger.Name); err != nil {
+				tfmContext.GetTableModifierLock().Unlock()
+				eUtils.CheckError(tfmContext.DriverConfig.CoreConfig, err, false)
+				return
+			}
 		}
 	}
-	if !triggerExist {
-		updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2, iden3)
-		insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2, iden3)
-		delTrigger.CreateStatement = deleteT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2, iden3)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
-		tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
-	}
+	updTrigger.CreateStatement = updateT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2, iden3)
+	insTrigger.CreateStatement = insertT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2, iden3)
+	delTrigger.CreateStatement = deleteT(tfmContext.TierceronEngine.Database.Name(), tfContext.FlowHeader.TableName(), iden1, iden2, iden3)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, updTrigger)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, insTrigger)
+	tfmContext.TierceronEngine.Database.CreateTrigger(tfmContext.TierceronEngine.Context, delTrigger)
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowConfiguration(tcflowContext flowcore.FlowContext,
@@ -952,7 +1000,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+				changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, []string{"id"}, ChangeTypeInsert)
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIDValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
@@ -962,7 +1010,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 2 {
 				if changeIDCols, changeIDColOk := queryMap["TrcChangeCol"].([]string); changeIDColOk && len(changeIDCols) == 2 {
-					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+changeIDCols[0]+", :"+changeIDCols[1]+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+					changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, changeIDCols, ChangeTypeInsert)
 					bindings := map[string]sqle.Expression{
 						changeIDCols[0]: sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						changeIDCols[1]: sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -975,7 +1023,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 					tfmContext.Log("Failed to find changed column Ids for INSERT - 2A", err)
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 3 {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+flowcoreopts.DataflowTestNameColumn+", :"+flowcoreopts.DataflowTestIdColumn+", :"+flowcoreopts.DataflowTestStateCodeColumn+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes")
+				changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes", []string{flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn}, ChangeTypeInsert)
 				bindings := map[string]sqle.Expression{
 					flowcoreopts.DataflowTestNameColumn:      sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					flowcoreopts.DataflowTestIdColumn:        sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1045,13 +1093,14 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 			tfmContext.Log("query update error", err)
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
+			changeType := strings.ToLower(operation)
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
 				var changeQuery string
 				if strings.Contains(tfContext.ChangeFlowName, flowcore.TierceronControllerFlow.FlowName()) {
-					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
+					changeQuery = getManualChangeUpsertQuery("FlumeDatabase", tfContext.ChangeFlowName, []string{"id"}, changeType)
 				} else {
-					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+					changeQuery = getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, []string{"id"}, changeType)
 				}
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIDValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1062,7 +1111,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 2 {
 				if changeIDCols, changeIDColOk := queryMap["TrcChangeCol"].([]string); changeIDColOk && len(changeIDCols) == 2 {
-					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+changeIDCols[0]+", :"+changeIDCols[1]+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+					changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, changeIDCols, changeType)
 					bindings := map[string]sqle.Expression{
 						changeIDCols[0]: sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						changeIDCols[1]: sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1075,7 +1124,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 					tfmContext.Log("Failed to find changed column Ids for UPDATE - 2A", err)
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 3 {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+flowcoreopts.DataflowTestNameColumn+", :"+flowcoreopts.DataflowTestIdColumn+", :"+flowcoreopts.DataflowTestStateCodeColumn+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes")
+				changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes", []string{flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn}, changeType)
 				bindings := map[string]sqle.Expression{
 					flowcoreopts.DataflowTestNameColumn:      sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					flowcoreopts.DataflowTestIdColumn:        sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1200,7 +1249,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+				changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, []string{"id"}, ChangeTypeInsert)
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIDValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 				}
@@ -1210,7 +1259,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 2 {
 				if changeIDCols, changeIDColOk := queryMap["TrcChangeCol"].([]string); changeIDColOk && len(changeIDCols) == 2 {
-					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+changeIDCols[0]+", :"+changeIDCols[1]+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+					changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, changeIDCols, ChangeTypeInsert)
 					bindings := map[string]sqle.Expression{
 						changeIDCols[0]: sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						changeIDCols[1]: sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1223,7 +1272,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 					tfmContext.Log("Failed to find changed column Ids for INSERT - 2A", err)
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 3 {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+flowcoreopts.DataflowTestNameColumn+", :"+flowcoreopts.DataflowTestIdColumn+", :"+flowcoreopts.DataflowTestStateCodeColumn+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes")
+				changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes", []string{flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn}, ChangeTypeInsert)
 				bindings := map[string]sqle.Expression{
 					flowcoreopts.DataflowTestNameColumn:      sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					flowcoreopts.DataflowTestIdColumn:        sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1288,13 +1337,14 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			tfmContext.Log("query update error", err)
 		}
 		if changed && (len(matrix) > 0 || tableName != "") {
+			changeType := strings.ToLower(operation)
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
 				var changeQuery string
 				if strings.Contains(tfContext.ChangeFlowName, flowcore.TierceronControllerFlow.FlowName()) {
-					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", "FlumeDatabase", tfContext.ChangeFlowName)
+					changeQuery = getManualChangeUpsertQuery("FlumeDatabase", tfContext.ChangeFlowName, []string{"id"}, changeType)
 				} else {
-					changeQuery = fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+					changeQuery = getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, []string{"id"}, changeType)
 				}
 				bindings := map[string]sqle.Expression{
 					"id": sqlee.NewLiteral(changeIDValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1305,7 +1355,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 2 {
 				if changeIDCols, changeIDColOk := queryMap["TrcChangeCol"].([]string); changeIDColOk && len(changeIDCols) == 2 {
-					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+changeIDCols[0]+", :"+changeIDCols[1]+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName)
+					changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), tfContext.ChangeFlowName, changeIDCols, changeType)
 					bindings := map[string]sqle.Expression{
 						changeIDCols[0]: sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 						changeIDCols[1]: sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
@@ -1318,7 +1368,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 					tfmContext.Log("Failed to find changed column Ids for UPDATE - 2A", err)
 				}
 			} else if changeIDValues, changeIDValueOk := queryMap["TrcChangeId"].([]string); changeIDValueOk && len(changeIDValues) == 3 {
-				changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:"+flowcoreopts.DataflowTestNameColumn+", :"+flowcoreopts.DataflowTestIdColumn+", :"+flowcoreopts.DataflowTestStateCodeColumn+", current_timestamp())", coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes")
+				changeQuery := getManualChangeUpsertQuery(coreopts.BuildOptions.GetDatabaseName(flowcore.TrcDb), "DataFlowStatistics_Changes", []string{flowcoreopts.DataflowTestNameColumn, flowcoreopts.DataflowTestIdColumn, flowcoreopts.DataflowTestStateCodeColumn}, changeType)
 				bindings := map[string]sqle.Expression{
 					flowcoreopts.DataflowTestNameColumn:      sqlee.NewLiteral(changeIDValues[0], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					flowcoreopts.DataflowTestIdColumn:        sqlee.NewLiteral(changeIDValues[1], sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),

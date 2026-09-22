@@ -52,21 +52,21 @@ func GetDataflowStatIndexedPathExt(engine any, rowDataMap map[string]any, indexC
 func GetDataFlowUpdateTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
 	return `CREATE TRIGGER tcUpdateTrigger_DataFlowStatistics AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,'` + trcflowcore.ChangeTypeUpdate + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
 		` END;`
 }
 
 func GetDataFlowInsertTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
 	return `CREATE TRIGGER tcInsertTrigger_DataFlowStatistics AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,current_timestamp());` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,'` + trcflowcore.ChangeTypeInsert + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
 		` END;`
 }
 
 func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
 	return `CREATE TRIGGER tcDeleteTrigger_DataFlowStatistics AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,current_timestamp());` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,'` + trcflowcore.ChangeTypeDelete + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
 		` END;`
 }
 
@@ -210,12 +210,14 @@ func CreateTableTriggers(tfmContextI flowcore.FlowMachineContext, tfContextI flo
 	tfmContext.GetTableModifierLock().Lock()
 	changeTableName := tfContext.FlowHeader.TableName() + "_Changes"
 	tfmContext.CallDBQuery(tfContext, map[string]any{"TrcQuery": "DROP TABLE " + tfmContext.TierceronEngine.Database.Name() + "." + changeTableName}, nil, false, "DELETE", nil, "")
-	changeTableErr := tfmContext.TierceronEngine.Database.CreateTable(tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
-		{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
-		{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
-		{Name: flowcoreopts.DataflowTestStateCodeColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
-		{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
-	}),
+	changeTableErr := tfmContext.TierceronEngine.Database.CreateTable(
+		tfmContext.TierceronEngine.Context, changeTableName, sqle.NewPrimaryKeySchema(sqle.Schema{
+			{Name: flowcoreopts.DataflowTestNameColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
+			{Name: flowcoreopts.DataflowTestIdColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
+			{Name: flowcoreopts.DataflowTestStateCodeColumn, Type: sqle.Text, Source: changeTableName, PrimaryKey: true},
+			{Name: trcflowcore.ChangeTypeColumnName, Type: sqle.Text, Source: changeTableName},
+			{Name: "updateTime", Type: sqle.Timestamp, Source: changeTableName},
+		}),
 		trcflowcore.TableCollationIdGen(changeTableName),
 	)
 	if changeTableErr != nil {
