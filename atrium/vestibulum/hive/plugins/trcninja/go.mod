@@ -9,7 +9,7 @@ require (
 	github.com/linkedin/goavro/v2 v2.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
-	github.com/trimble-oss/tierceron-core/v2 v2.11.9
+	github.com/trimble-oss/tierceron-core/v2 v2.11.10
 	github.com/twmb/franz-go v1.20.5
 	github.com/vbauerster/mpb/v8 v8.10.2
 	github.com/wildbeavers/schema-registry v0.3.0

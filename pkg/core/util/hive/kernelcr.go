@@ -1594,7 +1594,12 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				driverConfig.CoreConfig.Log.Println("No plugin specified in query.")
 				continue
 			}
-			if plugin, ok := (*pluginHandler.Services)[queryPlugin[0]]; ok && plugin.State == 1 {
+			pluginQuery := queryPlugin[0]
+			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
+				pluginQuery = "vico"
+				// q = "vico"
+			}
+			if plugin, ok := (*pluginHandler.Services)[pluginQuery]; ok && plugin.State == 1 {
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
 				newMsg := &tccore.ChatMsg{
 					Name:          &q,

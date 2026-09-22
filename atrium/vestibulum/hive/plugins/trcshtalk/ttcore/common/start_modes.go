@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/buildopts/coreopts"
@@ -13,30 +12,22 @@ import (
 
 func resolveTrcshTalkMode(config *map[string]interface{}) string {
 	if config == nil {
-		return ModeTalkback
+		return ModeStandard
 	}
 
-	for _, key := range []string{CfgTrcshTalkMode, CfgMode} {
+	for _, key := range []string{CfgTrcshTalkMode, CfgMode, CfgServerMode} {
 		if modeInterface, ok := (*config)[key]; ok {
 			if mode, ok := modeInterface.(string); ok && mode != "" {
-				switch mode {
-				case ModeTalkback, ModeHub, ModeHubClient:
-					return mode
-				}
-				return ModeTalkback
+				return mode
 			}
 		}
 	}
 
-	return ModeTalkback
+	return ModeStandard
 }
 
-// StartWithServerModes consolidates trcshtalk mode logic.
-// Public modes are:
-// - trcshtalkback: start only the outbound talkback loop to the remote system.
-// - trcshtalkhubclient: start only a client that connects to the local hub.
-// - trcshtalkhub: start the remote talkback loop and the local gRPC hub service.
-// It delegates plugin-specific pieces (service registration, talkback loop, client cert init) via callbacks.
+// StartWithServerModes consolidates legacy server_mode logic (standard | trcshtalkback | talkback-kernel-plugin | both)
+// and delegates plugin-specific pieces (service registration, talkback loop, client cert init) via callbacks.
 // Returns the started gRPC server (if any), the dataflow stat (if initialized), and any error.
 func StartWithServerModes(
 	pluginName string,
@@ -51,36 +42,34 @@ func StartWithServerModes(
 		return nil, nil, nil
 	}
 
-	trcshtalkMode := resolveTrcshTalkMode(ctx.Config)
-	usesDirectGRPC := trcshtalkMode == ModeHubClient
-	usesHubConfig := trcshtalkMode == ModeHubClient
-	runsTalkback := trcshtalkMode == ModeTalkback || trcshtalkMode == ModeHub || trcshtalkMode == ModeHubClient
-	runsServer := trcshtalkMode == ModeHub
+	serverMode := resolveTrcshTalkMode(ctx.Config)
+	isHubClient := serverMode == ModeHubClient
 
 	var dfstat *tccore.TTDINode
 	initializedDF := false
 	var grpcServer *grpc.Server
 
 	// Talkback configuration (may run with or without server depending on mode)
-	if runsTalkback {
+	if serverMode == ModeTalkback || serverMode == ModeTalkbackKernel || serverMode == ModeBoth || isHubClient {
 		isRemote := true
 		var clientCert []byte
 		var haveCert bool
-		if usesDirectGRPC { // direct gRPC dial path
+		if isHubClient {
 			isRemote = false
 			clientCert, haveCert = (*ctx.ConfigCerts)[SERVICE_CLIENT_ROOT_CA]
+		} else if serverMode == ModeTalkbackKernel {
+			isRemote = false
+			clientCert, haveCert = (*ctx.ConfigCerts)[tccore.TRCSHHIVEK_CERT]
 		} else if coreopts.IsTrcshTalkBackLocal() { // remote talkback w/ mashup cert when running locally
 			clientCert, haveCert = (*ctx.ConfigCerts)[MASHUP_CERT]
 		}
 
-		// Parse remote port when using direct gRPC dial modes.
+		// Parse remote (local-dial) port only needed for direct gRPC modes.
 		talkbackPort := 0
 		if !isRemote {
 			portKey := CfgRemotePort
-			portLabel := CfgRemotePort
-			if usesHubConfig {
+			if isHubClient {
 				portKey = CfgTrcshTalkHubPort
-				portLabel = CfgTrcshTalkHubPort
 			}
 			if portInterface, ok := (*ctx.Config)[portKey]; ok {
 				switch v := portInterface.(type) {
@@ -90,7 +79,7 @@ func StartWithServerModes(
 					if p, err := strconv.Atoi(v); err == nil {
 						talkbackPort = p
 					} else {
-						SendErr(ctx, dfstat, fmt.Errorf("failed to parse %s: %w", portLabel, err))
+						SendErr(ctx, dfstat, fmt.Errorf("failed to parse %s: %w", portKey, err))
 						return nil, dfstat, err
 					}
 				}
@@ -99,22 +88,23 @@ func StartWithServerModes(
 
 		if haveCert {
 			initClientCert(clientCert)
-		} else if usesDirectGRPC {
+		} else if isHubClient {
 			SendErr(ctx, dfstat, errors.New("missing service client root CA"))
 			return nil, dfstat, errors.New("missing service client root CA")
-		} else if coreopts.IsTrcshTalkBackLocal() { // strict requirement for local mashup cert
+		} else if !isRemote && coreopts.IsTrcshTalkBackLocal() {
+			SendErr(ctx, dfstat, errors.New("missing mashup cert"))
+			return nil, dfstat, errors.New("missing mashup cert")
+		} else if coreopts.IsTrcshTalkBackLocal() {
 			SendErr(ctx, dfstat, errors.New("missing mashup cert"))
 			return nil, dfstat, errors.New("missing mashup cert")
 		}
 
 		var remoteServerName string
-		if usesHubConfig {
-			if serverNameInterface, ok := (*ctx.Config)[CfgTrcshTalkHubName]; ok {
-				if rsn, ok := serverNameInterface.(string); ok {
-					remoteServerName = rsn
-				}
-			}
-		} else if serverNameInterface, ok := (*ctx.Config)[CfgRemoteName]; ok {
+		serverNameKey := CfgRemoteName
+		if isHubClient {
+			serverNameKey = CfgTrcshTalkHubName
+		}
+		if serverNameInterface, ok := (*ctx.Config)[serverNameKey]; ok {
 			if rsn, ok := serverNameInterface.(string); ok {
 				remoteServerName = rsn
 			}
@@ -122,42 +112,31 @@ func StartWithServerModes(
 		var ttbTokenPtr *string
 		if ttbTokenInterface, ok := (*ctx.Config)[CfgTTBToken]; ok {
 			if ttbToken, ok := ttbTokenInterface.(string); ok {
-				ttbToken = strings.TrimSpace(ttbToken)
-				if ttbToken != "" {
-					ttbTokenPtr = &ttbToken
-				}
+				ttbTokenPtr = &ttbToken
 			}
 		}
-		canStartTalkback := false
-		if usesDirectGRPC {
+		canStartTalkback := remoteServerName != "" && ttbTokenPtr != nil
+		if isHubClient {
 			canStartTalkback = remoteServerName != "" && talkbackPort > 0
-		} else {
-			canStartTalkback = remoteServerName != ""
 		}
 		if canStartTalkback {
 			// Launch talkback loop
 			go func(ttbt *string, port int, remote bool, mode string) {
 				// Emit start event if we are NOT also starting the server (pure talkback modes)
-				if mode == ModeTalkback || mode == ModeHubClient {
+				if mode == ModeTalkback || mode == ModeTalkbackKernel || mode == ModeHubClient {
 					*ctx.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 				}
 				startTrashTalking(remoteServerName, port, ttbt, remote)
 				shutdownConfirmChan <- true
-			}(ttbTokenPtr, talkbackPort, isRemote, trcshtalkMode)
-		} else if runsTalkback {
-			if usesDirectGRPC {
-				if usesHubConfig {
-					ctx.Log.Printf("Talkback not started: missing trcshtalk hub name (%s) or trcshtalk hub port (%d).", remoteServerName, talkbackPort)
-				} else {
-					ctx.Log.Printf("Talkback not started: missing remote name (%s) or remote port (%d).", remoteServerName, talkbackPort)
-				}
-			} else {
-				ctx.Log.Printf("Talkback not started: missing remote name (%s).", remoteServerName)
-			}
+			}(ttbTokenPtr, talkbackPort, isRemote, serverMode)
+		} else if isHubClient {
+			ctx.Log.Printf("Talkback not started: missing trcshtalk hub name (%s) or trcshtalk hub port (%d).", remoteServerName, talkbackPort)
+		} else if serverMode == ModeTalkback || serverMode == ModeTalkbackKernel || serverMode == ModeBoth {
+			ctx.Log.Printf("Talkback not started: missing remote name (%s) or token present=%t.", remoteServerName, ttbTokenPtr != nil)
 		}
 
 		// If no server will be started (pure talkback modes), still initialize DF stat like legacy code
-		if !runsServer {
+		if serverMode == ModeTalkback || serverMode == ModeTalkbackKernel || isHubClient {
 			if !initializedDF { // avoid double init if server also starts
 				df := tccore.InitDataFlow(nil, ctx.ArgosId, false)
 				df.UpdateDataFlowStatistic("System", "trcshtalk", "Start up", "1", 1, func(msg string, err error) { ctx.Log.Println(msg, err) })
@@ -169,7 +148,7 @@ func StartWithServerModes(
 	}
 
 	// Start server only if mode requires it
-	if runsServer {
+	if serverMode == ModeStandard || serverMode == ModeBoth {
 		_, gServer, df, err := StartCore(pluginName, ctx, shutdownChan, shutdownConfirmChan, func(gs *grpc.Server) {
 			registerService(gs)
 		})
@@ -181,7 +160,7 @@ func StartWithServerModes(
 		dfstat = df
 		initializedDF = true
 	} else {
-		ctx.Log.Printf("Server not started due to trcshtalk_mode=%s", trcshtalkMode)
+		ctx.Log.Printf("Server not started due to server_mode=%s", serverMode)
 	}
 
 	return grpcServer, dfstat, nil

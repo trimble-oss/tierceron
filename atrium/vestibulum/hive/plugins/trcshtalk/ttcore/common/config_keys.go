@@ -4,6 +4,7 @@ package common
 const (
 	CfgTrcshTalkMode    = "trcshtalk_mode"
 	CfgMode             = "mode"
+	CfgServerMode       = "server_mode"
 	CfgRemotePort       = "grpc_server_remote_port"
 	CfgRemoteName       = "grpc_server_remote_name"
 	CfgTrcshTalkHubPort = "trcshtalk_hub_port"
@@ -13,7 +14,9 @@ const (
 
 // Supported server modes
 const (
-	ModeTalkback  = "trcshtalkback"
-	ModeHub       = "trcshtalkhub"
-	ModeHubClient = "trcshtalkhubclient"
+	ModeStandard       = "standard"
+	ModeTalkback       = "trcshtalkback"
+	ModeTalkbackKernel = "talkback-kernel-plugin"
+	ModeBoth           = "both"
+	ModeHubClient      = "trcshtalkhubclient"
 )

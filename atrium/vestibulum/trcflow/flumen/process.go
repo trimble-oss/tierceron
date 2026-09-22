@@ -137,6 +137,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		KernelId:                  kernelID,
 		RawTrcdbMode:              rawTrcdbModeEnabled(pluginConfig),
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
+		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
 		FlowMap:                   map[flowcore.FlowNameType]*trcflowcore.TrcFlowContext{},
 		FlowMapLock:               sync.RWMutex{},
@@ -394,6 +395,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		KernelId:                  kernelID,
 		RawTrcdbMode:              rawTrcdbMode,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
+		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
 		FlowMap:                   tfmContext.FlowMap, // In order to support flow notifications, we need this here.
 		FlowControllerInit:        true,
