@@ -298,6 +298,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	identityColumnNames []string,
 	indexColumnNames any,
 	mysqlPushEnabled bool,
+	processDeletes bool,
 	getIndexedPathExt func(engine any, rowDataMap map[string]any, indexColumnNames any, databaseName string, tableName string, dbCallBack func(any, map[string]any) (string, []string, [][]any, error)) (string, error),
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
 ) error {
@@ -345,7 +346,7 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 			continue
 		}
 
-		if len(changedTableRowData) == 0 && len(changedEntry) != 3 { // This change was a delete
+		if processDeletes && len(changedTableRowData) == 0 && len(changedEntry) != 3 { // This change was a delete
 			syncDelete := false
 			for _, syncedTable := range coreopts.BuildOptions.GetSyncedTables() {
 				if tfContext.FlowHeader.TableName() == syncedTable {
@@ -399,8 +400,10 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 				}
 
 				deleteMap, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Logger)
-				if deleteErr != nil || deleteMap != nil {
-					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("Unable to process a delete query for "+tfContext.FlowHeader.TableName()), false)
+				if deleteErr != nil {
+					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, fmt.Errorf("unable to process a delete query for %s: %w", tfContext.FlowHeader.TableName(), deleteErr), false)
+				} else if deleteMap != nil {
+					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("unable to process a delete query for "+tfContext.FlowHeader.TableName()+": unexpected Vault response"), false)
 				}
 			}
 			continue

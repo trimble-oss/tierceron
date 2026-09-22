@@ -565,6 +565,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					identityColumnNames,
 					indexColumnNames,
 					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
+					true,
 					getIndexedPathExt,
 					flowPushRemote,
 				)
@@ -575,7 +576,8 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 			// Receive notification that a change has occurred in TierceronFlow
 			// for a particular flow... This is the end of the message chain
 			// where the change is serialized to vault.
-			if tfContext.TablesChangesInitted {
+			processDeletes := tfContext.TablesChangesInitted
+			if processDeletes {
 				syncPushRemoteEnabled = syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeFlowDataChanged)
 			} else {
 				tfContext.TablesChangesInitted = true
@@ -598,6 +600,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 						identityColumnNames,
 						indexColumnNames,
 						syncPushRemoteEnabled,
+						processDeletes,
 						getIndexedPathExt,
 						flowPushRemote,
 					)
@@ -611,6 +614,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 					identityColumnNames,
 					indexColumnNames,
 					syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeFlowDataChanged),
+					processDeletes,
 					getIndexedPathExt,
 					flowPushRemote,
 				)
@@ -622,6 +626,7 @@ func (tfmContext *TrcFlowMachineContext) seedVaultCycle(tcflowContext flowcore.F
 				identityColumnNames,
 				indexColumnNames,
 				syncPushRemoteEnabled || shouldSyncFunc(flowcore.SyncRemoteModeShutdwon),
+				true,
 				getIndexedPathExt,
 				flowPushRemote,
 			)
