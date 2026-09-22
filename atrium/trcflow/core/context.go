@@ -1,9 +1,9 @@
 package core
 
 import (
-	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,69 +32,48 @@ const (
 	TableSyncFlow flowcore.FlowType = iota
 	TableEnrichFlow
 	TableTestFlow
+
+	ChangeTypeColumnName = "changeType"
+	ChangeTypeInsert     = "insert"
+	ChangeTypeUpdate     = "update"
+	ChangeTypeDelete     = "delete"
 )
 
-func getUpdateTrigger(databaseName string, tableName string, idColumnNames []string) string {
+func getChangeTrigger(databaseName string, tableName string, idColumnNames []string, rowPrefix string, changeType string) string {
+	changeColumnNames := idColumnNames
 	if len(idColumnNames) == 1 {
-		return `CREATE TRIGGER tcUpdateTrigger_` + tableName + `  AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, current_timestamp());` +
-			` END;`
-	} else if len(idColumnNames) == 2 {
-		return `CREATE TRIGGER tcUpdateTrigger_` + tableName + `  AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, current_timestamp());` +
-			` END;`
-	} else if len(idColumnNames) == 3 {
-		return `CREATE TRIGGER tcUpdateTrigger_` + tableName + `  AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, new.` + idColumnNames[2] + `, current_timestamp());` +
-			` END;`
-	} else {
+		changeColumnNames = []string{"id"}
+	}
+	values := make([]string, len(idColumnNames))
+	for index, columnName := range idColumnNames {
+		values[index] = rowPrefix + "." + columnName
+	}
+	return ` INSERT INTO ` + databaseName + `.` + tableName + `_Changes (` + strings.Join(changeColumnNames, ",") + `,` + ChangeTypeColumnName + `,updateTime) VALUES (` + strings.Join(values, ",") + `,'` + changeType + `',current_timestamp())` +
+		` ON DUPLICATE KEY UPDATE ` + ChangeTypeColumnName + `=VALUES(` + ChangeTypeColumnName + `),updateTime=VALUES(updateTime);`
+}
+
+func getUpdateTrigger(databaseName string, tableName string, idColumnNames []string) string {
+	if len(idColumnNames) < 1 || len(idColumnNames) > 3 {
 		return ""
 	}
+	return `CREATE TRIGGER tcUpdateTrigger_` + tableName + ` AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW BEGIN` +
+		getChangeTrigger(databaseName, tableName, idColumnNames, "new", ChangeTypeUpdate) + ` END;`
 }
 
 func getInsertTrigger(databaseName string, tableName string, idColumnNames []string) string {
-	if len(idColumnNames) == 1 {
-		return `CREATE TRIGGER tcInsertTrigger_` + tableName + ` AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, current_timestamp());` +
-			` END;`
-	} else if len(idColumnNames) == 2 {
-		return `CREATE TRIGGER tcInsertTrigger_` + tableName + ` AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, current_timestamp());` +
-			` END;`
-	} else if len(idColumnNames) == 3 {
-		return `CREATE TRIGGER tcInsertTrigger_` + tableName + `  AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (new.` + idColumnNames[0] + `, new.` + idColumnNames[1] + `, new.` + idColumnNames[2] + `, current_timestamp());` +
-			` END;`
-	} else {
+	if len(idColumnNames) < 1 || len(idColumnNames) > 3 {
 		return ""
 	}
+	return `CREATE TRIGGER tcInsertTrigger_` + tableName + ` AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW BEGIN` +
+		getChangeTrigger(databaseName, tableName, idColumnNames, "new", ChangeTypeInsert) + ` END;`
 }
 
 func getDeleteTrigger(databaseName string, tableName string, idColumnNames []string) string {
-	if len(idColumnNames) == 1 {
-		return `CREATE TRIGGER tcDeleteTrigger_` + tableName + `  AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, current_timestamp());` +
-			` END;`
-	} else if len(idColumnNames) == 2 {
-		return `CREATE TRIGGER tcDeleteTrigger_` + tableName + `  AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, old.` + idColumnNames[1] + `, current_timestamp());` +
-			` END;`
-	} else if len(idColumnNames) == 3 {
-		return `CREATE TRIGGER tcDeleteTrigger_` + tableName + `  AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
-			` BEGIN` +
-			` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes VALUES (old.` + idColumnNames[0] + `, old.` + idColumnNames[1] + `, old.` + idColumnNames[2] + `, current_timestamp());` +
-			` END;`
-	} else {
+	if len(idColumnNames) < 1 || len(idColumnNames) > 3 {
 		return ""
 	}
+	return `CREATE TRIGGER tcDeleteTrigger_` + tableName + ` AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW BEGIN` +
+		getChangeTrigger(databaseName, tableName, idColumnNames, "old", ChangeTypeDelete) + ` END;`
 }
 
 func TriggerChangeChannel(table string) {
@@ -114,7 +93,7 @@ func TriggerAllChangeChannel(tfmContext *TrcFlowMachineContext, table string, ch
 			if tfContext, tfContextOk := tfmContext.FlowMap[flowcore.FlowNameType(table)]; tfContextOk {
 				tfmContext.FlowMapLock.RUnlock()
 				if slices.Contains(tfContext.ChangeIdKeys, changeIdKey) {
-					changeQuery := fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES (:id, current_timestamp())", tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName)
+					changeQuery := getManualChangeUpsertQuery(tfContext.FlowHeader.SourceAlias, tfContext.ChangeFlowName, []string{"id"}, ChangeTypeUpdate)
 					bindings := map[string]sqle.Expression{
 						"id": sqlee.NewLiteral(changeIDValue, sqle.MustCreateStringWithDefaults(sqltypes.VarChar, 200)),
 					}

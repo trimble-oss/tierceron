@@ -20,7 +20,7 @@ var TierceronControllerFlow flowcore.FlowDefinition = flowcore.FlowDefinition{Fl
 var changesLock sync.Mutex
 
 func getChangeIdQuery(databaseName string, changeTable string) string {
-	return "SELECT id FROM " + databaseName + `.` + changeTable
+	return "SELECT id, " + trcflowcore.ChangeTypeColumnName + " FROM " + databaseName + `.` + changeTable
 }
 
 func getDeleteChangeQuery(databaseName string, changeTable string, id string) string {
@@ -28,7 +28,7 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 }
 
 func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
-	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + `VALUES (` + id + `, current_timestamp());`
+	return `INSERT INTO ` + databaseName + `.` + changeTable + ` (id, ` + trcflowcore.ChangeTypeColumnName + `, updateTime) VALUES ('` + id + `', '` + trcflowcore.ChangeTypeUpdate + `', current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `), updateTime=VALUES(updateTime);`
 }
 
 func FlumenProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {
@@ -78,12 +78,50 @@ func seedVaultFromChanges(tfmContext *trcflowcore.TrcFlowMachineContext,
 
 	for _, changedEntry := range matrixChangedEntries {
 		changedID := changedEntry[0]
+		changeType, ok := changedEntry[1].(string)
+		if !ok {
+			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("changed table operation is not a string"), false)
+			continue
+		}
+		if changeType == trcflowcore.ChangeTypeDelete {
+			rowDataMap := map[string]any{
+				identityColumnName: changedID,
+				"Deleted":          "true",
+			}
+			rowDataMap[vaultIndexColumnName] = changedID
+			indexPath, indexPathErr := getIndexedPathExt(tfmContext.TierceronEngine, rowDataMap, vaultIndexColumnName, tfContext.FlowHeader.SourceAlias, tfContext.FlowHeader.TableName(), func(engine any, query string) (string, []string, [][]any, error) {
+				return trcdb.Query(engine.(*trcengine.TierceronEngine), query, tfContext.QueryLock)
+			})
+			if indexPathErr != nil {
+				eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, indexPathErr, false)
+				continue
+			}
+			if !tfContext.ReadOnly {
+				if _, deleteErr := tfContext.GoMod.SoftDelete(indexPath, tfContext.Logger); deleteErr != nil {
+					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, deleteErr, false)
+				}
+			}
+			if !isInit && flowPushRemote != nil {
+				if pushError := flowPushRemote(tfContext.RemoteDataSource, rowDataMap); pushError != nil {
+					eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, pushError, false)
+				}
+			}
+			continue
+		}
+		if changeType != trcflowcore.ChangeTypeInsert && changeType != trcflowcore.ChangeTypeUpdate {
+			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New("unsupported changed table operation: "+changeType), false)
+			continue
+		}
 
 		changedTableQuery := `SELECT * FROM ` + tfContext.FlowHeader.SourceAlias + `.` + tfContext.FlowHeader.TableName() + ` WHERE ` + identityColumnName + `='` + changedID.(string) + `'` // TODO: Implement query using changedID
 
 		_, changedTableColumns, changedTableRowData, err := trcdb.Query(tfmContext.TierceronEngine, changedTableQuery, tfContext.QueryLock)
 		if err != nil {
 			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, err, false)
+			continue
+		}
+		if len(changedTableRowData) == 0 {
+			eUtils.LogErrorObject(tfmContext.DriverConfig.CoreConfig, errors.New(changeType+" change did not resolve to a source row"), false)
 			continue
 		}
 
