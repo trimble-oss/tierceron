@@ -1586,7 +1586,7 @@ func (tfmContext *TrcFlowMachineContext) SetPermissionUpdate(tcFlowContext flowc
 func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flowcore.FlowContext) ([]any, error) {
 	tfContext := tcflowContext.(*TrcFlowContext)
 	dataMap, readErr := tfContext.GoMod.ReadData(tfContext.GoMod.SectionPath)
-	if readErr != nil {
+	if readErr != nil || len(dataMap) == 0 {
 		return nil, readErr
 	}
 	if tfContext.Inserter == nil {
