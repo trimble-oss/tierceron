@@ -28,7 +28,7 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id string) st
 }
 
 func getInsertChangeQuery(databaseName string, changeTable string, id string) string {
-	return `INSERT INTO ` + databaseName + `.` + changeTable + ` (id, ` + trcflowcore.ChangeTypeColumnName + `, updateTime) VALUES ('` + id + `', '` + trcflowcore.ChangeTypeUpdate + `', current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `), updateTime=VALUES(updateTime);`
+	return `INSERT IGNORE INTO ` + databaseName + `.` + changeTable + ` (id, ` + trcflowcore.ChangeTypeColumnName + `, updateTime) VALUES ('` + id + `', '` + trcflowcore.ChangeTypeUpdate + `', current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `), updateTime=VALUES(updateTime);`
 }
 
 func FlumenProcessFlowController(tfmContext flowcore.FlowMachineContext, tfContext flowcore.FlowContext) error {

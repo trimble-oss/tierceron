@@ -228,7 +228,7 @@ func getManualChangeUpsertQuery(databaseName string, changeTableName string, key
 		placeholders[index] = ":" + column
 	}
 	return fmt.Sprintf(
-		"INSERT INTO %s.%s (%s, %s, updateTime) VALUES (%s, '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)",
+		"INSERT IGNORE INTO %s.%s (%s, %s, updateTime) VALUES (%s, '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)",
 		databaseName,
 		changeTableName,
 		strings.Join(keyColumns, ","),

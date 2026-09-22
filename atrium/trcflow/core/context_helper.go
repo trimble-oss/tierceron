@@ -43,9 +43,9 @@ func getDeleteChangeQuery(databaseName string, changeTable string, id any) strin
 
 func getInsertChangeQuery(databaseName string, changeTable string, id any) string {
 	if _, iOk := id.(int64); iOk {
-		return fmt.Sprintf("INSERT INTO %s.%s (id, %s, updateTime) VALUES (%d, '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)", databaseName, changeTable, ChangeTypeColumnName, id, ChangeTypeUpdate, ChangeTypeColumnName, ChangeTypeColumnName)
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s (id, %s, updateTime) VALUES (%d, '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)", databaseName, changeTable, ChangeTypeColumnName, id, ChangeTypeUpdate, ChangeTypeColumnName, ChangeTypeColumnName)
 	} else {
-		return fmt.Sprintf("INSERT INTO %s.%s (id, %s, updateTime) VALUES ('%s', '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)", databaseName, changeTable, ChangeTypeColumnName, id, ChangeTypeUpdate, ChangeTypeColumnName, ChangeTypeColumnName)
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s (id, %s, updateTime) VALUES ('%s', '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)", databaseName, changeTable, ChangeTypeColumnName, id, ChangeTypeUpdate, ChangeTypeColumnName, ChangeTypeColumnName)
 	}
 }
 
@@ -255,7 +255,7 @@ func getStatisticChangedByIDQuery(databaseName string, changeTable string, idCol
 
 func getStatisticInsertChangeQuery(databaseName string, changeTable string, idColVal any, indexColVal any, secIndexColVal any) string {
 	if first, second, third := idColVal.(string), indexColVal.(string), secIndexColVal.(string); first != "" && second != "" && third != "" {
-		return fmt.Sprintf("INSERT INTO %s.%s VALUES ('%s', '%s', '%s', '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)", databaseName, changeTable, idColVal, indexColVal, secIndexColVal, ChangeTypeUpdate, ChangeTypeColumnName, ChangeTypeColumnName)
+		return fmt.Sprintf("INSERT IGNORE INTO %s.%s VALUES ('%s', '%s', '%s', '%s', current_timestamp()) ON DUPLICATE KEY UPDATE %s=VALUES(%s), updateTime=VALUES(updateTime)", databaseName, changeTable, idColVal, indexColVal, secIndexColVal, ChangeTypeUpdate, ChangeTypeColumnName, ChangeTypeColumnName)
 	}
 	return ""
 }

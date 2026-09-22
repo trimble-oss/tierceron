@@ -48,7 +48,7 @@ func getChangeTrigger(databaseName string, tableName string, idColumnNames []str
 	for index, columnName := range idColumnNames {
 		values[index] = rowPrefix + "." + columnName
 	}
-	return ` INSERT INTO ` + databaseName + `.` + tableName + `_Changes (` + strings.Join(changeColumnNames, ",") + `,` + ChangeTypeColumnName + `,updateTime) VALUES (` + strings.Join(values, ",") + `,'` + changeType + `',current_timestamp())` +
+	return ` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + strings.Join(changeColumnNames, ",") + `,` + ChangeTypeColumnName + `,updateTime) VALUES (` + strings.Join(values, ",") + `,'` + changeType + `',current_timestamp())` +
 		` ON DUPLICATE KEY UPDATE ` + ChangeTypeColumnName + `=VALUES(` + ChangeTypeColumnName + `),updateTime=VALUES(updateTime);`
 }
 

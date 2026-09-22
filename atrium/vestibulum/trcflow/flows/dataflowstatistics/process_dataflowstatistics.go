@@ -52,21 +52,21 @@ func GetDataflowStatIndexedPathExt(engine any, rowDataMap map[string]any, indexC
 func GetDataFlowUpdateTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
 	return `CREATE TRIGGER tcUpdateTrigger_DataFlowStatistics AFTER UPDATE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,'` + trcflowcore.ChangeTypeUpdate + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,'` + trcflowcore.ChangeTypeUpdate + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
 		` END;`
 }
 
 func GetDataFlowInsertTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
 	return `CREATE TRIGGER tcInsertTrigger_DataFlowStatistics AFTER INSERT ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,'` + trcflowcore.ChangeTypeInsert + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (new.` + iden1 + `,new.` + iden2 + `,new.` + iden3 + `,'` + trcflowcore.ChangeTypeInsert + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
 		` END;`
 }
 
 func GetDataFlowDeleteTrigger(databaseName string, tableName string, iden1 string, iden2 string, iden3 string) string {
 	return `CREATE TRIGGER tcDeleteTrigger_DataFlowStatistics AFTER DELETE ON ` + databaseName + `.` + tableName + ` FOR EACH ROW` +
 		` BEGIN` +
-		` INSERT INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,'` + trcflowcore.ChangeTypeDelete + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
+		` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + iden1 + `,` + iden2 + `,` + iden3 + `,` + trcflowcore.ChangeTypeColumnName + `,updateTime) VALUES (old.` + iden1 + `,old.` + iden2 + `,old.` + iden3 + `,'` + trcflowcore.ChangeTypeDelete + `',current_timestamp()) ON DUPLICATE KEY UPDATE ` + trcflowcore.ChangeTypeColumnName + `=VALUES(` + trcflowcore.ChangeTypeColumnName + `),updateTime=VALUES(updateTime);` +
 		` END;`
 }
 
