@@ -246,7 +246,7 @@ func GetConfigPaths(pluginName string) []string {
 }
 
 func Init(pluginName string, properties *map[string]interface{}) {
-	ctx, err := common.InitTrcshTalk(pluginName, properties, start, receiver, chat_receiver)
+	ctx, err := common.InitTrcshTalk(pluginName, properties, start, receiver, chatReceiver)
 	if ctx == nil {
 		return
 	}
@@ -434,4 +434,4 @@ func stop(pluginName string) {
 	startOnce = &sync.Once{}
 }
 
-func chat_receiver(rec_chan chan *tccore.ChatMsg) { common.ChatReceiver(rec_chan) }
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) { common.ChatReceiver(chatReceiverChan) }

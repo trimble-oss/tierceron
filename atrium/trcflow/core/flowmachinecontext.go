@@ -936,7 +936,7 @@ func (tfmContext *TrcFlowMachineContext) GetAuthExtended(getExtensionAuthCompone
 func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.TrcdbExchange,
 	queryMap map[string]any,
 	bindingsI map[string]any, // Optional param
-	changed bool,
+	success bool,
 	operation string,
 	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
 	flowtestState string,
@@ -979,7 +979,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		if bindingsI == nil {
 			_, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
 			if len(matrix) == 0 {
-				changed = false
+				success = false
 			}
 		} else {
 			bindings := convertUntypedExpressionMap(bindingsI)
@@ -989,14 +989,14 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 
 			tableName, _, _, err := trcdb.QueryWithBindingsN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, queryMask, *tfmContext.BitLock)
 			if err == nil && tableName == "ok" {
-				changed = true
+				success = true
 				matrix = append(matrix, []any{})
 			}
 		}
 		if err != nil {
 			tfmContext.Log("query error", err)
 		}
-		if changed && len(matrix) > 0 {
+		if success && len(matrix) > 0 {
 
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
@@ -1068,10 +1068,10 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		if bindingsI == nil {
 			tableName, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
 			if err == nil && tableName == "ok" {
-				changed = true
+				success = true
 				matrix = append(matrix, []any{})
 			} else if len(matrix) == 0 {
-				changed = false
+				success = false
 			}
 		} else {
 			bindings := convertUntypedExpressionMap(bindingsI)
@@ -1081,7 +1081,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 
 			tableName, _, _, err = trcdb.QueryWithBindingsN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, queryMask, *tfmContext.BitLock)
 			if err == nil && tableName == "ok" {
-				changed = true
+				success = true
 				matrix = append(matrix, []any{})
 				tfmContext.Log("UPDATE successful.", nil)
 			} else {
@@ -1092,7 +1092,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		if err != nil {
 			tfmContext.Log("query update error", err)
 		}
-		if changed && (len(matrix) > 0 || tableName != "") {
+		if success && (len(matrix) > 0 || tableName != "") {
 			changeType := strings.ToLower(operation)
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
@@ -1156,6 +1156,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		}
 	case "SELECT":
 		_, _, matrixChangedEntries, err := trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
+		if err == nil {
+			success = true
+		}
 
 		if err != nil {
 			tfmContext.Log("query select error", err)
@@ -1197,11 +1200,11 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		}
 		trcdbExchange.Response = tccore.TrcdbResponse{
 			Rows:    matrixChangedEntries,
-			Success: changed,
+			Success: success,
 		}
-		return trcdbExchange, changed
+		return trcdbExchange, success
 	}
-	return nil, changed
+	return nil, success
 }
 
 // CallDBQuery - make a call on Call back to insert or update using the provided query.
@@ -1210,7 +1213,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.FlowContext,
 	queryMap map[string]any,
 	bindingsI map[string]any, // Optional param
-	changed bool,
+	success bool,
 	operation string,
 	flowNotifications []flowcore.FlowNameType, // On successful completion, which flows to notify.
 	flowtestState string,
@@ -1226,8 +1229,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 		var err error
 		if bindingsI == nil {
 			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.QueryLock)
-			if len(matrix) == 0 {
-				changed = false
+			if len(matrix) == 0 && !strings.Contains(queryMap["TrcQuery"].(string), "IGNORE") {
+				success = false
 			}
 		} else {
 			bindings := convertUntypedExpressionMap(bindingsI)
@@ -1238,14 +1241,14 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 			tableName, _, _, err := trcdb.QueryWithBindings(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, tfContext.QueryLock)
 
 			if err == nil && tableName == "ok" {
-				changed = true
+				success = true
 				matrix = append(matrix, []any{})
 			}
 		}
 		if err != nil {
 			tfmContext.Log("query error", err)
 		}
-		if changed && len(matrix) > 0 {
+		if success && len(matrix) > 0 {
 
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
@@ -1312,10 +1315,10 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 		if bindingsI == nil {
 			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.QueryLock)
 			if err == nil && tableName == "ok" {
-				changed = true
+				success = true
 				matrix = append(matrix, []any{})
 			} else if len(matrix) == 0 {
-				changed = false
+				success = false
 			}
 		} else {
 			bindings := convertUntypedExpressionMap(bindingsI)
@@ -1325,7 +1328,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 
 			tableName, _, _, err = trcdb.QueryWithBindings(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), bindings, tfContext.QueryLock)
 			if err == nil && tableName == "ok" {
-				changed = true
+				success = true
 				matrix = append(matrix, []any{})
 				tfmContext.Log("UPDATE successful.", nil)
 			} else {
@@ -1336,7 +1339,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 		if err != nil {
 			tfmContext.Log("query update error", err)
 		}
-		if changed && (len(matrix) > 0 || tableName != "") {
+		if success && (len(matrix) > 0 || tableName != "") {
 			changeType := strings.ToLower(operation)
 			// If triggers are ever fixed, this can be removed.
 			if changeIDValue, changeIDValueOk := queryMap["TrcChangeId"].(string); changeIDValueOk {
@@ -1403,9 +1406,9 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 		if err != nil {
 			tfmContext.Log("query select error", err)
 		}
-		return matrixChangedEntries, changed
+		return matrixChangedEntries, success
 	}
-	return nil, changed
+	return nil, success
 }
 
 func convertUntypedExpressionMap(bindingsI map[string]any) map[string]sqle.Expression {

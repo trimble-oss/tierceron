@@ -170,7 +170,7 @@ func StopServer(ctx *tccore.ConfigContext, grpcServer interface{ Stop() }, dfsta
 }
 
 // ChatReceiver is intentionally empty for this plugin.
-func ChatReceiver(rec_chan chan *tccore.ChatMsg) {}
+func ChatReceiver(chatReceiverChan chan *tccore.ChatMsg) {}
 
 // LogPluginVersion computes and prints a sha256 of the plugin binary if present.
 func LogPluginVersion(path string) {

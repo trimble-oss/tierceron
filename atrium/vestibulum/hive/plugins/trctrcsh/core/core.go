@@ -48,9 +48,9 @@ func receiver(receive_chan chan tccore.KernelCmd) {
 	}
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			continue
@@ -286,7 +286,7 @@ func PostInit(configContext *tccore.ConfigContext) {
 	configContext.Start = start
 	sender = *configContext.ErrorChan
 	go receiver(*configContext.CmdReceiverChan)
-	go chat_receiver(*configContext.ChatReceiverChan)
+	go chatReceiver(*configContext.ChatReceiverChan)
 }
 
 func Init(pluginName string, properties *map[string]any) {
@@ -306,14 +306,15 @@ func Init(pluginName string, properties *map[string]any) {
 	pluginsync.WaitForPluginReady("trcshcmd")
 	logger.Println("trcshcmd is ready, proceeding with trcsh initialization")
 
-	configContext, err = tccore.Init(properties,
+	configContext, err = tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		"", // No common config path needed for trcsh
 		"trcsh",
 		start,
 		receiver,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)

@@ -111,9 +111,9 @@ func send_err(err error) {
 	*configContext.ErrorChan <- err
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			fallthrough
@@ -303,14 +303,15 @@ func GetConfigContext(pluginName string) *tccore.ConfigContext { return configCo
 
 func Init(pluginName string, properties *map[string]any) {
 	var err error
-	configContext, err = tccore.Init(properties,
+	configContext, err = tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
 		"hiveplugin", // Categorize as hiveplugin
 		start,
 		receiver,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil {
 		if configContext != nil {
