@@ -1582,6 +1582,20 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			}
 			return
 		}
+		if eUtils.RefLength(msg.Name) > 0 {
+			sendingPlugin, ok := (*pluginHandler.Services)[*msg.Name]
+			if ok && sendingPlugin != nil && sendingPlugin.State != 1 {
+				response := fmt.Sprintf("Request will not be processed until the sending plugin %s is running.", *msg.Name)
+				msg.Response = &response
+				driverConfig.CoreConfig.Log.Printf("Rejecting chat request from plugin %s because it is not running.\n", *msg.Name)
+				if sendingPlugin.ConfigContext != nil && sendingPlugin.ConfigContext.ChatSenderChan != nil {
+					go safeChannelSend(sendingPlugin.ConfigContext.ChatSenderChan, msg, "sender not running response", driverConfig.CoreConfig.Log)
+				} else {
+					driverConfig.CoreConfig.Log.Printf("Unable to return rejected request to plugin %s.\n", *msg.Name)
+				}
+				continue
+			}
+		}
 
 		if msg.Query == nil {
 			driverConfig.CoreConfig.Log.Println("No query provided in chat message.")

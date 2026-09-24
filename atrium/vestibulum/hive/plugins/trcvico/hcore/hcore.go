@@ -1,3 +1,4 @@
+// Package hcore implements the core Vico plugin runtime.
 package hcore
 
 import (
@@ -11,6 +12,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,11 +41,12 @@ var (
 	dfstat                     *tccore.TTDINode
 	grpcServer                 *grpc.Server
 	localModel                 *localModelRuntime
-	proxyRequests              chan *ttsdk.DiagnosticRequest = make(chan *ttsdk.DiagnosticRequest, 128)
+	proxyRequests              = newProxyRequestBroker()
 	proxyReplies               sync.Map
 	registerDiagnosticsService = func(server *grpc.Server) {
 		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
 	}
+	proxyDiagnosticForwarder = forwardToHubClient
 )
 
 const (
@@ -64,6 +67,70 @@ type diagnosticsServiceServer struct {
 	ttsdk.UnimplementedTrcshTalkServiceServer
 }
 
+type proxyRequestEnvelope struct {
+	messageID         string
+	targetPlugins     []string
+	serializedRequest string
+}
+
+type proxyRequestBroker struct {
+	mu      sync.Mutex
+	queues  map[string][]*proxyRequestEnvelope
+	changed chan struct{}
+}
+
+func newProxyRequestBroker() *proxyRequestBroker {
+	return &proxyRequestBroker{
+		queues:  make(map[string][]*proxyRequestEnvelope),
+		changed: make(chan struct{}),
+	}
+}
+
+func proxyRequestQueueKey(targetPlugins []string) string {
+	normalized := append([]string(nil), targetPlugins...)
+	for index := range normalized {
+		normalized[index] = strings.TrimSpace(normalized[index])
+	}
+	sort.Strings(normalized)
+	return strings.Join(normalized, ",")
+}
+
+func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	key := proxyRequestQueueKey(request.targetPlugins)
+	broker.queues[key] = append(broker.queues[key], request)
+	close(broker.changed)
+	broker.changed = make(chan struct{})
+}
+
+func (broker *proxyRequestBroker) dequeue(ctx context.Context, supportedPlugins map[string]struct{}) (*proxyRequestEnvelope, error) {
+	for {
+		broker.mu.Lock()
+		for key, queue := range broker.queues {
+			if len(queue) == 0 || !proxyRequestSupported(queue[0].targetPlugins, supportedPlugins) {
+				continue
+			}
+			request := queue[0]
+			if len(queue) == 1 {
+				delete(broker.queues, key)
+			} else {
+				broker.queues[key] = queue[1:]
+			}
+			broker.mu.Unlock()
+			return request, nil
+		}
+		changed := broker.changed
+		broker.mu.Unlock()
+
+		select {
+		case <-changed:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
 // SetDiagnosticsServiceRegistrar overrides the SDK used to register Vico's diagnostics service.
 func SetDiagnosticsServiceRegistrar(register func(server *grpc.Server)) {
 	if register == nil {
@@ -75,17 +142,21 @@ func SetDiagnosticsServiceRegistrar(register func(server *grpc.Server)) {
 	registerDiagnosticsService = register
 }
 
-// RunDiagnostics invokes Vico's diagnostics implementation without exposing its generated SDK types.
-func RunDiagnostics(ctx context.Context, messageID string, queryID string, data []string, queries []int32) (string, error) {
-	pluginQueries := make([]ttsdk.PluginQuery, len(queries))
-	for index, query := range queries {
-		pluginQueries[index] = ttsdk.PluginQuery(query)
+// SetProxyDiagnosticForwarder lets wrappers map chat messages with their own SDK.
+func SetProxyDiagnosticForwarder(forward func(event *tccore.ChatMsg, targetPlugin string) (string, error)) {
+	if forward == nil {
+		proxyDiagnosticForwarder = forwardToHubClient
+		return
 	}
+	proxyDiagnosticForwarder = forward
+}
+
+// RunDiagnostics invokes Vico's diagnostics implementation without exposing its generated SDK types.
+func RunDiagnostics(ctx context.Context, messageID string, queryID string, data []string) (string, error) {
 	response, err := (&diagnosticsServiceServer{}).RunDiagnostics(ctx, &ttsdk.DiagnosticRequest{
 		MessageId: messageID,
 		QueryId:   queryID,
 		Data:      data,
-		Queries:   pluginQueries,
 	})
 	if err != nil || response == nil {
 		return "", err
@@ -192,6 +263,11 @@ func validateIncomingTTBToken(ctx context.Context) error {
 	return errors.New("invalid talkback token")
 }
 
+// ValidateIncomingTTBToken validates the shared talkback token for wrapper services.
+func ValidateIncomingTTBToken(ctx context.Context) error {
+	return validateIncomingTTBToken(ctx)
+}
+
 func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
 	if req == nil {
 		return ""
@@ -216,27 +292,15 @@ func localModelActiveCount() string {
 	return "0"
 }
 
-func isLocalPlugin(name string) bool {
-	switch name {
-	case "vico":
-		return true
-	default:
-		return false
-	}
-}
-
 func targetPluginForEvent(event *tccore.ChatMsg) string {
-	if event == nil || event.Name == nil || len(*event.Name) != 1 {
+	if event == nil || event.Name == nil {
 		return ""
 	}
 	if event.Response != nil && strings.TrimSpace(*event.Response) != "" {
 		return ""
 	}
-	targetPlugin := (*event.Name)
-	if targetPlugin == "" || targetPlugin == "trcshcmd" || isLocalPlugin(targetPlugin) {
-		return ""
-	}
-	if event.Name != nil && *event.Name == targetPlugin {
+	targetPlugin := strings.TrimSpace(*event.Name)
+	if targetPlugin == "" || targetPlugin == "trcshcmd" {
 		return ""
 	}
 	return targetPlugin
@@ -253,7 +317,7 @@ func supportedPluginsFromIncomingContext(ctx context.Context) map[string]struct{
 	plugins := map[string]struct{}{}
 	for _, value := range md.Get(hubClientPluginsMetadataKey) {
 		for _, plugin := range strings.Split(value, ",") {
-			if plugin != "" {
+			if plugin = strings.TrimSpace(plugin); plugin != "" {
 				plugins[plugin] = struct{}{}
 			}
 		}
@@ -264,86 +328,166 @@ func supportedPluginsFromIncomingContext(ctx context.Context) map[string]struct{
 	return plugins
 }
 
-func requestSupportedByPlugins(req *ttsdk.DiagnosticRequest, supportedPlugins map[string]struct{}) bool {
-	targetPlugin := req.GetQueryId()
-	if targetPlugin == "" {
+func targetPluginsForRequest(req *ttsdk.DiagnosticRequest) ([]string, bool) {
+	targetPlugins := make([]string, 0, len(req.GetDiagnostics()))
+	seen := map[string]struct{}{}
+	for _, diagnostic := range req.GetDiagnostics() {
+		var targetPlugin string
+		switch diagnostic {
+		case ttsdk.Diagnostics_ALL, ttsdk.Diagnostics_HEALTH_CHECK:
+			targetPlugin = "healthcheck"
+		case ttsdk.Diagnostics_TRCDB:
+			targetPlugin = "trcdb"
+		default:
+			return nil, false
+		}
+		if _, ok := seen[targetPlugin]; !ok {
+			targetPlugins = append(targetPlugins, targetPlugin)
+			seen[targetPlugin] = struct{}{}
+		}
+	}
+	return targetPlugins, true
+}
+
+func proxyRequestSupported(targetPlugins []string, supportedPlugins map[string]struct{}) bool {
+	if len(targetPlugins) == 0 {
 		return true
 	}
 	if len(supportedPlugins) == 0 {
 		return false
 	}
-	_, ok := supportedPlugins[targetPlugin]
-	return ok
+	for _, targetPlugin := range targetPlugins {
+		if _, ok := supportedPlugins[targetPlugin]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
-func enqueueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
-	responseChan := make(chan *ttsdk.DiagnosticResponse, 1)
-	proxyReplies.Store(req.GetMessageId(), responseChan)
-	defer proxyReplies.Delete(req.GetMessageId())
+// EnqueueProxyRequest queues an SDK-neutral serialized request and waits for its response.
+func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []string, serializedRequest string) (string, error) {
+	responseChan := make(chan string, 1)
+	proxyReplies.Store(messageID, responseChan)
+	defer proxyReplies.Delete(messageID)
+	envelope := &proxyRequestEnvelope{
+		messageID:         messageID,
+		targetPlugins:     append([]string(nil), targetPlugins...),
+		serializedRequest: serializedRequest,
+	}
 
 	select {
-	case proxyRequests <- req:
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return "", ctx.Err()
+	default:
 	}
+	proxyRequests.enqueue(envelope)
 
 	select {
 	case response := <-responseChan:
 		return response, nil
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return "", ctx.Err()
 	}
 }
 
-func dequeueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+// DequeueProxyRequest returns the next request supported by the polling hub client.
+func DequeueProxyRequest(ctx context.Context) (string, error) {
 	supportedPlugins := supportedPluginsFromIncomingContext(ctx)
-	var proxyRequest *ttsdk.DiagnosticRequest
-	pendingRequests := len(proxyRequests)
-	if pendingRequests == 0 {
-		select {
-		case proxyRequest = <-proxyRequests:
-			if !requestSupportedByPlugins(proxyRequest, supportedPlugins) {
-				proxyRequests <- proxyRequest
-				return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
-			}
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	} else {
-		for i := 0; i < pendingRequests; i++ {
-			proxyRequest = <-proxyRequests
-			if requestSupportedByPlugins(proxyRequest, supportedPlugins) {
-				break
-			}
-			proxyRequests <- proxyRequest
-			proxyRequest = nil
-		}
-		if proxyRequest == nil {
-			return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
-		}
+	proxyRequest, err := proxyRequests.dequeue(ctx, supportedPlugins)
+	if err != nil {
+		return "", err
 	}
+	return proxyRequest.serializedRequest, nil
+}
 
-	requestBytes, err := protojson.Marshal(proxyRequest)
+// PostProxyResponse resolves a queued request by message ID.
+func PostProxyResponse(messageID string, result string) bool {
+	responseChanValue, ok := proxyReplies.Load(messageID)
+	if !ok {
+		return false
+	}
+	responseChanValue.(chan string) <- result
+	return true
+}
+
+// IsHubClientBroadcast reports whether a data payload uses trcshtalk's broadcast message ID.
+func IsHubClientBroadcast(messageID string, data []string) bool {
+	parts := strings.Split(messageID, ":")
+	return len(data) > 0 && len(parts) >= 2 && parts[len(parts)-2] == "b"
+}
+
+// RelayHubClientBroadcast forwards an SDK-neutral hubclient payload to TalkBack trcshtalk.
+func RelayHubClientBroadcast(messageID string, data []string) error {
+	if configContext == nil || configContext.ChatSenderChan == nil || *configContext.ChatSenderChan == nil {
+		return errors.New("vico kernel chat sender is unavailable")
+	}
+	response := strings.Join(data, "\n")
+	if strings.TrimSpace(response) == "" {
+		return errors.New("hubclient broadcast payload is empty")
+	}
+	pluginName := "vico"
+	targets := []string{"trcshtalk"}
+	*configContext.ChatSenderChan <- &tccore.ChatMsg{
+		Name:        &pluginName,
+		Query:       &targets,
+		RoutingId:   &messageID,
+		Response:    &response,
+		IsBroadcast: true,
+	}
+	return nil
+}
+
+func enqueueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+	targetPlugins, ok := targetPluginsForRequest(req)
+	if !ok {
+		return nil, errors.New("unsupported proxy diagnostic")
+	}
+	requestBytes, err := protojson.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: string(requestBytes)}, nil
+	result, err := EnqueueProxyRequest(ctx, req.GetMessageId(), targetPlugins, string(requestBytes))
+	if err != nil {
+		return nil, err
+	}
+	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: result}, nil
+}
+
+func dequeueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+	serializedRequest, err := DequeueProxyRequest(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: serializedRequest}, nil
 }
 
 func postProxyResponse(req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, bool) {
 	if len(req.GetData()) == 0 {
 		return nil, false
 	}
-	responseChanValue, ok := proxyReplies.Load(req.GetMessageId())
-	if !ok {
+	if !PostProxyResponse(req.GetMessageId(), req.GetData()[0]) {
 		return nil, false
 	}
-	response := &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: req.GetData()[0]}
-	responseChanValue.(chan *ttsdk.DiagnosticResponse) <- response
 	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
 }
 
 func buildProxyDiagnosticRequest(event *tccore.ChatMsg, targetPlugin string) *ttsdk.DiagnosticRequest {
+	if event == nil {
+		return nil
+	}
+
+	var diagnostic ttsdk.Diagnostics
+	switch strings.TrimSpace(targetPlugin) {
+	case "all":
+		diagnostic = ttsdk.Diagnostics_ALL
+	case "healthcheck":
+		diagnostic = ttsdk.Diagnostics_HEALTH_CHECK
+	case "trcdb":
+		diagnostic = ttsdk.Diagnostics_TRCDB
+	default:
+		return nil
+	}
+
 	messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
 	if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
 		messageID = strings.TrimSpace(*event.RoutingId)
@@ -351,18 +495,29 @@ func buildProxyDiagnosticRequest(event *tccore.ChatMsg, targetPlugin string) *tt
 		event.RoutingId = &messageID
 	}
 
+	queryID := ""
 	data := []string{}
 	if event.ChatId != nil && strings.TrimSpace(*event.ChatId) != "" {
-		data = append(data, strings.TrimSpace(*event.ChatId))
-	}
-	if prompt := extractPrompt(event); prompt != "" {
-		data = append(data, prompt)
+		chatID := strings.TrimSpace(*event.ChatId)
+		if chatID == "PROGRESS" {
+			data = append(data, chatID)
+		} else if id, tests, found := strings.Cut(chatID, ":"); found {
+			queryID = strings.TrimSpace(id)
+			for _, test := range strings.Split(tests, ",") {
+				if test = strings.TrimSpace(test); test != "" {
+					data = append(data, test)
+				}
+			}
+		} else {
+			queryID = chatID
+		}
 	}
 
 	return &ttsdk.DiagnosticRequest{
-		MessageId: messageID,
-		QueryId:   targetPlugin,
-		Data:      data,
+		MessageId:   messageID,
+		Diagnostics: []ttsdk.Diagnostics{diagnostic},
+		QueryId:     queryID,
+		Data:        data,
 	}
 }
 
@@ -371,7 +526,11 @@ func forwardToHubClient(event *tccore.ChatMsg, targetPlugin string) (string, err
 	ctx, cancel := context.WithCancel(context.Background()) // for debugging
 	defer cancel()
 
-	response, err := enqueueProxyRequest(ctx, buildProxyDiagnosticRequest(event, targetPlugin))
+	request := buildProxyDiagnosticRequest(event, targetPlugin)
+	if request == nil {
+		return "", fmt.Errorf("unsupported proxy diagnostic target %q", targetPlugin)
+	}
+	response, err := enqueueProxyRequest(ctx, request)
 	if err != nil {
 		return "", err
 	}
@@ -401,6 +560,12 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsd
 	}
 	if response, handled := postProxyResponse(req); handled {
 		return response, nil
+	}
+	if IsHubClientBroadcast(req.GetMessageId(), req.GetData()) {
+		if err := RelayHubClientBroadcast(req.GetMessageId(), req.GetData()); err != nil {
+			return nil, status.Error(codes.Unavailable, err.Error())
+		}
+		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Broadcast relayed"}, nil
 	}
 	if isHubClientPoll(req) {
 		return dequeueProxyRequest(ctx, req)
@@ -723,10 +888,10 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			progressResp := "Running Vico Diagnostics..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
-		case event.Name != nil && *event.Name != "":
-			targetPlugin := *event.Name
+		case targetPluginForEvent(event) != "":
+			targetPlugin := targetPluginForEvent(event)
 			configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
-			response, err := forwardToHubClient(event, targetPlugin)
+			response, err := proxyDiagnosticForwarder(event, targetPlugin)
 			if err != nil {
 				configContext.Log.Printf("vico hubclient forwarding failed for %s: %s\n", targetPlugin, tccore.SanitizeForLogging(err.Error()))
 				response = fmt.Sprintf("No hubclient response for plugin %s.", targetPlugin)
@@ -807,7 +972,7 @@ func stop(pluginName string) {
 		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
 	}
 	dfstat = nil
-	proxyRequests = make(chan *ttsdk.DiagnosticRequest, 128)
+	proxyRequests = newProxyRequestBroker()
 	proxyReplies = sync.Map{}
 }
 
