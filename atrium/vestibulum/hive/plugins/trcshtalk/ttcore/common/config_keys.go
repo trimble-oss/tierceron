@@ -19,4 +19,5 @@ const (
 	ModeTalkbackKernel = "talkback-kernel-plugin"
 	ModeBoth           = "both"
 	ModeHubClient      = "trcshtalkhubclient"
+	ModeHub            = "trcshtalkhub"
 )

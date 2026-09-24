@@ -177,3 +177,8 @@ func Init(pluginName string, properties *map[string]interface{},
 
 	configContext.Log.Println("Successfully initialized ninja.")
 }
+
+func DecryptSecret(cText string, salt string, initialValue string, secret string) (string, error) {
+	// TODO: implement
+	return "", fmt.Errorf("DecryptSecret not implemented")
+}
