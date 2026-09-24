@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -40,7 +41,7 @@ var (
 	dfstat                     *tccore.TTDINode
 	grpcServer                 *grpc.Server
 	localModel                 *localModelRuntime
-	proxyRequests              chan *proxyRequestEnvelope = make(chan *proxyRequestEnvelope, 128)
+	proxyRequests              = newProxyRequestBroker()
 	proxyReplies               sync.Map
 	registerDiagnosticsService = func(server *grpc.Server) {
 		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
@@ -72,6 +73,64 @@ type proxyRequestEnvelope struct {
 	serializedRequest string
 }
 
+type proxyRequestBroker struct {
+	mu      sync.Mutex
+	queues  map[string][]*proxyRequestEnvelope
+	changed chan struct{}
+}
+
+func newProxyRequestBroker() *proxyRequestBroker {
+	return &proxyRequestBroker{
+		queues:  make(map[string][]*proxyRequestEnvelope),
+		changed: make(chan struct{}),
+	}
+}
+
+func proxyRequestQueueKey(targetPlugins []string) string {
+	normalized := append([]string(nil), targetPlugins...)
+	for index := range normalized {
+		normalized[index] = strings.TrimSpace(normalized[index])
+	}
+	sort.Strings(normalized)
+	return strings.Join(normalized, ",")
+}
+
+func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	key := proxyRequestQueueKey(request.targetPlugins)
+	broker.queues[key] = append(broker.queues[key], request)
+	close(broker.changed)
+	broker.changed = make(chan struct{})
+}
+
+func (broker *proxyRequestBroker) dequeue(ctx context.Context, supportedPlugins map[string]struct{}) (*proxyRequestEnvelope, error) {
+	for {
+		broker.mu.Lock()
+		for key, queue := range broker.queues {
+			if len(queue) == 0 || !proxyRequestSupported(queue[0].targetPlugins, supportedPlugins) {
+				continue
+			}
+			request := queue[0]
+			if len(queue) == 1 {
+				delete(broker.queues, key)
+			} else {
+				broker.queues[key] = queue[1:]
+			}
+			broker.mu.Unlock()
+			return request, nil
+		}
+		changed := broker.changed
+		broker.mu.Unlock()
+
+		select {
+		case <-changed:
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+	}
+}
+
 // SetDiagnosticsServiceRegistrar overrides the SDK used to register Vico's diagnostics service.
 func SetDiagnosticsServiceRegistrar(register func(server *grpc.Server)) {
 	if register == nil {
@@ -93,16 +152,11 @@ func SetProxyDiagnosticForwarder(forward func(event *tccore.ChatMsg, targetPlugi
 }
 
 // RunDiagnostics invokes Vico's diagnostics implementation without exposing its generated SDK types.
-func RunDiagnostics(ctx context.Context, messageID string, queryID string, data []string, queries []int32) (string, error) {
-	pluginQueries := make([]ttsdk.PluginQuery, len(queries))
-	for index, query := range queries {
-		pluginQueries[index] = ttsdk.PluginQuery(query)
-	}
+func RunDiagnostics(ctx context.Context, messageID string, queryID string, data []string) (string, error) {
 	response, err := (&diagnosticsServiceServer{}).RunDiagnostics(ctx, &ttsdk.DiagnosticRequest{
 		MessageId: messageID,
 		QueryId:   queryID,
 		Data:      data,
-		Queries:   pluginQueries,
 	})
 	if err != nil || response == nil {
 		return "", err
@@ -322,10 +376,11 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 	}
 
 	select {
-	case proxyRequests <- envelope:
 	case <-ctx.Done():
 		return "", ctx.Err()
+	default:
 	}
+	proxyRequests.enqueue(envelope)
 
 	select {
 	case response := <-responseChan:
@@ -338,30 +393,9 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 // DequeueProxyRequest returns the next request supported by the polling hub client.
 func DequeueProxyRequest(ctx context.Context) (string, error) {
 	supportedPlugins := supportedPluginsFromIncomingContext(ctx)
-	var proxyRequest *proxyRequestEnvelope
-	pendingRequests := len(proxyRequests)
-	if pendingRequests == 0 {
-		select {
-		case proxyRequest = <-proxyRequests:
-			if !proxyRequestSupported(proxyRequest.targetPlugins, supportedPlugins) {
-				proxyRequests <- proxyRequest
-				return "", nil
-			}
-		case <-ctx.Done():
-			return "", ctx.Err()
-		}
-	} else {
-		for i := 0; i < pendingRequests; i++ {
-			proxyRequest = <-proxyRequests
-			if proxyRequestSupported(proxyRequest.targetPlugins, supportedPlugins) {
-				break
-			}
-			proxyRequests <- proxyRequest
-			proxyRequest = nil
-		}
-		if proxyRequest == nil {
-			return "", nil
-		}
+	proxyRequest, err := proxyRequests.dequeue(ctx, supportedPlugins)
+	if err != nil {
+		return "", err
 	}
 	return proxyRequest.serializedRequest, nil
 }
@@ -374,6 +408,33 @@ func PostProxyResponse(messageID string, result string) bool {
 	}
 	responseChanValue.(chan string) <- result
 	return true
+}
+
+// IsHubClientBroadcast reports whether a data payload uses trcshtalk's broadcast message ID.
+func IsHubClientBroadcast(messageID string, data []string) bool {
+	parts := strings.Split(messageID, ":")
+	return len(data) > 0 && len(parts) >= 2 && parts[len(parts)-2] == "b"
+}
+
+// RelayHubClientBroadcast forwards an SDK-neutral hubclient payload to TalkBack trcshtalk.
+func RelayHubClientBroadcast(messageID string, data []string) error {
+	if configContext == nil || configContext.ChatSenderChan == nil || *configContext.ChatSenderChan == nil {
+		return errors.New("vico kernel chat sender is unavailable")
+	}
+	response := strings.Join(data, "\n")
+	if strings.TrimSpace(response) == "" {
+		return errors.New("hubclient broadcast payload is empty")
+	}
+	pluginName := "vico"
+	targets := []string{"trcshtalk"}
+	*configContext.ChatSenderChan <- &tccore.ChatMsg{
+		Name:        &pluginName,
+		Query:       &targets,
+		RoutingId:   &messageID,
+		Response:    &response,
+		IsBroadcast: true,
+	}
+	return nil
 }
 
 func enqueueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
@@ -499,6 +560,12 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsd
 	}
 	if response, handled := postProxyResponse(req); handled {
 		return response, nil
+	}
+	if IsHubClientBroadcast(req.GetMessageId(), req.GetData()) {
+		if err := RelayHubClientBroadcast(req.GetMessageId(), req.GetData()); err != nil {
+			return nil, status.Error(codes.Unavailable, err.Error())
+		}
+		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Broadcast relayed"}, nil
 	}
 	if isHubClientPoll(req) {
 		return dequeueProxyRequest(ctx, req)
@@ -905,7 +972,7 @@ func stop(pluginName string) {
 		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_STOP}
 	}
 	dfstat = nil
-	proxyRequests = make(chan *proxyRequestEnvelope, 128)
+	proxyRequests = newProxyRequestBroker()
 	proxyReplies = sync.Map{}
 }
 
