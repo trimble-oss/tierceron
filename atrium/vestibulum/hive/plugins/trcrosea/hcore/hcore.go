@@ -110,9 +110,9 @@ func send_err(err error) {
 	*configContext.ErrorChan <- err
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			continue
@@ -294,14 +294,15 @@ func Init(pluginName string, properties *map[string]any) {
 		isKernelZ = true
 	}
 
-	configContext, err = tccore.Init(properties,
+	configContext, err = tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
 		"rosea",
 		start,
 		receiver,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil {
 		if logger, ok := (*properties)["log"].(*log.Logger); ok && logger != nil {
@@ -339,7 +340,8 @@ func GetPluginMessages(pluginName string) []string {
 
 func FetchSocii(ctx *tccore.ConfigContext) {
 	ctx.Log.Println("Sending request for argos socii.")
-	chatResponseMsg := tccore.CallChatQueryChan(flowutil.GetChatMsgHookCtx(),
+	chatResponseMsg := tccore.CallChatQueryChan(
+		flowutil.GetChatMsgHookCtx(),
 		"rosea", // From rainier
 		&tccore.TrcdbExchange{
 			Flows:     []string{flowcore.ArgosSociiFlow.TableName()},                                 // Flows

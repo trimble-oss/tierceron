@@ -313,9 +313,9 @@ func TrcdbChatMessageHandler(event *core.ChatMsg) (string, error) {
 	return trcdbChatMessageHandlerFunc(event)
 }
 
-func chat_receiver(chat_receive_chan chan *core.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			continue
@@ -396,11 +396,17 @@ func ProcessTrcdb(trcdbExchange *core.TrcdbExchange) {
 		}
 		query := make(map[string]any)
 		query["TrcQuery"] = trcdbExchange.Query
-		processedExchange, changed := tfmContext.CallDBQueryN(trcdbExchange, query, nil, false, trcdbExchange.Operation, nil, "")
+		processedExchange, success := tfmContext.CallDBQueryN(trcdbExchange, query, nil, false, trcdbExchange.Operation, nil, "")
 		if processedExchange != nil {
 			trcdbExchange.Response = processedExchange.Response
 		} else {
-			trcdbExchange.Response.Success = changed
+			if trcdbExchange.Operation != "SELECT" {
+				trcdbExchange.Response.Success = success
+			} else {
+				if len(trcdbExchange.Response.Rows) > 0 {
+					trcdbExchange.Response.Success = true
+				}
+			}
 		}
 		if len(trcdbExchange.Response.Rows) == 0 {
 			configContext.Log.Println("TrcdbExchange operation did not get any results.  returning empty response.")
@@ -510,7 +516,7 @@ func Init(pluginName string, properties *map[string]any) {
 		"hiveplugin", // Categorize as hiveplugin
 		start,
 		receiver,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)

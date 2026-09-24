@@ -102,16 +102,16 @@ func send_err(err error) {
 	*configContext.ErrorChan <- err
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			fallthrough
 		case *event.Name == "SHUTDOWN":
 			configContext.Log.Println("viride shutting down message receiver")
 			return
-		case event.Response != nil && *((*event).Response) == "Service unavailable":
+		case event.Response != nil && *(*event).Response == "Service unavailable":
 			configContext.Log.Println("Viride unable to access chat service.")
 			return
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
@@ -205,14 +205,15 @@ func PostInit(configContext *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 
-	configContext, err = tccore.Init(properties,
+	configContext, err = tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
 		"viride",
 		start,
 		receiver,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)

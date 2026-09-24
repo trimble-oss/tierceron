@@ -74,9 +74,9 @@ func receiverPraevius(receive_chan chan tccore.KernelCmd) {
 	}
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			continue
@@ -316,14 +316,15 @@ func PostInit(ctx *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 	pluginNameVar = pluginName
-	configContext, err = tccore.Init(properties,
+	configContext, err = tccore.Init(
+		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,
 		COMMON_PATH,
 		"hiveplugin",
 		start,
 		receiverPraevius,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil && properties != nil && (*properties)["log"] != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)

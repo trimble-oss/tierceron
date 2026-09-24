@@ -706,9 +706,9 @@ func queryLocalModel(prompt string) (string, error) {
 	return strings.TrimSpace(response), nil
 }
 
-func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
+func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
-		event := <-chat_receive_chan
+		event := <-chatReceiverChan
 		switch {
 		case event == nil:
 			continue
@@ -838,7 +838,7 @@ func Init(pluginName string, properties *map[string]any) {
 		"vico",
 		start,
 		receiver,
-		chat_receiver,
+		chatReceiver,
 	)
 	if err != nil {
 		(*properties)["log"].(*log.Logger).Printf("Initialization error: %v", err)
