@@ -9,7 +9,7 @@ require (
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 	google.golang.org/api v0.264.0
 	google.golang.org/grpc v1.83.2
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v2 v2.4.0
 )
 

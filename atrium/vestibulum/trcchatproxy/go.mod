@@ -8,7 +8,7 @@ require (
 	github.com/trimble-oss/tierceron-nute v1.1.3
 	github.com/trimble-oss/tierceron-nute-core v1.0.9
 	google.golang.org/api v0.264.0
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 )
 
 require (
