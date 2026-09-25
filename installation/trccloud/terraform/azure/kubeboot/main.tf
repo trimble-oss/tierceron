@@ -4,6 +4,7 @@ locals {
   productenv            = var.envshort
   max_count             = 4
   min_count             = 1
+  aks_node_os_sku_tf    = var.aks_node_os_sku == "AzureLinux" ? "CBLMariner" : var.aks_node_os_sku
   rgname                = "${var.resource_group_name}-${upper(var.envshort)}-${var.locationCode}-AKS-RG"
 }
 
@@ -24,27 +25,28 @@ data "azurerm_virtual_network" "virtual-network" {
 }
 
 resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
-  name                = var.cluster_name
-  location            = var.resource_group_location
-  resource_group_name = local.rgname
-  dns_prefix          = "${var.dnsprefix}"
-  kubernetes_version        = var.Kube_version
-  private_cluster_enabled   = true
+  name                     = var.cluster_name
+  location                 = var.resource_group_location
+  resource_group_name      = local.rgname
+  dns_prefix               = "${var.dnsprefix}"
+  kubernetes_version       = var.Kube_version
+  private_cluster_enabled  = true
   automatic_channel_upgrade = "patch"
-  
+
   timeouts {
     delete = "1m" #Shared resource usually, so time out quickly if it is...
   }
 
   default_node_pool {
-    name       = "kubepool${lower(local.locationCode)}"  
+    name                = "kubepool${lower(local.locationCode)}"
     enable_auto_scaling = true
-    node_count = var.node_count
-    vm_size    = var.vm_size
+    node_count          = var.node_count
+    vm_size             = var.vm_size
     type                = "VirtualMachineScaleSets"
     max_count           = local.max_count
     min_count           = local.min_count
-    os_sku              = "Ubuntu"
+    os_sku              = local.aks_node_os_sku_tf
+    fips_enabled        = var.aks_enable_fips_image
     zones               = ["3"]
     vnet_subnet_id      = data.azurerm_subnet.clusterSubnet.id
   }
@@ -63,13 +65,35 @@ resource "azurerm_kubernetes_cluster" "tierceron_aks_cluster" {
 
   tags = {
     Application = "${var.resource_group_name}-kubernetes"
-    Environment         = var.environment
+    Environment = var.environment
   }
 
   depends_on = [azurerm_resource_group.rg]
 }
 
+resource "azurerm_kubernetes_cluster_node_pool" "tierceron_aks_vico_gpu_pool" {
+  count                 = var.gpu_node_pool_enabled ? 1 : 0
+  name                  = var.gpu_node_pool_name
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.tierceron_aks_cluster.id
+  vm_size               = var.gpu_node_pool_vm_size
+  node_count            = var.gpu_node_pool_node_count
+  mode                  = "User"
+  os_sku                = local.aks_node_os_sku_tf
+  fips_enabled          = var.aks_enable_fips_image
+  enable_auto_scaling   = false
+  zones                 = ["3"]
+  vnet_subnet_id        = data.azurerm_subnet.clusterSubnet.id
+  node_labels           = { trcshknodepool = "trcshkgpupool" }
+  node_taints           = ["sku=gpu:NoSchedule"]
+
+  tags = {
+    Application = "${var.resource_group_name}-kubernetes-gpu"
+    Environment = var.environment
+  }
+
+  depends_on = [azurerm_kubernetes_cluster.tierceron_aks_cluster]
+}
+
 data "azurerm_resource_group" "trg" {
   name     = var.resource_group_name_trg
 }
-
