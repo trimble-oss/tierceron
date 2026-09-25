@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -48,6 +49,7 @@ var dfstat *tccore.TTDINode
 var (
 	globalPluginStatusChan     chan string
 	msgFailureBroadcastCounter atomic.Int32
+	pluginLoadMu               sync.Mutex
 )
 
 type PluginHandler struct {
@@ -1298,7 +1300,6 @@ func (pluginHandler *PluginHandler) receiver(driverConfig *config.DriverConfig, 
 			safeChannelSend(pluginHandler.ConfigContext.DfsChan,
 				nil,
 				pluginHandler.Name+" dfs shutting down", driverConfig.CoreConfig.Log)
-			pluginHandler.PluginMod = nil
 			if pluginHandler.KernelCtx != nil && pluginHandler.KernelCtx.PluginRestartChan != nil {
 				go func(e tccore.KernelCmd) {
 					safeChannelSend(pluginHandler.KernelCtx.PluginRestartChan, e, "plugin restart message", driverConfig.CoreConfig.Log)
@@ -1427,8 +1428,16 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 	driverConfig.CoreConfig.Log.Printf("Loading plugin: %s\n", pluginPath)
 
 	var pluginM *plugin.Plugin
+	pluginName := pluginHandler.Name
+	if len(pluginName) == 0 {
+		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
+		pluginHandler.State = 2
+		return
+	}
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
+		pluginLoadMu.Lock()
 		pM, err := plugin.Open(pluginPath)
+		pluginLoadMu.Unlock()
 		if err != nil {
 			driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
 			driverConfig.CoreConfig.Log.Printf("Returned with %v\n", err)
@@ -1437,17 +1446,9 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 		}
 		pluginM = pM
 	}
-	pluginName := pluginHandler.Name
-	if len(pluginName) > 0 {
-		driverConfig.CoreConfig.Log.Printf("Successfully opened plugin module for %s\n", pluginName)
-		// PluginMods[pluginName] = pluginM
-		pluginHandler.PluginMod = pluginM
-		pluginHandler.State = 0
-	} else {
-		driverConfig.CoreConfig.Log.Println("Unable to load plugin module because missing plugin name")
-		pluginHandler.State = 2
-		return
-	}
+	driverConfig.CoreConfig.Log.Printf("Successfully opened plugin module for %s\n", pluginName)
+	pluginHandler.PluginMod = pluginM
+	pluginHandler.State = 0
 }
 
 func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.DriverConfig) {

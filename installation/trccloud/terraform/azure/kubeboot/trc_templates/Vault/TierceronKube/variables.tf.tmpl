@@ -23,6 +23,26 @@ variable "aks_enable_fips_image" {
   default = {{.aks_enable_fips_image}}
 }
 
+variable "gpu_node_pool_enabled" {
+  type = bool
+  default = true
+}
+
+variable "gpu_node_pool_name" {
+  type = string
+  default = "trcshkgpu"
+}
+
+variable "gpu_node_pool_vm_size" {
+  type = string
+  default = "Standard_NC4as_T4_v3"
+}
+
+variable "gpu_node_pool_node_count" {
+  type = number
+  default = 1
+}
+
 variable "environment" {
   type = string
   default = "{{.env}}"
