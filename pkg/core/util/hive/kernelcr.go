@@ -1428,6 +1428,13 @@ func (pluginHandler *PluginHandler) LoadPluginMod(driverConfig *config.DriverCon
 
 	var pluginM *plugin.Plugin
 	if !plugincoreopts.BuildOptions.IsPluginHardwired() {
+		if _, exists := os.LookupEnv("GOLANG_PROTOBUF_REGISTRATION_CONFLICT"); !exists {
+			if err := os.Setenv("GOLANG_PROTOBUF_REGISTRATION_CONFLICT", "warn"); err != nil {
+				driverConfig.CoreConfig.Log.Printf("Unable to set protobuf registration conflict policy: %v\n", err)
+			} else {
+				driverConfig.CoreConfig.Log.Println("Defaulted protobuf registration conflict policy to warn for plugin loading")
+			}
+		}
 		pM, err := plugin.Open(pluginPath)
 		if err != nil {
 			driverConfig.CoreConfig.Log.Printf("Unable to open plugin module for service: %s\n", pluginPath)
