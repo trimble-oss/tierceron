@@ -36,14 +36,16 @@ import (
 )
 
 var (
-	configContext              *tccore.ConfigContext
-	sender                     chan error
-	dfstat                     *tccore.TTDINode
-	grpcServer                 *grpc.Server
-	localModel                 *localModelRuntime
-	proxyRequests              = newProxyRequestBroker()
-	proxyReplies               sync.Map
-	registerDiagnosticsService = func(server *grpc.Server) {
+	ErrMissingRoutingPrompt            = errors.New("missing routing prompt")
+	ErrMissingLocalModelRouteExecution = errors.New("missing local model route execution")
+	configContext                      *tccore.ConfigContext
+	sender                             chan error
+	dfstat                             *tccore.TTDINode
+	grpcServer                         *grpc.Server
+	localModel                         *localModelRuntime
+	proxyRequests                      = newProxyRequestBroker()
+	proxyReplies                       sync.Map
+	registerDiagnosticsService         = func(server *grpc.Server) {
 		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
 	}
 	proxyDiagnosticForwarder     = forwardToHubClient
@@ -68,6 +70,13 @@ type localModelRuntime struct {
 
 type diagnosticsServiceServer struct {
 	ttsdk.UnimplementedTrcshTalkServiceServer
+}
+
+type LocalModelRouteExecution struct {
+	MessageID         string
+	TargetPlugins     []string
+	SerializedRequest string
+	Results           string
 }
 
 type proxyRequestEnvelope struct {
@@ -194,6 +203,52 @@ func RunDiagnostics(ctx context.Context, messageID string, queryID string, data 
 	return response.GetResults(), nil
 }
 
+// RouteLocalModelPrompt routes a natural-language prompt through Vico's local model pipeline.
+func RouteLocalModelPrompt(prompt string) (string, error) {
+	return queryLocalModelForRouting(strings.TrimSpace(prompt))
+}
+
+// BuildRoutingPrompt composes the freeform routing prompt from request fields.
+func BuildRoutingPrompt(queryID string, data []string) string {
+	promptParts := make([]string, 0, len(data))
+	for _, datum := range data {
+		trimmed := strings.TrimSpace(datum)
+		if trimmed != "" {
+			promptParts = append(promptParts, trimmed)
+		}
+	}
+	if len(promptParts) > 0 {
+		return strings.Join(promptParts, "\n")
+	}
+	return strings.TrimSpace(queryID)
+}
+
+// ExecuteLocalModelRoute runs the local router model and lets callers translate the routed response.
+func ExecuteLocalModelRoute(ctx context.Context, messageID string, queryID string, data []string, translate func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) (string, error) {
+	prompt := BuildRoutingPrompt(queryID, data)
+	if prompt == "" {
+		return "", ErrMissingRoutingPrompt
+	}
+	routingResults, err := RouteLocalModelPrompt(prompt)
+	if err != nil {
+		return "", err
+	}
+	execution, err := translate(messageID, routingResults)
+	if err != nil {
+		return "", err
+	}
+	if execution == nil {
+		return "", ErrMissingLocalModelRouteExecution
+	}
+	if strings.TrimSpace(execution.Results) != "" || len(execution.TargetPlugins) == 0 || strings.TrimSpace(execution.SerializedRequest) == "" {
+		return execution.Results, nil
+	}
+	if strings.TrimSpace(execution.MessageID) == "" {
+		execution.MessageID = messageID
+	}
+	return EnqueueProxyRequest(ctx, execution.MessageID, execution.TargetPlugins, execution.SerializedRequest)
+}
+
 func receiver(receive_chan chan tccore.KernelCmd) {
 	for {
 		event := <-receive_chan
@@ -302,17 +357,7 @@ func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
 	if req == nil {
 		return ""
 	}
-	promptParts := make([]string, 0, len(req.GetData()))
-	for _, data := range req.GetData() {
-		trimmed := strings.TrimSpace(data)
-		if trimmed != "" {
-			promptParts = append(promptParts, trimmed)
-		}
-	}
-	if len(promptParts) > 0 {
-		return strings.Join(promptParts, "\n")
-	}
-	return strings.TrimSpace(req.GetQueryId())
+	return BuildRoutingPrompt(req.GetQueryId(), req.GetData())
 }
 
 func defaultLocalModelRoutePromptBuilder(prompt string) []chat.Turn {
