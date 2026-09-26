@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -89,6 +90,11 @@ type proxyRequestBroker struct {
 	mu      sync.Mutex
 	queues  map[string][]*proxyRequestEnvelope
 	changed chan struct{}
+}
+
+type proxyDiagnosticResponseEnvelope struct {
+	MessageID string `json:"messageId"`
+	Results   string `json:"results"`
 }
 
 func newProxyRequestBroker() *proxyRequestBroker {
@@ -467,10 +473,25 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 
 	select {
 	case response := <-responseChan:
-		return response, nil
+		return decodeProxyDiagnosticResponse(response), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
+}
+
+func decodeProxyDiagnosticResponse(response string) string {
+	trimmed := strings.TrimSpace(response)
+	if trimmed == "" || !strings.HasPrefix(trimmed, "{") {
+		return response
+	}
+	var envelope proxyDiagnosticResponseEnvelope
+	if err := json.Unmarshal([]byte(trimmed), &envelope); err != nil {
+		return response
+	}
+	if strings.TrimSpace(envelope.MessageID) == "" {
+		return response
+	}
+	return envelope.Results
 }
 
 // DequeueProxyRequest returns the next request supported by the polling hub client.
