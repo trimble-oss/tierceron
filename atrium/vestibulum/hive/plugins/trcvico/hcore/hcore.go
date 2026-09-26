@@ -46,7 +46,10 @@ var (
 	registerDiagnosticsService = func(server *grpc.Server) {
 		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
 	}
-	proxyDiagnosticForwarder = forwardToHubClient
+	proxyDiagnosticForwarder     = forwardToHubClient
+	localModelRoutePromptBuilder = defaultLocalModelRoutePromptBuilder
+	localModelRouteNormalizer    = defaultLocalModelRouteNormalizer
+	localModelReadyHook          = func(*tccore.ConfigContext) error { return nil }
 )
 
 const (
@@ -149,6 +152,33 @@ func SetProxyDiagnosticForwarder(forward func(event *tccore.ChatMsg, targetPlugi
 		return
 	}
 	proxyDiagnosticForwarder = forward
+}
+
+// SetLocalModelRoutePromptBuilder overrides how local-model routing prompts are constructed.
+func SetLocalModelRoutePromptBuilder(builder func(prompt string) []chat.Turn) {
+	if builder == nil {
+		localModelRoutePromptBuilder = defaultLocalModelRoutePromptBuilder
+		return
+	}
+	localModelRoutePromptBuilder = builder
+}
+
+// SetLocalModelRouteNormalizer overrides how local-model routing responses are normalized.
+func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
+	if normalizer == nil {
+		localModelRouteNormalizer = defaultLocalModelRouteNormalizer
+		return
+	}
+	localModelRouteNormalizer = normalizer
+}
+
+// SetLocalModelReadyHook registers a callback that runs after the local model has loaded.
+func SetLocalModelReadyHook(hook func(configContext *tccore.ConfigContext) error) {
+	if hook == nil {
+		localModelReadyHook = func(*tccore.ConfigContext) error { return nil }
+		return
+	}
+	localModelReadyHook = hook
 }
 
 // RunDiagnostics invokes Vico's diagnostics implementation without exposing its generated SDK types.
@@ -283,6 +313,14 @@ func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
 		return strings.Join(promptParts, "\n")
 	}
 	return strings.TrimSpace(req.GetQueryId())
+}
+
+func defaultLocalModelRoutePromptBuilder(prompt string) []chat.Turn {
+	return []chat.Turn{{Role: "user", Content: strings.TrimSpace(prompt)}}
+}
+
+func defaultLocalModelRouteNormalizer(raw string) (string, error) {
+	return strings.TrimSpace(raw), nil
 }
 
 func localModelActiveCount() string {
@@ -581,7 +619,7 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsd
 		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
 	}
 
-	response, err := queryLocalModel(prompt)
+	response, err := queryLocalModelForRouting(prompt)
 	if err != nil {
 		if configContext != nil {
 			configContext.Log.Printf("vico RunDiagnostics failed: %s\n", tccore.SanitizeForLogging(err.Error()))
@@ -839,20 +877,36 @@ func extractPrompt(event *tccore.ChatMsg) string {
 }
 
 func encodePrompt(runtime *localModelRuntime, prompt string) ([]int, error) {
+	return encodeTurns(runtime, []chat.Turn{{Role: "user", Content: prompt}})
+}
+
+func encodeTurns(runtime *localModelRuntime, turns []chat.Turn) ([]int, error) {
 	if runtime == nil || runtime.tokenizer == nil {
 		return nil, errors.New("vico local model is not initialized")
 	}
 	if runtime.template != nil {
-		return runtime.tokenizer.EncodeSegments(runtime.template.RenderSegments("", []chat.Turn{{Role: "user", Content: prompt}}), false)
+		return runtime.tokenizer.EncodeSegments(runtime.template.RenderSegments("", turns), false)
 	}
-	return runtime.tokenizer.Encode(prompt, true)
+	parts := make([]string, 0, len(turns))
+	for _, turn := range turns {
+		content := strings.TrimSpace(turn.Content)
+		if content == "" {
+			continue
+		}
+		parts = append(parts, strings.ToUpper(strings.TrimSpace(turn.Role))+":\n"+content)
+	}
+	return runtime.tokenizer.Encode(strings.Join(parts, "\n\n"), true)
 }
 
 func queryLocalModel(prompt string) (string, error) {
+	return queryLocalModelWithTurns([]chat.Turn{{Role: "user", Content: prompt}})
+}
+
+func queryLocalModelWithTurns(turns []chat.Turn) (string, error) {
 	if localModel == nil || localModel.model == nil || localModel.tokenizer == nil {
 		return "", errors.New("vico local model is not configured")
 	}
-	encodedPrompt, err := encodePrompt(localModel, prompt)
+	encodedPrompt, err := encodeTurns(localModel, turns)
 	if err != nil {
 		return "", err
 	}
@@ -869,6 +923,14 @@ func queryLocalModel(prompt string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(response), nil
+}
+
+func queryLocalModelForRouting(prompt string) (string, error) {
+	rawResponse, err := queryLocalModelWithTurns(localModelRoutePromptBuilder(prompt))
+	if err != nil {
+		return "", err
+	}
+	return localModelRouteNormalizer(rawResponse)
 }
 
 func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
@@ -901,7 +963,7 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 		case extractPrompt(event) != "":
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
-			response, err := queryLocalModel(prompt)
+			response, err := queryLocalModelForRouting(prompt)
 			if err != nil {
 				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 				response = "Vico local model unavailable."
@@ -939,7 +1001,10 @@ func start(pluginName string) {
 		configContext.Log.Printf("vico local model startup failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 		// send_err(err)
 	} else if localModel != nil {
-		configContext.Log.Println("vico local model ready")
+		if err := localModelReadyHook(configContext); err != nil {
+			configContext.Log.Printf("vico local model ready hook failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+		}
+		configContext.Log.Println("vico local model loaded successfully")
 	}
 }
 
