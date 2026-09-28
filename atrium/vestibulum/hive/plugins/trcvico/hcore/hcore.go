@@ -731,6 +731,42 @@ func initLocalModel() error {
 		modelBackend = strings.TrimSpace(backend)
 	}
 
+	modelQuant := ""
+	if val, ok := (*configContext.Config)["local_model_quant"]; ok && val != nil {
+		quant, ok := val.(string)
+		if !ok {
+			return fmt.Errorf("invalid local_model_quant type %T", val)
+		}
+		modelQuant = strings.TrimSpace(quant)
+	}
+
+	embedInt4 := false
+	hasExplicitEmbedInt4 := false
+	if val, ok := (*configContext.Config)["local_model_embed_int4"]; ok && val != nil {
+		hasExplicitEmbedInt4 = true
+		switch typedVal := val.(type) {
+		case bool:
+			embedInt4 = typedVal
+		case string:
+			parsedEmbedInt4, err := strconv.ParseBool(strings.TrimSpace(typedVal))
+			if err != nil {
+				return err
+			}
+			embedInt4 = parsedEmbedInt4
+		default:
+			return fmt.Errorf("invalid local_model_embed_int4 type %T", val)
+		}
+	}
+
+	if strings.HasSuffix(strings.ToLower(modelPath), ".gguf") {
+		if modelQuant == "" {
+			modelQuant = "int4"
+		}
+		if !hasExplicitEmbedInt4 && modelQuant == "int4" {
+			embedInt4 = true
+		}
+	}
+
 	maxTokens := 0
 	if val, ok := (*configContext.Config)["local_model_max_tokens"]; ok && val != nil {
 		switch typedVal := val.(type) {
@@ -798,7 +834,7 @@ func initLocalModel() error {
 		}
 	}
 
-	modelOptions := decoder.Options{Backend: modelBackend}
+	modelOptions := decoder.Options{Backend: modelBackend, Quant: modelQuant, EmbedInt4: embedInt4}
 	if err := modelOptions.Validate(); err != nil {
 		return err
 	}
