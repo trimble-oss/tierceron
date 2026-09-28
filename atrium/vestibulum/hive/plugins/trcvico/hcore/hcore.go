@@ -340,7 +340,7 @@ func validateIncomingTTBToken(ctx context.Context) error {
 	expectedToken, _ := (*configContext.Config)["ttb_token"].(string)
 	expectedToken = strings.TrimSpace(expectedToken)
 	if expectedToken == "" {
-		return nil
+		return errors.New("missing configured talkback token")
 	}
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
