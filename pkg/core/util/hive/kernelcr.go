@@ -1011,11 +1011,11 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 			for _, configValue := range serviceConfig {
 				if configMap, ok := configValue.(*map[string]any); ok {
-					if _, exists := (*configMap)["KERNELSECRETS"]; exists {
-						driverConfig.CoreConfig.Log.Printf("Reserved config key collision for plugin %s: %s", service, "KERNELSECRETS")
+					if _, exists := (*configMap)["PLUGINCOMMONSECRETS"]; exists {
+						driverConfig.CoreConfig.Log.Printf("Reserved config key collision for plugin %s: %s", service, "PLUGINCOMMONSECRETS")
 						return
 					}
-					(*configMap)["KERNELSECRETS"] = &kernelSecrets
+					(*configMap)["PLUGINCOMMONSECRETS"] = &kernelSecrets
 				}
 			}
 			if service == "trcshtalk" {

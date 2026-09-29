@@ -341,7 +341,7 @@ func validateIncomingTTBToken(ctx context.Context) error {
 	}
 	expectedToken := ""
 	if configContext.Config != nil {
-		if kernelSecretsAny, ok := (*configContext.Config)["KERNELSECRETS"]; ok {
+		if kernelSecretsAny, ok := (*configContext.Config)["PLUGINCOMMONSECRETS"]; ok {
 			if kernelSecrets, ok := kernelSecretsAny.(*sync.Map); ok && kernelSecrets != nil {
 				if sharedTokenAny, ok := kernelSecrets.Load(trcshtalkcommon.CfgTTBToken); ok {
 					if sharedTokenPtr, ok := sharedTokenAny.(*string); ok && sharedTokenPtr != nil && *sharedTokenPtr != "" {

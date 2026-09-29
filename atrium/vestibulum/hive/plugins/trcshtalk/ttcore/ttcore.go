@@ -255,7 +255,7 @@ func Init(pluginName string, properties *map[string]interface{}) {
 	if configContext.Config != nil {
 		if ttbToken, ok := (*configContext.Config)[common.CfgTTBToken].(string); ok && ttbToken != "" {
 			sharedTTBToken = ttbToken
-			if kernelSecretsAny, ok := (*configContext.Config)["KERNELSECRETS"]; ok {
+			if kernelSecretsAny, ok := (*configContext.Config)["PLUGINCOMMONSECRETS"]; ok {
 				if kernelSecrets, ok := kernelSecretsAny.(*sync.Map); ok && kernelSecrets != nil {
 					kernelSecrets.Store(common.CfgTTBToken, &sharedTTBToken)
 				}
