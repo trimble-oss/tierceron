@@ -26,6 +26,8 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	ttsdk "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk"
+	trcshtalkttcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore"
+	trcshtalkcommon "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -334,24 +336,38 @@ func send_err(err error) {
 }
 
 func validateIncomingTTBToken(ctx context.Context) error {
-	if configContext == nil || configContext.Config == nil {
+	if configContext == nil {
 		return errors.New("missing config context")
 	}
-	expectedToken, _ := (*configContext.Config)["ttb_token"].(string)
-	expectedToken = strings.TrimSpace(expectedToken)
+	expectedToken := ""
+	if configContext.Config != nil {
+		if kernelSecretsAny, ok := (*configContext.Config)["PLUGINCOMMONSECRETS"]; ok {
+			if kernelSecrets, ok := kernelSecretsAny.(*sync.Map); ok && kernelSecrets != nil {
+				if sharedTokenAny, ok := kernelSecrets.Load(trcshtalkcommon.CfgTTBToken); ok {
+					if sharedTokenPtr, ok := sharedTokenAny.(*string); ok && sharedTokenPtr != nil && *sharedTokenPtr != "" {
+						expectedToken = *sharedTokenPtr
+					}
+				}
+			}
+		}
+	}
+	if expectedToken == "" {
+		expectedToken = trcshtalkcommon.ExpectedTTBToken(trcshtalkttcore.GetConfigContext("trcshtalk"))
+	}
+	if expectedToken == "" {
+		expectedToken = trcshtalkcommon.ExpectedTTBToken(configContext)
+	}
 	if expectedToken == "" {
 		return errors.New("missing configured talkback token")
 	}
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
+	providedToken := trcshtalkcommon.IncomingTTBToken(ctx)
+	if providedToken == "" {
 		return errors.New("missing incoming metadata")
 	}
-	for _, value := range md.Get("authorization") {
-		if strings.TrimSpace(value) == expectedToken {
-			return nil
-		}
+	if providedToken != expectedToken {
+		return errors.New("invalid talkback token")
 	}
-	return errors.New("invalid talkback token")
+	return nil
 }
 
 // ValidateIncomingTTBToken validates the shared talkback token for wrapper services.

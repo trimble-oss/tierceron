@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -48,6 +49,7 @@ var dfstat *tccore.TTDINode
 var (
 	globalPluginStatusChan     chan string
 	msgFailureBroadcastCounter atomic.Int32
+	kernelSecrets              sync.Map
 )
 
 type PluginHandler struct {
@@ -1005,6 +1007,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					if configMap, ok := configValue.(*map[string]any); ok {
 						(*configMap)["raw_trcdb_mode"] = rawTrcdbMode
 					}
+				}
+			}
+			for _, configValue := range serviceConfig {
+				if configMap, ok := configValue.(*map[string]any); ok {
+					if _, exists := (*configMap)["PLUGINCOMMONSECRETS"]; exists {
+						driverConfig.CoreConfig.Log.Printf("Reserved config key collision for plugin %s: %s", service, "PLUGINCOMMONSECRETS")
+						return
+					}
+					(*configMap)["PLUGINCOMMONSECRETS"] = &kernelSecrets
 				}
 			}
 			if service == "trcshtalk" {

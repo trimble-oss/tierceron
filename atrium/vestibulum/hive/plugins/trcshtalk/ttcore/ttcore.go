@@ -28,9 +28,10 @@ type diagnosticsServiceServer struct {
 }
 
 var (
-	configContext *tccore.ConfigContext
-	grpcServer    *grpc.Server
-	dfstat        *tccore.TTDINode
+	configContext  *tccore.ConfigContext
+	grpcServer     *grpc.Server
+	dfstat         *tccore.TTDINode
+	sharedTTBToken string
 )
 
 var (
@@ -251,6 +252,16 @@ func Init(pluginName string, properties *map[string]interface{}) {
 		return
 	}
 	configContext = ctx
+	if configContext.Config != nil {
+		if ttbToken, ok := (*configContext.Config)[common.CfgTTBToken].(string); ok && ttbToken != "" {
+			sharedTTBToken = ttbToken
+			if kernelSecretsAny, ok := (*configContext.Config)["PLUGINCOMMONSECRETS"]; ok {
+				if kernelSecrets, ok := kernelSecretsAny.(*sync.Map); ok && kernelSecrets != nil {
+					kernelSecrets.Store(common.CfgTTBToken, &sharedTTBToken)
+				}
+			}
+		}
+	}
 	if coreopts.IsTrcshTalkBackLocal() {
 		_ = common.AttachMashupCert(configContext, properties)
 	}
