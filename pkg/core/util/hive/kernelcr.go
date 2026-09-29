@@ -451,6 +451,7 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 			DeploymentConfig: deployConfig,
 			ConfigContext: &tccore.ConfigContext{
 				Log:              driverConfig.CoreConfig.Log,
+				KernelID:         pluginHandler.Id,
 				ChatReceiverChan: pluginHandler.ConfigContext.ChatReceiverChan,
 			},
 			KernelCtx: &KernelCtx{
@@ -1636,6 +1637,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				newMsg := &tccore.ChatMsg{
 					Name:          &q,
 					KernelId:      &pluginHandler.Id,
+					TargetPod:     msg.TargetPod,
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
 					StatisticsDoc: msg.StatisticsDoc,

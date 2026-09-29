@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"errors"
+	"strconv"
 	"strings"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -11,6 +12,8 @@ import (
 
 const (
 	SupportedDeploymentsMetadataKey = "x-trc-supported-deployments"
+	HubClientPodMetadataKey         = "x-trc-pod-id"
+	HubClientStatefulSetMetadataKey = "x-trc-statefulset-id"
 	TTBTokenMetadataKey             = "authorization"
 )
 
@@ -37,6 +40,28 @@ func SupportedDeploymentsCSV(ctx *tccore.ConfigContext) string {
 
 func WithSupportedDeploymentsOutgoingContext(ctx context.Context, deployments string) context.Context {
 	return withOutgoingMetadata(ctx, SupportedDeploymentsMetadataKey, deployments)
+}
+
+func WithHubClientPodOutgoingContext(ctx context.Context, configContext *tccore.ConfigContext) context.Context {
+	if configContext == nil {
+		return ctx
+	}
+	return withOutgoingMetadata(ctx, HubClientPodMetadataKey, configContext.KernelID)
+}
+
+func WithHubClientStatefulSetOutgoingContext(ctx context.Context, configContext *tccore.ConfigContext) context.Context {
+	if configContext == nil {
+		return ctx
+	}
+	podID := strings.TrimSpace(configContext.KernelID)
+	separator := strings.LastIndex(podID, "-")
+	if separator <= 0 {
+		return ctx
+	}
+	if _, err := strconv.Atoi(podID[separator+1:]); err != nil {
+		return ctx
+	}
+	return withOutgoingMetadata(ctx, HubClientStatefulSetMetadataKey, podID[:separator])
 }
 
 func WithTTBTokenOutgoingContext(ctx context.Context, token string) context.Context {

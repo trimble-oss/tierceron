@@ -290,6 +290,8 @@ func ProcessTrcshTalkRequestGeneric(
 	if supportedDeployments := SupportedDeploymentsCSV(ctx); supportedDeployments != "" {
 		callCtx = WithSupportedDeploymentsOutgoingContext(callCtx, supportedDeployments)
 	}
+	callCtx = WithHubClientPodOutgoingContext(callCtx, ctx)
+	callCtx = WithHubClientStatefulSetOutgoingContext(callCtx, ctx)
 	diagRes, err := invokeDiagnostics(client, callCtx, diagReq)
 	if err != nil {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: bad response: %v\n", err)
