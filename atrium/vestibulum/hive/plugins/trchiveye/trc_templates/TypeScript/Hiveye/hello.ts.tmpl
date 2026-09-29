@@ -1,0 +1,10 @@
+const greeting = "{{or .config.hiveye_greeting \"Hiveye TypeScript template\"}}";
+
+export function hello(name: string): string {
+  return `${greeting}: ${name}`;
+}
+
+export const hiveyeMeta = {
+  plugin: "{{or .plugin \"hiveye\"}}",
+  generatedAt: new Date().toISOString(),
+};
