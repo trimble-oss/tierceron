@@ -1,10 +1,10 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcvico
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/townsendmerino/goinfer v0.17.2
-	github.com/trimble-oss/tierceron-core/v2 v2.11.10
+	github.com/trimble-oss/tierceron-core/v2 v2.11.11
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
@@ -16,6 +16,7 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/townsendmerino/aikit v1.37.0 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
+	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect

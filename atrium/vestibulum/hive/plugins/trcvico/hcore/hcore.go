@@ -1178,7 +1178,8 @@ func PostInit(configContext *tccore.ConfigContext) {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 
-	configContext, err = tccore.Init(
+	configContext, err = tccore.InitWithPlugin(
+		pluginName,
 		properties,
 		tccore.TRCSHHIVEK_CERT,
 		tccore.TRCSHHIVEK_KEY,

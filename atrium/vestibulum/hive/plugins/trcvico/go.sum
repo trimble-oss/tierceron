@@ -23,8 +23,8 @@ github.com/townsendmerino/aikit v1.37.0 h1:a3Qv60HekJNGLNpZ3YrcmdVroNQrd3YdMEBN0
 github.com/townsendmerino/aikit v1.37.0/go.mod h1:DCoyKC6l6F1CBt5SJSvX8UjktEKXsrln1MuNOSebam8=
 github.com/townsendmerino/goinfer v0.17.2 h1:7wDqLrwy/DOLL6mBmd4zNlVuabKn0iBxbW0peXPGlZc=
 github.com/townsendmerino/goinfer v0.17.2/go.mod h1:3AyCJl5nc9ow6qVfPsQeewgdkR7rlGCFOukS+EF3IOg=
-github.com/trimble-oss/tierceron-core/v2 v2.11.10 h1:iO2oCIGs4ELvaJ5tGQz/2fAM10hHj7ucOYTL8xoRT5k=
-github.com/trimble-oss/tierceron-core/v2 v2.11.10/go.mod h1:6+HhhuluOxHaPnr30G6vvKoQP+pM5J5ruhNGVTTvYs0=
+github.com/trimble-oss/tierceron-core/v2 v2.11.11 h1:g4vEU0YUeb0MVnJ6bHQGY7WDTMtqrXvGq9IqH8ZAVN8=
+github.com/trimble-oss/tierceron-core/v2 v2.11.11/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
 github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
 github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b h1:RHqkdK9UFx7PK3zSfloHuZLp+NKFVB0oEy8cRFQ3Qls=
@@ -41,6 +41,8 @@ go.opentelemetry.io/otel/sdk/metric v1.43.0 h1:S88dyqXjJkuBNLeMcVPRFXpRw2fuwdvfC
 go.opentelemetry.io/otel/sdk/metric v1.43.0/go.mod h1:C/RJtwSEJ5hzTiUz5pXF1kILHStzb9zFlIEe85bhj6A=
 go.opentelemetry.io/otel/trace v1.43.0 h1:BkNrHpup+4k4w+ZZ86CZoHHEkohws8AY+WTX09nk+3A=
 go.opentelemetry.io/otel/trace v1.43.0/go.mod h1:/QJhyVBUUswCphDVxq+8mld+AvhXZLhe+8WVFxiFff0=
+golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f h1:W3F4c+6OLc6H2lb//N1q4WpJkhzJCK5J6kUi1NTVXfM=
+golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f/go.mod h1:J1xhfL/vlindoeF/aINzNzt2Bket5bjo9sdOYzOsU80=
 golang.org/x/net v0.58.0 h1:ynWG7rqYi4ccpTEuPZ2QGWHktVEM9DMCj9yzDE0Q7To=
 golang.org/x/net v0.58.0/go.mod h1:YwCddHnFlT7eLQqVprV19OnhLGtc5xOKgE0RyqgfWAU=
 golang.org/x/sys v0.47.0 h1:o7XGOvZQCADBQQ4Y7VNq2dRWQR7JmOUW8Kxx4ZsNgWs=

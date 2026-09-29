@@ -21,8 +21,10 @@ func Init(pluginName string,
 	if _, ok := (*properties)["log"].(*log.Logger); ok {
 		logger = (*properties)["log"].(*log.Logger)
 	}
+	logger = tccore.NewPluginLogger(pluginName, logger)
 
 	configContext := &tccore.ConfigContext{
+		PluginName:  pluginName,
 		Config:      properties,
 		ConfigCerts: &map[string][]byte{},
 		Log:         logger,
