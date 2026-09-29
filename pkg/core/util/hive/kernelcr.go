@@ -1637,6 +1637,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				newMsg := &tccore.ChatMsg{
 					Name:          &q,
 					KernelId:      &pluginHandler.Id,
+					TargetPod:     msg.TargetPod,
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
 					StatisticsDoc: msg.StatisticsDoc,

@@ -183,6 +183,54 @@ func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) (
 	return deliveries, nil
 }
 
+func kernelIDMatchesPod(targetKernelID string, podID string) bool {
+	targetKernelID = strings.TrimSpace(targetKernelID)
+	podID = strings.TrimSpace(podID)
+	if targetKernelID == podID {
+		return true
+	}
+	targetOrdinal, err := strconv.Atoi(targetKernelID)
+	if err != nil {
+		return false
+	}
+	separator := strings.LastIndex(podID, "-")
+	if separator < 0 {
+		return false
+	}
+	podOrdinal, err := strconv.Atoi(podID[separator+1:])
+	return err == nil && targetOrdinal == podOrdinal
+}
+
+func (broker *proxyRequestBroker) enqueueToPod(targetKernelID string, request *proxyRequestEnvelope) error {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+
+	targetKernelID = strings.TrimSpace(targetKernelID)
+	deliveryKey := ""
+	for candidateKey, host := range broker.hosts {
+		if time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+			delete(broker.hosts, candidateKey)
+			delete(broker.deliveryQueues, candidateKey)
+			continue
+		}
+		_, podID, found := strings.Cut(candidateKey, "/")
+		if !found || !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) || !kernelIDMatchesPod(targetKernelID, podID) {
+			continue
+		}
+		if deliveryKey != "" {
+			return fmt.Errorf("target kernel ID %q matches multiple connected pods", targetKernelID)
+		}
+		deliveryKey = candidateKey
+	}
+	if deliveryKey == "" {
+		return fmt.Errorf("target kernel ID %q is not connected", targetKernelID)
+	}
+	broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
+	close(broker.changed)
+	broker.changed = make(chan struct{})
+	return nil
+}
+
 func (broker *proxyRequestBroker) registerHost(hostID string, statefulSetID string, supportedPlugins map[string]struct{}) {
 	if hostID == "" || statefulSetID == "" || len(supportedPlugins) == 0 {
 		return
@@ -652,6 +700,31 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 		return "", err
 	}
 
+	select {
+	case response := <-responseChan:
+		return decodeProxyDiagnosticResponse(response), nil
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+}
+
+// EnqueueProxyRequestToPod sends a request to exactly one connected pod identified
+// by its kernel ID. Empty targets use EnqueueProxyRequest fan-out.
+func EnqueueProxyRequestToPod(ctx context.Context, messageID string, targetKernelID string, targetPlugins []string, serializedRequest string) (string, error) {
+	if strings.TrimSpace(targetKernelID) == "" {
+		return EnqueueProxyRequest(ctx, messageID, targetPlugins, serializedRequest)
+	}
+	responseChan := make(chan string, 1)
+	proxyReplies.Store(messageID, responseChan)
+	defer proxyReplies.Delete(messageID)
+	envelope := &proxyRequestEnvelope{
+		messageID:         messageID,
+		targetPlugins:     append([]string(nil), targetPlugins...),
+		serializedRequest: serializedRequest,
+	}
+	if err := proxyRequests.enqueueToPod(targetKernelID, envelope); err != nil {
+		return "", err
+	}
 	select {
 	case response := <-responseChan:
 		return decodeProxyDiagnosticResponse(response), nil
