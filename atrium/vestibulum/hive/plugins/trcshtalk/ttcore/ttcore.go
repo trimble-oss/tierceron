@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"slices"
+	"strings"
 	"sync"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -51,6 +52,9 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.D
 		}
 		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
 	}
+	if _, _, ok := loggingDirective(req.GetData()); ok {
+		return runLocalDiagnostics(req)
+	}
 	if len(req.GetDiagnostics()) == 0 {
 		if response, handled := postProxyResponse(req); handled {
 			return response, nil
@@ -67,7 +71,10 @@ func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, err
 	cmds := req.GetDiagnostics()
 	queries := []string{}
 	queryTest := req.GetQueryId() + ":"
-	if slices.Contains(cmds, pb.Diagnostics_ALL) {
+	if pluginName, action, ok := loggingDirective(req.GetData()); ok {
+		queries = append(queries, pluginName)
+		queryTest = "log " + action
+	} else if slices.Contains(cmds, pb.Diagnostics_ALL) {
 		// run all
 		// set queries to all cmds
 		configContext.Log.Println("Running all queries.")
@@ -148,6 +155,24 @@ func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, err
 			}
 		}
 	}
+}
+
+func loggingDirective(data []string) (string, string, bool) {
+	fields := data
+	if len(fields) == 1 {
+		fields = strings.Fields(fields[0])
+	}
+	if len(fields) == 4 && strings.TrimPrefix(strings.ToLower(fields[0]), "@") == "trcshtalk" {
+		fields = fields[1:]
+	}
+	if len(fields) != 3 || strings.ToLower(fields[1]) != "log" {
+		return "", "", false
+	}
+	action := strings.ToLower(fields[2])
+	if fields[0] == "" || (action != "start" && action != "stop") {
+		return "", "", false
+	}
+	return fields[0], action, true
 }
 
 func enqueueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {

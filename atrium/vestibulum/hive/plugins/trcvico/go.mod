@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/townsendmerino/goinfer v0.17.2
-	github.com/trimble-oss/tierceron-core/v2 v2.11.11
+	github.com/trimble-oss/tierceron-core/v2 v2.11.12
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.12
