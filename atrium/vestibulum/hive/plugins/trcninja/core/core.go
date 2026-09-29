@@ -135,7 +135,8 @@ func Init(pluginName string, properties *map[string]interface{},
 	}
 
 	var err error
-	configContext, err := tccore.Init(
+	configContext, err := tccore.InitWithPlugin(
+		pluginName,
 		properties,
 		CONFLUENT_CLIENT_CERT,        // confluent client cert
 		CONFLUENT_SCHEMA_CLIENT_CERT, // confluent schema client cert
@@ -170,8 +171,6 @@ func Init(pluginName string, properties *map[string]interface{},
 			(*configContext.ConfigCerts)[SERVICE_CLIENT_ROOT_CERT] = rootCertBytes
 		}
 	}
-	// Change logging context
-	configContext.Log = log.New(configContext.Log.Writer(), "[ninja]", log.LstdFlags)
 	SetDefaultConsumerGroupIDFunc(defaultKafkaConsumerGroupID)
 	SetConfigContext(configContext)
 

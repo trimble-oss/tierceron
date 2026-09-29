@@ -508,7 +508,8 @@ func GetConfigPaths(pluginName string) []string {
 func Init(pluginName string, properties *map[string]any) {
 	var err error
 
-	configContext, err = core.Init(
+	configContext, err = core.InitWithPlugin(
+		pluginName,
 		properties,
 		core.TRCSHHIVEK_CERT,
 		core.TRCSHHIVEK_KEY,

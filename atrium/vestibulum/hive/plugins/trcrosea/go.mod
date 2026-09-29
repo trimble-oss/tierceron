@@ -1,13 +1,13 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea
 
-go 1.27.0
+go 1.27.1
 
 require (
 	github.com/charmbracelet/bubbles v0.21.1
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.11.10
+	github.com/trimble-oss/tierceron-core/v2 v2.11.12
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v2 v2.4.0
 )
