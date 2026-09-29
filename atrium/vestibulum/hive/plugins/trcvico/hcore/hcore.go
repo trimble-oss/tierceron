@@ -58,9 +58,11 @@ var (
 )
 
 const (
-	COMMON_PATH                 = "./config.yml"
-	hubClientPluginsMetadataKey = "x-trc-supported-deployments"
-	hubClientRequestTimeout     = 30 * time.Second
+	COMMON_PATH                     = "./config.yml"
+	hubClientPluginsMetadataKey     = "x-trc-supported-deployments"
+	hubClientPodMetadataKey         = "x-trc-pod-id"
+	hubClientStatefulSetMetadataKey = "x-trc-statefulset-id"
+	hubClientRequestTimeout         = 30 * time.Second
 )
 
 type localModelRuntime struct {
@@ -89,9 +91,29 @@ type proxyRequestEnvelope struct {
 }
 
 type proxyRequestBroker struct {
-	mu      sync.Mutex
-	queues  map[string][]*proxyRequestEnvelope
-	changed chan struct{}
+	mu                 sync.Mutex
+	queues             map[string][]*proxyRequestEnvelope
+	backupQueueEntries int
+	deliveryQueues     map[string][]*proxyRequestEnvelope
+	hosts              map[string]hubClientHost
+	loggingDirectives  map[string]loggingDirective
+	changed            chan struct{}
+}
+
+const maxProxyRequestBackupQueueEntries = 30
+
+var errProxyRequestBackupQueueFull = errors.New("proxy request backup queue is full")
+
+type hubClientHost struct {
+	supportedPlugins map[string]struct{}
+	statefulSetID    string
+	lastSeen         time.Time
+	loggingVersions  map[string]uint64
+}
+
+type loggingDirective struct {
+	request *proxyRequestEnvelope
+	version uint64
 }
 
 type proxyDiagnosticResponseEnvelope struct {
@@ -101,9 +123,16 @@ type proxyDiagnosticResponseEnvelope struct {
 
 func newProxyRequestBroker() *proxyRequestBroker {
 	return &proxyRequestBroker{
-		queues:  make(map[string][]*proxyRequestEnvelope),
-		changed: make(chan struct{}),
+		queues:            make(map[string][]*proxyRequestEnvelope),
+		deliveryQueues:    make(map[string][]*proxyRequestEnvelope),
+		hosts:             make(map[string]hubClientHost),
+		loggingDirectives: make(map[string]loggingDirective),
+		changed:           make(chan struct{}),
 	}
+}
+
+func hubClientDeliveryKey(statefulSetID string, podID string) string {
+	return strings.TrimSpace(statefulSetID) + "/" + strings.TrimSpace(podID)
 }
 
 func proxyRequestQueueKey(targetPlugins []string) string {
@@ -124,9 +153,110 @@ func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
 	broker.changed = make(chan struct{})
 }
 
-func (broker *proxyRequestBroker) dequeue(ctx context.Context, supportedPlugins map[string]struct{}) (*proxyRequestEnvelope, error) {
+func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) (int, error) {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+
+	deliveries := 0
+	for deliveryKey, host := range broker.hosts {
+		if time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+			delete(broker.hosts, deliveryKey)
+			delete(broker.deliveryQueues, deliveryKey)
+			continue
+		}
+		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) {
+			continue
+		}
+		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
+		deliveries++
+	}
+	if deliveries == 0 {
+		if broker.backupQueueEntries >= maxProxyRequestBackupQueueEntries {
+			return 0, errProxyRequestBackupQueueFull
+		}
+		key := proxyRequestQueueKey(request.targetPlugins)
+		broker.queues[key] = append(broker.queues[key], request)
+		broker.backupQueueEntries++
+	}
+	close(broker.changed)
+	broker.changed = make(chan struct{})
+	return deliveries, nil
+}
+
+func (broker *proxyRequestBroker) registerHost(hostID string, statefulSetID string, supportedPlugins map[string]struct{}) {
+	if hostID == "" || statefulSetID == "" || len(supportedPlugins) == 0 {
+		return
+	}
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID)
+	host := broker.hosts[deliveryKey]
+	if host.loggingVersions == nil {
+		host.loggingVersions = make(map[string]uint64)
+	}
+	host.supportedPlugins = supportedPlugins
+	host.statefulSetID = statefulSetID
+	host.lastSeen = time.Now()
+	for pluginName, directive := range broker.loggingDirectives {
+		if _, supportsPlugin := supportedPlugins[pluginName]; supportsPlugin && host.loggingVersions[pluginName] < directive.version {
+			broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], directive.request)
+			host.loggingVersions[pluginName] = directive.version
+		}
+	}
+	broker.hosts[deliveryKey] = host
+	close(broker.changed)
+	broker.changed = make(chan struct{})
+}
+
+func (broker *proxyRequestBroker) enqueueLoggingDirective(pluginName string, request *proxyRequestEnvelope) int {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+
+	directive := broker.loggingDirectives[pluginName]
+	directive.request = request
+	directive.version++
+	broker.loggingDirectives[pluginName] = directive
+
+	deliveries := 0
+	for deliveryKey, host := range broker.hosts {
+		if time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+			delete(broker.hosts, deliveryKey)
+			delete(broker.deliveryQueues, deliveryKey)
+			continue
+		}
+		if _, supportsPlugin := host.supportedPlugins[pluginName]; !supportsPlugin {
+			continue
+		}
+		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
+		if host.loggingVersions == nil {
+			host.loggingVersions = make(map[string]uint64)
+		}
+		host.loggingVersions[pluginName] = directive.version
+		broker.hosts[deliveryKey] = host
+		deliveries++
+	}
+
+	if deliveries > 0 {
+		close(broker.changed)
+		broker.changed = make(chan struct{})
+	}
+	return deliveries
+}
+
+func (broker *proxyRequestBroker) dequeue(ctx context.Context, hostID string, statefulSetID string, supportedPlugins map[string]struct{}) (*proxyRequestEnvelope, error) {
+	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID)
 	for {
 		broker.mu.Lock()
+		if deliveryQueue := broker.deliveryQueues[deliveryKey]; len(deliveryQueue) > 0 {
+			request := deliveryQueue[0]
+			if len(deliveryQueue) == 1 {
+				delete(broker.deliveryQueues, deliveryKey)
+			} else {
+				broker.deliveryQueues[deliveryKey] = deliveryQueue[1:]
+			}
+			broker.mu.Unlock()
+			return request, nil
+		}
 		for key, queue := range broker.queues {
 			if len(queue) == 0 || !proxyRequestSupported(queue[0].targetPlugins, supportedPlugins) {
 				continue
@@ -137,6 +267,7 @@ func (broker *proxyRequestBroker) dequeue(ctx context.Context, supportedPlugins 
 			} else {
 				broker.queues[key] = queue[1:]
 			}
+			broker.backupQueueEntries--
 			broker.mu.Unlock()
 			return request, nil
 		}
@@ -433,6 +564,38 @@ func supportedPluginsFromIncomingContext(ctx context.Context) map[string]struct{
 	return plugins
 }
 
+func hubClientPodFromIncomingContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	for _, podID := range md.Get(hubClientPodMetadataKey) {
+		if podID = strings.TrimSpace(podID); podID != "" {
+			return podID
+		}
+	}
+	return ""
+}
+
+func hubClientStatefulSetFromIncomingContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return ""
+	}
+	for _, statefulSetID := range md.Get(hubClientStatefulSetMetadataKey) {
+		if statefulSetID = strings.TrimSpace(statefulSetID); statefulSetID != "" {
+			return statefulSetID
+		}
+	}
+	return ""
+}
+
 func targetPluginsForRequest(req *ttsdk.DiagnosticRequest) ([]string, bool) {
 	targetPlugins := make([]string, 0, len(req.GetDiagnostics()))
 	seen := map[string]struct{}{}
@@ -485,7 +648,9 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 		return "", ctx.Err()
 	default:
 	}
-	proxyRequests.enqueue(envelope)
+	if _, err := proxyRequests.enqueueFanout(envelope); err != nil {
+		return "", err
+	}
 
 	select {
 	case response := <-responseChan:
@@ -513,21 +678,39 @@ func decodeProxyDiagnosticResponse(response string) string {
 // DequeueProxyRequest returns the next request supported by the polling hub client.
 func DequeueProxyRequest(ctx context.Context) (string, error) {
 	supportedPlugins := supportedPluginsFromIncomingContext(ctx)
-	proxyRequest, err := proxyRequests.dequeue(ctx, supportedPlugins)
+	podID := hubClientPodFromIncomingContext(ctx)
+	statefulSetID := hubClientStatefulSetFromIncomingContext(ctx)
+	proxyRequests.registerHost(podID, statefulSetID, supportedPlugins)
+	proxyRequest, err := proxyRequests.dequeue(ctx, podID, statefulSetID, supportedPlugins)
 	if err != nil {
 		return "", err
 	}
 	return proxyRequest.serializedRequest, nil
 }
 
-// PostProxyResponse resolves a queued request by message ID.
+// EnqueueLoggingDirective records the latest desired logging state and queues it for every
+// active hub client hosting the target plugin. New or reconnecting hosts receive it on poll.
+func EnqueueLoggingDirective(messageID string, pluginName string, serializedRequest string) int {
+	return proxyRequests.enqueueLoggingDirective(pluginName, &proxyRequestEnvelope{
+		messageID:         messageID,
+		targetPlugins:     []string{pluginName},
+		serializedRequest: serializedRequest,
+	})
+}
+
+// PostProxyResponse resolves a queued request by message ID. Fan-out requests may
+// receive multiple replies, so only the first response is retained.
 func PostProxyResponse(messageID string, result string) bool {
 	responseChanValue, ok := proxyReplies.Load(messageID)
 	if !ok {
 		return false
 	}
-	responseChanValue.(chan string) <- result
-	return true
+	select {
+	case responseChanValue.(chan string) <- result:
+		return true
+	default:
+		return false
+	}
 }
 
 // IsHubClientBroadcast reports whether a data payload uses trcshtalk's broadcast message ID.

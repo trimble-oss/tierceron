@@ -451,6 +451,7 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 			DeploymentConfig: deployConfig,
 			ConfigContext: &tccore.ConfigContext{
 				Log:              driverConfig.CoreConfig.Log,
+				KernelID:         pluginHandler.Id,
 				ChatReceiverChan: pluginHandler.ConfigContext.ChatReceiverChan,
 			},
 			KernelCtx: &KernelCtx{
