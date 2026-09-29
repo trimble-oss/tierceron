@@ -71,6 +71,9 @@ func IncomingTTBToken(ctx context.Context) string {
 }
 
 func ValidateIncomingTTBToken(configCtx *tccore.ConfigContext, incomingCtx context.Context) error {
+if configCtx == nil {
+		return errors.New("missing config context")
+	}
 	mode := resolveTrcshTalkMode(configCtx.Config)
 	if mode != ModeHub {
 		return nil
