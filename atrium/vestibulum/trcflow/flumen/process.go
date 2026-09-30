@@ -254,6 +254,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	currentTokenNamePtr := driverConfig.CoreConfig.GetCurrentToken("config_token_%s")
 
 	// 4. Create config for vault for queries to vault.
+	flowLogger := logger
+	if flowLogger == nil {
+		flowLogger = driverConfig.CoreConfig.Log
+	}
 	driverConfigBasis := config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
 			Regions:             driverConfig.CoreConfig.Regions,
@@ -264,7 +268,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			EnvBasis:            driverConfig.CoreConfig.EnvBasis,
 			IsEditor:            driverConfig.CoreConfig.IsEditor,
 			ExitOnFailure:       driverConfig.CoreConfig.ExitOnFailure,
-			Log:                 driverConfig.CoreConfig.Log,
+			Log:                 flowLogger,
 		},
 	}
 
