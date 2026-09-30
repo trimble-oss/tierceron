@@ -934,14 +934,14 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsd
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing diagnostic request")
 	}
-	if response, handled := postProxyResponse(req); handled {
-		return response, nil
-	}
 	if IsHubClientBroadcast(req.GetMessageId(), req.GetData()) {
 		if err := RelayHubClientBroadcast(req.GetMessageId(), req.GetData()); err != nil {
 			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Broadcast relayed"}, nil
+	}
+	if response, handled := postProxyResponse(req); handled {
+		return response, nil
 	}
 	if isHubClientPoll(req) {
 		return dequeueProxyRequest(ctx, req)
