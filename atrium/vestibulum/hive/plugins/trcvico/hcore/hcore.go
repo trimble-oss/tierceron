@@ -54,6 +54,7 @@ var (
 	proxyDiagnosticForwarder     = forwardToHubClient
 	localModelRoutePromptBuilder = defaultLocalModelRoutePromptBuilder
 	localModelRouteNormalizer    = defaultLocalModelRouteNormalizer
+	localModelRouteTranslator    func(messageID string, routingResults string) (*LocalModelRouteExecution, error)
 	localModelReadyHook          = func(*tccore.ConfigContext) error { return nil }
 )
 
@@ -368,6 +369,11 @@ func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
 	localModelRouteNormalizer = normalizer
 }
 
+// SetLocalModelRouteTranslator overrides how normalized plans are executed for chat requests.
+func SetLocalModelRouteTranslator(translator func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) {
+	localModelRouteTranslator = translator
+}
+
 // SetLocalModelReadyHook registers a callback that runs after the local model has loaded.
 func SetLocalModelReadyHook(hook func(configContext *tccore.ConfigContext) error) {
 	if hook == nil {
@@ -419,6 +425,13 @@ func ExecuteLocalModelRoute(ctx context.Context, messageID string, queryID strin
 	routingResults, err := RouteLocalModelPrompt(prompt)
 	if err != nil {
 		return "", err
+	}
+	return executeLocalModelRoutingResults(ctx, messageID, routingResults, translate)
+}
+
+func executeLocalModelRoutingResults(ctx context.Context, messageID string, routingResults string, translate func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) (string, error) {
+	if translate == nil {
+		return routingResults, nil
 	}
 	execution, err := translate(messageID, routingResults)
 	if err != nil {
@@ -1362,6 +1375,15 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
 			response, err := queryLocalModelForRouting(prompt)
+			if err == nil && localModelRouteTranslator != nil {
+				messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
+				if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
+					messageID = strings.TrimSpace(*event.RoutingId)
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
+				response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
+				cancel()
+			}
 			if err != nil {
 				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 				response = "Vico local model unavailable."
