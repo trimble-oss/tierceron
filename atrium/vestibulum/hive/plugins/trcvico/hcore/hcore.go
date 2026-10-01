@@ -54,6 +54,7 @@ var (
 	proxyDiagnosticForwarder     = forwardToHubClient
 	localModelRoutePromptBuilder = defaultLocalModelRoutePromptBuilder
 	localModelRouteNormalizer    = defaultLocalModelRouteNormalizer
+	localModelRouteTranslator    func(messageID string, routingResults string) (*LocalModelRouteExecution, error)
 	localModelReadyHook          = func(*tccore.ConfigContext) error { return nil }
 )
 
@@ -368,6 +369,11 @@ func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
 	localModelRouteNormalizer = normalizer
 }
 
+// SetLocalModelRouteTranslator overrides how normalized plans are executed for chat requests.
+func SetLocalModelRouteTranslator(translator func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) {
+	localModelRouteTranslator = translator
+}
+
 // SetLocalModelReadyHook registers a callback that runs after the local model has loaded.
 func SetLocalModelReadyHook(hook func(configContext *tccore.ConfigContext) error) {
 	if hook == nil {
@@ -419,6 +425,13 @@ func ExecuteLocalModelRoute(ctx context.Context, messageID string, queryID strin
 	routingResults, err := RouteLocalModelPrompt(prompt)
 	if err != nil {
 		return "", err
+	}
+	return executeLocalModelRoutingResults(ctx, messageID, routingResults, translate)
+}
+
+func executeLocalModelRoutingResults(ctx context.Context, messageID string, routingResults string, translate func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) (string, error) {
+	if translate == nil {
+		return routingResults, nil
 	}
 	execution, err := translate(messageID, routingResults)
 	if err != nil {
@@ -1058,7 +1071,7 @@ func initLocalModel() error {
 		maxTokens = 256
 	}
 
-	temperature := 0.2
+	temperature := 0.0
 	if val, ok := (*configContext.Config)["local_model_temperature"]; ok && val != nil {
 		switch typedVal := val.(type) {
 		case float64:
@@ -1123,8 +1136,14 @@ func initLocalModel() error {
 	}
 
 	var template *chat.Template
+	stopIDs := make([]int, 0)
 	if detectedTemplate, err := chat.Detect(chat.Meta{ChatTemplate: tok.ChatTemplate(), HasToken: tok.Has}); err == nil {
 		template = detectedTemplate
+		for _, stop := range template.Stops().Strings {
+			if stopID, ok := tok.TokenID(stop); ok {
+				stopIDs = append(stopIDs, stopID)
+			}
+		}
 	} else if !errors.Is(err, chat.ErrUnknownTemplate) {
 		configContext.Log.Printf("vico local model chat template detection failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 	}
@@ -1135,6 +1154,7 @@ func initLocalModel() error {
 			Temperature: temperature,
 			TopK:        topK,
 			TopP:        topP,
+			StopIDs:     stopIDs,
 		},
 		model:     model,
 		tokenizer: tok,
@@ -1237,6 +1257,12 @@ func extractPrompt(event *tccore.ChatMsg) string {
 	if event.Response != nil && strings.TrimSpace(*event.Response) != "" && *event.Response != "Service unavailable" {
 		return strings.TrimSpace(*event.Response)
 	}
+	if event.ChatId != nil {
+		prompt := strings.TrimSpace(*event.ChatId)
+		if prompt != "" && prompt != "PROGRESS" {
+			return prompt
+		}
+	}
 	switch promptValue := event.HookResponse.(type) {
 	case string:
 		return strings.TrimSpace(promptValue)
@@ -1254,15 +1280,26 @@ func encodePrompt(runtime *localModelRuntime, prompt string) ([]int, error) {
 	return encodeTurns(runtime, []chat.Turn{{Role: "user", Content: prompt}})
 }
 
+func splitSystemTurn(turns []chat.Turn) (string, []chat.Turn) {
+	if len(turns) == 0 || !strings.EqualFold(strings.TrimSpace(turns[0].Role), "system") {
+		return "", turns
+	}
+	return strings.TrimSpace(turns[0].Content), turns[1:]
+}
+
 func encodeTurns(runtime *localModelRuntime, turns []chat.Turn) ([]int, error) {
 	if runtime == nil || runtime.tokenizer == nil {
 		return nil, errors.New("vico local model is not initialized")
 	}
+	systemPrompt, conversationTurns := splitSystemTurn(turns)
 	if runtime.template != nil {
-		return runtime.tokenizer.EncodeSegments(runtime.template.RenderSegments("", turns), false)
+		return runtime.tokenizer.EncodeSegments(runtime.template.RenderSegments(systemPrompt, conversationTurns), false)
 	}
-	parts := make([]string, 0, len(turns))
-	for _, turn := range turns {
+	parts := make([]string, 0, len(conversationTurns)+1)
+	if systemPrompt != "" {
+		parts = append(parts, "SYSTEM:\n"+systemPrompt)
+	}
+	for _, turn := range conversationTurns {
 		content := strings.TrimSpace(turn.Content)
 		if content == "" {
 			continue
@@ -1324,7 +1361,7 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			progressResp := "Running Vico Diagnostics..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
-		case targetPluginForEvent(event) != "":
+		case targetPluginForEvent(event) != "" && targetPluginForEvent(event) != "vico":
 			targetPlugin := targetPluginForEvent(event)
 			configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
 			response, err := proxyDiagnosticForwarder(event, targetPlugin)
@@ -1338,6 +1375,15 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
 			response, err := queryLocalModelForRouting(prompt)
+			if err == nil && localModelRouteTranslator != nil {
+				messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
+				if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
+					messageID = strings.TrimSpace(*event.RoutingId)
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
+				response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
+				cancel()
+			}
 			if err != nil {
 				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 				response = "Vico local model unavailable."
