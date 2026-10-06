@@ -1,0 +1,19 @@
+# trchiveye policy:
+# - TypeScript templates must be checked into the repo under trc_templates.
+# - Runtime dynamic package download is disabled (no npx fallback).
+# - Bootstrap tsgo during build via: make tsgo-bootstrap
+#   (npm-free: either copy an internally provided tsgo binary, or go install tsgo).
+# - Runtime uses .tools/tsgo/tsgo (or preinstalled tsgo on PATH).
+
+# Optional JavaScript asset server settings.
+hiveye_js_enabled: true
+hiveye_js_listen: ":8088"
+hiveye_js_prefix: "/hiveye/js/"
+
+typescript_templates:
+  - trc_templates/TypeScript/Hiveye/hello.ts.tmpl
+
+# Optional integrity pins for rendered template contents.
+# When provided, trchiveye computes SHA-256 of the rendered source and enforces exact match.
+# typescript_template_sha256:
+#   trc_templates/TypeScript/Hiveye/hello.ts.tmpl: "<sha256-of-rendered-template>"
