@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/trimble-oss/tierceron v1.55.1
-	github.com/trimble-oss/tierceron-core/v2 v2.12.1
+	github.com/trimble-oss/tierceron-core/v2 v2.12.2
 	github.com/trimble-oss/tierceron-nute v1.1.3
 	github.com/trimble-oss/tierceron-nute-core v1.0.9
 	google.golang.org/api v0.264.0
