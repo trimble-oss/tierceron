@@ -51,10 +51,12 @@ var (
 	registerDiagnosticsService         = func(server *grpc.Server) {
 		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
 	}
-	proxyDiagnosticForwarder     = forwardToHubClient
-	localModelRoutePromptBuilder = defaultLocalModelRoutePromptBuilder
-	localModelRouteNormalizer    = defaultLocalModelRouteNormalizer
-	localModelReadyHook          = func(*tccore.ConfigContext) error { return nil }
+	proxyDiagnosticForwarder      = forwardToHubClient
+	localModelRoutePromptBuilder  = defaultLocalModelRoutePromptBuilder
+	localModelRouteNormalizer     = defaultLocalModelRouteNormalizer
+	localModelRoutePromptResolver func(prompt string) (string, bool)
+	localModelRouteTranslator     func(messageID string, routingResults string) (*LocalModelRouteExecution, error)
+	localModelReadyHook           = func(*tccore.ConfigContext) error { return nil }
 )
 
 const (
@@ -96,7 +98,7 @@ type proxyRequestBroker struct {
 	backupQueueEntries int
 	deliveryQueues     map[string][]*proxyRequestEnvelope
 	hosts              map[string]hubClientHost
-	loggingDirectives  map[string]loggingDirective
+	directives         map[string]proxyDirective
 	changed            chan struct{}
 }
 
@@ -105,13 +107,14 @@ const maxProxyRequestBackupQueueEntries = 30
 var errProxyRequestBackupQueueFull = errors.New("proxy request backup queue is full")
 
 type hubClientHost struct {
-	supportedPlugins map[string]struct{}
-	statefulSetID    string
-	lastSeen         time.Time
-	loggingVersions  map[string]uint64
+	supportedPlugins  map[string]struct{}
+	statefulSetID     string
+	lastSeen          time.Time
+	activePolls       int
+	directiveVersions map[string]uint64
 }
 
-type loggingDirective struct {
+type proxyDirective struct {
 	request *proxyRequestEnvelope
 	version uint64
 }
@@ -123,11 +126,11 @@ type proxyDiagnosticResponseEnvelope struct {
 
 func newProxyRequestBroker() *proxyRequestBroker {
 	return &proxyRequestBroker{
-		queues:            make(map[string][]*proxyRequestEnvelope),
-		deliveryQueues:    make(map[string][]*proxyRequestEnvelope),
-		hosts:             make(map[string]hubClientHost),
-		loggingDirectives: make(map[string]loggingDirective),
-		changed:           make(chan struct{}),
+		queues:         make(map[string][]*proxyRequestEnvelope),
+		deliveryQueues: make(map[string][]*proxyRequestEnvelope),
+		hosts:          make(map[string]hubClientHost),
+		directives:     make(map[string]proxyDirective),
+		changed:        make(chan struct{}),
 	}
 }
 
@@ -159,7 +162,7 @@ func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) (
 
 	deliveries := 0
 	for deliveryKey, host := range broker.hosts {
-		if time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+		if host.activePolls == 0 && time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
 			delete(broker.hosts, deliveryKey)
 			delete(broker.deliveryQueues, deliveryKey)
 			continue
@@ -208,7 +211,7 @@ func (broker *proxyRequestBroker) enqueueToPod(targetKernelID string, request *p
 	targetKernelID = strings.TrimSpace(targetKernelID)
 	deliveryKey := ""
 	for candidateKey, host := range broker.hosts {
-		if time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+		if host.activePolls == 0 && time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
 			delete(broker.hosts, candidateKey)
 			delete(broker.deliveryQueues, candidateKey)
 			continue
@@ -237,49 +240,86 @@ func (broker *proxyRequestBroker) registerHost(hostID string, statefulSetID stri
 	}
 	broker.mu.Lock()
 	defer broker.mu.Unlock()
+	broker.registerHostLocked(hostID, statefulSetID, supportedPlugins)
+}
+
+func (broker *proxyRequestBroker) registerHostLocked(hostID string, statefulSetID string, supportedPlugins map[string]struct{}) string {
+	if hostID == "" || statefulSetID == "" || len(supportedPlugins) == 0 {
+		return ""
+	}
 	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID)
 	host := broker.hosts[deliveryKey]
-	if host.loggingVersions == nil {
-		host.loggingVersions = make(map[string]uint64)
+	if host.directiveVersions == nil {
+		host.directiveVersions = make(map[string]uint64)
 	}
 	host.supportedPlugins = supportedPlugins
 	host.statefulSetID = statefulSetID
 	host.lastSeen = time.Now()
-	for pluginName, directive := range broker.loggingDirectives {
-		if _, supportsPlugin := supportedPlugins[pluginName]; supportsPlugin && host.loggingVersions[pluginName] < directive.version {
+	for directiveKey, directive := range broker.directives {
+		if proxyRequestSupported(directive.request.targetPlugins, supportedPlugins) && host.directiveVersions[directiveKey] < directive.version {
 			broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], directive.request)
-			host.loggingVersions[pluginName] = directive.version
+			host.directiveVersions[directiveKey] = directive.version
 		}
 	}
 	broker.hosts[deliveryKey] = host
 	close(broker.changed)
 	broker.changed = make(chan struct{})
+	return deliveryKey
 }
 
-func (broker *proxyRequestBroker) enqueueLoggingDirective(pluginName string, request *proxyRequestEnvelope) int {
+func (broker *proxyRequestBroker) beginHostPoll(hostID string, statefulSetID string, supportedPlugins map[string]struct{}) string {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	deliveryKey := broker.registerHostLocked(hostID, statefulSetID, supportedPlugins)
+	if deliveryKey != "" {
+		host := broker.hosts[deliveryKey]
+		host.activePolls++
+		broker.hosts[deliveryKey] = host
+	}
+	return deliveryKey
+}
+
+func (broker *proxyRequestBroker) endHostPoll(deliveryKey string) {
+	if deliveryKey == "" {
+		return
+	}
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	host, ok := broker.hosts[deliveryKey]
+	if !ok {
+		return
+	}
+	if host.activePolls > 0 {
+		host.activePolls--
+	}
+	host.lastSeen = time.Now()
+	broker.hosts[deliveryKey] = host
+}
+
+func (broker *proxyRequestBroker) enqueueDirective(directiveKey string, request *proxyRequestEnvelope) int {
 	broker.mu.Lock()
 	defer broker.mu.Unlock()
 
-	directive := broker.loggingDirectives[pluginName]
+	directive := broker.directives[directiveKey]
 	directive.request = request
 	directive.version++
-	broker.loggingDirectives[pluginName] = directive
+	broker.directives[directiveKey] = directive
 
 	deliveries := 0
 	for deliveryKey, host := range broker.hosts {
-		if time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+		if host.activePolls == 0 && time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
 			delete(broker.hosts, deliveryKey)
 			delete(broker.deliveryQueues, deliveryKey)
 			continue
 		}
-		if _, supportsPlugin := host.supportedPlugins[pluginName]; !supportsPlugin {
+		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) {
 			continue
 		}
 		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
-		if host.loggingVersions == nil {
-			host.loggingVersions = make(map[string]uint64)
+		if host.directiveVersions == nil {
+			host.directiveVersions = make(map[string]uint64)
 		}
-		host.loggingVersions[pluginName] = directive.version
+		host.directiveVersions[directiveKey] = directive.version
 		broker.hosts[deliveryKey] = host
 		deliveries++
 	}
@@ -359,6 +399,11 @@ func SetLocalModelRoutePromptBuilder(builder func(prompt string) []chat.Turn) {
 	localModelRoutePromptBuilder = builder
 }
 
+// SetLocalModelRoutePromptResolver handles prompts that have a deterministic routing plan without model inference.
+func SetLocalModelRoutePromptResolver(resolver func(prompt string) (string, bool)) {
+	localModelRoutePromptResolver = resolver
+}
+
 // SetLocalModelRouteNormalizer overrides how local-model routing responses are normalized.
 func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
 	if normalizer == nil {
@@ -366,6 +411,11 @@ func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
 		return
 	}
 	localModelRouteNormalizer = normalizer
+}
+
+// SetLocalModelRouteTranslator overrides how normalized plans are executed for chat requests.
+func SetLocalModelRouteTranslator(translator func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) {
+	localModelRouteTranslator = translator
 }
 
 // SetLocalModelReadyHook registers a callback that runs after the local model has loaded.
@@ -419,6 +469,13 @@ func ExecuteLocalModelRoute(ctx context.Context, messageID string, queryID strin
 	routingResults, err := RouteLocalModelPrompt(prompt)
 	if err != nil {
 		return "", err
+	}
+	return executeLocalModelRoutingResults(ctx, messageID, routingResults, translate)
+}
+
+func executeLocalModelRoutingResults(ctx context.Context, messageID string, routingResults string, translate func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) (string, error) {
+	if translate == nil {
+		return routingResults, nil
 	}
 	execution, err := translate(messageID, routingResults)
 	if err != nil {
@@ -753,7 +810,8 @@ func DequeueProxyRequest(ctx context.Context) (string, error) {
 	supportedPlugins := supportedPluginsFromIncomingContext(ctx)
 	podID := hubClientPodFromIncomingContext(ctx)
 	statefulSetID := hubClientStatefulSetFromIncomingContext(ctx)
-	proxyRequests.registerHost(podID, statefulSetID, supportedPlugins)
+	deliveryKey := proxyRequests.beginHostPoll(podID, statefulSetID, supportedPlugins)
+	defer proxyRequests.endHostPoll(deliveryKey)
 	proxyRequest, err := proxyRequests.dequeue(ctx, podID, statefulSetID, supportedPlugins)
 	if err != nil {
 		return "", err
@@ -761,12 +819,12 @@ func DequeueProxyRequest(ctx context.Context) (string, error) {
 	return proxyRequest.serializedRequest, nil
 }
 
-// EnqueueLoggingDirective records the latest desired logging state and queues it for every
-// active hub client hosting the target plugin. New or reconnecting hosts receive it on poll.
-func EnqueueLoggingDirective(messageID string, pluginName string, serializedRequest string) int {
-	return proxyRequests.enqueueLoggingDirective(pluginName, &proxyRequestEnvelope{
+// EnqueueProxyDirective records the latest directive state and queues it for active
+// hub clients that support its targets. New or reconnecting hosts receive it on poll.
+func EnqueueProxyDirective(directiveKey string, messageID string, targetPlugins []string, serializedRequest string) int {
+	return proxyRequests.enqueueDirective(directiveKey, &proxyRequestEnvelope{
 		messageID:         messageID,
-		targetPlugins:     []string{pluginName},
+		targetPlugins:     append([]string(nil), targetPlugins...),
 		serializedRequest: serializedRequest,
 	})
 }
@@ -1058,7 +1116,7 @@ func initLocalModel() error {
 		maxTokens = 256
 	}
 
-	temperature := 0.2
+	temperature := 0.0
 	if val, ok := (*configContext.Config)["local_model_temperature"]; ok && val != nil {
 		switch typedVal := val.(type) {
 		case float64:
@@ -1123,8 +1181,14 @@ func initLocalModel() error {
 	}
 
 	var template *chat.Template
+	stopIDs := make([]int, 0)
 	if detectedTemplate, err := chat.Detect(chat.Meta{ChatTemplate: tok.ChatTemplate(), HasToken: tok.Has}); err == nil {
 		template = detectedTemplate
+		for _, stop := range template.Stops().Strings {
+			if stopID, ok := tok.TokenID(stop); ok {
+				stopIDs = append(stopIDs, stopID)
+			}
+		}
 	} else if !errors.Is(err, chat.ErrUnknownTemplate) {
 		configContext.Log.Printf("vico local model chat template detection failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 	}
@@ -1135,6 +1199,7 @@ func initLocalModel() error {
 			Temperature: temperature,
 			TopK:        topK,
 			TopP:        topP,
+			StopIDs:     stopIDs,
 		},
 		model:     model,
 		tokenizer: tok,
@@ -1237,6 +1302,12 @@ func extractPrompt(event *tccore.ChatMsg) string {
 	if event.Response != nil && strings.TrimSpace(*event.Response) != "" && *event.Response != "Service unavailable" {
 		return strings.TrimSpace(*event.Response)
 	}
+	if event.ChatId != nil {
+		prompt := strings.TrimSpace(*event.ChatId)
+		if prompt != "" && prompt != "PROGRESS" {
+			return prompt
+		}
+	}
 	switch promptValue := event.HookResponse.(type) {
 	case string:
 		return strings.TrimSpace(promptValue)
@@ -1254,15 +1325,26 @@ func encodePrompt(runtime *localModelRuntime, prompt string) ([]int, error) {
 	return encodeTurns(runtime, []chat.Turn{{Role: "user", Content: prompt}})
 }
 
+func splitSystemTurn(turns []chat.Turn) (string, []chat.Turn) {
+	if len(turns) == 0 || !strings.EqualFold(strings.TrimSpace(turns[0].Role), "system") {
+		return "", turns
+	}
+	return strings.TrimSpace(turns[0].Content), turns[1:]
+}
+
 func encodeTurns(runtime *localModelRuntime, turns []chat.Turn) ([]int, error) {
 	if runtime == nil || runtime.tokenizer == nil {
 		return nil, errors.New("vico local model is not initialized")
 	}
+	systemPrompt, conversationTurns := splitSystemTurn(turns)
 	if runtime.template != nil {
-		return runtime.tokenizer.EncodeSegments(runtime.template.RenderSegments("", turns), false)
+		return runtime.tokenizer.EncodeSegments(runtime.template.RenderSegments(systemPrompt, conversationTurns), false)
 	}
-	parts := make([]string, 0, len(turns))
-	for _, turn := range turns {
+	parts := make([]string, 0, len(conversationTurns)+1)
+	if systemPrompt != "" {
+		parts = append(parts, "SYSTEM:\n"+systemPrompt)
+	}
+	for _, turn := range conversationTurns {
 		content := strings.TrimSpace(turn.Content)
 		if content == "" {
 			continue
@@ -1300,6 +1382,11 @@ func queryLocalModelWithTurns(turns []chat.Turn) (string, error) {
 }
 
 func queryLocalModelForRouting(prompt string) (string, error) {
+	if localModelRoutePromptResolver != nil {
+		if routingResults, ok := localModelRoutePromptResolver(strings.TrimSpace(prompt)); ok {
+			return routingResults, nil
+		}
+	}
 	rawResponse, err := queryLocalModelWithTurns(localModelRoutePromptBuilder(prompt))
 	if err != nil {
 		return "", err
@@ -1324,7 +1411,7 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			progressResp := "Running Vico Diagnostics..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
-		case targetPluginForEvent(event) != "":
+		case targetPluginForEvent(event) != "" && targetPluginForEvent(event) != "vico":
 			targetPlugin := targetPluginForEvent(event)
 			configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
 			response, err := proxyDiagnosticForwarder(event, targetPlugin)
@@ -1338,6 +1425,15 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
 			response, err := queryLocalModelForRouting(prompt)
+			if err == nil && localModelRouteTranslator != nil {
+				messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
+				if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
+					messageID = strings.TrimSpace(*event.RoutingId)
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
+				response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
+				cancel()
+			}
 			if err != nil {
 				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 				response = "Vico local model unavailable."

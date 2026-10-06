@@ -1,6 +1,10 @@
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
+github.com/ebitengine/purego v0.10.1 h1:dewVBCBT2GaMu1SrNTYxQhgQBethzfhiwvZiLGP/qyY=
+github.com/ebitengine/purego v0.10.1/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
+github.com/eitamring/gocudrv v0.3.2 h1:zjRj3gRSfmbxbQkt1jXSTdGKHPwL1R912qovXnOPUlE=
+github.com/eitamring/gocudrv v0.3.2/go.mod h1:nA+ytiB8A1YvVSHzBQbn+Be+BGR4gAGVIP+7chLn+O4=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
@@ -21,10 +25,14 @@ github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0t
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
 github.com/townsendmerino/aikit v1.37.0 h1:a3Qv60HekJNGLNpZ3YrcmdVroNQrd3YdMEBN0kG5Byk=
 github.com/townsendmerino/aikit v1.37.0/go.mod h1:DCoyKC6l6F1CBt5SJSvX8UjktEKXsrln1MuNOSebam8=
+github.com/townsendmerino/aikit/gpu v0.32.0 h1:/0XvD3z5q3Aij1vecb4gk4ycZ28gxUuTwVDy9Ie0EaY=
+github.com/townsendmerino/aikit/gpu v0.32.0/go.mod h1:5BoeTW/VGltnAT3zB/lhZPFDxjZBh+tMF+FFhHE8Fn0=
 github.com/townsendmerino/goinfer v0.17.2 h1:7wDqLrwy/DOLL6mBmd4zNlVuabKn0iBxbW0peXPGlZc=
 github.com/townsendmerino/goinfer v0.17.2/go.mod h1:3AyCJl5nc9ow6qVfPsQeewgdkR7rlGCFOukS+EF3IOg=
-github.com/trimble-oss/tierceron-core/v2 v2.12.1 h1:M85PU3eaHng8w3VykgVu4aREVUFxw+zCU8MYg0767Fw=
-github.com/trimble-oss/tierceron-core/v2 v2.12.1/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
+github.com/townsendmerino/goinfer/cuda v0.17.2 h1:FJeWrKENWbsNm0L/Zp35cpPUES1uYYrWUiMmV3uXz44=
+github.com/townsendmerino/goinfer/cuda v0.17.2/go.mod h1:fH3tgwOVqJh8TPAxV0SjtrlF+gV5b7Be3lR10AJXLB8=
+github.com/trimble-oss/tierceron-core/v2 v2.12.2 h1:4xE8PbGH7w1PKZ8+wgdgqFDsbMRo93lMMz3JCJnh//o=
+github.com/trimble-oss/tierceron-core/v2 v2.12.2/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
 github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
 github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b h1:RHqkdK9UFx7PK3zSfloHuZLp+NKFVB0oEy8cRFQ3Qls=
@@ -41,6 +49,8 @@ go.opentelemetry.io/otel/sdk/metric v1.43.0 h1:S88dyqXjJkuBNLeMcVPRFXpRw2fuwdvfC
 go.opentelemetry.io/otel/sdk/metric v1.43.0/go.mod h1:C/RJtwSEJ5hzTiUz5pXF1kILHStzb9zFlIEe85bhj6A=
 go.opentelemetry.io/otel/trace v1.43.0 h1:BkNrHpup+4k4w+ZZ86CZoHHEkohws8AY+WTX09nk+3A=
 go.opentelemetry.io/otel/trace v1.43.0/go.mod h1:/QJhyVBUUswCphDVxq+8mld+AvhXZLhe+8WVFxiFff0=
+go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
+go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f h1:W3F4c+6OLc6H2lb//N1q4WpJkhzJCK5J6kUi1NTVXfM=
 golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f/go.mod h1:J1xhfL/vlindoeF/aINzNzt2Bket5bjo9sdOYzOsU80=
 golang.org/x/net v0.58.0 h1:ynWG7rqYi4ccpTEuPZ2QGWHktVEM9DMCj9yzDE0Q7To=

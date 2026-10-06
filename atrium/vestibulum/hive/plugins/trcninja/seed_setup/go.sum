@@ -147,8 +147,8 @@ github.com/stretchr/testify v1.7.5/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1:ncp9v5uamzpCO7NfCPTXjqaC+bZgJeR0sMTm6dMHP7U=
-github.com/trimble-oss/tierceron-core/v2 v2.12.1 h1:M85PU3eaHng8w3VykgVu4aREVUFxw+zCU8MYg0767Fw=
-github.com/trimble-oss/tierceron-core/v2 v2.12.1/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
+github.com/trimble-oss/tierceron-core/v2 v2.12.2 h1:4xE8PbGH7w1PKZ8+wgdgqFDsbMRo93lMMz3JCJnh//o=
+github.com/trimble-oss/tierceron-core/v2 v2.12.2/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
 github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
 github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
 github.com/tsenart/deadcode v0.0.0-20160724212837-210d2dc333e9/go.mod h1:q+QjxYvZ+fpjMXqs+XEriussHjSYqeXVnAdSV1tkMYk=

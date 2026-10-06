@@ -582,6 +582,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
 	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
+	if plugincoreopts.BuildOptions.IsPluginHardwired() {
+		(*serviceConfig)["kernelID"] = strconv.Itoa(pluginHandler.GetKernelID())
+	}
 
 	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
 	if kernelopts.BuildOptions.IsKernelZ() {
@@ -993,6 +996,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
 			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
+			serviceConfig["kernelID"] = strconv.Itoa(pluginHandler.GetKernelID())
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -1628,7 +1632,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				continue
 			}
 			pluginQuery := queryPlugin[0]
-			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
+			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && !eUtils.RefEquals(&pluginQuery, "trcshtalk") && !eUtils.RefEquals(msg.Name, "trcshtalk") {
 				pluginQuery = "vico"
 				// q = "vico"
 			}
