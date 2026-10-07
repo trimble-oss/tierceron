@@ -41,7 +41,7 @@ func SetConfigContext(cc *tccore.ConfigContext) {
 	configContext = cc
 }
 
-func sendResults(credentials string, chatSpace string, diagRes *ttsdk.DiagnosticResponse) {
+func sendResults(credentials string, chatSpace string, interactionRes *ttsdk.InteractionResponse) {
 	var err error
 	var client *chat.Service
 
@@ -58,7 +58,7 @@ func sendResults(credentials string, chatSpace string, diagRes *ttsdk.Diagnostic
 	}
 
 	msg := &chat.Message{
-		Text: fmt.Sprintf("Results:\n%s", diagRes.GetResults()),
+		Text: fmt.Sprintf("Results:\n%s", interactionRes.GetResults()),
 	}
 
 	_, err = client.Spaces.Messages.Create(chatSpace, msg).Do()
@@ -69,25 +69,25 @@ func sendResults(credentials string, chatSpace string, diagRes *ttsdk.Diagnostic
 	// log.Printf("sendResults: successfully created a message: %s", msg.Text)
 }
 
-func getTalkBackReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
-	env, err := echocore.GetEnvByMessageId(diagReq.MessageId)
+func getTalkBackReport(interactionReq *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, error) {
+	env, err := echocore.GetEnvByMessageId(interactionReq.MessageId)
 	if err != nil {
-		log.Printf("getTalkBackReport: message targeting un-authorized bus: %s", diagReq.MessageId)
+		log.Printf("getTalkBackReport: message targeting un-authorized bus: %s", interactionReq.MessageId)
 		return nil, err
 	}
 	if echoBus, ok := echocore.GlobalEchoNetwork.Get(env); ok {
 		log.Printf("getTalkBackReport: message targeting authorized bus: %s", env)
 
-		go func(eb *echocore.EchoBus, dr *ttsdk.DiagnosticRequest) {
-			(*eb).RequestsChan <- dr
-		}(echoBus, diagReq)
+		go func(eb *echocore.EchoBus, request *ttsdk.InteractionRequest) {
+			(*eb).RequestsChan <- request
+		}(echoBus, interactionReq)
 		return <-echoBus.ResponseChan, nil
 	}
 	return nil, errors.New("invalid env: " + env)
 }
 
 // Deprecated...
-func getReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+func getReport(interactionReq *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, error) {
 	var opts []grpc.DialOption
 
 	certPool, _ := x509.SystemCertPool()
@@ -105,7 +105,7 @@ func getReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, err
 
 	tlsOpt := grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig))
 	opts = append(opts, tlsOpt)
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%v", "*diagnosticsHost", "*diagnosticsPort"), opts...)
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%v", "*interactionHost", "*interactionPort"), opts...)
 	if err != nil {
 		log.Printf("getReport: fail to dial: %v", err)
 		return nil, err
@@ -113,16 +113,16 @@ func getReport(diagReq *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, err
 	defer conn.Close()
 	client := ttsdk.NewTrcshTalkServiceClient(conn)
 
-	diagRes, err := client.RunDiagnostics(context.Background(), diagReq)
+	interactionRes, err := client.Interact(context.Background(), interactionReq)
 	if err != nil {
 		log.Printf("getReport: bad response: %v", err)
-		return &ttsdk.DiagnosticResponse{
-			MessageId: diagReq.GetMessageId(),
+		return &ttsdk.InteractionResponse{
+			MessageId: interactionReq.GetMessageId(),
 			Results:   "Unable to obtain report from Hive.",
 		}, err
 	}
-	log.Printf("getReport: success, response returned: %s", diagRes.Results)
-	return diagRes, nil
+	log.Printf("getReport: success, response returned: %s", interactionRes.Results)
+	return interactionRes, nil
 }
 
 func grpcHandler(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +134,7 @@ func grpcHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	request := &ttsdk.DiagnosticRequest{}
+	request := &ttsdk.InteractionRequest{}
 	queryData, err := io.ReadAll(r.Body)
 	log.Printf("grpcHandler message received.\n")
 
@@ -152,10 +152,10 @@ func grpcHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, pbFunc, err := echocore.RunDiagnostics(r.Context(), request)
+	response, pbFunc, err := echocore.Interact(r.Context(), request)
 	if err != nil {
 		log.Printf("Error sending response: %s\n", err.Error())
-		fmt.Fprintf(w, `{"text": "Failure running diagnostics on."}`)
+		fmt.Fprintf(w, `{"text": "Failure running interactions."}`)
 		return
 	}
 
@@ -258,20 +258,20 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 	if util.ValidateRequest(receivedChat.Message.Text) {
 		// interactive response with query parameters
 		w.WriteHeader(http.StatusAccepted)
-		fmt.Fprintf(w, `{"text": "%s, Running diagnostics..."}`,
+		fmt.Fprintf(w, `{"text": "%s, Running interactions..."}`,
 			strings.Fields(receivedChat.User.DisplayName)[0])
 
 		// parse incoming message and generate request
-		diagnosticRequest := &ttsdk.DiagnosticRequest{
-			MessageId:   util.GenMsgId(env),
-			Diagnostics: util.ParseDiagnostics(receivedChat.Message.Text),
-			QueryId:     util.ParseTenantID(receivedChat.Message.Text),
-			Data:        util.ParseData(receivedChat.Message.Text),
+		interactionRequest := &ttsdk.InteractionRequest{
+			MessageId:    util.GenMsgId(env),
+			Interactions: util.ParseInteractions(receivedChat.Message.Text),
+			QueryId:      util.ParseTenantID(receivedChat.Message.Text),
+			Data:         util.ParseData(receivedChat.Message.Text),
 		}
 
-		go func(diagReq *ttsdk.DiagnosticRequest, chatSpace string) {
+		go func(interactionReq *ttsdk.InteractionRequest, chatSpace string) {
 			// get the response from Hive
-			diagnosticResponse, err := getTalkBackReport(diagReq)
+			interactionResponse, err := getTalkBackReport(interactionReq)
 			if err != nil {
 				log.Printf("messageHandler: did not obtain a report")
 			}
@@ -282,8 +282,8 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			// construct and send message from Hive
-			sendResults(credentials, chatSpace, diagnosticResponse)
-		}(diagnosticRequest, receivedChat.Space.Name)
+			sendResults(credentials, chatSpace, interactionResponse)
+		}(interactionRequest, receivedChat.Space.Name)
 	} else {
 		// default response for no keywords specified
 		fmt.Fprintf(w, `{"text": "I am a limited bot, %s. Please use the command '/help' for a list of possible queries."}`,

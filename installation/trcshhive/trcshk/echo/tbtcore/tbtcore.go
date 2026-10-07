@@ -62,7 +62,7 @@ func chat_receiver(chat_receive_chan chan *tccore.ChatMsg) {
 			return
 		default:
 			fmt.Fprintln(os.Stderr, "trcshtalkback received chat message")
-			response := tbtgapi.HelloWorldDiagnostic()
+			response := tbtgapi.HelloWorldInteraction()
 			(*event).Response = &response
 			*configContext.ChatSenderChan <- event
 		}
@@ -221,7 +221,7 @@ func EchoRunner(mashupCert *embed.FS, mashupKey *embed.FS, configFile *embed.FS,
 	query := tccore.ChatMsg{}
 	chatId := "helloworld"
 	query.ChatId = &chatId
-	query.Query = &[]string{ttsdk.Diagnostics_name[1]}
+	query.Query = &[]string{ttsdk.Interactions_name[1]}
 
 	// Off you go...
 	go func(crc chan *tccore.ChatMsg, msg *tccore.ChatMsg) {

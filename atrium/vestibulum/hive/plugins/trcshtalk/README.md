@@ -1,10 +1,10 @@
 # trcshtalk
 
-A Tierceron diagnostics and talkback plugin for use with [Tierceron](https://github.com/trimble-oss/tierceron), providing gRPC-based health and plugin diagnostic capabilities.
+A Tierceron interaction and talkback plugin for use with [Tierceron](https://github.com/trimble-oss/tierceron), providing gRPC-based health and plugin interaction capabilities.
 
 ## Overview
 
-`trcshtalk` is a Go-based plugin that coordinates diagnostics across the Tierceron ecosystem. It exposes gRPC services and talkback flows for health checks and plugin-specific diagnostics, including integrations for components such as `trcdb`, `rainier`, and `ninja`.
+`trcshtalk` is a Go-based plugin that coordinates interactions across the Tierceron ecosystem. It exposes gRPC services and talkback flows for health checks and common plugins such as `trcdb` and `vico`.
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ make protobuf
 
 ## Usage
 
-This plugin is deployed as part of the Tierceron infrastructure. For local standalone runs, the entrypoint reads `config.yml` plus certificate material from `local_config/` before starting the diagnostics service.
+This plugin is deployed as part of the Tierceron infrastructure. For local standalone runs, the entrypoint reads `config.yml` plus certificate material from `local_config/` before starting the interaction service.
 
 ### trcshtalk_mode
 

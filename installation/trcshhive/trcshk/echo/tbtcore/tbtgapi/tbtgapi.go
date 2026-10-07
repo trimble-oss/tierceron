@@ -31,7 +31,7 @@ const (
 	CREDENTIALS_PATH = "credentials"
 )
 
-type diagnosticsServiceServer struct {
+type interactionServiceServer struct {
 	ttsdk.UnimplementedTrcshTalkServiceServer
 }
 
@@ -126,17 +126,15 @@ func validateTalkbackToken(ctx context.Context) error {
 	return errors.New("invalid talkback token")
 }
 
-// Runs diagnostic services for each Diagnostic within the DiagnosticRequest.
-// Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
-// and providing the results of the diagnostics ran.
-func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+// Interact runs the requested interactions and returns their combined results.
+func (s *interactionServiceServer) Interact(ctx context.Context, req *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, error) {
 	if err := validateTalkbackToken(ctx); err != nil {
-		configContext.Log.Printf("Rejecting RunDiagnostics request: %v", err)
+		configContext.Log.Printf("Rejecting Interact request: %v", err)
 		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
 	}
-	response, _, err := echocore.RunDiagnostics(ctx, req)
+	response, _, err := echocore.Interact(ctx, req)
 	if err != nil {
-		configContext.Log.Printf("Diagnostics error: %v", err)
+		configContext.Log.Printf("Interaction error: %v", err)
 		send_err(err)
 	}
 
@@ -197,7 +195,7 @@ func InitGServer() (func(error), func()) {
 
 		grpcServer = gServer
 		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-		ttsdk.RegisterTrcshTalkServiceServer(grpcServer, &diagnosticsServiceServer{})
+		ttsdk.RegisterTrcshTalkServiceServer(grpcServer, &interactionServiceServer{})
 		// reflection.Register(grpcServer)
 		addr := lis.Addr().String()
 		serverAddr = &addr
@@ -252,17 +250,17 @@ func StopGServer() {
 	dfstat = nil
 }
 
-func HelloWorldDiagnostic() string {
+func HelloWorldInteraction() string {
 	if configContext == nil ||
 		(*configContext.ConfigCerts) == nil ||
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT] == nil ||
 		(*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY] == nil {
-		return "Improper config context for echo diagnostic."
+		return "Improper config context for echo interaction."
 	}
 	cert, err := tls.X509KeyPair((*configContext.ConfigCerts)[tccore.TRCSHHIVEK_CERT], (*configContext.ConfigCerts)[tccore.TRCSHHIVEK_KEY])
 	if err != nil {
 		log.Printf("Couldn't construct key pair: %v\n", err)
-		return "Unable to run diagnostic for echo."
+		return "Unable to run interaction for echo."
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 
@@ -274,10 +272,10 @@ func HelloWorldDiagnostic() string {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs("authorization", echocore.GetTTBToken()))
-	s := &diagnosticsServiceServer{}
-	r, err := s.RunDiagnostics(ctx, &ttsdk.DiagnosticRequest{
-		MessageId:   util.GenMsgId("dev"),
-		Diagnostics: []ttsdk.Diagnostics{ttsdk.Diagnostics_HEALTH_CHECK},
+	s := &interactionServiceServer{}
+	r, err := s.Interact(ctx, &ttsdk.InteractionRequest{
+		MessageId:    util.GenMsgId("dev"),
+		Interactions: []ttsdk.Interactions{ttsdk.Interactions_HEALTH_CHECK},
 	})
 	if err != nil {
 		configContext.Log.Printf("could not greet: %v\n", err)
