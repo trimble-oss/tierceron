@@ -84,7 +84,7 @@ type KernelCtx struct {
 	PluginRestartChan *chan tccore.KernelCmd
 }
 
-func InitKernel(id string) *PluginHandler {
+func InitKernel(kernelId string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
 	deployRestart := make(chan string)
 	pluginRestart := make(chan tccore.KernelCmd)
@@ -92,8 +92,8 @@ func InitKernel(id string) *PluginHandler {
 
 	return &PluginHandler{
 		Name:     "Kernel",
-		Id:       kernelOrdinal(id),
-		KernelId: id,
+		Id:       kernelOrdinal(kernelId),
+		KernelId: kernelId,
 		State:    0,
 		Services: &pluginMap,
 		ConfigContext: &tccore.ConfigContext{
