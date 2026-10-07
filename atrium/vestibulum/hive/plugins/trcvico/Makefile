@@ -10,7 +10,7 @@ GOBIN ?= ./bin
 
 # gRPC / Protobuf
 PROTO_FILES := $(wildcard */*.proto)
-PROTO_DIR := diagnosticssdk
+PROTO_DIR := trcshtalksdk
 OUT_DIR := .
 
 
@@ -20,8 +20,8 @@ help:
 	@echo "  dependencies...........install all dependencies"
 	@echo "  depend.................install all dependencies"
 	@echo "  clean..................remove all binaries"
-	@echo "  clean.protobuf.........remove all diagnostic protobuf files"
-	@echo "  protobuf...............create all diagnostics protobufs for TrcshTalk"
+	@echo "  clean.protobuf.........remove all interaction protobuf files"
+	@echo "  protobuf...............create all interaction protobufs for TrcshTalk"
 	@echo "  trcshtalk..............create the TrcshTalk plugin"
 
 dependencies:

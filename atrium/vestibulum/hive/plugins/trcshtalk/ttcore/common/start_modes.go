@@ -120,6 +120,9 @@ func StartWithServerModes(
 			canStartTalkback = remoteServerName != "" && talkbackPort > 0
 		}
 		if canStartTalkback {
+			if isHubClient {
+				ctx.Log.Printf("Starting TrcshTalk hub client connection on port %d\n", talkbackPort)
+			}
 			// Launch talkback loop
 			go func(ttbt *string, port int, remote bool, mode string) {
 				// Emit start event if we are NOT also starting the server (pure talkback modes)

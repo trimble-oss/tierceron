@@ -24,7 +24,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type diagnosticsServiceServer struct {
+type interactionServiceServer struct {
 	pb.UnimplementedTrcshTalkServiceServer
 }
 
@@ -36,57 +36,55 @@ var (
 )
 
 var (
-	shutdownChan        chan bool                  = make(chan bool)
-	shutdownConfirmChan chan bool                  = make(chan bool)
-	proxyRequestChan    chan *pb.DiagnosticRequest = make(chan *pb.DiagnosticRequest, 128)
+	shutdownChan        chan bool                   = make(chan bool)
+	shutdownConfirmChan chan bool                   = make(chan bool)
+	proxyRequestChan    chan *pb.InteractionRequest = make(chan *pb.InteractionRequest, 128)
 	proxyResponseChans  sync.Map
 )
 
-// Runs diagnostic services for each Diagnostic within the DiagnosticRequest.
-// Returns DiagnosticResponse, forwarding the MessageId of the DiagnosticRequest,
-// and providing the results of the diagnostics ran.
-func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+// Interact runs each requested interaction and returns its combined results.
+func (s *interactionServiceServer) Interact(ctx context.Context, req *pb.InteractionRequest) (*pb.InteractionResponse, error) {
 	if err := common.ValidateIncomingTTBToken(configContext, ctx); err != nil {
 		if configContext != nil {
-			configContext.Log.Printf("Rejecting RunDiagnostics request: %v", err)
+			configContext.Log.Printf("Rejecting Interact request: %v", err)
 		}
 		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
 	}
 	if _, _, ok := loggingDirective(req.GetData()); ok {
-		return runLocalDiagnostics(req)
+		return runLocalInteractions(req)
 	}
-	if len(req.GetDiagnostics()) == 0 {
+	if len(req.GetInteractions()) == 0 {
 		if response, handled := postProxyResponse(req); handled {
 			return response, nil
 		}
 		return dequeueProxyRequest(ctx, req)
 	}
-	if requestSupportedByDeployments(req.GetDiagnostics(), common.SupportedDeploymentsSet(configContext)) {
-		return runLocalDiagnostics(req)
+	if requestSupportedByDeployments(req.GetInteractions(), common.SupportedDeploymentsSet(configContext)) {
+		return runLocalInteractions(req)
 	}
 	return enqueueProxyRequest(ctx, req)
 }
 
-func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
-	cmds := req.GetDiagnostics()
+func runLocalInteractions(req *pb.InteractionRequest) (*pb.InteractionResponse, error) {
+	cmds := req.GetInteractions()
 	queries := []string{}
 	queryTest := req.GetQueryId() + ":"
 	if pluginName, action, ok := loggingDirective(req.GetData()); ok {
 		queries = append(queries, pluginName)
 		queryTest = "log " + action
-	} else if slices.Contains(cmds, pb.Diagnostics_ALL) {
+	} else if slices.Contains(cmds, pb.Interactions_ALL) {
 		// run all
 		// set queries to all cmds
 		configContext.Log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
 	} else {
 		for _, q := range cmds {
-			if q == pb.Diagnostics_HEALTH_CHECK {
+			if q == pb.Interactions_HEALTH_CHECK {
 				// set name to plugin...
-				configContext.Log.Println("Running healthcheck diagnostic.")
+				configContext.Log.Println("Running healthcheck interaction.")
 				queries = append(queries, "healthcheck")
-			} else if q == pb.Diagnostics_TRCDB {
-				configContext.Log.Println("Running trcdb diagnostic.")
+			} else if q == pb.Interactions_TRCDB {
+				configContext.Log.Println("Running trcdb interaction.")
 				queries = append(queries, "trcdb")
 				trcdb_tests := req.GetData()
 				for i, test := range trcdb_tests {
@@ -105,9 +103,9 @@ func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, err
 			// 		Name:  &shutdown,
 			// 		Query: &[]string{"trcshtalk"},
 			// 	}
-			// 	return &pb.DiagnosticResponse{
+			// 	return &pb.InteractionResponse{
 			// 		MessageId: req.MessageId,
-			// 		Results:   "Shutting down diagnostic runner.",
+			// 		Results:   "Shutting down interaction runner.",
 			// 	}, nil
 			// }
 		}
@@ -132,7 +130,7 @@ func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, err
 				results = results + v + " "
 			}
 			configContext.Log.Printf("Sending response to chat from kernel: %s\n", results)
-			return &pb.DiagnosticResponse{
+			return &pb.InteractionResponse{
 				MessageId: *event.RoutingId,
 				Results:   results,
 			}, nil
@@ -148,7 +146,7 @@ func runLocalDiagnostics(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, err
 					results = results + v + " "
 				}
 				configContext.Log.Printf("Sending response to chat: %s\n", results)
-				return &pb.DiagnosticResponse{
+				return &pb.InteractionResponse{
 					MessageId: *event.RoutingId,
 					Results:   results,
 				}, nil
@@ -175,8 +173,8 @@ func loggingDirective(data []string) (string, string, bool) {
 	return fields[0], action, true
 }
 
-func enqueueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
-	responseChan := make(chan *pb.DiagnosticResponse, 1)
+func enqueueProxyRequest(ctx context.Context, req *pb.InteractionRequest) (*pb.InteractionResponse, error) {
+	responseChan := make(chan *pb.InteractionResponse, 1)
 	proxyResponseChans.Store(req.GetMessageId(), responseChan)
 	defer proxyResponseChans.Delete(req.GetMessageId())
 
@@ -194,16 +192,16 @@ func enqueueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.Di
 	}
 }
 
-func dequeueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
+func dequeueProxyRequest(ctx context.Context, req *pb.InteractionRequest) (*pb.InteractionResponse, error) {
 	supportedDeployments := common.SupportedDeploymentsFromIncomingContext(ctx)
-	var proxyRequest *pb.DiagnosticRequest
+	var proxyRequest *pb.InteractionRequest
 	pendingRequests := len(proxyRequestChan)
 	if pendingRequests == 0 {
 		select {
 		case proxyRequest = <-proxyRequestChan:
-			if !requestSupportedByDeployments(proxyRequest.GetDiagnostics(), supportedDeployments) {
+			if !requestSupportedByDeployments(proxyRequest.GetInteractions(), supportedDeployments) {
 				proxyRequestChan <- proxyRequest
-				return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
+				return &pb.InteractionResponse{MessageId: req.GetMessageId(), Results: ""}, nil
 			}
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -211,14 +209,14 @@ func dequeueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.Di
 	} else {
 		for i := 0; i < pendingRequests; i++ {
 			proxyRequest = <-proxyRequestChan
-			if requestSupportedByDeployments(proxyRequest.GetDiagnostics(), supportedDeployments) {
+			if requestSupportedByDeployments(proxyRequest.GetInteractions(), supportedDeployments) {
 				break
 			}
 			proxyRequestChan <- proxyRequest
 			proxyRequest = nil
 		}
 		if proxyRequest == nil {
-			return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
+			return &pb.InteractionResponse{MessageId: req.GetMessageId(), Results: ""}, nil
 		}
 	}
 
@@ -226,10 +224,10 @@ func dequeueProxyRequest(ctx context.Context, req *pb.DiagnosticRequest) (*pb.Di
 	if err != nil {
 		return nil, err
 	}
-	return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: string(requestBytes)}, nil
+	return &pb.InteractionResponse{MessageId: req.GetMessageId(), Results: string(requestBytes)}, nil
 }
 
-func postProxyResponse(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, bool) {
+func postProxyResponse(req *pb.InteractionRequest) (*pb.InteractionResponse, bool) {
 	if len(req.GetData()) == 0 {
 		return nil, false
 	}
@@ -237,21 +235,21 @@ func postProxyResponse(req *pb.DiagnosticRequest) (*pb.DiagnosticResponse, bool)
 	if !ok {
 		return nil, false
 	}
-	response := &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: req.GetData()[0]}
-	responseChanValue.(chan *pb.DiagnosticResponse) <- response
-	return &pb.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
+	response := &pb.InteractionResponse{MessageId: req.GetMessageId(), Results: req.GetData()[0]}
+	responseChanValue.(chan *pb.InteractionResponse) <- response
+	return &pb.InteractionResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
 }
 
-func requestSupportedByDeployments(diagnostics []pb.Diagnostics, supportedDeployments map[string]struct{}) bool {
+func requestSupportedByDeployments(interactions []pb.Interactions, supportedDeployments map[string]struct{}) bool {
 	if len(supportedDeployments) == 0 {
 		return true
 	}
 	requiredDeployments := map[string]struct{}{}
-	for _, diagnostic := range diagnostics {
-		switch diagnostic {
-		case pb.Diagnostics_ALL, pb.Diagnostics_HEALTH_CHECK:
+	for _, interaction := range interactions {
+		switch interaction {
+		case pb.Interactions_ALL, pb.Interactions_HEALTH_CHECK:
 			requiredDeployments["healthcheck"] = struct{}{}
-		case pb.Diagnostics_TRCDB:
+		case pb.Interactions_TRCDB:
 			requiredDeployments["trcdb"] = struct{}{}
 		}
 	}
@@ -321,7 +319,7 @@ func GenMsgId(env, region string, isBroadcast bool) string {
 
 // processTrcshTalkRequest now accepts a factory for constructing a new response message
 // so the creation of protobuf responses can be overridden or swapped with a compatible type.
-func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRemote bool, diagReq *pb.DiagnosticRequest, newResp func() proto.Message, isBroadcast ...bool) (proto.Message, error) {
+func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRemote bool, interactionReq *pb.InteractionRequest, newResp func() proto.Message, isBroadcast ...bool) (proto.Message, error) {
 	b := false
 	if len(isBroadcast) > 0 {
 		b = isBroadcast[0]
@@ -332,11 +330,11 @@ func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRe
 		port,
 		ttbToken,
 		isRemote,
-		proto.Message(diagReq),
-		func(m proto.Message, id string) { m.(*pb.DiagnosticRequest).MessageId = id },
+		proto.Message(interactionReq),
+		func(m proto.Message, id string) { m.(*pb.InteractionRequest).MessageId = id },
 		newResp,
 		func(m proto.Message) string {
-			if r, ok := m.(*pb.DiagnosticResponse); ok {
+			if r, ok := m.(*pb.InteractionResponse); ok {
 				return r.Results
 			}
 			return ""
@@ -363,7 +361,7 @@ func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRe
 		},
 		func(conn *grpc.ClientConn) any { return pb.NewTrcshTalkServiceClient(conn) },
 		func(client any, ctx context.Context, req proto.Message) (proto.Message, error) {
-			return client.(pb.TrcshTalkServiceClient).RunDiagnostics(ctx, req.(*pb.DiagnosticRequest))
+			return client.(pb.TrcshTalkServiceClient).Interact(ctx, req.(*pb.InteractionRequest))
 		},
 	)
 }
@@ -373,48 +371,54 @@ func StartTrashTalking(remoteServerName string, port int, ttbToken *string, isRe
 	common.StartTrashTalkingGeneric(
 		configContext,
 		shutdownChan,
-		func() any { return &pb.DiagnosticRequest{} },
-		func(msg string) any { return &pb.DiagnosticRequest{MessageId: "", Data: []string{msg}} },
+		func() any { return &pb.InteractionRequest{} },
+		func(msg string) any { return &pb.InteractionRequest{MessageId: "", Data: []string{msg}} },
 		func(req any, broadcast bool) (any, error) {
-			return processTrcshTalkRequest(remoteServerName, port, ttbToken, isRemote, req.(*pb.DiagnosticRequest), func() proto.Message { return &pb.DiagnosticResponse{} }, broadcast)
+			return processTrcshTalkRequest(remoteServerName, port, ttbToken, isRemote, req.(*pb.InteractionRequest), func() proto.Message { return &pb.InteractionResponse{} }, broadcast)
 		},
 		func(resp any) string {
 			if resp != nil {
-				return resp.(*pb.DiagnosticResponse).GetResults()
+				return resp.(*pb.InteractionResponse).GetResults()
 			} else {
 				return ""
 			}
 		},
 		func(data string) (any, error) {
-			r := &pb.DiagnosticRequest{}
+			r := &pb.InteractionRequest{}
 			return r, protojson.Unmarshal([]byte(data), r)
 		},
-		func(r any) any { return TrcshTalkBack(r.(*pb.DiagnosticRequest)) },
+		func(r any) any { return TrcshTalkBack(r.(*pb.InteractionRequest)) },
 		func(orig any, tb any) any {
-			return &pb.DiagnosticRequest{MessageId: orig.(*pb.DiagnosticRequest).MessageId, Data: []string{tb.(*pb.DiagnosticResponse).Results}}
+			return &pb.InteractionRequest{MessageId: orig.(*pb.InteractionRequest).MessageId, Data: []string{tb.(*pb.InteractionResponse).Results}}
 		},
 	)
 }
 
 // Keep TrcshTalkBack local since its logic is pb-specific and thus not part of reusable common code.
-func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
-	cmds := req.GetDiagnostics()
+func TrcshTalkBack(req *pb.InteractionRequest) *pb.InteractionResponse {
+	cmds := req.GetInteractions()
+	if len(cmds) == 0 && strings.TrimSpace(req.GetQueryId()) == "" {
+		if messageID, results, ok := common.ProcessProxyEvent(configContext, req.MessageId, req.GetData()); ok {
+			return &pb.InteractionResponse{MessageId: messageID, Results: results}
+		}
+	}
+
 	queries := []string{}
 	queryTest := req.GetQueryId() + ":"
-	if slices.Contains(cmds, pb.Diagnostics_ALL) {
+	if slices.Contains(cmds, pb.Interactions_ALL) {
 		configContext.Log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
 	} else {
 		for _, q := range cmds {
-			if q == pb.Diagnostics_HEALTH_CHECK {
+			if q == pb.Interactions_HEALTH_CHECK {
 				health_data := req.GetData()
 				if len(health_data) == 1 && health_data[0] == "PROGRESS" {
 					queryTest = "PROGRESS"
 				}
-				configContext.Log.Println("Running healthcheck diagnostic.")
+				configContext.Log.Println("Running healthcheck interaction.")
 				queries = append(queries, "healthcheck")
-			} else if q == pb.Diagnostics_TRCDB {
-				configContext.Log.Println("Running trcdb diagnostic.")
+			} else if q == pb.Interactions_TRCDB {
+				configContext.Log.Println("Running trcdb interaction.")
 				queries = append(queries, "trcdb")
 				for i, trcdb_report := range req.GetData() {
 					if i == 0 && trcdb_report == "PROGRESS" {
@@ -431,7 +435,7 @@ func TrcshTalkBack(req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
 		}
 	}
 	msgID, results := common.CollectQueryResponses(configContext, &req.MessageId, "trcshtalk", &queryTest, queries)
-	return &pb.DiagnosticResponse{MessageId: msgID, Results: results}
+	return &pb.InteractionResponse{MessageId: msgID, Results: results}
 }
 
 // startOnce is a pointer so it can be reinitialized on stop to allow restart.
@@ -445,7 +449,7 @@ func start(pluginName string) {
 			shutdownChan,
 			shutdownConfirmChan,
 			StartTrashTalking,
-			func(gs *grpc.Server) { pb.RegisterTrcshTalkServiceServer(gs, &diagnosticsServiceServer{}) },
+			func(gs *grpc.Server) { pb.RegisterTrcshTalkServiceServer(gs, &interactionServiceServer{}) },
 			InitCertBytes,
 		)
 		if err != nil {
@@ -462,9 +466,10 @@ func start(pluginName string) {
 
 func stop(pluginName string) {
 	common.StopServer(configContext, grpcServer, dfstat, shutdownChan, shutdownConfirmChan, pluginName)
+	common.CloseHubClientConnections()
 	grpcServer = nil
 	dfstat = nil
-	proxyRequestChan = make(chan *pb.DiagnosticRequest, 128)
+	proxyRequestChan = make(chan *pb.InteractionRequest, 128)
 	proxyResponseChans = sync.Map{}
 	// Reset once so start can happen again if needed.
 	startOnce = &sync.Once{}

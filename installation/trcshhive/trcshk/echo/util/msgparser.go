@@ -11,9 +11,9 @@ import (
 )
 
 var (
-	diagnostics = map[string]ttsdk.Diagnostics{
-		"HEALTH CHECK": ttsdk.Diagnostics_HEALTH_CHECK,
-		"ALL":          ttsdk.Diagnostics_ALL,
+	interactions = map[string]ttsdk.Interactions{
+		"HEALTH CHECK": ttsdk.Interactions_HEALTH_CHECK,
+		"ALL":          ttsdk.Interactions_ALL,
 	}
 
 	acceptableTests = []string{
@@ -27,20 +27,20 @@ func GenMsgId(env string) string {
 	return fmt.Sprintf("%s:%d", env, randomNumber)
 }
 
-func ParseDiagnostics(message string) []ttsdk.Diagnostics {
-	var requestedDiagnostics []ttsdk.Diagnostics
-	// find and add diagnostics
+func ParseInteractions(message string) []ttsdk.Interactions {
+	var requestedInteractions []ttsdk.Interactions
+	// find and add interactions
 	upperMessage := strings.ToUpper(message)
-	for diagnostic, protoValue := range diagnostics {
-		if strings.Contains(upperMessage, diagnostic) {
-			requestedDiagnostics = append(requestedDiagnostics, protoValue)
+	for interaction, protoValue := range interactions {
+		if strings.Contains(upperMessage, interaction) {
+			requestedInteractions = append(requestedInteractions, protoValue)
 		}
 	}
-	// no diagnostics requested, default to all
-	if len(requestedDiagnostics) == 0 {
-		requestedDiagnostics = append(requestedDiagnostics, ttsdk.Diagnostics_ALL)
+	// no interactions requested, default to all
+	if len(requestedInteractions) == 0 {
+		requestedInteractions = append(requestedInteractions, ttsdk.Interactions_ALL)
 	}
-	return requestedDiagnostics
+	return requestedInteractions
 }
 
 func ParseTenantID(message string) string {
@@ -56,7 +56,7 @@ func ParseTenantID(message string) string {
 
 func ParseData(message string) []string {
 	requestedData := make([]string, 0)
-	// find and add diagnostics
+	// find and add interaction data
 	for _, requestedTest := range acceptableTests {
 		if strings.Contains(strings.ToUpper(message), strings.ToUpper(requestedTest)) {
 			requestedData = append(requestedData, requestedTest)

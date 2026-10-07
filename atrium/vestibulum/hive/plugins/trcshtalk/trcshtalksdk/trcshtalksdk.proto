@@ -5,28 +5,29 @@ option go_package = "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plu
 package trcshtalksdk;
 
 service TrcshTalkService {
-    rpc RunDiagnostics(DiagnosticRequest) returns (DiagnosticResponse);
+    rpc Interact(InteractionRequest) returns (InteractionResponse);
 }
 
-message DiagnosticRequest {
+message InteractionRequest {
     string message_id = 1;
-    repeated Diagnostics diagnostics = 2;
+    repeated Interactions interactions = 2;
     string query_id = 3;
     repeated string data = 4;
-    repeated PluginQuery queries = 5;
+    repeated PluginQuery queries = 6;
 }
 
-message DiagnosticResponse {
+message InteractionResponse {
     string message_id = 1;
     string results = 2;
 }
 
-enum Diagnostics {
-    // if a diagnostic deprecates, comment it out
-    // if adding a diagnostic, append to the end incrementing integer
+enum Interactions {
+    // if an interaction deprecates, comment it out
+    // if adding an interaction, append to the end incrementing integer
     ALL = 0; // Default
     HEALTH_CHECK = 1;
     TRCDB = 2;
+    VICO = 3;
     // future plugins
 }
 

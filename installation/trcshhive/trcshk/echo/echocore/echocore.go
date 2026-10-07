@@ -16,8 +16,8 @@ import (
 type EchoBus struct {
 	Env          string
 	ChatSpace    string
-	RequestsChan chan *ttsdk.DiagnosticRequest
-	ResponseChan chan *ttsdk.DiagnosticResponse
+	RequestsChan chan *ttsdk.InteractionRequest
+	ResponseChan chan *ttsdk.InteractionResponse
 }
 
 // Buses will be indexed by environment
@@ -52,8 +52,8 @@ func InitNetwork(configContext *tccore.ConfigContext) {
 		GlobalSupportedEnvMap[env] = true
 		GlobalEchoNetwork.Set(env, &EchoBus{
 			Env:          env,
-			RequestsChan: make(chan *ttsdk.DiagnosticRequest, 10),
-			ResponseChan: make(chan *ttsdk.DiagnosticResponse, 10),
+			RequestsChan: make(chan *ttsdk.InteractionRequest, 10),
+			ResponseChan: make(chan *ttsdk.InteractionResponse, 10),
 		})
 	}
 
@@ -93,7 +93,6 @@ func InitNetwork(configContext *tccore.ConfigContext) {
 			ttbToken = ttb
 		}
 	}
-
 }
 
 func IsKernelPluginMode() bool {
@@ -137,52 +136,51 @@ func GetEnvByMessageId(messageId string) (string, error) {
 	}
 }
 
-func RunDiagnostics(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, func(), error) {
-
+func Interact(ctx context.Context, req *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, func(), error) {
 	env, err := GetEnvByMessageId(req.MessageId)
 	if err != nil {
-		log.Printf("RunDiagnostics: message targeting un-authorized bus: %s", req.MessageId)
+		log.Printf("Interact: message targeting un-authorized bus: %s", req.MessageId)
 		return nil, nil, err
 	}
 	if echoBus, ok := GlobalEchoNetwork.Get(env); ok {
-		log.Printf("RunDiagnostics: message targeting authorized bus: %s", env)
+		log.Printf("Interact: message targeting authorized bus: %s", env)
 
 		if len(req.Data) > 0 {
-			log.Printf("RunDiagnostics:posting response message to authorized bus: %s", env)
+			log.Printf("Interact: posting response message to authorized bus: %s", env)
 			// trcshtalk is posting a response to the response channel.
-			go func(eb *EchoBus, r *ttsdk.DiagnosticRequest) {
+			go func(eb *EchoBus, r *ttsdk.InteractionRequest) {
 				// Post to response channel the result.
-				(*eb).ResponseChan <- &ttsdk.DiagnosticResponse{
+				(*eb).ResponseChan <- &ttsdk.InteractionResponse{
 					MessageId: r.MessageId,
 					Results:   r.Data[0],
 				}
 			}(echoBus, req)
-			return &ttsdk.DiagnosticResponse{
+			return &ttsdk.InteractionResponse{
 				MessageId: req.MessageId,
 				Results:   "Response posted",
 			}, nil, nil
 		} else {
-			log.Printf("RunDiagnostics:requesting message from authorized bus: %s", env)
+			log.Printf("Interact: requesting message from authorized bus: %s", env)
 
 			// trcshtalk is asking for a new request to process from the request channel.
 
-			var request *ttsdk.DiagnosticRequest
+			var request *ttsdk.InteractionRequest
 			select {
 			case request = <-(*echoBus).RequestsChan:
 				break
 			case <-ctx.Done(): // This checks if the client has disconnected
-				log.Printf("RunDiagnostics:client disconnected: %s", env)
+				log.Printf("Interact: client disconnected: %s", env)
 				return nil, nil, err
 			}
 
-			log.Printf("RunDiagnostics:message extracted from authorized bus: %s", env)
+			log.Printf("Interact: message extracted from authorized bus: %s", env)
 			requestBytes, err := protojson.Marshal(request)
 			if err != nil {
-				log.Printf("RunDiagnostics:error unmarshalling request from bus: %s", env)
+				log.Printf("Interact: error marshaling request from bus: %s", env)
 				return nil, nil, err
 			} else {
-				log.Printf("RunDiagnostics:returning request from authorized bus: %s", env)
-				res := &ttsdk.DiagnosticResponse{
+				log.Printf("Interact: returning request from authorized bus: %s", env)
+				res := &ttsdk.InteractionResponse{
 					MessageId: req.MessageId,
 					Results:   string(requestBytes),
 				}

@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -19,6 +21,47 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+var hubClientConnections sync.Map
+
+type hubClientConnectionKey struct {
+	serverName string
+	port       int
+	certHash   [32]byte
+}
+
+func getHubClientConnection(serverName string, port int, certBytes []byte, tlsConfig *tls.Config) (*grpc.ClientConn, error) {
+	key := hubClientConnectionKey{
+		serverName: serverName,
+		port:       port,
+		certHash:   sha256.Sum256(certBytes),
+	}
+	if conn, ok := hubClientConnections.Load(key); ok {
+		return conn.(*grpc.ClientConn), nil
+	}
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", serverName, port),
+		grpc.WithDefaultCallOptions(),
+		grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
+	if err != nil {
+		return nil, err
+	}
+	actual, loaded := hubClientConnections.LoadOrStore(key, conn)
+	if loaded {
+		_ = conn.Close()
+		return actual.(*grpc.ClientConn), nil
+	}
+	return conn, nil
+}
+
+func CloseHubClientConnections() {
+	hubClientConnections.Range(func(key any, value any) bool {
+		if conn, ok := value.(*grpc.ClientConn); ok {
+			_ = conn.Close()
+		}
+		hubClientConnections.Delete(key)
+		return true
+	})
+}
 
 // StartTrashTalkingGeneric is a minimal generic version of the loop that previously
 // used concrete protobuf types. All pb specifics are pushed into the provided callbacks.
@@ -145,7 +188,7 @@ func CollectQueryResponses(ctx *tccore.ConfigContext, routingId *string, pluginN
 // ProcessTrcshTalkRequestGeneric contains the transport logic (remote HTTP JSON over /grpc
 // endpoint with retry, or local direct gRPC call with TLS) formerly embedded in ttcore.
 // It is kept here so alternate cores can reuse it. The function still uses the concrete
-// pb DiagnosticRequest type because the wire contract is stable; only the response
+// protobuf InteractionRequest type because the wire contract is stable; only the response
 // construction is injected via newResp.
 func ProcessTrcshTalkRequestGeneric(
 	ctx *tccore.ConfigContext,
@@ -163,7 +206,7 @@ func ProcessTrcshTalkRequestGeneric(
 	mashupCertBytes []byte,
 	tlsConfigProvider func(serverName string, certBytes []byte) (*tls.Config, error),
 	newClient func(*grpc.ClientConn) any,
-	invokeDiagnostics func(client any, ctx context.Context, req proto.Message) (proto.Message, error),
+	invokeInteraction func(client any, ctx context.Context, req proto.Message) (proto.Message, error),
 ) (proto.Message, error) {
 	if ctx == nil {
 		return nil, errors.New("nil config context")
@@ -274,14 +317,22 @@ func ProcessTrcshTalkRequestGeneric(
 		mashupCertPool.AddCert(mashupClientCert)
 		tlsCfg = &tls.Config{ServerName: serverName, RootCAs: mashupCertPool, MinVersion: tls.VersionTLS12}
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", serverName, port),
-		grpc.WithDefaultCallOptions(),
-		grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
+	isHubClient := ctx.Config != nil && resolveTrcshTalkMode(ctx.Config) == ModeHubClient
+	var conn *grpc.ClientConn
+	if isHubClient {
+		conn, err = getHubClientConnection(serverName, port, mashupCertBytes, tlsCfg)
+	} else {
+		conn, err = grpc.Dial(fmt.Sprintf("%s:%d", serverName, port),
+			grpc.WithDefaultCallOptions(),
+			grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg)))
+	}
 	if err != nil {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: fail to dial: %v\n", err)
 		return nil, err
 	}
-	defer conn.Close()
+	if !isHubClient {
+		defer conn.Close()
+	}
 	client := newClient(conn)
 	callCtx := context.Background()
 	if ttbToken != nil {
@@ -292,17 +343,17 @@ func ProcessTrcshTalkRequestGeneric(
 	}
 	callCtx = WithHubClientPodOutgoingContext(callCtx, ctx)
 	callCtx = WithHubClientStatefulSetOutgoingContext(callCtx, ctx)
-	diagRes, err := invokeDiagnostics(client, callCtx, diagReq)
+	interactionRes, err := invokeInteraction(client, callCtx, diagReq)
 	if err != nil {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: bad response: %v\n", err)
 		return nil, err
 	}
-	if res := extractResult(diagRes); res != "" {
+	if res := extractResult(interactionRes); res != "" {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: success, response returned: %s\n", res)
 	} else {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: success (generic response)\n")
 	}
-	return proto.Message(diagRes), nil
+	return proto.Message(interactionRes), nil
 }
 
 // CollectQueryResponsesDefault uses the standard plugin name "trcshtalk" so callers

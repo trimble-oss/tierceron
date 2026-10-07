@@ -12,11 +12,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-// TalkBackFn transforms an incoming diagnostic request into a response (business logic hook).
-type TalkBackFn func(*pb.DiagnosticRequest) *pb.DiagnosticResponse
+// TalkBackFn transforms an incoming interaction request into a response (business logic hook).
+type TalkBackFn func(*pb.InteractionRequest) *pb.InteractionResponse
 
-// ProcessFn sends a diagnostic request (optionally broadcast) and returns the response.
-type ProcessFn func(req *pb.DiagnosticRequest, broadcast bool) (*pb.DiagnosticResponse, error)
+// ProcessFn sends an interaction request (optionally broadcast) and returns the response.
+type ProcessFn func(req *pb.InteractionRequest, broadcast bool) (*pb.InteractionResponse, error)
 
 // StartTrashTalking contains the polling / broadcast loop previously in ttcore.
 // It is extracted so alternate ttcore implementations can reuse the common behavior.
@@ -37,7 +37,7 @@ func StartTrashTalking(ctx *tccore.ConfigContext, shutdownChan chan bool, remote
 				ctx.Log.Printf("Invalid broadcast message in trcshtalk.\n")
 				continue
 			}
-			req := &pb.DiagnosticRequest{MessageId: "", Data: []string{*msg.Response}}
+			req := &pb.InteractionRequest{MessageId: "", Data: []string{*msg.Response}}
 			retry := 0
 		retryBroadcast:
 			if _, err := process(req, true); err != nil {
@@ -59,7 +59,7 @@ func StartTrashTalking(ctx *tccore.ConfigContext, shutdownChan chan bool, remote
 		default:
 		}
 		// Pull a query
-		emptyReq := &pb.DiagnosticRequest{}
+		emptyReq := &pb.InteractionRequest{}
 		resp, err := process(emptyReq, false)
 		if err != nil {
 			if s, ok := status.FromError(err); ok && s.Code() == codes.Unavailable {
@@ -68,17 +68,17 @@ func StartTrashTalking(ctx *tccore.ConfigContext, shutdownChan chan bool, remote
 			continue
 		}
 		queryData := resp.GetResults()
-		incoming := &pb.DiagnosticRequest{}
+		incoming := &pb.InteractionRequest{}
 		if err := protojson.Unmarshal([]byte(queryData), incoming); err != nil {
 			if !strings.Contains(err.Error(), "unexpected token") {
-				ctx.Log.Printf("Error unmarshalling incoming diagnostic request: %s\n", err.Error())
+				ctx.Log.Printf("Error unmarshalling incoming interaction request: %s\n", err.Error())
 			}
 			continue
 		}
 		// Handle talkback asynchronously
-		go func(r *pb.DiagnosticRequest) {
+		go func(r *pb.InteractionRequest) {
 			tb := talkBack(r)
-			reply := &pb.DiagnosticRequest{MessageId: r.MessageId, Data: []string{tb.Results}}
+			reply := &pb.InteractionRequest{MessageId: r.MessageId, Data: []string{tb.Results}}
 			retry := 0
 		retryTalkback:
 			if _, err := process(reply, false); err != nil {
@@ -93,27 +93,33 @@ func StartTrashTalking(ctx *tccore.ConfigContext, shutdownChan chan bool, remote
 	}
 }
 
-// TrcshTalkBack contains the original logic for assembling diagnostics into a response.
+// TrcshTalkBack contains the original logic for assembling interactions into a response.
 // Kept here for reuse; callers may supply an alternate implementation.
-func TrcshTalkBack(ctx *tccore.ConfigContext, req *pb.DiagnosticRequest) *pb.DiagnosticResponse {
-	cmds := req.GetDiagnostics()
+func TrcshTalkBack(ctx *tccore.ConfigContext, req *pb.InteractionRequest) *pb.InteractionResponse {
+	if len(req.GetInteractions()) == 0 && strings.TrimSpace(req.GetQueryId()) == "" {
+		if messageID, results, ok := ProcessProxyEvent(ctx, req.MessageId, req.GetData()); ok {
+			return &pb.InteractionResponse{MessageId: messageID, Results: results}
+		}
+	}
+
+	cmds := req.GetInteractions()
 	queries := []string{}
 	tenantTest := req.GetQueryId() + ":"
-	if contains(cmds, pb.Diagnostics_ALL) {
+	if contains(cmds, pb.Interactions_ALL) {
 		ctx.Log.Println("Running all queries.")
 		queries = append(queries, "healthcheck")
 	} else {
 		for _, q := range cmds {
 			switch q {
-			case pb.Diagnostics_HEALTH_CHECK:
+			case pb.Interactions_HEALTH_CHECK:
 				healthData := req.GetData()
 				if len(healthData) == 1 && healthData[0] == "PROGRESS" {
 					tenantTest = "PROGRESS"
 				}
-				ctx.Log.Println("Running healthcheck diagnostic.")
+				ctx.Log.Println("Running healthcheck interaction.")
 				queries = append(queries, "healthcheck")
-			case pb.Diagnostics_TRCDB:
-				ctx.Log.Println("Running trcdb diagnostic.")
+			case pb.Interactions_TRCDB:
+				ctx.Log.Println("Running trcdb interaction.")
 				queries = append(queries, "trcdb")
 				for i, r := range req.GetData() {
 					if i == 0 && r == "PROGRESS" {
@@ -144,7 +150,7 @@ func TrcshTalkBack(ctx *tccore.ConfigContext, req *pb.DiagnosticRequest) *pb.Dia
 				results += v + " "
 			}
 			ctx.Log.Printf("Sending response to chat: %s\n", results)
-			return &pb.DiagnosticResponse{MessageId: *event.RoutingId, Results: results}
+			return &pb.InteractionResponse{MessageId: *event.RoutingId, Results: results}
 		}
 		if event.Query != nil && len(*event.Query) == 1 && event.Response != nil && (*event).Response != nil {
 			ctx.Log.Printf("Processing response from query: %s\n", *event.Query)
@@ -156,9 +162,33 @@ func TrcshTalkBack(ctx *tccore.ConfigContext, req *pb.DiagnosticRequest) *pb.Dia
 				results += v + " "
 			}
 			ctx.Log.Printf("Sending response to chat: %s\n", results)
-			return &pb.DiagnosticResponse{MessageId: *event.RoutingId, Results: results}
+			return &pb.InteractionResponse{MessageId: *event.RoutingId, Results: results}
 		}
 	}
+}
+
+func ParseProxyEvent(data []string) (string, string, bool) {
+	if len(data) < 2 {
+		return "", "", false
+	}
+	targetPlugin := strings.TrimSpace(data[0])
+	eventPayload := strings.TrimSpace(strings.Join(data[1:], " "))
+	if targetPlugin == "" || eventPayload == "" {
+		return "", "", false
+	}
+	return targetPlugin, eventPayload, true
+}
+
+func ProcessProxyEvent(ctx *tccore.ConfigContext, messageID string, data []string) (string, string, bool) {
+	pluginName, eventPayload, ok := ParseProxyEvent(data)
+	if !ok {
+		return "", "", false
+	}
+	responseID, results := CollectQueryResponses(ctx, &messageID, "trcshtalk", &eventPayload, []string{pluginName})
+	if responseID == "" {
+		responseID = messageID
+	}
+	return responseID, results, true
 }
 
 func contains[T comparable](arr []T, v T) bool {

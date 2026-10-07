@@ -19,14 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	TrcshTalkService_RunDiagnostics_FullMethodName = "/trcshtalksdk.TrcshTalkService/RunDiagnostics"
+	TrcshTalkService_Interact_FullMethodName = "/trcshtalksdk.TrcshTalkService/Interact"
 )
 
 // TrcshTalkServiceClient is the client API for TrcshTalkService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TrcshTalkServiceClient interface {
-	RunDiagnostics(ctx context.Context, in *DiagnosticRequest, opts ...grpc.CallOption) (*DiagnosticResponse, error)
+	Interact(ctx context.Context, in *InteractionRequest, opts ...grpc.CallOption) (*InteractionResponse, error)
 }
 
 type trcshTalkServiceClient struct {
@@ -37,10 +37,10 @@ func NewTrcshTalkServiceClient(cc grpc.ClientConnInterface) TrcshTalkServiceClie
 	return &trcshTalkServiceClient{cc}
 }
 
-func (c *trcshTalkServiceClient) RunDiagnostics(ctx context.Context, in *DiagnosticRequest, opts ...grpc.CallOption) (*DiagnosticResponse, error) {
+func (c *trcshTalkServiceClient) Interact(ctx context.Context, in *InteractionRequest, opts ...grpc.CallOption) (*InteractionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DiagnosticResponse)
-	err := c.cc.Invoke(ctx, TrcshTalkService_RunDiagnostics_FullMethodName, in, out, cOpts...)
+	out := new(InteractionResponse)
+	err := c.cc.Invoke(ctx, TrcshTalkService_Interact_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (c *trcshTalkServiceClient) RunDiagnostics(ctx context.Context, in *Diagnos
 // All implementations must embed UnimplementedTrcshTalkServiceServer
 // for forward compatibility.
 type TrcshTalkServiceServer interface {
-	RunDiagnostics(context.Context, *DiagnosticRequest) (*DiagnosticResponse, error)
+	Interact(context.Context, *InteractionRequest) (*InteractionResponse, error)
 	mustEmbedUnimplementedTrcshTalkServiceServer()
 }
 
@@ -62,8 +62,8 @@ type TrcshTalkServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedTrcshTalkServiceServer struct{}
 
-func (UnimplementedTrcshTalkServiceServer) RunDiagnostics(context.Context, *DiagnosticRequest) (*DiagnosticResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunDiagnostics not implemented")
+func (UnimplementedTrcshTalkServiceServer) Interact(context.Context, *InteractionRequest) (*InteractionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Interact not implemented")
 }
 func (UnimplementedTrcshTalkServiceServer) mustEmbedUnimplementedTrcshTalkServiceServer() {}
 func (UnimplementedTrcshTalkServiceServer) testEmbeddedByValue()                          {}
@@ -86,20 +86,20 @@ func RegisterTrcshTalkServiceServer(s grpc.ServiceRegistrar, srv TrcshTalkServic
 	s.RegisterService(&TrcshTalkService_ServiceDesc, srv)
 }
 
-func _TrcshTalkService_RunDiagnostics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DiagnosticRequest)
+func _TrcshTalkService_Interact_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InteractionRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(TrcshTalkServiceServer).RunDiagnostics(ctx, in)
+		return srv.(TrcshTalkServiceServer).Interact(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: TrcshTalkService_RunDiagnostics_FullMethodName,
+		FullMethod: TrcshTalkService_Interact_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TrcshTalkServiceServer).RunDiagnostics(ctx, req.(*DiagnosticRequest))
+		return srv.(TrcshTalkServiceServer).Interact(ctx, req.(*InteractionRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -112,8 +112,8 @@ var TrcshTalkService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*TrcshTalkServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "RunDiagnostics",
-			Handler:    _TrcshTalkService_RunDiagnostics_Handler,
+			MethodName: "Interact",
+			Handler:    _TrcshTalkService_Interact_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

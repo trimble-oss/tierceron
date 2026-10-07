@@ -48,10 +48,10 @@ var (
 	localModel                         *localModelRuntime
 	proxyRequests                      = newProxyRequestBroker()
 	proxyReplies                       sync.Map
-	registerDiagnosticsService         = func(server *grpc.Server) {
-		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
+	registerInteractionService         = func(server *grpc.Server) {
+		ttsdk.RegisterTrcshTalkServiceServer(server, &interactionServiceServer{})
 	}
-	proxyDiagnosticForwarder      = forwardToHubClient
+	proxyInteractionForwarder     = forwardToHubClient
 	localModelRoutePromptBuilder  = defaultLocalModelRoutePromptBuilder
 	localModelRouteNormalizer     = defaultLocalModelRouteNormalizer
 	localModelRoutePromptResolver func(prompt string) (string, bool)
@@ -75,7 +75,7 @@ type localModelRuntime struct {
 	template  *chat.Template
 }
 
-type diagnosticsServiceServer struct {
+type interactionServiceServer struct {
 	ttsdk.UnimplementedTrcshTalkServiceServer
 }
 
@@ -119,7 +119,7 @@ type proxyDirective struct {
 	version uint64
 }
 
-type proxyDiagnosticResponseEnvelope struct {
+type proxyInteractionResponseEnvelope struct {
 	MessageID string `json:"messageId"`
 	Results   string `json:"results"`
 }
@@ -370,24 +370,24 @@ func (broker *proxyRequestBroker) dequeue(ctx context.Context, hostID string, st
 	}
 }
 
-// SetDiagnosticsServiceRegistrar overrides the SDK used to register Vico's diagnostics service.
-func SetDiagnosticsServiceRegistrar(register func(server *grpc.Server)) {
+// SetInteractionServiceRegistrar overrides the SDK used to register Vico's interaction service.
+func SetInteractionServiceRegistrar(register func(server *grpc.Server)) {
 	if register == nil {
-		registerDiagnosticsService = func(server *grpc.Server) {
-			ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
+		registerInteractionService = func(server *grpc.Server) {
+			ttsdk.RegisterTrcshTalkServiceServer(server, &interactionServiceServer{})
 		}
 		return
 	}
-	registerDiagnosticsService = register
+	registerInteractionService = register
 }
 
-// SetProxyDiagnosticForwarder lets wrappers map chat messages with their own SDK.
-func SetProxyDiagnosticForwarder(forward func(event *tccore.ChatMsg, targetPlugin string) (string, error)) {
+// SetProxyInteractionForwarder lets wrappers map chat messages with their own SDK.
+func SetProxyInteractionForwarder(forward func(event *tccore.ChatMsg, targetPlugin string) (string, error)) {
 	if forward == nil {
-		proxyDiagnosticForwarder = forwardToHubClient
+		proxyInteractionForwarder = forwardToHubClient
 		return
 	}
-	proxyDiagnosticForwarder = forward
+	proxyInteractionForwarder = forward
 }
 
 // SetLocalModelRoutePromptBuilder overrides how local-model routing prompts are constructed.
@@ -427,9 +427,9 @@ func SetLocalModelReadyHook(hook func(configContext *tccore.ConfigContext) error
 	localModelReadyHook = hook
 }
 
-// RunDiagnostics invokes Vico's diagnostics implementation without exposing its generated SDK types.
-func RunDiagnostics(ctx context.Context, messageID string, queryID string, data []string) (string, error) {
-	response, err := (&diagnosticsServiceServer{}).RunDiagnostics(ctx, &ttsdk.DiagnosticRequest{
+// Interact invokes Vico's implementation without exposing its generated SDK types.
+func Interact(ctx context.Context, messageID string, queryID string, data []string) (string, error) {
+	response, err := (&interactionServiceServer{}).Interact(ctx, &ttsdk.InteractionRequest{
 		MessageId: messageID,
 		QueryId:   queryID,
 		Data:      data,
@@ -611,7 +611,7 @@ func ValidateIncomingTTBToken(ctx context.Context) error {
 	return validateIncomingTTBToken(ctx)
 }
 
-func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
+func promptFromInteractionRequest(req *ttsdk.InteractionRequest) string {
 	if req == nil {
 		return ""
 	}
@@ -701,15 +701,15 @@ func hubClientStatefulSetFromIncomingContext(ctx context.Context) string {
 	return ""
 }
 
-func targetPluginsForRequest(req *ttsdk.DiagnosticRequest) ([]string, bool) {
-	targetPlugins := make([]string, 0, len(req.GetDiagnostics()))
+func targetPluginsForRequest(req *ttsdk.InteractionRequest) ([]string, bool) {
+	targetPlugins := make([]string, 0, len(req.GetInteractions()))
 	seen := map[string]struct{}{}
-	for _, diagnostic := range req.GetDiagnostics() {
+	for _, interaction := range req.GetInteractions() {
 		var targetPlugin string
-		switch diagnostic {
-		case ttsdk.Diagnostics_ALL, ttsdk.Diagnostics_HEALTH_CHECK:
+		switch interaction {
+		case ttsdk.Interactions_ALL, ttsdk.Interactions_HEALTH_CHECK:
 			targetPlugin = "healthcheck"
-		case ttsdk.Diagnostics_TRCDB:
+		case ttsdk.Interactions_TRCDB:
 			targetPlugin = "trcdb"
 		default:
 			return nil, false
@@ -759,7 +759,7 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 
 	select {
 	case response := <-responseChan:
-		return decodeProxyDiagnosticResponse(response), nil
+		return decodeProxyInteractionResponse(response), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
@@ -784,18 +784,18 @@ func EnqueueProxyRequestToPod(ctx context.Context, messageID string, targetKerne
 	}
 	select {
 	case response := <-responseChan:
-		return decodeProxyDiagnosticResponse(response), nil
+		return decodeProxyInteractionResponse(response), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
 }
 
-func decodeProxyDiagnosticResponse(response string) string {
+func decodeProxyInteractionResponse(response string) string {
 	trimmed := strings.TrimSpace(response)
 	if trimmed == "" || !strings.HasPrefix(trimmed, "{") {
 		return response
 	}
-	var envelope proxyDiagnosticResponseEnvelope
+	var envelope proxyInteractionResponseEnvelope
 	if err := json.Unmarshal([]byte(trimmed), &envelope); err != nil {
 		return response
 	}
@@ -871,10 +871,10 @@ func RelayHubClientBroadcast(messageID string, data []string) error {
 	return nil
 }
 
-func enqueueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+func enqueueProxyRequest(ctx context.Context, req *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, error) {
 	targetPlugins, ok := targetPluginsForRequest(req)
 	if !ok {
-		return nil, errors.New("unsupported proxy diagnostic")
+		return nil, errors.New("unsupported proxy interaction")
 	}
 	requestBytes, err := protojson.Marshal(req)
 	if err != nil {
@@ -884,40 +884,40 @@ func enqueueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*tt
 	if err != nil {
 		return nil, err
 	}
-	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: result}, nil
+	return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: result}, nil
 }
 
-func dequeueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+func dequeueProxyRequest(ctx context.Context, req *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, error) {
 	serializedRequest, err := DequeueProxyRequest(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: serializedRequest}, nil
+	return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: serializedRequest}, nil
 }
 
-func postProxyResponse(req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, bool) {
+func postProxyResponse(req *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, bool) {
 	if len(req.GetData()) == 0 {
 		return nil, false
 	}
 	if !PostProxyResponse(req.GetMessageId(), req.GetData()[0]) {
 		return nil, false
 	}
-	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
+	return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
 }
 
-func buildProxyDiagnosticRequest(event *tccore.ChatMsg, targetPlugin string) *ttsdk.DiagnosticRequest {
+func buildProxyInteractionRequest(event *tccore.ChatMsg, targetPlugin string) *ttsdk.InteractionRequest {
 	if event == nil {
 		return nil
 	}
 
-	var diagnostic ttsdk.Diagnostics
+	var interaction ttsdk.Interactions
 	switch strings.TrimSpace(targetPlugin) {
 	case "all":
-		diagnostic = ttsdk.Diagnostics_ALL
+		interaction = ttsdk.Interactions_ALL
 	case "healthcheck":
-		diagnostic = ttsdk.Diagnostics_HEALTH_CHECK
+		interaction = ttsdk.Interactions_HEALTH_CHECK
 	case "trcdb":
-		diagnostic = ttsdk.Diagnostics_TRCDB
+		interaction = ttsdk.Interactions_TRCDB
 	default:
 		return nil
 	}
@@ -947,11 +947,11 @@ func buildProxyDiagnosticRequest(event *tccore.ChatMsg, targetPlugin string) *tt
 		}
 	}
 
-	return &ttsdk.DiagnosticRequest{
-		MessageId:   messageID,
-		Diagnostics: []ttsdk.Diagnostics{diagnostic},
-		QueryId:     queryID,
-		Data:        data,
+	return &ttsdk.InteractionRequest{
+		MessageId:    messageID,
+		Interactions: []ttsdk.Interactions{interaction},
+		QueryId:      queryID,
+		Data:         data,
 	}
 }
 
@@ -960,9 +960,9 @@ func forwardToHubClient(event *tccore.ChatMsg, targetPlugin string) (string, err
 	ctx, cancel := context.WithCancel(context.Background()) // for debugging
 	defer cancel()
 
-	request := buildProxyDiagnosticRequest(event, targetPlugin)
+	request := buildProxyInteractionRequest(event, targetPlugin)
 	if request == nil {
-		return "", fmt.Errorf("unsupported proxy diagnostic target %q", targetPlugin)
+		return "", fmt.Errorf("unsupported proxy interaction target %q", targetPlugin)
 	}
 	response, err := enqueueProxyRequest(ctx, request)
 	if err != nil {
@@ -974,29 +974,29 @@ func forwardToHubClient(event *tccore.ChatMsg, targetPlugin string) (string, err
 	return response.GetResults(), nil
 }
 
-func isHubClientPoll(req *ttsdk.DiagnosticRequest) bool {
+func isHubClientPoll(req *ttsdk.InteractionRequest) bool {
 	if req == nil {
 		return false
 	}
 	return len(req.GetData()) == 0 && len(req.GetQueries()) == 0 && strings.TrimSpace(req.GetQueryId()) == ""
 }
 
-// Runs Vico diagnostics for the shared trcshtalk RPC contract.
-func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
+// Interact handles Vico requests over the shared trcshtalk RPC contract.
+func (s *interactionServiceServer) Interact(ctx context.Context, req *ttsdk.InteractionRequest) (*ttsdk.InteractionResponse, error) {
 	if err := validateIncomingTTBToken(ctx); err != nil {
 		if configContext != nil {
-			configContext.Log.Printf("Rejecting RunDiagnostics request: %v", err)
+			configContext.Log.Printf("Rejecting Interact request: %v", err)
 		}
 		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
 	}
 	if req == nil {
-		return nil, status.Error(codes.InvalidArgument, "missing diagnostic request")
+		return nil, status.Error(codes.InvalidArgument, "missing interaction request")
 	}
 	if IsHubClientBroadcast(req.GetMessageId(), req.GetData()) {
 		if err := RelayHubClientBroadcast(req.GetMessageId(), req.GetData()); err != nil {
 			return nil, status.Error(codes.Unavailable, err.Error())
 		}
-		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Broadcast relayed"}, nil
+		return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: "Broadcast relayed"}, nil
 	}
 	if response, handled := postProxyResponse(req); handled {
 		return response, nil
@@ -1005,26 +1005,26 @@ func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsd
 		return dequeueProxyRequest(ctx, req)
 	}
 
-	prompt := promptFromDiagnosticRequest(req)
+	prompt := promptFromInteractionRequest(req)
 	if prompt == "" {
 		for _, query := range req.GetQueries() {
 			if query == ttsdk.PluginQuery_ACTIVE_COUNT {
-				return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: localModelActiveCount()}, nil
+				return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: localModelActiveCount()}, nil
 			}
 		}
-		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: ""}, nil
+		return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: ""}, nil
 	}
 
 	response, err := queryLocalModelForRouting(prompt)
 	if err != nil {
 		if configContext != nil {
-			configContext.Log.Printf("vico RunDiagnostics failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+			configContext.Log.Printf("vico Interact failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 		}
 		send_err(err)
 		return nil, status.Error(codes.Unavailable, "vico local model unavailable")
 	}
 
-	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: response}, nil
+	return &ttsdk.InteractionResponse{MessageId: req.GetMessageId(), Results: response}, nil
 }
 
 func loadTokenizer(modelPath string) (*tokenizer.Tokenizer, error) {
@@ -1408,13 +1408,13 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			return
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
 			configContext.Log.Println("Sending progress results back to kernel.")
-			progressResp := "Running Vico Diagnostics..."
+			progressResp := "Running Vico interactions..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
 		case targetPluginForEvent(event) != "" && targetPluginForEvent(event) != "vico":
 			targetPlugin := targetPluginForEvent(event)
-			configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
-			response, err := proxyDiagnosticForwarder(event, targetPlugin)
+			configContext.Log.Printf("Forwarding Vico interaction request to hubclient for plugin %s\n", targetPlugin)
+			response, err := proxyInteractionForwarder(event, targetPlugin)
 			if err != nil {
 				configContext.Log.Printf("vico hubclient forwarding failed for %s: %s\n", targetPlugin, tccore.SanitizeForLogging(err.Error()))
 				response = fmt.Sprintf("No hubclient response for plugin %s.", targetPlugin)
@@ -1459,7 +1459,7 @@ func start(pluginName string) {
 	// 	return
 	// }
 
-	_, gServer, startedDF, err := startCore(pluginName, registerDiagnosticsService)
+	_, gServer, startedDF, err := startCore(pluginName, registerInteractionService)
 	if err != nil {
 		send_err(err)
 		return
