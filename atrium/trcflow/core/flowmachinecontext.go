@@ -109,7 +109,7 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
 
-func (tfmContext *TrcFlowMachineContext) GetKernelId() int {
+func (tfmContext *TrcFlowMachineContext) GetId() int {
 	return tfmContext.Id
 }
 
@@ -1163,7 +1163,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		if err != nil {
 			tfmContext.Log("query select error", err)
 		} else {
-			if tfmContext.GetKernelId() > 0 && len(matrixChangedEntries) == 0 {
+			if tfmContext.GetId() > 0 && len(matrixChangedEntries) == 0 {
 				for _, flowName := range trcdbExchange.Flows {
 					if flowCacheHint, hasFlowCacheHint := tfmContext.FlowMap[flowcore.FlowNameType(flowName)]; hasFlowCacheHint {
 						if filteredIndexProvidedValues, hasKeyHint := trcdbExchange.FlowCacheKeyHints[flowName]; hasKeyHint {

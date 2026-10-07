@@ -586,7 +586,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDBFromVault(
 	var secondaryIndexes []string
 	var err error
 
-	kernelID := tfmContext.GetKernelId()
+	kernelID := tfmContext.GetId()
 
 	if (kernelID > 0) &&
 		kernelopts.BuildOptions.IsKernel() &&
