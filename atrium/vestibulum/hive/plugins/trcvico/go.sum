@@ -31,8 +31,8 @@ github.com/townsendmerino/goinfer v0.17.2 h1:7wDqLrwy/DOLL6mBmd4zNlVuabKn0iBxbW0
 github.com/townsendmerino/goinfer v0.17.2/go.mod h1:3AyCJl5nc9ow6qVfPsQeewgdkR7rlGCFOukS+EF3IOg=
 github.com/townsendmerino/goinfer/cuda v0.17.2 h1:FJeWrKENWbsNm0L/Zp35cpPUES1uYYrWUiMmV3uXz44=
 github.com/townsendmerino/goinfer/cuda v0.17.2/go.mod h1:fH3tgwOVqJh8TPAxV0SjtrlF+gV5b7Be3lR10AJXLB8=
-github.com/trimble-oss/tierceron-core/v2 v2.12.2 h1:4xE8PbGH7w1PKZ8+wgdgqFDsbMRo93lMMz3JCJnh//o=
-github.com/trimble-oss/tierceron-core/v2 v2.12.2/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
+github.com/trimble-oss/tierceron-core/v2 v2.12.3 h1:Op9jS6UyoSOPPUVlD2ns8wQ2c/OAMxC6oZiyLsPZS2U=
+github.com/trimble-oss/tierceron-core/v2 v2.12.3/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
 github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
 github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b h1:RHqkdK9UFx7PK3zSfloHuZLp+NKFVB0oEy8cRFQ3Qls=
