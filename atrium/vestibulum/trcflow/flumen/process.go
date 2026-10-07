@@ -134,7 +134,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmContext = &trcflowcore.TrcFlowMachineContext{
 		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
-		KernelId:                  kernelID,
+		Id:                        kernelID,
 		RawTrcdbMode:              rawTrcdbModeEnabled(pluginConfig),
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
@@ -396,7 +396,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
-		KernelId:                  kernelID,
+		Id:                        kernelID,
 		RawTrcdbMode:              rawTrcdbMode,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,

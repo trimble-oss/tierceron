@@ -74,7 +74,7 @@ type TrcFlowMachineContext struct {
 	ShellRunner               func(*config.DriverConfig, string, string)
 	Region                    string
 	Env                       string
-	KernelId                  int
+	Id                        int
 	RawTrcdbMode              bool
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
@@ -110,7 +110,7 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 }
 
 func (tfmContext *TrcFlowMachineContext) GetKernelId() int {
-	return tfmContext.KernelId
+	return tfmContext.Id
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
