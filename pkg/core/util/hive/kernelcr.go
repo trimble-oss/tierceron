@@ -1065,7 +1065,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				}
 
-				pluginConfig["podID"] = pluginHandler.Id
+				pluginConfig["kernelOrdinal"] = pluginHandler.Id
 
 				// Grab app role and secret and addr and env from service config and call auto auth
 				// auto auth will return token
