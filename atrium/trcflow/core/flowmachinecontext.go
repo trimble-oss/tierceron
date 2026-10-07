@@ -74,7 +74,7 @@ type TrcFlowMachineContext struct {
 	ShellRunner               func(*config.DriverConfig, string, string)
 	Region                    string
 	Env                       string
-	Id                        int
+	Id                        int // podnumber
 	RawTrcdbMode              bool
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
