@@ -76,20 +76,20 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		return nil, err
 	}
 	goMod.Env = goMod.EnvBasis
-	var kernelID int
-	switch v := pluginConfig["kernelId"].(type) {
+	var kernelOrdinal int
+	switch v := pluginConfig["kernelOrdinal"].(type) {
 	case int:
-		kernelID = v
+		kernelOrdinal = v
 	case string:
 		id, err := strconv.Atoi(v)
 		if err == nil {
-			kernelID = id
+			kernelOrdinal = id
 		} else {
 			// handle error or fallback
-			kernelID = 0 // or another default
+			kernelOrdinal = 0 // or another default
 		}
 	default:
-		kernelID = 0 // or another default
+		kernelOrdinal = 0 // or another default
 	}
 
 	// Need new function writing to that path using pluginName ->
@@ -134,7 +134,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	tfmContext = &trcflowcore.TrcFlowMachineContext{
 		ShellRunner:               driverConfig.ShellRunner,
 		Env:                       pluginConfig["env"].(string),
-		KernelId:                  kernelID,
+		Id:                        kernelOrdinal,
 		RawTrcdbMode:              rawTrcdbModeEnabled(pluginConfig),
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
@@ -299,7 +299,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	rawTrcdbMode := tfmContext.RawTrcdbMode
 	var businessFlows []flow.FlowDefinition
 	if !rawTrcdbMode {
-		businessFlows = flowMachineInitContext.GetFilteredBusinessFlows(kernelID)
+		businessFlows = flowMachineInitContext.GetFilteredBusinessFlows(kernelOrdinal)
 	} else {
 		logger.Println("raw_trcdb_mode enabled; skipping business flow startup")
 	}
@@ -386,17 +386,17 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 	// 2. Initialize Engine and create changes table.
 	tfmContext.TierceronEngine.Context = sqle.NewEmptyContext()
 	var filteredFlowNames []string
-	for _, flow := range flowMachineInitContext.GetFilteredTableFlowDefinitions(kernelID) {
+	for _, flow := range flowMachineInitContext.GetFilteredTableFlowDefinitions(kernelOrdinal) {
 		filteredFlowNames = append(filteredFlowNames, flow.FlowHeader.FlowName())
 	}
 
-	tfmContext.Init(flowMachineInitContext, sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelID), flowMachineInitContext.GetFilteredTestFlowNames(kernelID))
+	tfmContext.Init(flowMachineInitContext, sourceDatabaseConnectionsMap, filteredFlowNames, flowMachineInitContext.GetFilteredBusinessFlowNames(kernelOrdinal), flowMachineInitContext.GetFilteredTestFlowNames(kernelOrdinal))
 
 	// Initialize tfcContext for flow controller
 	tfmFlumeContext := &trcflowcore.TrcFlowMachineContext{
 		InitConfigWG:              &sync.WaitGroup{},
 		Env:                       pluginConfig["env"].(string),
-		KernelId:                  kernelID,
+		Id:                        kernelOrdinal,
 		RawTrcdbMode:              rawTrcdbMode,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,

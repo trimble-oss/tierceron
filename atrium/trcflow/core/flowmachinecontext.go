@@ -74,7 +74,7 @@ type TrcFlowMachineContext struct {
 	ShellRunner               func(*config.DriverConfig, string, string)
 	Region                    string
 	Env                       string
-	KernelId                  int
+	Id                        int // podnumber
 	RawTrcdbMode              bool
 	FlowControllerInit        bool
 	FlowControllerUpdateLock  sync.Mutex
@@ -109,8 +109,8 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 	return tfmContext.Env
 }
 
-func (tfmContext *TrcFlowMachineContext) GetKernelId() int {
-	return tfmContext.KernelId
+func (tfmContext *TrcFlowMachineContext) GetId() int {
+	return tfmContext.Id
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
@@ -1163,7 +1163,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		if err != nil {
 			tfmContext.Log("query select error", err)
 		} else {
-			if tfmContext.GetKernelId() > 0 && len(matrixChangedEntries) == 0 {
+			if tfmContext.GetId() > 0 && len(matrixChangedEntries) == 0 {
 				for _, flowName := range trcdbExchange.Flows {
 					if flowCacheHint, hasFlowCacheHint := tfmContext.FlowMap[flowcore.FlowNameType(flowName)]; hasFlowCacheHint {
 						if filteredIndexProvidedValues, hasKeyHint := trcdbExchange.FlowCacheKeyHints[flowName]; hasKeyHint {

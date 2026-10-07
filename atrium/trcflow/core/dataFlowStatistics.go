@@ -224,7 +224,8 @@ func InitArgosyFleet(mod *kv.Modifier, project string, logger *log.Logger) (*tcc
 						HIVE_STAT_DFG_PATH,
 						project,
 						idName.(string),
-						id.(string))
+						id.(string),
+					)
 
 					serviceListData, serviceListErr := mod.List(statPath,
 						logger)
@@ -332,7 +333,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 		mod.SectionPath = ""
 		region := getDfsRegion(tfmContext)
 		statMap["argosId"] = id
-		statMap["flowGroup"] = fmt.Sprintf("%s-%s-%d", dfStatDeliveryCtx.FlowGroup, region, tfmContext.KernelId)
+		statMap["flowGroup"] = fmt.Sprintf("%s-%s-%d", dfStatDeliveryCtx.FlowGroup, region, tfmContext.Id)
 		statPath := fmt.Sprintf(
 			HIVE_STAT_CODE_PATH,
 			indexPath,
@@ -340,7 +341,7 @@ func DeliverStatistic(tfmContext *TrcFlowMachineContext,
 			id,
 			dfStatDeliveryCtx.FlowGroup,
 			region,
-			tfmContext.KernelId,
+			tfmContext.Id,
 			dfStatDeliveryCtx.FlowName,
 			dfStatDeliveryCtx.StateCode,
 		)
@@ -372,7 +373,7 @@ func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *
 	flowG = strings.TrimSuffix(flowG, "/")
 	region := getDfsRegion(tfmContext)
 	regionless := false
-	suffix := fmt.Sprintf("-%s-%d", region, tfmContext.KernelId)
+	suffix := fmt.Sprintf("-%s-%d", region, tfmContext.Id)
 	trimmedFlowG := strings.TrimSuffix(flowG, suffix)
 	if len(flowG) != len(trimmedFlowG) {
 		// If flowG ends with region, remove it to prevent a broken path
@@ -388,11 +389,12 @@ func RetrieveFlowMachineStatistic(tfmContext *TrcFlowMachineContext, tfContext *
 		id,
 		flowG,
 		region,
-		tfmContext.KernelId,
-		flowN)
+		tfmContext.Id,
+		flowN,
+	)
 	if regionless {
 		// Strip region from path...
-		statPath = strings.Replace(statPath, fmt.Sprintf("/%s-%s-%d/dataFlowName", flowG, region, tfmContext.KernelId), fmt.Sprintf("/%s/dataFlowName", flowG), 1)
+		statPath = strings.Replace(statPath, fmt.Sprintf("/%s-%s-%d/dataFlowName", flowG, region, tfmContext.Id), fmt.Sprintf("/%s/dataFlowName", flowG), 1)
 	}
 	return RetrieveStatistic(tfContext.GoMod, statPath, dfs, id, indexPath, idName, flowG, flowN, logger)
 }
@@ -407,7 +409,8 @@ func RetrieveStatistic(mod *kv.Modifier, statPath string, dfs *tccore.TTDINode, 
 			flowG,
 			getDfsRegion(nil),
 			"65534", // 65534 - nobodoy
-			flowN)
+			flowN,
+		)
 	}
 
 	listData, listErr := mod.List(statPath, logger)

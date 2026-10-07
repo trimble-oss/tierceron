@@ -586,9 +586,9 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDBFromVault(
 	var secondaryIndexes []string
 	var err error
 
-	kernelID := tfmContext.GetKernelId()
+	kernelOrdinal := tfmContext.GetId()
 
-	if (kernelID > 0) &&
+	if (kernelOrdinal > 0) &&
 		kernelopts.BuildOptions.IsKernel() &&
 		tfContext.FlowHeader.FlowName() != flowcore.TierceronControllerFlow.FlowName() {
 		// If a filtered list is provide, it'll be ok to continue even in the hive...

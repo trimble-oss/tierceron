@@ -55,8 +55,8 @@ var (
 type PluginHandler struct {
 	Name             string // service
 	State            int    // 0 - initialized, 1 - running, 2 - failed
-	Id               string
-	KernelId         int
+	Id               int    // pod number
+	KernelId         string // statefulset-podnumber
 	Signature        string // sha256 of plugin
 	ConfigContext    *tccore.ConfigContext
 	Services         *map[string]*PluginHandler
@@ -84,7 +84,7 @@ type KernelCtx struct {
 	PluginRestartChan *chan tccore.KernelCmd
 }
 
-func InitKernel(id string) *PluginHandler {
+func InitKernel(kernelId string) *PluginHandler {
 	pluginMap := make(map[string]*PluginHandler)
 	deployRestart := make(chan string)
 	pluginRestart := make(chan tccore.KernelCmd)
@@ -92,8 +92,8 @@ func InitKernel(id string) *PluginHandler {
 
 	return &PluginHandler{
 		Name:     "Kernel",
-		Id:       id,
-		KernelId: -1,
+		Id:       kernelOrdinal(kernelId),
+		KernelId: kernelId,
 		State:    0,
 		Services: &pluginMap,
 		ConfigContext: &tccore.ConfigContext{
@@ -106,21 +106,23 @@ func InitKernel(id string) *PluginHandler {
 	}
 }
 
+func kernelOrdinal(kernelID string) int {
+	separator := strings.LastIndex(kernelID, "-")
+	if separator < 0 {
+		return -1
+	}
+	ordinal, err := strconv.Atoi(kernelID[separator+1:])
+	if err != nil {
+		return -1
+	}
+	return ordinal
+}
+
 func (pluginHandler *PluginHandler) GetKernelID() int {
 	if pluginHandler == nil {
 		return 0
 	}
-	if pluginHandler.KernelId == -1 && len(pluginHandler.Id) > 0 {
-		idParts := strings.Split(pluginHandler.Id, "-")
-		if len(idParts) > 1 {
-			var kernParseErr error
-			pluginHandler.KernelId, kernParseErr = strconv.Atoi(idParts[1])
-			if kernParseErr != nil {
-				pluginHandler.KernelId = 0
-			}
-		}
-	}
-	return pluginHandler.KernelId
+	return pluginHandler.Id
 }
 
 var pendingPluginHandlers = make(chan *PluginHandler, 50) // Buffered to avoid blocking
@@ -174,14 +176,8 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 
 	var mod *kv.Modifier
 	pHID := 0
-	pHIDs := strings.Split(pluginHandler.Id, "-")
-	if len(pHIDs) > 0 {
-		id, err := strconv.Atoi(pHIDs[len(pHIDs)-1])
-		if err != nil {
-			driverConfig.CoreConfig.Log.Println("Setting default handler id for dynamic reloading.")
-		} else {
-			pHID = id
-		}
+	if pluginHandler.Id >= 0 {
+		pHID = pluginHandler.Id
 	}
 	for {
 		if mod == nil {
@@ -381,9 +377,12 @@ func (pluginHandler *PluginHandler) DynamicReloader(driverConfig *config.DriverC
 									cmd := <-*pluginHandler.KernelCtx.PluginRestartChan
 									if cmd.Command == tccore.PLUGIN_EVENT_STOP {
 										(*pluginHandler.Services)[service] = &PluginHandler{
-											Name: service,
+											Name:     service,
+											Id:       pluginHandler.Id,
+											KernelId: pluginHandler.KernelId,
 											ConfigContext: &tccore.ConfigContext{
-												Log: driverConfig.CoreConfig.Log,
+												Log:      driverConfig.CoreConfig.Log,
+												KernelID: pluginHandler.KernelId,
 											},
 											KernelCtx: &KernelCtx{
 												PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
@@ -449,9 +448,11 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 		(*pluginHandler.Services)[service] = &PluginHandler{
 			Name:             service,
 			DeploymentConfig: deployConfig,
+			Id:               pluginHandler.Id,
+			KernelId:         pluginHandler.KernelId,
 			ConfigContext: &tccore.ConfigContext{
 				Log:              driverConfig.CoreConfig.Log,
-				KernelID:         pluginHandler.Id,
+				KernelID:         pluginHandler.KernelId,
 				ChatReceiverChan: pluginHandler.ConfigContext.ChatReceiverChan,
 			},
 			KernelCtx: &KernelCtx{
@@ -582,9 +583,7 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
 	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
-	if plugincoreopts.BuildOptions.IsPluginHardwired() {
-		(*serviceConfig)["kernelID"] = strconv.Itoa(pluginHandler.GetKernelID())
-	}
+	(*serviceConfig)["kernelID"] = pluginHandler.KernelId
 
 	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
 	if kernelopts.BuildOptions.IsKernelZ() {
@@ -996,7 +995,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
 			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
-			serviceConfig["kernelID"] = strconv.Itoa(pluginHandler.GetKernelID())
+			serviceConfig["kernelID"] = pluginHandler.KernelId
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"
 
@@ -1066,7 +1065,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				}
 
-				pluginConfig["kernelId"] = pluginHandler.GetKernelID()
+				pluginConfig["kernelOrdinal"] = pluginHandler.Id
 
 				// Grab app role and secret and addr and env from service config and call auto auth
 				// auto auth will return token
@@ -1369,7 +1368,7 @@ func (pluginHandler *PluginHandler) handleDataflowStat(driverConfig *config.Driv
 			}
 			trcDfsFlowMachineContext := &flowcore.TrcFlowMachineContext{
 				Env:          driverConfig.CoreConfig.Env,
-				KernelId:     pluginHandler.KernelId,
+				Id:           pluginHandler.Id,
 				DriverConfig: driverConfig,
 			}
 			flowcore.DeliverStatistic(trcDfsFlowMachineContext, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
@@ -1482,18 +1481,12 @@ func (pluginHandler *PluginHandler) sendInitBroadcast(driverConfig *config.Drive
 		driverConfig.CoreConfig.Log.Printf("No cert information to broadcast\n")
 		return
 	}
-	pHID := 0
-	pHIDs := strings.Split(pluginHandler.Id, "-")
-	if len(pHIDs) > 0 {
-		id, err := strconv.Atoi(pHIDs[len(pHIDs)-1])
-		if err != nil {
-			driverConfig.CoreConfig.Log.Println("Setting default handler id for initial broadcasting.")
-		} else {
-			pHID = id
-		}
+	pHID := pluginHandler.Id
+	if pHID < 0 {
+		pHID = 0
 	}
 	if pHID != 0 {
-		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for kernel id: %s\n", pluginHandler.Id)
+		driverConfig.CoreConfig.Log.Printf("Initial broadcasting not supported for kernel id: %s\n", pluginHandler.KernelId)
 		return
 	}
 	for {
@@ -1584,7 +1577,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			continue
 		}
 		if msg.KernelId == nil || *msg.KernelId == "" {
-			msg.KernelId = &pluginHandler.Id
+			msg.KernelId = &pluginHandler.KernelId
 		}
 		driverConfig.CoreConfig.Log.Println("Kernel received message from chat.")
 		if eUtils.RefEquals(msg.Name, "SHUTDOWN") {
@@ -1594,7 +1587,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 					go func(p *PluginHandler) {
 						success := safeChannelSend(p.ConfigContext.ChatSenderChan, &tccore.ChatMsg{
 							Name:     msg.Name,
-							KernelId: &pluginHandler.Id,
+							KernelId: &pluginHandler.KernelId,
 						}, "SHUTDOWN plugin chat receiver", driverConfig.CoreConfig.Log)
 						if !success {
 							driverConfig.CoreConfig.Log.Printf("Failed to send shutdown message to plugin: %s\n", p.Name)
@@ -1640,7 +1633,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
 				newMsg := &tccore.ChatMsg{
 					Name:          &q,
-					KernelId:      &pluginHandler.Id,
+					KernelId:      &pluginHandler.KernelId,
 					TargetPod:     msg.TargetPod,
 					Query:         &[]string{},
 					TrcdbExchange: msg.TrcdbExchange,
