@@ -775,15 +775,16 @@ func CommonMain(envPtr *string, envCtxPtr *string,
 			if matches, _ := regexp.MatchString("\\-\\d+$", hostname); matches {
 				driverConfigPtr.CoreConfig.Log.Println("Stateful set enabled")
 
-				// <pod>-<pool>
-				hostParts := strings.Split(hostname, "-")
+				// Keep the complete StatefulSet name in the kernel ID. Splitting on
+				// the first hyphen loses identity when the set name itself has hyphens.
+				ordinalSeparator := strings.LastIndex(hostname, "-")
 				var err error
-				id, err = strconv.Atoi(hostParts[1])
+				id, err = strconv.Atoi(hostname[ordinalSeparator+1:])
 				if err != nil {
 					id = 0
 				}
 				kernelID = id
-				kernelName = hostParts[0]
+				kernelName = hostname[:ordinalSeparator]
 				driverConfigPtr.CoreConfig.Log.Printf("Starting Stateful trcshk with set entry id: %d\n", id)
 			} else {
 				driverConfigPtr.CoreConfig.Log.Printf("Unable to match: %s\n", hostname)
