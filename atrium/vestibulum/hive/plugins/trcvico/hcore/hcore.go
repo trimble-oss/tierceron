@@ -93,18 +93,13 @@ type proxyRequestEnvelope struct {
 }
 
 type proxyRequestBroker struct {
-	mu                 sync.Mutex
-	queues             map[string][]*proxyRequestEnvelope
-	backupQueueEntries int
-	deliveryQueues     map[string][]*proxyRequestEnvelope
-	hosts              map[string]hubClientHost
-	directives         map[string]proxyDirective
-	changed            chan struct{}
+	mu             sync.Mutex
+	queues         map[string][]*proxyRequestEnvelope
+	deliveryQueues map[string][]*proxyRequestEnvelope
+	hosts          map[string]hubClientHost
+	directives     map[string]proxyDirective
+	changed        chan struct{}
 }
-
-const maxProxyRequestBackupQueueEntries = 30
-
-var errProxyRequestBackupQueueFull = errors.New("proxy request backup queue is full")
 
 type hubClientHost struct {
 	supportedPlugins  map[string]struct{}
@@ -154,36 +149,6 @@ func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
 	broker.queues[key] = append(broker.queues[key], request)
 	close(broker.changed)
 	broker.changed = make(chan struct{})
-}
-
-func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) (int, error) {
-	broker.mu.Lock()
-	defer broker.mu.Unlock()
-
-	deliveries := 0
-	for deliveryKey, host := range broker.hosts {
-		if host.activePolls == 0 && time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
-			delete(broker.hosts, deliveryKey)
-			delete(broker.deliveryQueues, deliveryKey)
-			continue
-		}
-		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) {
-			continue
-		}
-		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
-		deliveries++
-	}
-	if deliveries == 0 {
-		if broker.backupQueueEntries >= maxProxyRequestBackupQueueEntries {
-			return 0, errProxyRequestBackupQueueFull
-		}
-		key := proxyRequestQueueKey(request.targetPlugins)
-		broker.queues[key] = append(broker.queues[key], request)
-		broker.backupQueueEntries++
-	}
-	close(broker.changed)
-	broker.changed = make(chan struct{})
-	return deliveries, nil
 }
 
 func kernelIDMatchesPod(targetKernelID string, podID string) bool {
@@ -355,7 +320,6 @@ func (broker *proxyRequestBroker) dequeue(ctx context.Context, hostID string, st
 			} else {
 				broker.queues[key] = queue[1:]
 			}
-			broker.backupQueueEntries--
 			broker.mu.Unlock()
 			return request, nil
 		}
@@ -753,9 +717,7 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 		return "", ctx.Err()
 	default:
 	}
-	if _, err := proxyRequests.enqueueFanout(envelope); err != nil {
-		return "", err
-	}
+	proxyRequests.enqueue(envelope)
 
 	select {
 	case response := <-responseChan:
