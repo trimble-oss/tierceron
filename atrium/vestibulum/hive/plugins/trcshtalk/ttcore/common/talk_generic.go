@@ -82,19 +82,17 @@ func StartTrashTalkingGeneric(
 		if err != nil {
 			continue
 		}
-		go func(r any) {
-			tb := talkBack(r)
-			reply := makeReply(r, tb)
-			retry := 0
-		retryReply:
-			if _, err := process(reply, false); err != nil {
-				if retry < maxRetries {
-					retry++
-					time.Sleep(3 * time.Second)
-					goto retryReply
-				}
+		tb := talkBack(inbound)
+		reply := makeReply(inbound, tb)
+		retry := 0
+	retryReply:
+		if _, err := process(reply, false); err != nil {
+			if retry < maxRetries {
+				retry++
+				time.Sleep(3 * time.Second)
+				goto retryReply
 			}
-		}(inbound)
+		}
 	}
 }
 

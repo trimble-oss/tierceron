@@ -1375,14 +1375,16 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			*configContext.ChatSenderChan <- event
 		case targetPluginForEvent(event) != "" && targetPluginForEvent(event) != "vico":
 			targetPlugin := targetPluginForEvent(event)
-			configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
-			response, err := proxyDiagnosticForwarder(event, targetPlugin)
-			if err != nil {
-				configContext.Log.Printf("vico hubclient forwarding failed for %s: %s\n", targetPlugin, tccore.SanitizeForLogging(err.Error()))
-				response = fmt.Sprintf("No hubclient response for plugin %s.", targetPlugin)
-			}
-			(*event).Response = &response
-			*configContext.ChatSenderChan <- event
+			go func(event *tccore.ChatMsg, targetPlugin string) {
+				configContext.Log.Printf("Forwarding Vico diagnostic request to hubclient for plugin %s\n", targetPlugin)
+				response, err := proxyDiagnosticForwarder(event, targetPlugin)
+				if err != nil {
+					configContext.Log.Printf("vico hubclient forwarding failed for %s: %s\n", targetPlugin, tccore.SanitizeForLogging(err.Error()))
+					response = fmt.Sprintf("No hubclient response for plugin %s.", targetPlugin)
+				}
+				(*event).Response = &response
+				*configContext.ChatSenderChan <- event
+			}(event, targetPlugin)
 		case extractPrompt(event) != "":
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
