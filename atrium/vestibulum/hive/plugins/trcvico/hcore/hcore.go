@@ -1508,7 +1508,7 @@ func start(pluginName string) {
 		if err := localModelReadyHook(configContext); err != nil {
 			configContext.Log.Printf("vico local model ready hook failed: %s\n", tccore.SanitizeForLogging(err.Error()))
 		}
-		configContext.Log.Println("vico local model loaded successfully")
+		configContext.Log.Printf("vico local model loaded successfully: gpu=%t backend=%s\n", localModel.model.EffectiveBackend() != "cpu", localModel.model.BackendReport())
 	}
 }
 
