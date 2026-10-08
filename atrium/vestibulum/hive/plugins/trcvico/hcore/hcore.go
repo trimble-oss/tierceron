@@ -92,6 +92,52 @@ type proxyRequestEnvelope struct {
 	serializedRequest string
 }
 
+type proxyResponseTracker struct {
+	mu        sync.Mutex
+	expected  int
+	responses []string
+	complete  chan struct{}
+	closed    bool
+}
+
+func newProxyResponseTracker() *proxyResponseTracker {
+	return &proxyResponseTracker{complete: make(chan struct{})}
+}
+
+func (tracker *proxyResponseTracker) setExpected(expected int) {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	tracker.expected = expected
+	tracker.completeIfReady()
+}
+
+func (tracker *proxyResponseTracker) addResponse(response string) bool {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	if tracker.closed {
+		return false
+	}
+	tracker.responses = append(tracker.responses, response)
+	tracker.completeIfReady()
+	return true
+}
+
+func (tracker *proxyResponseTracker) completeIfReady() {
+	if !tracker.closed && tracker.expected > 0 && len(tracker.responses) >= tracker.expected {
+		tracker.closed = true
+		close(tracker.complete)
+	}
+}
+
+func (tracker *proxyResponseTracker) firstResponse() string {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	if len(tracker.responses) == 0 {
+		return ""
+	}
+	return tracker.responses[0]
+}
+
 type proxyRequestBroker struct {
 	mu             sync.Mutex
 	queues         map[string][]*proxyRequestEnvelope
@@ -149,6 +195,32 @@ func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
 	broker.queues[key] = append(broker.queues[key], request)
 	close(broker.changed)
 	broker.changed = make(chan struct{})
+}
+
+func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) int {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+
+	deliveries := 0
+	for deliveryKey, host := range broker.hosts {
+		if host.activePolls == 0 && time.Since(host.lastSeen) > 2*hubClientRequestTimeout {
+			delete(broker.hosts, deliveryKey)
+			delete(broker.deliveryQueues, deliveryKey)
+			continue
+		}
+		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) {
+			continue
+		}
+		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
+		deliveries++
+	}
+	if deliveries == 0 {
+		key := proxyRequestQueueKey(request.targetPlugins)
+		broker.queues[key] = append(broker.queues[key], request)
+	}
+	close(broker.changed)
+	broker.changed = make(chan struct{})
+	return deliveries
 }
 
 func kernelIDMatchesPod(targetKernelID string, podID string) bool {
@@ -703,8 +775,8 @@ func proxyRequestSupported(targetPlugins []string, supportedPlugins map[string]s
 
 // EnqueueProxyRequest queues an SDK-neutral serialized request and waits for its response.
 func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []string, serializedRequest string) (string, error) {
-	responseChan := make(chan string, 1)
-	proxyReplies.Store(messageID, responseChan)
+	responseTracker := newProxyResponseTracker()
+	proxyReplies.Store(messageID, responseTracker)
 	defer proxyReplies.Delete(messageID)
 	envelope := &proxyRequestEnvelope{
 		messageID:         messageID,
@@ -717,11 +789,15 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 		return "", ctx.Err()
 	default:
 	}
-	proxyRequests.enqueue(envelope)
+	deliveries := proxyRequests.enqueueFanout(envelope)
+	if deliveries == 0 {
+		deliveries = 1
+	}
+	responseTracker.setExpected(deliveries)
 
 	select {
-	case response := <-responseChan:
-		return decodeProxyDiagnosticResponse(response), nil
+	case <-responseTracker.complete:
+		return decodeProxyDiagnosticResponse(responseTracker.firstResponse()), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
@@ -733,8 +809,9 @@ func EnqueueProxyRequestToPod(ctx context.Context, messageID string, targetKerne
 	if strings.TrimSpace(targetKernelID) == "" {
 		return EnqueueProxyRequest(ctx, messageID, targetPlugins, serializedRequest)
 	}
-	responseChan := make(chan string, 1)
-	proxyReplies.Store(messageID, responseChan)
+	responseTracker := newProxyResponseTracker()
+	responseTracker.setExpected(1)
+	proxyReplies.Store(messageID, responseTracker)
 	defer proxyReplies.Delete(messageID)
 	envelope := &proxyRequestEnvelope{
 		messageID:         messageID,
@@ -745,8 +822,8 @@ func EnqueueProxyRequestToPod(ctx context.Context, messageID string, targetKerne
 		return "", err
 	}
 	select {
-	case response := <-responseChan:
-		return decodeProxyDiagnosticResponse(response), nil
+	case <-responseTracker.complete:
+		return decodeProxyDiagnosticResponse(responseTracker.firstResponse()), nil
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
@@ -791,19 +868,13 @@ func EnqueueProxyDirective(directiveKey string, messageID string, targetPlugins 
 	})
 }
 
-// PostProxyResponse resolves a queued request by message ID. Fan-out requests may
-// receive multiple replies, so only the first response is retained.
+// PostProxyResponse records a queued request response by message ID.
 func PostProxyResponse(messageID string, result string) bool {
-	responseChanValue, ok := proxyReplies.Load(messageID)
+	responseTrackerValue, ok := proxyReplies.Load(messageID)
 	if !ok {
 		return false
 	}
-	select {
-	case responseChanValue.(chan string) <- result:
-		return true
-	default:
-		return false
-	}
+	return responseTrackerValue.(*proxyResponseTracker).addResponse(result)
 }
 
 // IsHubClientBroadcast reports whether a data payload uses trcshtalk's broadcast message ID.
@@ -918,8 +989,7 @@ func buildProxyDiagnosticRequest(event *tccore.ChatMsg, targetPlugin string) *tt
 }
 
 func forwardToHubClient(event *tccore.ChatMsg, targetPlugin string) (string, error) {
-	// ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
-	ctx, cancel := context.WithCancel(context.Background()) // for debugging
+	ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
 	defer cancel()
 
 	request := buildProxyDiagnosticRequest(event, targetPlugin)
