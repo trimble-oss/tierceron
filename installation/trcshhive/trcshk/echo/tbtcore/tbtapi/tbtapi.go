@@ -258,7 +258,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 	if util.ValidateRequest(receivedChat.Message.Text) {
 		// interactive response with query parameters
 		w.WriteHeader(http.StatusAccepted)
-		fmt.Fprintf(w, `{"text": "%s, Running diagnostics..."}`,
+		fmt.Fprintf(w, `{"text": "%s, interacting with the hive..."}`,
 			strings.Fields(receivedChat.User.DisplayName)[0])
 
 		// parse incoming message and generate request
