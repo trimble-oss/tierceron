@@ -20,13 +20,11 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/abadojack/whatlanggo"
 	"github.com/townsendmerino/goinfer/chat"
 	"github.com/townsendmerino/goinfer/decoder"
 	"github.com/townsendmerino/goinfer/tokenizer"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
-	"golang.org/x/text/language"
-	"golang.org/x/text/language/display"
-
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	ttsdk "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk"
 	trcshtalkttcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore"
@@ -1520,26 +1518,9 @@ func translateInputWithLocalModel(ctx context.Context, prompt string) (string, s
 			return prompt, "English", nil
 		}
 	}
-	languageVotes := make(map[string]int, 3)
-	for attempt := 0; attempt < 3; attempt++ {
-		languageResponse, err := queryLocalModelWithContext(ctx, buildInputLanguageDetectionTurns(prompt, attempt))
-		if err != nil {
-			return "", "", err
-		}
-		if candidate := normalizeDetectedLanguage(languageResponse); candidate != "" {
-			languageVotes[candidate]++
-		}
-	}
-	language := ""
-	mostVotes := 0
-	for candidate, votes := range languageVotes {
-		if votes > mostVotes {
-			language = candidate
-			mostVotes = votes
-		}
-	}
-	if mostVotes < 2 {
-		language = "Unknown"
+	language, err := detectInputLanguage(prompt)
+	if err != nil {
+		return "", "", err
 	}
 	if isEnglishLanguage(language) {
 		return prompt, "English", nil
@@ -1563,15 +1544,16 @@ func translateInputWithLocalModel(ctx context.Context, prompt string) (string, s
 	return "", "", errors.New("vico language translation failed")
 }
 
-func buildInputLanguageDetectionTurns(prompt string, attempt int) []chat.Turn {
-	instructions := `Identify the language of the user's message. Reply with only its standard two-letter language code, in lowercase. Output exactly two letters (a-z); do not output digits, a language name, or an explanation. If unsure, choose the most likely language.`
-	if attempt > 0 {
-		instructions = `Re-check the language of the user's message. ` + instructions
+func detectInputLanguage(text string) (string, error) {
+	info := whatlanggo.Detect(text)
+	if !info.IsReliable() {
+		return "", fmt.Errorf("vico could not reliably detect prompt language (confidence %.2f)", info.Confidence)
 	}
-	return []chat.Turn{
-		{Role: "system", Content: instructions},
-		{Role: "user", Content: prompt},
+	languageName := strings.TrimSpace(info.Lang.String())
+	if !isKnownSourceLanguage(languageName) {
+		return "", errors.New("vico language detector returned no language")
 	}
+	return languageName, nil
 }
 
 func buildInputTranslationTurns(prompt string, sourceLanguage string, retry bool) []chat.Turn {
@@ -1621,22 +1603,6 @@ func sameTranslationText(first string, second string) bool {
 	return normalizedFirst.String() != "" && normalizedFirst.String() == normalizedSecond.String()
 }
 
-func normalizeDetectedLanguage(text string) string {
-	code := strings.ToLower(cleanDetectedLanguage(text))
-	if len(code) != 2 || code[0] < 'a' || code[0] > 'z' || code[1] < 'a' || code[1] > 'z' {
-		return ""
-	}
-	tag, err := language.Parse(code)
-	if err != nil || tag.IsRoot() {
-		return ""
-	}
-	name := display.Languages(language.English).Name(tag)
-	if name == "" {
-		return ""
-	}
-	return name
-}
-
 func isKnownSourceLanguage(languageName string) bool {
 	return strings.TrimSpace(languageName) != "" && !strings.EqualFold(strings.TrimSpace(languageName), "unknown")
 }
@@ -1647,19 +1613,6 @@ func buildOutputTranslationTurns(text string, targetLanguage string) []chat.Turn
 		{Role: "system", Content: instructions},
 		{Role: "user", Content: text},
 	}
-}
-
-func cleanDetectedLanguage(text string) string {
-	text = strings.TrimSpace(text)
-	text = strings.Trim(text, "\"'` \t\r\n")
-	text = strings.TrimRight(text, ".,:;!?")
-	for _, prefix := range []string{"the language is ", "language: "} {
-		if len(text) >= len(prefix) && strings.EqualFold(text[:len(prefix)], prefix) {
-			text = strings.TrimSpace(text[len(prefix):])
-			break
-		}
-	}
-	return strings.TrimSpace(text)
 }
 
 func stripLeadingAddressingMention(text string) string {

@@ -3,6 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcvico
 go 1.27.1
 
 require (
+	github.com/abadojack/whatlanggo v1.0.1
 	github.com/townsendmerino/goinfer v0.17.2
 	github.com/townsendmerino/goinfer/cuda v0.17.2
 	github.com/trimble-oss/tierceron-core/v2 v2.12.3
