@@ -8,4 +8,8 @@ sudo mkdir -p "${VAULT_ROOT_INSTALL}/plugins"
 sudo mkdir -p "${VAULT_ROOT_INSTALL}/vault_data/data"
 
 sudo cp resources/vault_properties.hcl "${VAULT_ROOT_INSTALL}/"
-sudo cp trc_seeds/certs/* "${VAULT_ROOT_INSTALL}/certs/"
+sudo install -m 0644 trc_seeds/certs/servicecert.crt "${VAULT_ROOT_INSTALL}/certs/serv_cert.pem"
+sudo install -m 0600 trc_seeds/certs/servicekey.key "${VAULT_ROOT_INSTALL}/certs/serv_key.pem"
+if [[ -f trc_seeds/certs/sqlcert.pem ]]; then
+	sudo install -m 0644 trc_seeds/certs/sqlcert.pem "${VAULT_ROOT_INSTALL}/certs/sqlcert.pem"
+fi
