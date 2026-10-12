@@ -4,6 +4,35 @@ TODO: needs more documentation cleanup...
 
 # Deploy Vault
 
+## Vault server certificate templates
+
+Use Common/servicecert.crt and Common/servicekey.key instead of the retired
+Common/vaultcert.pem and Common/vaultkey.pem templates. For offline bootstrap,
+regenerate the certificate seed definitions and supply PEM certificate-chain bytes in
+trc_seeds/certs/servicecert.crt and the matching PEM key in
+trc_seeds/certs/servicekey.key. No seed material is migrated automatically.
+
+Before Terraform provisioning, use the standalone trcconfig executable from a regular
+non-root shell (not trcsh, which must not write configurations to the filesystem):
+
+```
+umask 077
+trcconfig -env=dev -novault -certs -endDir=. -certDestPath=servicecert:vault/cert.pem,servicekey:vault/key.pem
+chmod 0600 vault/key.pem
+```
+
+For Vault-backed export, first obtain Common/servicecert.crt and Common/servicekey.key
+with trcsub, then use the same destination overrides with the approved environment and
+omit -novault. Ensure the service pair is seeded and accessible in that environment
+before deleting the legacy Vault template paths. Do not republish different Vault-only
+material over a service pair used by applications; use an appropriately scoped environment
+or retain separate templates if the pairs differ. The certificate must cover the Vault
+hostname and permit server authentication, and its private key must match.
+
+Terraform still reads vault/cert.pem and vault/key.pem and installs them as
+/etc/opt/vault/certs/serv_cert.pem and /etc/opt/vault/certs/serv_key.pem.
+Verify the generated files and a successful provisioning run before permanent cleanup.
+
 ##What you'll need
 deploy.pem file
 

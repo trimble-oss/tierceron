@@ -72,11 +72,21 @@ trcx -env=dev -certs -novault
 After running trcx -certs, a certs folder will appear under trc_seeds with placeholder empty certificate files.
 You'll want to replace these placeholder files with the real thing under ./trc_seeds/certs.
 
+The Vault server pair now uses Common/servicecert.crt and Common/servicekey.key.
+Provide PEM certificate-chain bytes in trc_seeds/certs/servicecert.crt and the matching
+PEM private key in trc_seeds/certs/servicekey.key. The certificate must cover the Vault
+listener hostname and permit server authentication; do not substitute an unrelated
+application certificate. Existing installations must migrate their certificate seed
+definitions to these service names before retiring the old Vault templates. Keep private
+keys owner-only, and do not overwrite the shared service pair with different Vault-only
+material. Use an appropriately scoped environment or retain separate templates if needed.
+
 You can generate certs using the certs_gen.sh script located in [tls/certs_gen.sh](tls/certs_gen.sh).  Be sure to look at san.cnf before running the script to make
 any desired changes to your self signed certificates.
 
 ```
-sudo cp trc_seeds/certs/* /usr/local/vault/certs/
+sudo install -m 0644 trc_seeds/certs/servicecert.crt /usr/local/vault/certs/serv_cert.pem
+sudo install -m 0600 trc_seeds/certs/servicekey.key /usr/local/vault/certs/serv_key.pem
 ```
 
 # Generate vault properties configuration
