@@ -59,6 +59,12 @@ func rawTrcdbModeEnabled(pluginConfig map[string]any) bool {
 }
 
 func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error) {
+	if logger == nil {
+		logger = driverConfig.CoreConfig.Log
+	}
+	if !strings.Contains(logger.Prefix(), "[trcdb]") && !strings.Contains(logger.Prefix(), "[trcdb:") {
+		logger = log.New(logger.Writer(), "[trcdb]"+logger.Prefix(), logger.Flags())
+	}
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
@@ -117,7 +123,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			pluginConfig["pluginName"] = pluginNameList[0]
 		}
 		pluginutil.PluginInitNewRelic(driverConfig, cGoMod, pluginConfig)
-		logger = driverConfig.CoreConfig.Log
 
 		deployedUpdateErr := certify.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
