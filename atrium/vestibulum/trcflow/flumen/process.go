@@ -59,6 +59,12 @@ func rawTrcdbModeEnabled(pluginConfig map[string]any) bool {
 }
 
 func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, driverConfig *config.DriverConfig, pluginConfig map[string]any, logger *log.Logger) (any, error) {
+	if logger == nil {
+		logger = driverConfig.CoreConfig.Log
+	}
+	if !strings.Contains(logger.Prefix(), "[trcdb]") && !strings.Contains(logger.Prefix(), "[trcdb:") {
+		logger = log.New(logger.Writer(), "[trcdb]"+logger.Prefix(), logger.Flags())
+	}
 	logger.Println("ProcessFlows begun.")
 	// 1. Get Plugin configurations.
 	var tfmContext *trcflowcore.TrcFlowMachineContext
@@ -117,7 +123,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			pluginConfig["pluginName"] = pluginNameList[0]
 		}
 		pluginutil.PluginInitNewRelic(driverConfig, cGoMod, pluginConfig)
-		logger = driverConfig.CoreConfig.Log
 
 		deployedUpdateErr := certify.PluginDeployedUpdate(cConfig, cGoMod, cVault, pluginNameList, pluginConfig["certifyPath"].([]string), logger)
 		if deployedUpdateErr != nil {
@@ -682,11 +687,14 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 
 	if !rawTrcdbMode {
 		go func() {
+			tfmContext.DriverConfig.CoreConfig.Log.Println("Preparing to start harbinger")
 			err := BuildFlumeDatabaseInterface(flowMachineInitContext, tfmFlumeContext, tfmContext, goMod, vaultDatabaseConfig, spiralDatabaseConfig, &flowWG)
 			if err != nil {
-				tfmContext.DriverConfig.CoreConfig.Log.Println("Error building flume database interface:", err)
+				tfmContext.DriverConfig.CoreConfig.Log.Println("Harbinger startup preparation failed:", err)
 			}
 		}()
+	} else {
+		logger.Println("Harbinger startup skipped: raw_trcdb_mode is enabled")
 	}
 
 	logger.Println("ProcessFlows complete.")
@@ -734,7 +742,7 @@ func populateArgosSocii(goMod *helperkv.Modifier, driverConfig *config.DriverCon
 }
 
 func BuildFlumeDatabaseInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, tfmFlumeContext *trcflowcore.TrcFlowMachineContext, tfmContext *trcflowcore.TrcFlowMachineContext, goMod *helperkv.Modifier, vaultDatabaseConfig map[string]any, spiralDatabaseConfig map[string]any, flowWG *sync.WaitGroup) error {
-	eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Waiting for controller initialization...")
+	eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Harbinger startup checks waiting for controller initialization; no listener start requested yet")
 	tfmFlumeContext.InitConfigWG.Wait()
 	tfmFlumeContext.FlowControllerLock.Lock()
 	tfmFlumeContext.InitConfigWG = nil
@@ -763,14 +771,15 @@ func BuildFlumeDatabaseInterface(flowMachineInitContext *flowcore.FlowMachineIni
 	controllerVaultDatabaseConfig["controller"] = true
 
 	if controllerCheck == 3 {
-		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting controller interface...")
+		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Attempting harbinger controller startup...")
 		controllerVaultDatabaseConfig["vaddress"] = strings.Split(controllerVaultDatabaseConfig["vaddress"].(string), ":")[0]
 		controllerInterfaceErr := harbingeropts.BuildOptions.BuildInterface(flowMachineInitContext, tfmFlumeContext.DriverConfig, goMod, tfmFlumeContext, controllerVaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmFlumeContext})
 		if controllerInterfaceErr != nil {
-			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up controller database interface:"+controllerInterfaceErr.Error(), false)
+			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Harbinger controller startup failed:"+controllerInterfaceErr.Error(), false)
 			return controllerInterfaceErr
 		}
 	} else {
+		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Harbinger controller startup skipped: required controller configuration is incomplete")
 		go func(tfC *trcflowcore.TrcFlowMachineContext) {
 			for permUpdate := range tfC.PermissionChan {
 				tableName := permUpdate.TableName
@@ -795,13 +804,14 @@ func BuildFlumeDatabaseInterface(flowMachineInitContext *flowcore.FlowMachineIni
 		if dfsPass, ok := spiralDatabaseConfig["dbpassword"]; ok {
 			vaultDatabaseConfig["dfsPass"] = dfsPass
 		}
-		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Starting db interface...")
+		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Attempting harbinger database startup...")
 		interfaceErr := harbingeropts.BuildOptions.BuildInterface(flowMachineInitContext, tfmFlumeContext.DriverConfig, goMod, tfmContext, vaultDatabaseConfig, &TrcDBServerEventListener{TfmContext: tfmContext})
 		if interfaceErr != nil {
-			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Failed to start up database interface:"+interfaceErr.Error(), false)
+			eUtils.LogErrorMessage(tfmFlumeContext.DriverConfig.CoreConfig, "Harbinger database startup failed:"+interfaceErr.Error(), false)
 			return interfaceErr
 		}
 	} else {
+		eUtils.LogInfo(tfmFlumeContext.DriverConfig.CoreConfig, "Harbinger database startup skipped: required database configuration is incomplete")
 		go func(tfC *trcflowcore.TrcFlowMachineContext) {
 			for permUpdate := range tfC.PermissionChan {
 				tableName := permUpdate.TableName
