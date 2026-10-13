@@ -152,7 +152,7 @@ func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, dri
 		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Missing port. Failing to start interface", false)
 		return errors.New("Missing port for interface")
 	}
-	eUtils.LogInfo(driverConfig.CoreConfig, "Starting SQL Interface.")
+	eUtils.LogInfo(driverConfig.CoreConfig, "Preparing harbinger listener; listener start has not been requested yet.")
 	engine := sqle.NewDefault(
 		sqles.NewDatabaseProvider(
 			tfmContext.TierceronEngine.Database,
@@ -227,7 +227,7 @@ func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, dri
 
 	dbserver, serverErr := server.NewServer(serverConfig, engine, server.DefaultSessionBuilder, serverListener)
 	if serverErr != nil {
-		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to start server:"+serverErr.Error(), false)
+		eUtils.LogErrorMessage(driverConfig.CoreConfig, "Failed to create harbinger listener:"+serverErr.Error(), false)
 		if driverConfig.CoreConfig.IsEditor {
 			os.Exit(-1)
 		}
@@ -507,7 +507,7 @@ func BuildInterface(flowMachineInitContext *flowcore.FlowMachineInitContext, dri
 
 	go dbserver.Start()
 
-	driverConfig.CoreConfig.Log.Println("SQL Interface Started.")
+	driverConfig.CoreConfig.Log.Println("Harbinger listener start requested; serving readiness is not confirmed by this message.")
 permsfailure:
 	return nil
 }

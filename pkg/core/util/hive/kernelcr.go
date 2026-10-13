@@ -832,7 +832,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 					}
 				} else {
 					if pluginToolConfig["trctype"] == "trcshkubeservice" || pluginToolConfig["trctype"] == "trcflowpluginservice" {
-						driverConfig.CoreConfig.Log.Printf("Preparing to load HARBINGER_INTERFACE_CONFIG\n")
+						driverConfig.CoreConfig.Log.Printf("Preparing templates, certificates, and configuration for plugin %s\n", pluginHandler.Name)
 
 						envArg := fmt.Sprintf("-env=%s", driverConfig.CoreConfig.EnvBasis)
 						restrictedMappingSub := append([]string{"", envArg}, paths[0])
@@ -1071,7 +1071,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 				// auto auth will return token
 				// Create own driver config
 				if flowConfigs, ok := serviceConfig[flow.HARBINGER_INTERFACE_CONFIG]; ok {
-					driverConfig.CoreConfig.Log.Printf("Found HARBINGER_INTERFACE_CONFIG: %v", ok)
+					driverConfig.CoreConfig.Log.Printf("Found flow bootstrap configuration for plugin %s\n", pluginHandler.Name)
 
 					configMask := 0
 					const (
@@ -1089,7 +1089,7 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 								if rattanAddress, ok := flowMachineConfig["vault_addr"].(string); ok {
 									configMask |= VAULT_ADDR_MASK
 									insecure := false
-									driverConfig.CoreConfig.Log.Printf("HARBINGER_INTERFACE_CONFIG requirements met.")
+									driverConfig.CoreConfig.Log.Printf("Flow bootstrap authentication fields present for plugin %s; preparing Vault authentication, not starting harbinger\n", pluginHandler.Name)
 
 									bootDriverConfig = &config.DriverConfig{
 										CoreConfig: &coreconfig.CoreConfig{
