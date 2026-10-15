@@ -252,6 +252,14 @@ func SetTrcdbChatMessageHandlerFunc(f func(event *core.ChatMsg) (string, error))
 	trcdbChatMessageHandlerFunc = f
 }
 
+var trcdbExchangeHandlerFunc func(flowcore.FlowMachineContext, *core.TrcdbExchange) bool
+
+// SetTrcdbExchangeHandlerFunc registers an extension for custom exchanges.
+// Returning true means the extension populated the response, including failures.
+func SetTrcdbExchangeHandlerFunc(f func(flowcore.FlowMachineContext, *core.TrcdbExchange) bool) {
+	trcdbExchangeHandlerFunc = f
+}
+
 func GetWantedTests(event *core.ChatMsg) (map[string]bool, string) {
 	var argosId string
 	testsSet := map[string]bool{}
@@ -388,6 +396,9 @@ func ProcessTrcdb(trcdbExchange *core.TrcdbExchange) {
 	}
 	if len(trcdbExchange.Flows) > 0 {
 		tfmContext.WaitAllFlowsLoaded()
+		if trcdbExchangeHandlerFunc != nil && trcdbExchangeHandlerFunc(tfmContext, trcdbExchange) {
+			return
+		}
 		tfCtx := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0]))
 		if tfCtx == nil {
 			configContext.Log.Println("No flow context available for TrcdbExchange processing")

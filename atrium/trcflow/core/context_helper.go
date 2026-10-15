@@ -312,6 +312,8 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
 ) error {
 	tfContext := tcflowContext.(*TrcFlowContext)
+	tfContext.persistenceMu.Lock()
+	defer tfContext.persistenceMu.Unlock()
 
 	var matrixChangedEntries [][]any
 	var removeErr error
