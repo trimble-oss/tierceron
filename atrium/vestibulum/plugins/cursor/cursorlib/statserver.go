@@ -1,6 +1,7 @@
 package cursorlib
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"errors"
@@ -15,6 +16,7 @@ import (
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	certutil "github.com/trimble-oss/tierceron/pkg/core/util/cert"
+	"github.com/trimble-oss/tierceron/pkg/utils/config"
 
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"
@@ -40,6 +42,14 @@ var m sync.Mutex
 
 // convertingTimers tracks hourly reset timers per LONGEST_PDF_CONVERTING key to prevent goroutine leaks
 var convertingTimers *cmap.ConcurrentMap[string, *time.Timer]
+
+var (
+	statsServerMu       sync.Mutex
+	statsServer         *grpc.Server
+	statsCertReloadOnce sync.Once
+)
+
+const statsCertReloadInterval = 30 * time.Second
 
 type statServiceServer struct {
 	pb.UnimplementedStatServiceServer
@@ -269,11 +279,9 @@ func InitStats() {
 }
 
 func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grpc.Server, error) {
-	var err error
-
 	cert, err := tls.X509KeyPair(certBytes, keyBytes)
 	if err != nil {
-		log.Printf("Couldn't construct key pair: %v\n", err) // Should this just return instead?? - no panic
+		return nil, nil, fmt.Errorf("couldn't construct stats server key pair: %w", err)
 	}
 	creds := credentials.NewServerTLSFromCert(&cert)
 
@@ -286,6 +294,183 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 	grpcServer := grpc.NewServer(grpc.Creds(creds))
 
 	return lis, grpcServer, nil
+}
+
+func startStatsServer(port int, certBytes, keyBytes []byte) error {
+	lis, server, err := InitServer(port, certBytes, keyBytes)
+	if err != nil {
+		return err
+	}
+	grpc_health_v1.RegisterHealthServer(server, health.NewServer())
+	pb.RegisterStatServiceServer(server, &statServiceServer{})
+	statsServer = server
+	go func() {
+		if err := server.Serve(lis); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			logger.Printf("Stats gRPC service stopped with error: %v", err)
+		}
+	}()
+	logger.Printf("Stats gRPC service listening at %v", lis.Addr())
+	return nil
+}
+
+func restartStatsServer(port int, certBytes, keyBytes, previousCert, previousKey []byte) error {
+	statsServerMu.Lock()
+	defer statsServerMu.Unlock()
+
+	logger.Printf("Stats gRPC service restarting to load updated certificates on port %d", port)
+	if statsServer != nil {
+		statsServer.Stop()
+		statsServer = nil
+	}
+	if err := startStatsServer(port, certBytes, keyBytes); err != nil {
+		logger.Printf("Stats gRPC service restart failed: %v", err)
+		if restoreErr := startStatsServer(port, previousCert, previousKey); restoreErr != nil {
+			logger.Printf("Stats gRPC service could not restore its previous certificate: %v", restoreErr)
+			return fmt.Errorf("restart failed: %v; restore failed: %w", err, restoreErr)
+		}
+		logger.Println("Stats gRPC service restarted with its previous certificate")
+		return err
+	}
+	logger.Printf("Stats gRPC service restarted successfully on port %d", port)
+	return nil
+}
+
+func startStatsCertReloader(driverConfig *config.DriverConfig, pluginConfig map[string]any, port int) {
+	if driverConfig == nil || driverConfig.CoreConfig == nil || driverConfig.CoreConfig.TokenCache == nil {
+		logger.Println("Stats certificate reloader not started: Vault configuration is unavailable")
+		return
+	}
+	statsCertReloadOnce.Do(func() {
+		go func() {
+			ticker := time.NewTicker(statsCertReloadInterval)
+			defer ticker.Stop()
+			var mod *helperkv.Modifier
+			var vault *sys.Vault
+			defer func() {
+				if mod != nil {
+					mod.Release()
+				}
+				if vault != nil {
+					vault.Close()
+				}
+			}()
+			for range ticker.C {
+				if mod == nil {
+					currentTokenName := "config_token_pluginany"
+					vaultConfig := map[string]any{
+						"vaddress": pluginConfig["vaddress"],
+						"tokenptr": pluginConfig["tokenptr"],
+						"env":      driverConfig.CoreConfig.EnvBasis,
+					}
+					var err error
+					_, mod, vault, err = eUtils.InitVaultModForPlugin(vaultConfig, driverConfig.CoreConfig.TokenCache, currentTokenName, driverConfig.CoreConfig.Log)
+					if err != nil {
+						logger.Printf("Stats certificate reloader could not connect to Vault: %v", err)
+						if mod != nil {
+							mod.Release()
+						}
+						mod = nil
+						if vault != nil {
+							vault.Close()
+							vault = nil
+						}
+						continue
+					}
+					if mod == nil {
+						logger.Println("Stats certificate reloader could not connect to Vault: no modifier returned")
+						if vault != nil {
+							vault.Close()
+							vault = nil
+						}
+						continue
+					}
+				}
+				if err := reloadStatsServerCertificate(driverConfig, mod, port); err != nil {
+					logger.Printf("Stats certificate reload check failed: %v", err)
+					mod.Release()
+					mod = nil
+					if vault != nil {
+						vault.Close()
+						vault = nil
+					}
+				}
+			}
+		}()
+	})
+}
+
+func reloadStatsServerCertificate(driverConfig *config.DriverConfig, mod *helperkv.Modifier, port int) error {
+	certCache := driverConfig.CoreConfig.CertCache
+	if certCache == nil {
+		return errors.New("certificate cache is unavailable")
+	}
+	certPath := tccore.TRCSHHIVEK_CERT
+	keyPath := tccore.TRCSHHIVEK_KEY
+	oldCert, certCached := certCache.Get(certPath)
+	oldKey, keyCached := certCache.Get(keyPath)
+	if !certCached || oldCert == nil || oldCert.CertBytes == nil || !keyCached || oldKey == nil || oldKey.CertBytes == nil {
+		return errors.New("stats server certificate pair is missing from cache")
+	}
+	readCreatedTime := func(path string) (any, error) {
+		basis := strings.TrimPrefix(path, "Common/")
+		basis = strings.TrimSuffix(basis, ".crt.mf.tmpl")
+		basis = strings.TrimSuffix(basis, ".key.mf.tmpl")
+		metadata, err := mod.ReadMetadata(fmt.Sprintf("values/%s", basis), driverConfig.CoreConfig.Log)
+		if err != nil {
+			return nil, err
+		}
+		createdTime, ok := metadata["created_time"]
+		if !ok {
+			return nil, fmt.Errorf("Vault metadata has no created_time for %s", path)
+		}
+		return createdTime, nil
+	}
+	certCreatedTime, err := readCreatedTime(certPath)
+	if err != nil {
+		return err
+	}
+	keyCreatedTime, err := readCreatedTime(keyPath)
+	if err != nil {
+		return err
+	}
+	if fmt.Sprint(certCreatedTime) == fmt.Sprint(oldCert.CreatedTime) && fmt.Sprint(keyCreatedTime) == fmt.Sprint(oldKey.CreatedTime) {
+		return nil
+	}
+
+	logger.Println("Updated stats server certificate metadata detected; loading the new certificate pair")
+	certCache.Evict(certPath)
+	certCache.Evict(keyPath)
+	_, err = certutil.AddToCache(certPath, driverConfig, mod)
+	if err == nil {
+		_, err = certutil.AddToCache(keyPath, driverConfig, mod)
+	}
+	if err != nil {
+		certCache.Set(certPath, oldCert)
+		certCache.Set(keyPath, oldKey)
+		return fmt.Errorf("unable to load updated stats certificate pair: %w", err)
+	}
+	newCert, certOK := certCache.Get(certPath)
+	newKey, keyOK := certCache.Get(keyPath)
+	if !certOK || newCert == nil || newCert.CertBytes == nil || !keyOK || newKey == nil || newKey.CertBytes == nil {
+		certCache.Set(certPath, oldCert)
+		certCache.Set(keyPath, oldKey)
+		return errors.New("updated stats certificate pair was not fully cached")
+	}
+	if _, err := tls.X509KeyPair(*newCert.CertBytes, *newKey.CertBytes); err != nil {
+		certCache.Set(certPath, oldCert)
+		certCache.Set(keyPath, oldKey)
+		return fmt.Errorf("updated stats certificate and key do not match: %w", err)
+	}
+	if bytes.Equal(*oldCert.CertBytes, *newCert.CertBytes) && bytes.Equal(*oldKey.CertBytes, *newKey.CertBytes) {
+		logger.Println("Stats certificate metadata changed but certificate bytes are unchanged; no restart needed")
+		return nil
+	}
+	if err := restartStatsServer(port, *newCert.CertBytes, *newKey.CertBytes, *oldCert.CertBytes, *oldKey.CertBytes); err != nil {
+		certCache.Set(certPath, oldCert)
+		certCache.Set(keyPath, oldKey)
+		return err
+	}
+	return nil
 }
 
 func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig map[string]any) error {
@@ -308,6 +493,8 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 	if tokenPtr, tokPtrOk := pluginConfig["tokenptr"].(*string); tokPtrOk && eUtils.RefLength(tokenPtr) < 5 {
 		eUtils.LogWarningMessage(trcshDriverConfig.DriverConfig.CoreConfig, "WARNING: Unexpectedly token not available", false)
 	}
+	reloadVaultAddress := pluginConfig["vaddress"]
+	reloadTokenPtr := pluginConfig["tokenptr"]
 	trcshDriverConfig.DriverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache,
 		"config_token_pluginany", trcshDriverConfig.DriverConfig.CoreConfig.Log)
@@ -379,27 +566,19 @@ func StatServerInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginConfig m
 		// Initialize the stats.
 		InitStats()
 
-		lis, gServer, err := InitServer(trcstatsport,
-			*statCert,
-			*statKey)
+		statsServerMu.Lock()
+		err = startStatsServer(trcstatsport, *statCert, *statKey)
+		statsServerMu.Unlock()
 		if err != nil {
-			logger.Printf("Failed to start server: %v", err)
+			logger.Printf("Failed to start stats gRPC service: %v", err)
 			return err
 		}
-		logger.Println("Starting server")
-
-		grpcServer := gServer
-		grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-		pb.RegisterStatServiceServer(grpcServer, &statServiceServer{})
-		// reflection.Register(grpcServer)
-		// addr := lis.Addr().String()
-		logger.Printf("server listening at %v", lis.Addr())
-		go func(l net.Listener, logger *log.Logger) {
-			if err := grpcServer.Serve(l); err != nil {
-				logger.Println("Failed to serve:", err)
-				return
-			}
-		}(lis, logger)
+		reloadPluginConfig := map[string]any{
+			"vaddress": reloadVaultAddress,
+			"tokenptr": reloadTokenPtr,
+			"env":      trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis,
+		}
+		startStatsCertReloader(trcshDriverConfig.DriverConfig, reloadPluginConfig, trcstatsport)
 	}
 	return nil
 }
