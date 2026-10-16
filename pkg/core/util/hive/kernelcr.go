@@ -1625,7 +1625,7 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				continue
 			}
 			pluginQuery := queryPlugin[0]
-			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && !eUtils.RefEquals(&pluginQuery, "trcshtalk") && !eUtils.RefEquals(msg.Name, "trcshtalk") {
+			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
 				pluginQuery = "vico"
 				// q = "vico"
 			}
