@@ -25,8 +25,8 @@ require (
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/sergi/go-diff v1.4.0
-	github.com/trimble-oss/tierceron-core/v2 v2.12.3
-	github.com/trimble-oss/tierceron-hat v1.4.3
+	github.com/trimble-oss/tierceron-core/v2 v2.12.4
+	github.com/trimble-oss/tierceron-hat v1.4.4
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
@@ -200,8 +200,8 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/trimble-oss/tierceron-nute v1.1.3 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
+	github.com/trimble-oss/tierceron-nute v1.1.4 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.10 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect

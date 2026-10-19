@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealth
 go 1.27.2
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.12.3
+	github.com/trimble-oss/tierceron-core/v2 v2.12.4
 	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v2 v2.4.0
@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.10 // indirect
 	golang.org/x/net v0.58.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect

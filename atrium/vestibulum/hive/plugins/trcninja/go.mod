@@ -9,7 +9,7 @@ require (
 	github.com/linkedin/goavro/v2 v2.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
-	github.com/trimble-oss/tierceron-core/v2 v2.12.3
+	github.com/trimble-oss/tierceron-core/v2 v2.12.4
 	github.com/twmb/franz-go v1.20.5
 	github.com/vbauerster/mpb/v8 v8.10.2
 	github.com/wildbeavers/schema-registry v0.3.0
@@ -32,7 +32,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.9 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.10 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/net v0.58.0 // indirect

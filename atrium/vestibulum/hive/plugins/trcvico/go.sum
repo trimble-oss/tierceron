@@ -23,10 +23,10 @@ github.com/townsendmerino/goinfer v0.22.0 h1:/p5BkfewnCxR0ABKZ3EQ2EGdjCrjfFfRmZT
 github.com/townsendmerino/goinfer v0.22.0/go.mod h1:GoDnQkbzz+rycZWq36RPqRuqzAn4ni2q603Y4EhN0UM=
 github.com/townsendmerino/goinfer/cuda v0.22.0 h1:xEzV7QHJhXkTDfDhY5tlVkdofho/emrKGeqG8fsoc5c=
 github.com/townsendmerino/goinfer/cuda v0.22.0/go.mod h1:Cl3AxF4NPouRMMxb7xt2ktl0Rh9AWVBEixbToIdiw4M=
-github.com/trimble-oss/tierceron-core/v2 v2.12.3 h1:Op9jS6UyoSOPPUVlD2ns8wQ2c/OAMxC6oZiyLsPZS2U=
-github.com/trimble-oss/tierceron-core/v2 v2.12.3/go.mod h1:pU1HoRN6coBomuEDKyv7Z+hSiOHOuCeUiZTXfICCqgo=
-github.com/trimble-oss/tierceron-nute-core v1.0.9 h1:JdXMntcUrtB60BZyMMvRUtsc3L0ql9Kf84P6cuaPBoc=
-github.com/trimble-oss/tierceron-nute-core v1.0.9/go.mod h1:bWwyDPzUv/FH2tp05bs9g8CFAFkBuJOpDu7OUwuf4DE=
+github.com/trimble-oss/tierceron-core/v2 v2.12.4 h1:FnQLqt3PGLXQVSBlJ6WPluJBskrw3/S/1RVYLGded18=
+github.com/trimble-oss/tierceron-core/v2 v2.12.4/go.mod h1:ORrtqoE4q97zdRn93aLSnbZgZCvWyuzFZB19iVQIPMg=
+github.com/trimble-oss/tierceron-nute-core v1.0.10 h1:8OF6E2i0kHb8+9G+LiS2P17L7SD7FfmMkhgaM+vCc2s=
+github.com/trimble-oss/tierceron-nute-core v1.0.10/go.mod h1:BknF6RpUHyKJ2nimJeggnRCbE9qgCwfUK224WlwagaE=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b h1:RHqkdK9UFx7PK3zSfloHuZLp+NKFVB0oEy8cRFQ3Qls=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b/go.mod h1:wBmgd0x7kawX6V9eg4ZgfQI+pgieyvyP/Tnp+0kMJ3g=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
