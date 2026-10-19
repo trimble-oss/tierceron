@@ -11,7 +11,7 @@ require (
 	github.com/dolthub/go-mysql-server v0.19.0
 	github.com/dolthub/vitess v0.0.0-20250512224608-8fb9c6ea092c
 	github.com/g3n/engine v0.2.0
-	github.com/getkin/kin-openapi v0.144.0
+	github.com/getkin/kin-openapi v0.149.0
 	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c
 	github.com/go-git/go-billy/v5 v5.9.0
 	github.com/google/go-github/v61 v61.0.0
@@ -205,7 +205,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/rymdport/portal v0.2.6 // indirect
 	github.com/sahilm/fuzzy v0.1.1 // indirect
-	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
