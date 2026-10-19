@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/mutabilissdk" // Update package path as needed
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis/trcshio/trcshzig"
-	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
