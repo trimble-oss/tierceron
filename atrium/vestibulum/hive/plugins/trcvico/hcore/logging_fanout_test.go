@@ -11,10 +11,10 @@ import (
 func TestProxyDirectiveQueuesOneDeliveryPerConnectedHost(t *testing.T) {
 	broker := newProxyRequestBroker()
 	trcdb := map[string]struct{}{"trcdb": {}}
-	rainier := map[string]struct{}{"rainier": {}}
+	observer := map[string]struct{}{"observer": {}}
 	broker.registerHost("trcdb-0", "trcdb", trcdb)
 	broker.registerHost("trcdb-1", "trcdb", trcdb)
-	broker.registerHost("rainier-0", "rainier", rainier)
+	broker.registerHost("observer-0", "observer", observer)
 
 	deliveries := broker.enqueueDirective("trcdb-log-state", &proxyRequestEnvelope{
 		messageID:         "log-stop",
@@ -31,7 +31,7 @@ func TestProxyDirectiveQueuesOneDeliveryPerConnectedHost(t *testing.T) {
 			t.Fatalf("expected %s to receive the directive, request=%#v err=%v", hostID, request, err)
 		}
 	}
-	if len(broker.deliveryQueues[hubClientDeliveryKey("rainier", "rainier-0")]) != 0 {
+	if len(broker.deliveryQueues[hubClientDeliveryKey("observer", "observer-0")]) != 0 {
 		t.Fatal("unexpected directive delivery to a host that does not run trcdb")
 	}
 
@@ -65,10 +65,10 @@ func TestProxyDirectiveSurvivesWithoutConnectedPod(t *testing.T) {
 func TestOrdinaryRequestQueuesOneDeliveryPerConnectedHost(t *testing.T) {
 	broker := newProxyRequestBroker()
 	ninja := map[string]struct{}{"ninja": {}}
-	rainier := map[string]struct{}{"rainier": {}}
+	observer := map[string]struct{}{"observer": {}}
 	broker.registerHost("trcshk-ninja-0", "trcshk-ninja", ninja)
 	broker.registerHost("trcshk-ninja-1", "trcshk-ninja", ninja)
-	broker.registerHost("trcshk-rainier-0", "trcshk-rainier", rainier)
+	broker.registerHost("trcshk-observer-0", "trcshk-observer", observer)
 	request := &proxyRequestEnvelope{messageID: "ninja-log-stop", targetPlugins: []string{"ninja"}}
 
 	if deliveries := broker.enqueueFanout(request); deliveries != 2 {
@@ -80,7 +80,7 @@ func TestOrdinaryRequestQueuesOneDeliveryPerConnectedHost(t *testing.T) {
 			t.Fatalf("expected %s to receive the request, request=%#v err=%v", hostID, delivered, err)
 		}
 	}
-	if len(broker.deliveryQueues[hubClientDeliveryKey("trcshk-rainier", "trcshk-rainier-0")]) != 0 {
+	if len(broker.deliveryQueues[hubClientDeliveryKey("trcshk-observer", "trcshk-observer-0")]) != 0 {
 		t.Fatal("unexpected delivery to a host that does not run ninja")
 	}
 }
