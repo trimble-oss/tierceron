@@ -48,15 +48,17 @@ var (
 	localModel                         *localModelRuntime
 	proxyRequests                      = newProxyRequestBroker()
 	proxyReplies                       sync.Map
+	defaultRouter                      = NewRouter(nil, nil)
 	registerDiagnosticsService         = func(server *grpc.Server) {
 		ttsdk.RegisterTrcshTalkServiceServer(server, &diagnosticsServiceServer{})
 	}
 	proxyDiagnosticForwarder      = forwardToHubClient
 	localModelRoutePromptBuilder  = defaultLocalModelRoutePromptBuilder
 	localModelRouteNormalizer     = defaultLocalModelRouteNormalizer
-	localModelRoutePromptResolver func(prompt string) (string, bool)
+	localModelRoutePromptResolver = defaultRouter.ResolveLoggingPrompt
 	localModelRouteTranslator     func(messageID string, routingResults string) (*LocalModelRouteExecution, error)
-	localModelReadyHook           = func(*tccore.ConfigContext) error { return nil }
+	localModelRouteAuthorizer     = defaultLocalModelRouteAuthorizer
+	localModelReadyHook           = func(*tccore.ConfigContext) error { return defaultRouter.Train() }
 )
 
 const (
@@ -437,6 +439,10 @@ func SetLocalModelRoutePromptBuilder(builder func(prompt string) []chat.Turn) {
 
 // SetLocalModelRoutePromptResolver handles prompts that have a deterministic routing plan without model inference.
 func SetLocalModelRoutePromptResolver(resolver func(prompt string) (string, bool)) {
+	if resolver == nil {
+		localModelRoutePromptResolver = defaultRouter.ResolveLoggingPrompt
+		return
+	}
 	localModelRoutePromptResolver = resolver
 }
 
@@ -452,6 +458,15 @@ func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
 // SetLocalModelRouteTranslator overrides how normalized plans are executed for chat requests.
 func SetLocalModelRouteTranslator(translator func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) {
 	localModelRouteTranslator = translator
+}
+
+// SetLocalModelRouteAuthorizer validates a normalized routing result before it is executed.
+func SetLocalModelRouteAuthorizer(authorizer func(ctx context.Context, routingResults string) error) {
+	if authorizer == nil {
+		localModelRouteAuthorizer = defaultLocalModelRouteAuthorizer
+		return
+	}
+	localModelRouteAuthorizer = authorizer
 }
 
 // SetLocalModelReadyHook registers a callback that runs after the local model has loaded.
@@ -504,6 +519,9 @@ func ExecuteLocalModelRoute(ctx context.Context, messageID string, queryID strin
 	}
 	routingResults, err := RouteLocalModelPrompt(prompt)
 	if err != nil {
+		return "", err
+	}
+	if err := localModelRouteAuthorizer(ctx, routingResults); err != nil {
 		return "", err
 	}
 	return executeLocalModelRoutingResults(ctx, messageID, routingResults, translate)
@@ -655,11 +673,22 @@ func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
 }
 
 func defaultLocalModelRoutePromptBuilder(prompt string) []chat.Turn {
-	return []chat.Turn{{Role: "user", Content: strings.TrimSpace(prompt)}}
+	return defaultRouter.BuildTurns(prompt)
 }
 
 func defaultLocalModelRouteNormalizer(raw string) (string, error) {
-	return strings.TrimSpace(raw), nil
+	return defaultRouter.NormalizeResponse(raw)
+}
+
+func defaultLocalModelRouteAuthorizer(ctx context.Context, routingResults string) error {
+	plan, err := defaultRouter.ParsePlan(routingResults)
+	if err != nil || plan.LoggingAction == "" {
+		return nil
+	}
+	if !IsHubClientRequest(ctx) {
+		return status.Error(codes.PermissionDenied, "logging directives require a trcshtalk hub client")
+	}
+	return nil
 }
 
 func localModelActiveCount() string {
@@ -735,6 +764,11 @@ func hubClientStatefulSetFromIncomingContext(ctx context.Context) string {
 		}
 	}
 	return ""
+}
+
+// IsHubClientRequest reports whether an incoming request has complete TrcshTalk hub client registration metadata.
+func IsHubClientRequest(ctx context.Context) bool {
+	return hubClientPodFromIncomingContext(ctx) != "" && hubClientStatefulSetFromIncomingContext(ctx) != "" && len(supportedPluginsFromIncomingContext(ctx)) > 0
 }
 
 func targetPluginsForRequest(req *ttsdk.DiagnosticRequest) ([]string, bool) {
@@ -1465,7 +1499,9 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 					messageID = strings.TrimSpace(*event.RoutingId)
 				}
 				ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
-				response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
+				if err = localModelRouteAuthorizer(ctx, response); err == nil {
+					response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
+				}
 				cancel()
 			}
 			if err != nil {
