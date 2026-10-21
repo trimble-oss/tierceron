@@ -12,7 +12,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/linkedin/goavro/v2 v2.14.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
