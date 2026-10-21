@@ -686,7 +686,7 @@ func defaultLocalModelRouteAuthorizer(ctx context.Context, routingResults string
 		return nil
 	}
 	if !IsHubClientRequest(ctx) {
-		return status.Error(codes.PermissionDenied, "logging directives require a trcshtalk hub client")
+		return status.Error(codes.PermissionDenied, "logging directives require elevated permissions")
 	}
 	return nil
 }
