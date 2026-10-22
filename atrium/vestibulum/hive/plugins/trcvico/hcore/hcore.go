@@ -824,6 +824,9 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 	default:
 	}
 	deliveries := proxyRequests.enqueueFanout(envelope)
+	if configContext != nil && configContext.Log != nil {
+		configContext.Log.Printf("vico queued diagnostic: routing_id=%s targets=%s eligible_hubclients=%d", tccore.SanitizeForLogging(messageID), tccore.SanitizeForLogging(strings.Join(targetPlugins, ",")), deliveries)
+	}
 	if deliveries == 0 {
 		deliveries = 1
 	}
@@ -889,6 +892,9 @@ func DequeueProxyRequest(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if configContext != nil && configContext.Log != nil {
+		configContext.Log.Printf("vico dequeued diagnostic: routing_id=%s pod_id=%s targets=%s", tccore.SanitizeForLogging(proxyRequest.messageID), tccore.SanitizeForLogging(podID), tccore.SanitizeForLogging(strings.Join(proxyRequest.targetPlugins, ",")))
+	}
 	return proxyRequest.serializedRequest, nil
 }
 
@@ -908,7 +914,11 @@ func PostProxyResponse(messageID string, result string) bool {
 	if !ok {
 		return false
 	}
-	return responseTrackerValue.(*proxyResponseTracker).addResponse(result)
+	accepted := responseTrackerValue.(*proxyResponseTracker).addResponse(result)
+	if configContext != nil && configContext.Log != nil {
+		configContext.Log.Printf("vico received diagnostic reply: routing_id=%s accepted=%t", tccore.SanitizeForLogging(messageID), accepted)
+	}
+	return accepted
 }
 
 // IsHubClientBroadcast reports whether a data payload uses trcshtalk's broadcast message ID.
@@ -1494,7 +1504,10 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
 			response, err := queryLocalModelForRouting(prompt)
-			if err == nil && localModelRouteTranslator != nil {
+			if err != nil {
+				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+				response = "Vico local model unavailable."
+			} else if localModelRouteTranslator != nil {
 				messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
 				if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
 					messageID = strings.TrimSpace(*event.RoutingId)
@@ -1504,10 +1517,10 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 					response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
 				}
 				cancel()
-			}
-			if err != nil {
-				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
-				response = "Vico local model unavailable."
+				if err != nil {
+					configContext.Log.Printf("vico routed diagnostic request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+					response = "Vico routed diagnostic unavailable."
+				}
 			}
 			(*event).Response = &response
 			*configContext.ChatSenderChan <- event
