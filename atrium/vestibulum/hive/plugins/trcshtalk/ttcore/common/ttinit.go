@@ -139,6 +139,9 @@ func SendErr(ctx *tccore.ConfigContext, dfstat *tccore.TTDINode, err error) {
 
 // StopServer encapsulates server shutdown mechanics (excluding global resets handled by caller).
 func StopServer(ctx *tccore.ConfigContext, grpcServer interface{ Stop() }, dfstat *tccore.TTDINode, shutdownChan chan bool, shutdownConfirmChan chan bool, pluginName string) {
+	if ctx != nil && resolveTrcshTalkMode(ctx.Config) == ModeHubClient {
+		SetHubCommandClient(nil)
+	}
 	if ctx != nil {
 		ctx.Log.Println("Trcshtalk received shutdown message from kernel.")
 		ctx.Log.Println("Stopping server")
@@ -256,6 +259,7 @@ func StartCore(
 	}
 
 	grpc_health_v1.RegisterHealthServer(gServer, health.NewServer())
+	RegisterHubCommandService(gServer, ctx)
 	if registerFn != nil {
 		registerFn(gServer)
 	}

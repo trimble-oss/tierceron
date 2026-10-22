@@ -1,6 +1,7 @@
 package common
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -120,6 +121,11 @@ func StartWithServerModes(
 			canStartTalkback = remoteServerName != "" && talkbackPort > 0
 		}
 		if canStartTalkback {
+			if isHubClient {
+				SetHubCommandClient(func(requestContext context.Context, messageID string, prompt string) (string, error) {
+					return RunHubCommand(requestContext, ctx, messageID, prompt)
+				})
+			}
 			// Launch talkback loop
 			go func(ttbt *string, port int, remote bool, mode string) {
 				// Emit start event if we are NOT also starting the server (pure talkback modes)
@@ -148,7 +154,7 @@ func StartWithServerModes(
 	}
 
 	// Start server only if mode requires it
-	if serverMode == ModeStandard || serverMode == ModeBoth {
+	if serverMode == ModeStandard || serverMode == ModeBoth || serverMode == ModeHub {
 		_, gServer, df, err := StartCore(pluginName, ctx, shutdownChan, shutdownConfirmChan, func(gs *grpc.Server) {
 			registerService(gs)
 		})

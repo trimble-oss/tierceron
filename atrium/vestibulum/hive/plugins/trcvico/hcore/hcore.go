@@ -1334,6 +1334,7 @@ func startCore(pluginName string, registerFn func(grpcServer *grpc.Server)) (str
 	}
 
 	grpc_health_v1.RegisterHealthServer(gServer, health.NewServer())
+	trcshtalkcommon.RegisterHubCommandService(gServer, configContext, validateIncomingTTBToken)
 	if registerFn != nil {
 		registerFn(gServer)
 	}
@@ -1619,4 +1620,7 @@ func Init(pluginName string, properties *map[string]any) {
 		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
 	}
+	trcshtalkcommon.SetHubCommandHandler(func(ctx context.Context, messageID string, data []string) (string, error) {
+		return ExecuteLocalModelRoute(ctx, messageID, "", data, localModelRouteTranslator)
+	})
 }

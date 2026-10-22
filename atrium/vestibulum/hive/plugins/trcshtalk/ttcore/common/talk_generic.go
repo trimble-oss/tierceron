@@ -162,6 +162,7 @@ func ProcessTrcshTalkRequestGeneric(
 	tlsConfigProvider func(serverName string, certBytes []byte) (*tls.Config, error),
 	newClient func(*grpc.ClientConn) any,
 	invokeDiagnostics func(client any, ctx context.Context, req proto.Message) (proto.Message, error),
+	requestContexts ...context.Context,
 ) (proto.Message, error) {
 	if ctx == nil {
 		return nil, errors.New("nil config context")
@@ -282,6 +283,9 @@ func ProcessTrcshTalkRequestGeneric(
 	defer conn.Close()
 	client := newClient(conn)
 	callCtx := context.Background()
+	if len(requestContexts) > 0 && requestContexts[0] != nil {
+		callCtx = requestContexts[0]
+	}
 	if ttbToken != nil {
 		callCtx = WithTTBTokenOutgoingContext(callCtx, *ttbToken)
 	}
