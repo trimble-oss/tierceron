@@ -1,0 +1,2 @@
+FROM scratch
+COPY bin/talkctl.so /usr/local/trcshk/plugins/talkctl.so

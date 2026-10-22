@@ -27,6 +27,8 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
 )
 
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk => ../trcshtalk
+
 replace (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.43.0

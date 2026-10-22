@@ -1,0 +1,4 @@
+#!/home/azuredeploy/bin/trcsh
+trcplgtool -pluginservicestop -pluginName=talkctl -env={{or .env "dev"}}
+trcplgtool -codebundledeploy -pluginName=talkctl -env={{or .env "dev"}}
+trcplgtool -pluginservicestart -pluginName=talkctl -env={{or .env "dev"}}

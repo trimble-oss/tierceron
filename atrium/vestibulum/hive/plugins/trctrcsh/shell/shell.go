@@ -1679,6 +1679,9 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			}
 		}
 
+	case "talkctl", "@talkctl":
+		output = append(output, m.executeTalkctlCommand(args)...)
+
 	case "tinit":
 		// Only available in elevated mode
 		if !m.elevatedMode {
@@ -1790,6 +1793,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "  su       - Obtain elevated access for write operations")
 		} else {
 			output = append(output, "  tinit    - Run trcinit commands (elevated mode only)")
+			output = append(output, "  @talkctl - Send a privileged command through the TrcshTalk hub")
 			output = append(output, "  tv       - List/read/patch secret store values (tv list|get|patch <path> ...)")
 			// output = append(output, "  tpub     - Run trcpub commands (elevated mode only)")
 		}

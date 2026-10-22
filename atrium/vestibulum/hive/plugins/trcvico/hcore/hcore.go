@@ -686,7 +686,7 @@ func defaultLocalModelRouteAuthorizer(ctx context.Context, routingResults string
 		return nil
 	}
 	if !IsHubClientRequest(ctx) {
-		return status.Error(codes.PermissionDenied, "logging directives require a trcshtalk hub client")
+		return status.Error(codes.PermissionDenied, "logging directives require elevated permissions")
 	}
 	return nil
 }
@@ -824,6 +824,9 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 	default:
 	}
 	deliveries := proxyRequests.enqueueFanout(envelope)
+	if configContext != nil && configContext.Log != nil {
+		configContext.Log.Printf("vico queued diagnostic: routing_id=%s targets=%s eligible_hubclients=%d", tccore.SanitizeForLogging(messageID), tccore.SanitizeForLogging(strings.Join(targetPlugins, ",")), deliveries)
+	}
 	if deliveries == 0 {
 		deliveries = 1
 	}
@@ -889,6 +892,9 @@ func DequeueProxyRequest(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if configContext != nil && configContext.Log != nil {
+		configContext.Log.Printf("vico dequeued diagnostic: routing_id=%s pod_id=%s targets=%s", tccore.SanitizeForLogging(proxyRequest.messageID), tccore.SanitizeForLogging(podID), tccore.SanitizeForLogging(strings.Join(proxyRequest.targetPlugins, ",")))
+	}
 	return proxyRequest.serializedRequest, nil
 }
 
@@ -908,7 +914,11 @@ func PostProxyResponse(messageID string, result string) bool {
 	if !ok {
 		return false
 	}
-	return responseTrackerValue.(*proxyResponseTracker).addResponse(result)
+	accepted := responseTrackerValue.(*proxyResponseTracker).addResponse(result)
+	if configContext != nil && configContext.Log != nil {
+		configContext.Log.Printf("vico received diagnostic reply: routing_id=%s accepted=%t", tccore.SanitizeForLogging(messageID), accepted)
+	}
+	return accepted
 }
 
 // IsHubClientBroadcast reports whether a data payload uses trcshtalk's broadcast message ID.
@@ -1334,6 +1344,7 @@ func startCore(pluginName string, registerFn func(grpcServer *grpc.Server)) (str
 	}
 
 	grpc_health_v1.RegisterHealthServer(gServer, health.NewServer())
+	trcshtalkcommon.RegisterHubCommandService(gServer, configContext, validateIncomingTTBToken)
 	if registerFn != nil {
 		registerFn(gServer)
 	}
@@ -1493,7 +1504,10 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			prompt := extractPrompt(event)
 			configContext.Log.Println("vico local model request")
 			response, err := queryLocalModelForRouting(prompt)
-			if err == nil && localModelRouteTranslator != nil {
+			if err != nil {
+				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+				response = "Vico local model unavailable."
+			} else if localModelRouteTranslator != nil {
 				messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
 				if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
 					messageID = strings.TrimSpace(*event.RoutingId)
@@ -1503,10 +1517,10 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 					response, err = executeLocalModelRoutingResults(ctx, messageID, response, localModelRouteTranslator)
 				}
 				cancel()
-			}
-			if err != nil {
-				configContext.Log.Printf("vico local model request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
-				response = "Vico local model unavailable."
+				if err != nil {
+					configContext.Log.Printf("vico routed diagnostic request failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+					response = "Vico routed diagnostic unavailable."
+				}
 			}
 			(*event).Response = &response
 			*configContext.ChatSenderChan <- event
@@ -1619,4 +1633,7 @@ func Init(pluginName string, properties *map[string]any) {
 		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
 	}
+	trcshtalkcommon.SetHubCommandHandler(func(ctx context.Context, messageID string, data []string) (string, error) {
+		return ExecuteLocalModelRoute(ctx, messageID, "", data, localModelRouteTranslator)
+	})
 }

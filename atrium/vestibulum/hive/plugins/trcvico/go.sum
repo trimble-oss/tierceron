@@ -27,8 +27,6 @@ github.com/trimble-oss/tierceron-core/v2 v2.12.4 h1:FnQLqt3PGLXQVSBlJ6WPluJBskrw
 github.com/trimble-oss/tierceron-core/v2 v2.12.4/go.mod h1:ORrtqoE4q97zdRn93aLSnbZgZCvWyuzFZB19iVQIPMg=
 github.com/trimble-oss/tierceron-nute-core v1.0.10 h1:8OF6E2i0kHb8+9G+LiS2P17L7SD7FfmMkhgaM+vCc2s=
 github.com/trimble-oss/tierceron-nute-core v1.0.10/go.mod h1:BknF6RpUHyKJ2nimJeggnRCbE9qgCwfUK224WlwagaE=
-github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b h1:RHqkdK9UFx7PK3zSfloHuZLp+NKFVB0oEy8cRFQ3Qls=
-github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b/go.mod h1:wBmgd0x7kawX6V9eg4ZgfQI+pgieyvyP/Tnp+0kMJ3g=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f h1:W3F4c+6OLc6H2lb//N1q4WpJkhzJCK5J6kUi1NTVXfM=

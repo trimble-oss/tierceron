@@ -1,9 +1,13 @@
 package hcore
 
 import (
+	"bytes"
 	"context"
+	"log"
+	"strings"
 	"testing"
 
+	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -77,5 +81,42 @@ func TestDefaultRouteAuthorizerRequiresHubClientForLogging(t *testing.T) {
 	))
 	if err := defaultLocalModelRouteAuthorizer(hubClientContext, routingResults); err != nil {
 		t.Fatalf("hub client logging directive rejected: %v", err)
+	}
+}
+
+func TestChatReceiverDistinguishesDownstreamFailure(test *testing.T) {
+	originalConfig := configContext
+	originalResolver := localModelRoutePromptResolver
+	originalTranslator := localModelRouteTranslator
+	originalAuthorizer := localModelRouteAuthorizer
+	test.Cleanup(func() {
+		configContext = originalConfig
+		localModelRoutePromptResolver = originalResolver
+		localModelRouteTranslator = originalTranslator
+		localModelRouteAuthorizer = originalAuthorizer
+	})
+	var logs bytes.Buffer
+	responses := make(chan *tccore.ChatMsg, 1)
+	configContext = &tccore.ConfigContext{Log: log.New(&logs, "", 0), ChatSenderChan: &responses}
+	localModelRoutePromptResolver = func(string) (string, bool) { return "{}", true }
+	localModelRouteAuthorizer = func(context.Context, string) error { return nil }
+	localModelRouteTranslator = func(string, string) (*LocalModelRouteExecution, error) {
+		return nil, context.DeadlineExceeded
+	}
+	name, prompt, routingID, shutdown := "vico", "inspect worker", "routing-test", "SHUTDOWN"
+	requests := make(chan *tccore.ChatMsg, 2)
+	requests <- &tccore.ChatMsg{Name: &name, ChatId: &prompt, RoutingId: &routingID}
+	requests <- &tccore.ChatMsg{Name: &shutdown}
+	chatReceiver(requests)
+	select {
+	case response := <-responses:
+		if response.Response == nil || *response.Response != "Vico routed diagnostic unavailable." {
+			test.Fatalf("downstream failure was misreported: %#v", response)
+		}
+	default:
+		test.Fatal("missing diagnostic failure response")
+	}
+	if !strings.Contains(logs.String(), "vico routed diagnostic request failed: context deadline exceeded") || strings.Contains(logs.String(), "vico local model request failed") {
+		test.Fatalf("downstream failure was misclassified in logs: %s", logs.String())
 	}
 }

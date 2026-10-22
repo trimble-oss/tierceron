@@ -27,6 +27,7 @@ enum Diagnostics {
     ALL = 0; // Default
     HEALTH_CHECK = 1;
     TRCDB = 2;
+    VICO = 5;
     // future plugins
 }
 
