@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"slices"
 	"strings"
@@ -45,11 +46,18 @@ func getChangeTrigger(databaseName string, tableName string, idColumnNames []str
 		changeColumnNames = []string{"id"}
 	}
 	values := make([]string, len(idColumnNames))
+	predicates := make([]string, len(idColumnNames))
 	for index, columnName := range idColumnNames {
 		values[index] = rowPrefix + "." + columnName
+		predicates[index] = "pendingChange." + changeColumnNames[index] + "=" + values[index]
 	}
-	return ` INSERT IGNORE INTO ` + databaseName + `.` + tableName + `_Changes (` + strings.Join(changeColumnNames, ",") + `,` + ChangeTypeColumnName + `,updateTime) VALUES (` + strings.Join(values, ",") + `,'` + changeType + `',current_timestamp())` +
-		` ON DUPLICATE KEY UPDATE ` + ChangeTypeColumnName + `=VALUES(` + ChangeTypeColumnName + `),updateTime=VALUES(updateTime);`
+	return fmt.Sprintf(
+		` UPDATE %s.%s_Changes AS pendingChange SET pendingChange.%s='%s',pendingChange.updateTime=current_timestamp() WHERE %s;`,
+		databaseName, tableName, ChangeTypeColumnName, changeType, strings.Join(predicates, " AND "),
+	) + fmt.Sprintf(
+		` INSERT IGNORE INTO %s.%s_Changes (%s,%s,updateTime) VALUES (%s,'%s',current_timestamp());`,
+		databaseName, tableName, strings.Join(changeColumnNames, ","), ChangeTypeColumnName, strings.Join(values, ","), changeType,
+	)
 }
 
 func getUpdateTrigger(databaseName string, tableName string, idColumnNames []string) string {
