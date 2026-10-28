@@ -107,6 +107,14 @@ func TestProxyResponseTrackerWaitsForEveryExpectedResponse(t *testing.T) {
 	if response := tracker.firstResponse(); response != "first" {
 		t.Fatalf("expected first response to be retained, got %q", response)
 	}
+	responses := tracker.allResponses()
+	if len(responses) != 2 || responses[0] != "first" || responses[1] != "second" {
+		t.Fatalf("expected every fanout response, got %v", responses)
+	}
+	responses[0] = "changed"
+	if tracker.firstResponse() != "first" {
+		t.Fatal("response collection exposed the tracker's backing slice")
+	}
 }
 
 func TestOrdinaryRequestWaitsForMatchingHubClient(t *testing.T) {

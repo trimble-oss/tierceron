@@ -140,6 +140,12 @@ func (tracker *proxyResponseTracker) firstResponse() string {
 	return tracker.responses[0]
 }
 
+func (tracker *proxyResponseTracker) allResponses() []string {
+	tracker.mu.Lock()
+	defer tracker.mu.Unlock()
+	return append([]string(nil), tracker.responses...)
+}
+
 type proxyRequestBroker struct {
 	mu             sync.Mutex
 	queues         map[string][]*proxyRequestEnvelope
@@ -809,6 +815,17 @@ func proxyRequestSupported(targetPlugins []string, supportedPlugins map[string]s
 
 // EnqueueProxyRequest queues an SDK-neutral serialized request and waits for its response.
 func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []string, serializedRequest string) (string, error) {
+	responses, err := EnqueueProxyRequestReplies(ctx, messageID, targetPlugins, serializedRequest)
+	if err != nil {
+		return "", err
+	}
+	if len(responses) == 0 {
+		return "", nil
+	}
+	return responses[0], nil
+}
+
+func EnqueueProxyRequestReplies(ctx context.Context, messageID string, targetPlugins []string, serializedRequest string) ([]string, error) {
 	responseTracker := newProxyResponseTracker()
 	proxyReplies.Store(messageID, responseTracker)
 	defer proxyReplies.Delete(messageID)
@@ -820,7 +837,7 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 
 	select {
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	default:
 	}
 	deliveries := proxyRequests.enqueueFanout(envelope)
@@ -834,9 +851,13 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 
 	select {
 	case <-responseTracker.complete:
-		return decodeProxyDiagnosticResponse(responseTracker.firstResponse()), nil
+		responses := responseTracker.allResponses()
+		for index, response := range responses {
+			responses[index] = decodeProxyDiagnosticResponse(response)
+		}
+		return responses, nil
 	case <-ctx.Done():
-		return "", ctx.Err()
+		return nil, ctx.Err()
 	}
 }
 
