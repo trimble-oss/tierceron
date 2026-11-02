@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 	"github.com/trimble-oss/tierceron-core/v2/trcshfs/trcshio"
@@ -26,6 +27,7 @@ var (
 	configContext *tccore.ConfigContext
 	memFs         trcshio.MemoryFileSystem
 	memFsReady    chan bool
+	tbootRetry    chan struct{}
 	sender        chan error
 	dfstat        *tccore.TTDINode
 )
@@ -78,6 +80,15 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 					if hook(event) {
 						shell.GetChatMsgHooks().Remove(*event.RoutingId)
 					}
+				}
+			}
+		case event.ChatId != nil && *event.ChatId == "tboot" && event.Response != nil && *event.Response != "":
+			// The kernel rejects chats sent before it has marked trcsh running.
+			configContext.Log.Printf("tboot request rejected (%s); retrying\n", *event.Response)
+			if tbootRetry != nil {
+				select {
+				case tbootRetry <- struct{}{}:
+				default:
 				}
 			}
 		default:
@@ -207,20 +218,40 @@ func start(pluginName string) {
 	// so routing will wait until trcshcmd is actually ready to handle requests
 	configContext.Log.Println("Requesting initial MemoryFileSystem from trcshcmd")
 	memFsReady = make(chan bool, 1)
-	pluginSenderName := "trcsh"
-	trcbootCmd := "tboot"
-	msg := &tccore.ChatMsg{
-		Name:   &pluginSenderName,     // Source plugin name
-		Query:  &[]string{"trcshcmd"}, // Destination is trcshcmd
-		ChatId: &trcbootCmd,           // Command to execute
+	tbootRetry = make(chan struct{}, 1)
+	sendTboot := func() {
+		pluginSenderName := "trcsh"
+		trcbootCmd := "tboot"
+		msg := &tccore.ChatMsg{
+			Name:   &pluginSenderName,     // Source plugin name
+			Query:  &[]string{"trcshcmd"}, // Destination is trcshcmd
+			ChatId: &trcbootCmd,           // Command to execute
+		}
+		if configContext.ChatSenderChan != nil {
+			*configContext.ChatSenderChan <- msg
+		}
 	}
-	if configContext.ChatSenderChan != nil {
-		*configContext.ChatSenderChan <- msg
-	}
+	sendTboot()
 
 	// Block waiting for memFs - shell cannot start without it
 	configContext.Log.Println("Waiting for MemoryFileSystem response from trcshcmd...")
-	<-memFsReady
+	const maxTbootRetries = 40
+	for retries := 0; ; {
+		select {
+		case <-memFsReady:
+		case <-tbootRetry:
+			if retries < maxTbootRetries {
+				retries++
+				time.Sleep(250 * time.Millisecond)
+				sendTboot()
+			} else if retries == maxTbootRetries {
+				retries++
+				configContext.Log.Println("tboot retries exhausted; still waiting for MemoryFileSystem from trcshcmd")
+			}
+			continue
+		}
+		break
+	}
 	configContext.Log.Println("MemoryFileSystem received, launching shell")
 
 	// Create trc_seeds folder immediately after boot
