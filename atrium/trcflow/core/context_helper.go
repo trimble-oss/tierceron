@@ -584,6 +584,13 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDBFromVault(
 	tfContext *TrcFlowContext,
 	filteredIndexProvidedValues []string,
 ) error {
+	defer func() {
+		if tfContext.Inserter != nil {
+			tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
+			tfContext.Inserter = nil
+		}
+	}()
+
 	var indexValues []string = []string{}
 	var secondaryIndexes []string
 	var err error
@@ -598,10 +605,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDBFromVault(
 		// for id's > 0.
 		if filteredIndexProvidedValues == nil {
 			// What still needs to be done here
-			if tfContext.Inserter != nil {
-				tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
-				tfContext.Inserter = nil
-			}
 			return nil
 		} else {
 			indexValues = filteredIndexProvidedValues
@@ -719,11 +722,6 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDBFromVault(
 				continue
 			}
 		}
-	}
-
-	if tfContext.Inserter != nil {
-		tfContext.Inserter.Close(tfmContext.TierceronEngine.Context)
-		tfContext.Inserter = nil
 	}
 
 	return nil

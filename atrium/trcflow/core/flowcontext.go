@@ -127,7 +127,9 @@ func (tfContext *TrcFlowContext) NotifyFlowComponentNeedsRestart() {
 	}
 	// When state is set to 0, set state to 1 to trigger reload.
 	if tfContext.GetFlowStateState() != 3 {
+		tfContext.FlowLoadedNotifyChan.Clear()
 		tfContext.PushState("flowStateReceiver", tfContext.NewFlowStateUpdate("1", tfContext.GetFlowSyncMode()))
+		tfContext.WaitFlowLoaded()
 	}
 }
 

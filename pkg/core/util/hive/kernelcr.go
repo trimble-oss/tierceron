@@ -82,6 +82,7 @@ func IsRunningInKubernetes() bool {
 type KernelCtx struct {
 	DeployRestartChan *chan string
 	PluginRestartChan *chan tccore.KernelCmd
+	HasPlugin         func(string) bool
 }
 
 func InitKernel(kernelId string) *PluginHandler {
@@ -457,6 +458,10 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 			},
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
+				HasPlugin: func(pluginName string) bool {
+					_, deployed := (*pluginHandler.Services)[pluginName]
+					return deployed
+				},
 			},
 		}
 		pluginsync.CreatePluginReadyChannel(service)
@@ -703,6 +708,9 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 		if flowMachineInitContext != nil {
 			if fmCtx, ok := flowMachineInitContext.(*flow.FlowMachineInitContext); ok {
+				if pluginHandler.KernelCtx != nil {
+					fmCtx.HasPlugin = pluginHandler.KernelCtx.HasPlugin
+				}
 				pluginConfig = fmCtx.GetFlowMachineTemplates()
 			} else {
 				driverConfig.CoreConfig.Log.Printf("Flow machine context has wrong type for %s\n", service)

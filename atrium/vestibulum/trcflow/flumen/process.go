@@ -141,6 +141,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		Env:                       pluginConfig["env"].(string),
 		Id:                        kernelOrdinal,
 		RawTrcdbMode:              rawTrcdbModeEnabled(pluginConfig),
+		PluginDeployed:            flowMachineInitContext.HasPlugin,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
@@ -152,6 +153,10 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		PermissionChan:            make(chan trcflowcore.PermissionUpdate, 1),
 		DfsChan:                   flowMachineInitContext.DfsChan, // Channel for sending data flow statistics
 		FlowChatMsgSenderChan:     flowMachineInitContext.FlowChatMsgSenderChan,
+	}
+	if flowMachineInitContext.Initialize != nil {
+		flowMachineInitContext.Initialize(tfmContext)
+		pluginConfig["templatePath"] = flowMachineInitContext.GetFlowMachineTemplates()["templatePath"]
 	}
 	projects, services, _ := eUtils.GetProjectServices(nil, pluginConfig["connectionPath"].([]string))
 	var sourceDatabaseConfigs []map[string]any
@@ -403,6 +408,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		Env:                       pluginConfig["env"].(string),
 		Id:                        kernelOrdinal,
 		RawTrcdbMode:              rawTrcdbMode,
+		PluginDeployed:            flowMachineInitContext.HasPlugin,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,
