@@ -360,7 +360,7 @@ func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 			ProcessTrcdb((*event).TrcdbExchange)
 			handledResponse := "Handled Trcdb request successfully"
 			(*event).Response = &handledResponse
-			configContext.Log.Println("Sending all test results back to kernel.")
+			configContext.Log.Println("Sending all query results back to kernel.")
 
 			*configContext.ChatSenderChan <- event
 		case event.ChatId == nil || (*event).ChatId == nil || (event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PIPELINETEST"):
