@@ -938,6 +938,8 @@ func (tfmContext *TrcFlowMachineContext) GetAuthExtended(getExtensionAuthCompone
 	return tfmContext.ExtensionAuthData, authErr
 }
 
+// CallDBQueryN executes SQL across the specified flows. The INSERT operation also
+// accepts REPLACE statements; the SQL engine determines the write semantics.
 func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.TrcdbExchange,
 	queryMap map[string]any,
 	bindingsI map[string]any, // Optional param
@@ -972,6 +974,7 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 	}
 	switch operation {
 	case "INSERT":
+		var tableName string
 		var matrix [][]any
 		var err error
 
@@ -982,10 +985,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 		tfContext := tfmContext.GetFlowContext(flowcore.FlowNameType(trcdbExchange.Flows[0])).(*TrcFlowContext)
 
 		if bindingsI == nil {
-			_, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
-			if len(matrix) == 0 {
-				success = false
-			}
+			tableName, _, matrix, err = trcdb.QueryN(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), queryMask, *tfmContext.BitLock)
+			success = err == nil && tableName == "ok"
 		} else {
 			bindings := convertUntypedExpressionMap(bindingsI)
 			if bindings == nil {
@@ -1213,7 +1214,8 @@ func (tfmContext *TrcFlowMachineContext) CallDBQueryN(trcdbExchange *tccore.Trcd
 }
 
 // CallDBQuery - make a call on Call back to insert or update using the provided query.
-// If this is expected to result in a change to an existing table, thern trigger
+// The INSERT operation also accepts REPLACE statements.
+// If this is expected to result in a change to an existing table, then trigger
 // something to the changed channel.
 func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.FlowContext,
 	queryMap map[string]any,
@@ -1230,13 +1232,12 @@ func (tfmContext *TrcFlowMachineContext) CallDBQuery(tcflowContext flowcore.Flow
 	}
 	switch operation {
 	case "INSERT":
+		var tableName string
 		var matrix [][]any
 		var err error
 		if bindingsI == nil {
-			_, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.QueryLock)
-			if len(matrix) == 0 && !strings.Contains(queryMap["TrcQuery"].(string), "IGNORE") {
-				success = false
-			}
+			tableName, _, matrix, err = trcdb.Query(tfmContext.TierceronEngine, queryMap["TrcQuery"].(string), tfContext.QueryLock)
+			success = err == nil && tableName == "ok"
 		} else {
 			bindings := convertUntypedExpressionMap(bindingsI)
 			if bindings == nil {
