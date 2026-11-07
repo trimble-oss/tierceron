@@ -28,6 +28,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/pluginsync"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	flowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/routinglog"
 	trcflow "github.com/trimble-oss/tierceron/atrium/vestibulum/trcflow/flumen"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
@@ -1587,7 +1588,12 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 		if msg.KernelId == nil || *msg.KernelId == "" {
 			msg.KernelId = &pluginHandler.KernelId
 		}
-		driverConfig.CoreConfig.Log.Println("Kernel received message from chat.")
+		if eUtils.RefLength(msg.Response) > 0 || msg.HookResponse != nil {
+			routinglog.LogRouting(driverConfig.CoreConfig.Log, "Kernel received chat response.")
+		} else {
+			routinglog.LogRouting(driverConfig.CoreConfig.Log, "Kernel received chat request.")
+		}
+		routinglog.LogRouting(driverConfig.CoreConfig.Log, "Kernel received message from chat.")
 		if eUtils.RefEquals(msg.Name, "SHUTDOWN") {
 			driverConfig.CoreConfig.Log.Println("Shutting down chat receiver.")
 			for _, p := range *pluginHandler.Services {
@@ -1626,19 +1632,19 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 			continue
 		}
 		for _, q := range *msg.Query {
-			driverConfig.CoreConfig.Log.Println("Kernel processing chat query.")
+			routinglog.LogRouting(driverConfig.CoreConfig.Log, "Kernel processing chat query.")
 			queryPlugin := strings.Split(q, ":")
 			if len(queryPlugin) == 0 {
 				driverConfig.CoreConfig.Log.Println("No plugin specified in query.")
 				continue
 			}
 			pluginQuery := queryPlugin[0]
-			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
+			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && msg.TrcdbExchange == nil && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
 				pluginQuery = "vico"
 				// q = "vico"
 			}
 			if plugin, ok := (*pluginHandler.Services)[pluginQuery]; ok && plugin.State == 1 {
-				driverConfig.CoreConfig.Log.Printf("Sending query to service: %s.\n", plugin.Name)
+				routinglog.LogRouting(driverConfig.CoreConfig.Log, "Sending query to service: %s.\n", plugin.Name)
 				newMsg := &tccore.ChatMsg{
 					Name:          &q,
 					KernelId:      &pluginHandler.KernelId,

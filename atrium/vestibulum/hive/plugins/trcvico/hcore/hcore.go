@@ -1371,7 +1371,6 @@ func startCore(pluginName string, registerFn func(grpcServer *grpc.Server)) (str
 	}
 	configContext.Log.Printf("server listening at %v\n", lis.Addr())
 	go func(l net.Listener) {
-		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 		if err := gServer.Serve(l); err != nil {
 			configContext.Log.Println("Failed to serve:", err)
 			send_err(err)
@@ -1578,8 +1577,10 @@ func start(pluginName string) {
 	} else if localModel != nil {
 		if err := localModelReadyHook(configContext); err != nil {
 			configContext.Log.Printf("vico local model ready hook failed: %s\n", tccore.SanitizeForLogging(err.Error()))
+			return
 		}
 		configContext.Log.Printf("vico local model loaded successfully: gpu=%t backend=%s\n", localModel.model.EffectiveBackend() != "cpu", localModel.model.BackendReport())
+		*configContext.CmdSenderChan <- tccore.KernelCmd{PluginName: pluginName, Command: tccore.PLUGIN_EVENT_START}
 	}
 }
 
