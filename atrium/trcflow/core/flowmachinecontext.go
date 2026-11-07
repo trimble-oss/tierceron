@@ -1819,9 +1819,14 @@ func (tfmContext *TrcFlowMachineContext) WaitAllFlowsLoaded() {
 	}
 	tfmContext.FlowMapLock.RUnlock()
 	for _, flow := range flows {
-		tfmContext.DriverConfig.CoreConfig.Log.Printf("Waiting for flow to unlock: %s\n", flow.FlowHeader.FlowName())
+		initializing := flow.IsInit() && !flow.IsPreloaded()
+		if initializing {
+			tfmContext.DriverConfig.CoreConfig.Log.Printf("Waiting for flow to unlock: %s\n", flow.FlowHeader.FlowName())
+		}
 		flow.WaitFlowLoaded()
-		tfmContext.DriverConfig.CoreConfig.Log.Printf("Flow unlocked: %s\n", flow.FlowHeader.FlowName())
+		if initializing {
+			tfmContext.DriverConfig.CoreConfig.Log.Printf("Flow unlocked: %s\n", flow.FlowHeader.FlowName())
+		}
 	}
 }
 

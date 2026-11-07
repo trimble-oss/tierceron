@@ -7,6 +7,7 @@ import (
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcflowcore "github.com/trimble-oss/tierceron/atrium/trcflow/core"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/routinglog"
 
 	flowcorehelper "github.com/trimble-oss/tierceron/atrium/trcflow/core/flowcorehelper"
 
@@ -209,7 +210,9 @@ func ProcessTierceronFlows(tfmContext *trcflowcore.TrcFlowMachineContext, tfCont
 		defer ticker.Stop()
 
 		for range ticker.C {
-			tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
+			if routinglog.IsRoutingLoggingActive() {
+				tfmContext.Log("Tierceron Flows is running and checking for changes.", nil)
+			}
 			// Periodically checks the table for updates and send out state changes to flows.
 			_, err := tierceronFlowImport(tfmContext, tfContext)
 			if err != nil {
