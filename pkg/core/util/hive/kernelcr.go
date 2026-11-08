@@ -1639,7 +1639,9 @@ func (pluginHandler *PluginHandler) HandleChat(driverConfig *config.DriverConfig
 				continue
 			}
 			pluginQuery := queryPlugin[0]
-			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; ok && vicoPlugin.State == 1 && msg.TrcdbExchange == nil && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
+			_, hasLocalPlugin := (*pluginHandler.Services)[pluginQuery]
+			localTarget := msg.TargetPod == nil || strings.TrimSpace(*msg.TargetPod) == "" || strings.TrimSpace(*msg.TargetPod) == pluginHandler.KernelId || (pluginHandler.Id >= 0 && strings.TrimSpace(*msg.TargetPod) == strconv.Itoa(pluginHandler.Id))
+			if vicoPlugin, ok := (*pluginHandler.Services)["vico"]; (!hasLocalPlugin || !localTarget) && ok && vicoPlugin.State == 1 && msg.TrcdbExchange == nil && !eUtils.RefEquals(&pluginQuery, "trcshtalk") {
 				pluginQuery = "vico"
 				// q = "vico"
 			}
