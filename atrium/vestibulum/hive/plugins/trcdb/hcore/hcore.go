@@ -17,6 +17,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	coreprod "github.com/trimble-oss/tierceron-core/v2/prod"
 	coreutil "github.com/trimble-oss/tierceron-core/v2/util"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/routinglog"
 
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 )
@@ -334,12 +335,12 @@ func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 			configContext.Log.Println("Trcdb unable to access chat service.")
 			return
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId == "PROGRESS":
-			configContext.Log.Println("Sending progress results back to kernel.")
+			routinglog.LogRouting(configContext.Log, "Sending progress results back to kernel.")
 			progressResp := "Running Trcdb Queries..."
 			(*event).Response = &progressResp
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
-			configContext.Log.Println("Received trcdb request.")
+			routinglog.LogRouting(configContext.Log, "Received trcdb request.")
 			if event.Name != nil && strings.Contains(*event.Name, ":") {
 				pluginFlow := strings.Split(*event.Name, ":")
 				if len(pluginFlow) > 1 {
@@ -351,7 +352,7 @@ func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 						tfCtxChatReceiverChan := tfCtx.GetFlowChatMsgReceiverChan()
 						go func(tfCtxChatReceiverChan *chan *core.ChatMsg, msg *core.ChatMsg) {
 							*tfCtxChatReceiverChan <- msg
-							configContext.Log.Printf("Sent request to flow %s\n", flow)
+							routinglog.LogRouting(configContext.Log, "Sent request to flow %s\n", flow)
 						}(tfCtxChatReceiverChan, event)
 					}
 					continue
@@ -360,11 +361,11 @@ func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 			ProcessTrcdb((*event).TrcdbExchange)
 			handledResponse := "Handled Trcdb request successfully"
 			(*event).Response = &handledResponse
-			configContext.Log.Println("Sending all query results back to kernel.")
+			routinglog.LogRouting(configContext.Log, "Sending all query results back to kernel.")
 
 			*configContext.ChatSenderChan <- event
 		case event.ChatId == nil || (*event).ChatId == nil || (event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PIPELINETEST"):
-			GetConfigContext("trcdb").Log.Println("Trcdb received chat message")
+			routinglog.LogRouting(GetConfigContext("trcdb").Log, "Trcdb received chat message")
 			response, err := TrcdbChatMessageHandler(event)
 			if err != nil {
 				GetConfigContext("trcdb").Log.Printf("Trcdb errored with %s\n", err.Error())
@@ -380,7 +381,7 @@ func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 				}(configContext.ChatSenderChan)
 			}
 		default:
-			configContext.Log.Println("trcdb received chat message")
+			routinglog.LogRouting(configContext.Log, "trcdb received chat message")
 		}
 	}
 }
@@ -420,7 +421,7 @@ func ProcessTrcdb(trcdbExchange *core.TrcdbExchange) {
 			}
 		}
 		if len(trcdbExchange.Response.Rows) == 0 {
-			configContext.Log.Println("TrcdbExchange operation did not get any results.  returning empty response.")
+			routinglog.LogRouting(configContext.Log, "TrcdbExchange operation did not get any results.  returning empty response.")
 		}
 	} else {
 		configContext.Log.Println("No flow specified for TrcdbExchange processing")
