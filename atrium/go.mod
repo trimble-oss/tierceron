@@ -24,7 +24,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.12.5
+	github.com/trimble-oss/tierceron-core/v2 v2.12.6
 	github.com/trimble-oss/tierceron-hat v1.4.4
 	github.com/trimble-oss/tierceron-nute v1.1.4
 	github.com/trimble-oss/tierceron-nute-core v1.0.10
