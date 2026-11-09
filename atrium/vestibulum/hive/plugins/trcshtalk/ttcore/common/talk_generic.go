@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
@@ -19,6 +20,16 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+var trcshTalkMessageLoggingActive atomic.Bool
+
+func SetTrcshTalkMessageLoggingActive(active bool) {
+	trcshTalkMessageLoggingActive.Store(active)
+}
+
+func IsTrcshTalkMessageLoggingActive() bool {
+	return trcshTalkMessageLoggingActive.Load()
+}
 
 // StartTrashTalkingGeneric is a minimal generic version of the loop that previously
 // used concrete protobuf types. All pb specifics are pushed into the provided callbacks.
