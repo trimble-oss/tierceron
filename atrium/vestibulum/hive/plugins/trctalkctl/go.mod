@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.10 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.11 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect

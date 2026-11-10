@@ -25,8 +25,8 @@ github.com/townsendmerino/goinfer/cuda v0.22.0 h1:xEzV7QHJhXkTDfDhY5tlVkdofho/em
 github.com/townsendmerino/goinfer/cuda v0.22.0/go.mod h1:Cl3AxF4NPouRMMxb7xt2ktl0Rh9AWVBEixbToIdiw4M=
 github.com/trimble-oss/tierceron-core/v2 v2.12.6 h1:+LmOm7+73iKfw8DnwdGz9WFOo3bfhTE+6nk7lwMnJF4=
 github.com/trimble-oss/tierceron-core/v2 v2.12.6/go.mod h1:fttib/4PewGH3WQfJwHgwxo0CBV5ej+msoQRIBXWwq8=
-github.com/trimble-oss/tierceron-nute-core v1.0.10 h1:8OF6E2i0kHb8+9G+LiS2P17L7SD7FfmMkhgaM+vCc2s=
-github.com/trimble-oss/tierceron-nute-core v1.0.10/go.mod h1:BknF6RpUHyKJ2nimJeggnRCbE9qgCwfUK224WlwagaE=
+github.com/trimble-oss/tierceron-nute-core v1.0.11 h1:K2jS+azEML6xPt7376/L6hXgM8UUBbcZU1/Qu9lRzcs=
+github.com/trimble-oss/tierceron-nute-core v1.0.11/go.mod h1:8VKrBc1wAlcWAh7bwXx7gZ0zkvGaDYmvfGtSB955OWI=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
 go.uber.org/goleak v1.3.0/go.mod h1:CoHD4mav9JJNrW/WLlf7HGZPjdw8EucARQHekz1X6bE=
 golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f h1:W3F4c+6OLc6H2lb//N1q4WpJkhzJCK5J6kUi1NTVXfM=
