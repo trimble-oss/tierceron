@@ -6,6 +6,8 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	flowcore "github.com/trimble-oss/tierceron-core/v2/flow"
 	trcdbcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb/hcore"
+	talkcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore"
+	talkctlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkctl/hcore"
 	trcshcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh/core"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 )
@@ -15,6 +17,10 @@ func GetConfigPaths(pluginName string) []string {
 	switch pluginName {
 	case "trcsh":
 		return trcshcore.GetConfigPaths(pluginName)
+	case "trcshtalk":
+		return talkcore.GetConfigPaths(pluginName)
+	case "talkctl":
+		return talkctlcore.GetConfigPaths(pluginName)
 	}
 	return []string{}
 }
@@ -24,6 +30,10 @@ func Init(pluginName string, properties *map[string]any) {
 	switch pluginName {
 	case "trcsh":
 		trcshcore.Init(pluginName, properties)
+	case "trcshtalk":
+		talkcore.Init(pluginName, properties)
+	case "talkctl":
+		talkctlcore.Init(pluginName, properties)
 	}
 }
 

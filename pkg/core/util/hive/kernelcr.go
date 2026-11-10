@@ -591,9 +591,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 	(*serviceConfig)["kernelID"] = pluginHandler.KernelId
 
-	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
+	// KernelZ permits shell tools and the TrcshTalk command transport.
 	if kernelopts.BuildOptions.IsKernelZ() {
-		if service != "trcshcmd" && service != "trcsh" && service != "rosea" {
+		if service != "trcshcmd" && service != "trcsh" && service != "rosea" && service != "trcshtalk" && service != "talkctl" {
 			driverConfig.CoreConfig.Log.Printf("Security: Plugin %s not allowed in KernelZ.", service)
 			return
 		}
@@ -633,10 +633,13 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	}
 
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-	safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+	if !safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 		PluginName: pluginHandler.Name,
 		Command:    tccore.PLUGIN_EVENT_START,
-	}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
+	}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log) {
+		driverConfig.CoreConfig.Log.Printf("Failed to send start message to plugin service %s\n", service)
+		return
+	}
 	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 }
 
@@ -1245,11 +1248,16 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-			go safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
-				PluginName: pluginHandler.Name,
-				Command:    tccore.PLUGIN_EVENT_START,
-			}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
-			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+			go func() {
+				if !safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+					PluginName: pluginHandler.Name,
+					Command:    tccore.PLUGIN_EVENT_START,
+				}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log) {
+					driverConfig.CoreConfig.Log.Printf("Failed to send start message to plugin service %s\n", service)
+					return
+				}
+				driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+			}()
 		}
 	}
 }
