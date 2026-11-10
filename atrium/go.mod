@@ -27,7 +27,7 @@ require (
 	github.com/trimble-oss/tierceron-core/v2 v2.12.6
 	github.com/trimble-oss/tierceron-hat v1.4.4
 	github.com/trimble-oss/tierceron-nute v1.1.4
-	github.com/trimble-oss/tierceron-nute-core v1.0.10
+	github.com/trimble-oss/tierceron-nute-core v1.0.11
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sys v0.48.0
 	golang.org/x/text v0.42.0
@@ -217,7 +217,7 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103 // indirect
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497 // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20261109230753-cd8bfe71b66d // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20251103195122-175ade98adff // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20251103195122-175ade98adff // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0 // indirect

@@ -6,7 +6,7 @@ require (
 	github.com/trimble-oss/tierceron v1.55.1
 	github.com/trimble-oss/tierceron-core/v2 v2.12.6
 	github.com/trimble-oss/tierceron-nute v1.1.4
-	github.com/trimble-oss/tierceron-nute-core v1.0.10
+	github.com/trimble-oss/tierceron-nute-core v1.0.11
 	google.golang.org/api v0.278.0
 	google.golang.org/protobuf v1.36.12
 )

@@ -358,8 +358,8 @@ github.com/trimble-oss/tierceron-core/v2 v2.12.6 h1:+LmOm7+73iKfw8DnwdGz9WFOo3bf
 github.com/trimble-oss/tierceron-core/v2 v2.12.6/go.mod h1:fttib/4PewGH3WQfJwHgwxo0CBV5ej+msoQRIBXWwq8=
 github.com/trimble-oss/tierceron-nute v1.1.4 h1:GrUB9nbH190bA7wy/tkvKPVttFlJ7+I1jM3HsXxA6x0=
 github.com/trimble-oss/tierceron-nute v1.1.4/go.mod h1:/FR0zyy++VVwogiyxjZmYrfi+k1zEmQgakQVaUcwvDE=
-github.com/trimble-oss/tierceron-nute-core v1.0.10 h1:8OF6E2i0kHb8+9G+LiS2P17L7SD7FfmMkhgaM+vCc2s=
-github.com/trimble-oss/tierceron-nute-core v1.0.10/go.mod h1:BknF6RpUHyKJ2nimJeggnRCbE9qgCwfUK224WlwagaE=
+github.com/trimble-oss/tierceron-nute-core v1.0.11 h1:K2jS+azEML6xPt7376/L6hXgM8UUBbcZU1/Qu9lRzcs=
+github.com/trimble-oss/tierceron-nute-core v1.0.11/go.mod h1:8VKrBc1wAlcWAh7bwXx7gZ0zkvGaDYmvfGtSB955OWI=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7 h1:DgOO0lf88bH1taVYrDywnFlJBS24MUfaw388BgYBrak=
 github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7/go.mod h1:0Sp15hJl0ayr2Lv4sOX6TXCqjqMAYDtw9exP9ObLDRI=
 github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

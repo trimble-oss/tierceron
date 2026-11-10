@@ -31,7 +31,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.10 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.11 // indirect
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.60.0 // indirect

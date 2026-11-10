@@ -28,8 +28,8 @@ require (
 	github.com/trimble-oss/tierceron-core/v2 v2.12.6
 	github.com/trimble-oss/tierceron-hat v1.4.4
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
-	github.com/trimble-oss/tierceron/atrium v0.0.0-20260306235512-e1c4c3df93c7
-	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20251204195016-a8311d409497
+	github.com/trimble-oss/tierceron/atrium v0.0.0-20261109230753-cd8bfe71b66d
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20261109230753-cd8bfe71b66d
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcfenestra v0.0.0-20251103195122-175ade98adff
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20251103195122-175ade98adff
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0
@@ -201,7 +201,7 @@ require (
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/trimble-oss/tierceron-nute v1.1.4 // indirect
-	github.com/trimble-oss/tierceron-nute-core v1.0.10 // indirect
+	github.com/trimble-oss/tierceron-nute-core v1.0.11 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
