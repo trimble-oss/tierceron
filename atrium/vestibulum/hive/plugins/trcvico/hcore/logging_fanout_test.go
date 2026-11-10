@@ -71,7 +71,7 @@ func TestOrdinaryRequestQueuesOneDeliveryPerConnectedHost(t *testing.T) {
 	broker.registerHost("trcshk-observer-0", "trcshk-observer", observer)
 	request := &proxyRequestEnvelope{messageID: "ninja-log-stop", targetPlugins: []string{"ninja"}}
 
-	if deliveries := broker.enqueueFanout(request); deliveries != 2 {
+	if deliveries := broker.enqueueFanout(request, false); deliveries != 2 {
 		t.Fatalf("expected two ninja host deliveries, got %d", deliveries)
 	}
 	for _, hostID := range []string{"trcshk-ninja-0", "trcshk-ninja-1"} {
@@ -124,7 +124,7 @@ func TestOrdinaryRequestWaitsForMatchingHubClient(t *testing.T) {
 		targetPlugins:     []string{"ninja"},
 		serializedRequest: `{"data":["ninja","log","stop"]}`,
 	}
-	if deliveries := broker.enqueueFanout(request); deliveries != 0 {
+	if deliveries := broker.enqueueFanout(request, false); deliveries != 0 {
 		t.Fatalf("expected no immediate deliveries, got %d", deliveries)
 	}
 

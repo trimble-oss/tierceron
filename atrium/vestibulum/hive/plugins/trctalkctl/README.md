@@ -33,6 +33,11 @@ the target TrcshZ host and its TrcshTalk plugin. The local TrcshTalk module repl
 is intentional: these plugins require the new shared command transport API.
 Rebuild the shell, TrcshTalk, and Vico hub with the corresponding source changes.
 
+The `trcshkernelz` host includes built-in initialization for both `trcshtalk` and
+`talkctl`, including TrcshTalk's configuration and certificate paths. Rebuild the
+host when updating this wiring; adding deployments alone cannot initialize a
+plugin that the built-in dispatcher does not recognize.
+
 From this directory, with `TRCSH_BUILD_TAGS` set to the host's build tags:
 
 ```sh
@@ -64,3 +69,14 @@ trctalkctl uses the existing TrcshTalk configuration. Registration is operator-r
 Focused tests live in `hcore`, the sibling `trctrcsh/shell` package, and
 `trcshtalk/ttcore/common`. The parent plugin dependency-boundary tests discover
 this module automatically. Build and test commands are operator-run.
+
+## Startup troubleshooting
+
+`Service unavailable` can originate in the local kernel before a command reaches
+the hub or Vico. Verify that both local plugins initialize and acknowledge start.
+A `safeChannelSend timeout start message` means the plugin did not receive its
+start command; a running remote Vico does not resolve that local failure.
+`Successfully sent start message` confirms delivery, not remote connectivity.
+
+`Warning: No regions configured for plugin trcshtalk` reports missing region
+configuration; it does not itself cause a command-channel send timeout.
