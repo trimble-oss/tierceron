@@ -1664,6 +1664,7 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 			output = append(output, "")
 			output = append(output, "Elevated mode activated. Additional commands available:")
 			output = append(output, "  tinit    - Run trcinit commands (write access)")
+			output = append(output, "  @talkctl - Send a privileged command through the TrcshTalk hub")
 			output = append(output, "  tv       - List/read/patch secret store values")
 			output = append(output, "  tx       - Run trcx commands (write access)")
 			output = append(output, "Type 'exit' to return to normal mode.")

@@ -83,7 +83,6 @@ func IsRunningInKubernetes() bool {
 type KernelCtx struct {
 	DeployRestartChan *chan string
 	PluginRestartChan *chan tccore.KernelCmd
-	HasPlugin         func(string) bool
 }
 
 func InitKernel(kernelId string) *PluginHandler {
@@ -459,10 +458,6 @@ func (pluginHandler *PluginHandler) AddKernelPlugin(service string, driverConfig
 			},
 			KernelCtx: &KernelCtx{
 				PluginRestartChan: pluginHandler.KernelCtx.PluginRestartChan,
-				HasPlugin: func(pluginName string) bool {
-					_, deployed := (*pluginHandler.Services)[pluginName]
-					return deployed
-				},
 			},
 		}
 		pluginsync.CreatePluginReadyChannel(service)
@@ -591,9 +586,9 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 	(*serviceConfig)["kernelID"] = pluginHandler.KernelId
 
-	// Security: KernelZ only allows trcshcmd, trcsh, and rosea plugins
+	// KernelZ permits shell tools and the TrcshTalk command transport.
 	if kernelopts.BuildOptions.IsKernelZ() {
-		if service != "trcshcmd" && service != "trcsh" && service != "rosea" {
+		if service != "trcshcmd" && service != "trcsh" && service != "rosea" && service != "trcshtalk" && service != "talkctl" {
 			driverConfig.CoreConfig.Log.Printf("Security: Plugin %s not allowed in KernelZ.", service)
 			return
 		}
@@ -633,10 +628,13 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	}
 
 	driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-	safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+	if !safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
 		PluginName: pluginHandler.Name,
 		Command:    tccore.PLUGIN_EVENT_START,
-	}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
+	}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log) {
+		driverConfig.CoreConfig.Log.Printf("Failed to send start message to plugin service %s\n", service)
+		return
+	}
 	driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
 }
 
@@ -709,9 +707,6 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 		}
 		if flowMachineInitContext != nil {
 			if fmCtx, ok := flowMachineInitContext.(*flow.FlowMachineInitContext); ok {
-				if pluginHandler.KernelCtx != nil {
-					fmCtx.HasPlugin = pluginHandler.KernelCtx.HasPlugin
-				}
 				pluginConfig = fmCtx.GetFlowMachineTemplates()
 			} else {
 				driverConfig.CoreConfig.Log.Printf("Flow machine context has wrong type for %s\n", service)
@@ -1245,11 +1240,16 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			}
 
 			driverConfig.CoreConfig.Log.Printf("Sending start message to plugin service %s\n", service)
-			go safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
-				PluginName: pluginHandler.Name,
-				Command:    tccore.PLUGIN_EVENT_START,
-			}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log)
-			driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+			go func() {
+				if !safeChannelSend(pluginHandler.ConfigContext.CmdSenderChan, tccore.KernelCmd{
+					PluginName: pluginHandler.Name,
+					Command:    tccore.PLUGIN_EVENT_START,
+				}, fmt.Sprintf("start message to %s", service), driverConfig.CoreConfig.Log) {
+					driverConfig.CoreConfig.Log.Printf("Failed to send start message to plugin service %s\n", service)
+					return
+				}
+				driverConfig.CoreConfig.Log.Printf("Successfully sent start message to plugin service %s\n", service)
+			}()
 		}
 	}
 }

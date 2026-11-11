@@ -3,7 +3,7 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk
 go 1.27.2
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.12.6
+	github.com/trimble-oss/tierceron-core/v2 v2.12.7
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect

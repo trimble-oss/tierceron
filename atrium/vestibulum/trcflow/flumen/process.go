@@ -141,7 +141,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		Env:                       pluginConfig["env"].(string),
 		Id:                        kernelOrdinal,
 		RawTrcdbMode:              rawTrcdbModeEnabled(pluginConfig),
-		PluginDeployed:            flowMachineInitContext.HasPlugin,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState, // Chewbacca say what?!?!
@@ -408,7 +407,6 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		Env:                       pluginConfig["env"].(string),
 		Id:                        kernelOrdinal,
 		RawTrcdbMode:              rawTrcdbMode,
-		PluginDeployed:            flowMachineInitContext.HasPlugin,
 		IsSupportedFlow:           flowMachineInitContext.IsSupportedFlow,
 		ShouldLoadRow:             flowMachineInitContext.ShouldLoadRow,
 		GetAdditionalFlowsByState: flowMachineInitContext.GetTestFlowsByState,

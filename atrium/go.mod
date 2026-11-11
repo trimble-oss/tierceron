@@ -24,7 +24,7 @@ require (
 	github.com/newrelic/go-agent/v3/integrations/logcontext-v2/logWriter v1.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
-	github.com/trimble-oss/tierceron-core/v2 v2.12.6
+	github.com/trimble-oss/tierceron-core/v2 v2.12.7
 	github.com/trimble-oss/tierceron-hat v1.4.4
 	github.com/trimble-oss/tierceron-nute v1.1.4
 	github.com/trimble-oss/tierceron-nute-core v1.0.11
@@ -222,7 +222,9 @@ require (
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20251103195122-175ade98adff // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0 // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20251103195122-175ade98adff // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20261109230753-cd8bfe71b66d // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20251103195122-175ade98adff // indirect
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkctl v0.0.0-20261109230753-cd8bfe71b66d // indirect
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc // indirect
 	github.com/twitchtv/twirp v8.1.3+incompatible // indirect
 	github.com/x448/float16 v0.8.4 // indirect

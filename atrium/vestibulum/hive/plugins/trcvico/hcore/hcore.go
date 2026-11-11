@@ -205,7 +205,7 @@ func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
 	broker.changed = make(chan struct{})
 }
 
-func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) int {
+func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope, hasLocal bool) int {
 	broker.mu.Lock()
 	defer broker.mu.Unlock()
 
@@ -222,7 +222,7 @@ func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope) i
 		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
 		deliveries++
 	}
-	if deliveries == 0 {
+	if deliveries == 0 && !hasLocal {
 		key := proxyRequestQueueKey(request.targetPlugins)
 		broker.queues[key] = append(broker.queues[key], request)
 	}
@@ -815,6 +815,15 @@ func proxyRequestSupported(targetPlugins []string, supportedPlugins map[string]s
 
 // EnqueueProxyRequest queues an SDK-neutral serialized request and waits for its response.
 func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []string, serializedRequest string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if local := trcshtalkcommon.LocalDiagnosticHandler(targetPlugins); local != nil {
+		if configContext != nil && configContext.Log != nil {
+			configContext.Log.Printf("vico dispatching local diagnostic: routing_id=%s targets=%s", tccore.SanitizeForLogging(messageID), tccore.SanitizeForLogging(strings.Join(targetPlugins, ",")))
+		}
+		return local(ctx, messageID, serializedRequest)
+	}
 	responses, err := EnqueueProxyRequestReplies(ctx, messageID, targetPlugins, serializedRequest)
 	if err != nil {
 		return "", err
@@ -826,6 +835,8 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 }
 
 func EnqueueProxyRequestReplies(ctx context.Context, messageID string, targetPlugins []string, serializedRequest string) ([]string, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	responseTracker := newProxyResponseTracker()
 	proxyReplies.Store(messageID, responseTracker)
 	defer proxyReplies.Delete(messageID)
@@ -840,16 +851,37 @@ func EnqueueProxyRequestReplies(ctx context.Context, messageID string, targetPlu
 		return nil, ctx.Err()
 	default:
 	}
-	deliveries := proxyRequests.enqueueFanout(envelope)
+	local := trcshtalkcommon.LocalDiagnosticHandler(targetPlugins)
+	deliveries := proxyRequests.enqueueFanout(envelope, local != nil)
+	if local != nil {
+		deliveries++
+	}
 	if configContext != nil && configContext.Log != nil {
-		configContext.Log.Printf("vico queued diagnostic: routing_id=%s targets=%s eligible_hubclients=%d", tccore.SanitizeForLogging(messageID), tccore.SanitizeForLogging(strings.Join(targetPlugins, ",")), deliveries)
+		remoteDeliveries := deliveries
+		if local != nil {
+			remoteDeliveries--
+		}
+		configContext.Log.Printf("vico queued diagnostic: routing_id=%s targets=%s eligible_hubclients=%d local=%t", tccore.SanitizeForLogging(messageID), tccore.SanitizeForLogging(strings.Join(targetPlugins, ",")), remoteDeliveries, local != nil)
 	}
 	if deliveries == 0 {
 		deliveries = 1
 	}
 	responseTracker.setExpected(deliveries)
+	localErrors := make(chan error, 1)
+	if local != nil {
+		go func() {
+			result, err := local(ctx, messageID, serializedRequest)
+			if err != nil {
+				localErrors <- err
+				return
+			}
+			responseTracker.addResponse(result)
+		}()
+	}
 
 	select {
+	case err := <-localErrors:
+		return nil, err
 	case <-responseTracker.complete:
 		responses := responseTracker.allResponses()
 		for index, response := range responses {
@@ -866,6 +898,11 @@ func EnqueueProxyRequestReplies(ctx context.Context, messageID string, targetPlu
 func EnqueueProxyRequestToPod(ctx context.Context, messageID string, targetKernelID string, targetPlugins []string, serializedRequest string) (string, error) {
 	if strings.TrimSpace(targetKernelID) == "" {
 		return EnqueueProxyRequest(ctx, messageID, targetPlugins, serializedRequest)
+	}
+	if configContext != nil && configContext.KernelID != "" && kernelIDMatchesPod(targetKernelID, configContext.KernelID) {
+		if local := trcshtalkcommon.LocalDiagnosticHandler(targetPlugins); local != nil {
+			return local(ctx, messageID, serializedRequest)
+		}
 	}
 	responseTracker := newProxyResponseTracker()
 	responseTracker.setExpected(1)

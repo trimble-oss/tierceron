@@ -114,6 +114,7 @@ function curatorDeployHive () {
         VAULT_ENV="dev"
     fi
 
+    echo "Certifying to $SECRET_VAULT_ADDR"
     trcplgtool -env=$VAULT_ENV -certify -addr=$SECRET_VAULT_ADDR -token=$SECRET_VAULT_TOKEN -pluginName=trcsh-cursor-$CURSOR_TYPE$PROD_EXT -sha256=target/trcsh-cursor-$CURSOR_TYPE$PROD_EXT
 
     certifystatus=$?

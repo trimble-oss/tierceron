@@ -3,11 +3,12 @@ module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkct
 go 1.27.2
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.12.6
+	github.com/trimble-oss/tierceron-core/v2 v2.12.7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b
 )
 
 require (
+	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/trimble-oss/tierceron-nute-core v1.0.11 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect

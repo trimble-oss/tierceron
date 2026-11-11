@@ -25,7 +25,7 @@ require (
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/sergi/go-diff v1.4.0
-	github.com/trimble-oss/tierceron-core/v2 v2.12.6
+	github.com/trimble-oss/tierceron-core/v2 v2.12.7
 	github.com/trimble-oss/tierceron-hat v1.4.4
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20261109230753-cd8bfe71b66d
@@ -34,7 +34,9 @@ require (
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trchealthcheck v0.0.0-20251103195122-175ade98adff
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20251103195122-175ade98adff
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20261109230753-cd8bfe71b66d
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20251103195122-175ade98adff
+	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkctl v0.0.0-20261109230753-cd8bfe71b66d
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc
 	github.com/twitchtv/twirp v8.1.3+incompatible
 	github.com/xo/dburl v0.9.0
@@ -308,3 +310,7 @@ replace (
 	go.opentelemetry.io/otel/sdk/metric => go.opentelemetry.io/otel/sdk/metric v1.43.0
 	go.opentelemetry.io/otel/trace => go.opentelemetry.io/otel/trace v1.43.0
 )
+
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkctl => ./atrium/vestibulum/hive/plugins/trctalkctl
+
+replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk => ./atrium/vestibulum/hive/plugins/trcshtalk
