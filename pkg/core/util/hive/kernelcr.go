@@ -45,7 +45,6 @@ import (
 )
 
 // var PluginMods map[string]*plugin.Plugin = map[string]*plugin.Plugin{}
-var dfstat *tccore.TTDINode
 
 var (
 	globalPluginStatusChan     chan string
@@ -1366,7 +1365,7 @@ func (pluginHandler *PluginHandler) handleDataflowStat(driverConfig *config.Driv
 	// 	FlowLock: &sync.Mutex{},
 	// }
 	for {
-		dfstat = <-*pluginHandler.ConfigContext.DfsChan
+		dfstat := <-*pluginHandler.ConfigContext.DfsChan
 		switch {
 		case dfstat != nil:
 			driverConfig.CoreConfig.Log.Printf("Received dataflow statistic: %s\n", dfstat.Name)
@@ -1382,7 +1381,7 @@ func (pluginHandler *PluginHandler) handleDataflowStat(driverConfig *config.Driv
 			}
 			flowcore.DeliverStatistic(trcDfsFlowMachineContext, nil, mod, dfstat, dfstat.Name, tenantIndexPath, tenantDFSIdPath, driverConfig.CoreConfig.Log, true)
 			driverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
-		case dfstat == nil:
+		default:
 			driverConfig.CoreConfig.Log.Println("Shutting down dataflow statistic receiver in kernel")
 			return
 		}
