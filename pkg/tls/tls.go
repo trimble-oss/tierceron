@@ -178,8 +178,8 @@ func initCertificates() {
 	rand.Seed(time.Now().UnixNano())
 	mashupCertBytes, err := ReadServerCert("")
 	if err != nil {
-		if !kernelopts.BuildOptions.IsKernelZ() {
-			fmt.Fprintln(os.Stderr, "Cert read failure.")
+		if !kernelopts.BuildOptions.IsKernelZ() && !kernelopts.BuildOptions.IsKernel() {
+			fmt.Fprintln(os.Stderr, "Service cert setup failure.")
 		}
 		return
 	}

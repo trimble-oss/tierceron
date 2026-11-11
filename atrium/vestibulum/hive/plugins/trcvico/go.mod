@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcvico
 
-go 1.27.2
+go 1.27.4
 
 require (
 	github.com/townsendmerino/goinfer v0.22.0

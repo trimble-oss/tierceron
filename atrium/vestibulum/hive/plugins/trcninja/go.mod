@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja
 
-go 1.27.2
+go 1.27.4
 
 require (
 	github.com/denisenkom/go-mssqldb v0.12.3

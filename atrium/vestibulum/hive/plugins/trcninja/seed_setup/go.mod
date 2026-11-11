@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/seed_setup
 
-go 1.27.2
+go 1.27.4
 
 require (
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja v0.0.0-00010101000000-000000000000

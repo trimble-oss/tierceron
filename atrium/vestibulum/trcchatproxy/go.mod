@@ -1,9 +1,9 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/trcchatproxy
 
-go 1.27.2
+go 1.27.4
 
 require (
-	github.com/trimble-oss/tierceron v1.55.1
+	github.com/trimble-oss/tierceron v1.62.2
 	github.com/trimble-oss/tierceron-core/v2 v2.12.7
 	github.com/trimble-oss/tierceron-nute v1.1.4
 	github.com/trimble-oss/tierceron-nute-core v1.0.11
