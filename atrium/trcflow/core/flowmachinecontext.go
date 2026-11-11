@@ -88,7 +88,6 @@ type TrcFlowMachineContext struct {
 	ExtensionAuthData         map[string]any
 	ExtensionAuthDataReloader map[string]any
 	GetAdditionalFlowsByState func(teststate string) []flowcore.FlowDefinition
-	PluginDeployed            func(string) bool
 	IsSupportedFlow           func(flowName string) bool // Required
 	ShouldLoadRow             func(flowcore.FlowMachineContext, flowcore.FlowContext, map[string]string) (bool, error)
 	ChannelMap                map[flowcore.FlowNameType]*bchan.Bchan
@@ -112,10 +111,6 @@ func (tfmContext *TrcFlowMachineContext) GetEnv() string {
 
 func (tfmContext *TrcFlowMachineContext) GetId() int {
 	return tfmContext.Id
-}
-
-func (tfmContext *TrcFlowMachineContext) HasPlugin(pluginName string) bool {
-	return tfmContext.PluginDeployed != nil && tfmContext.PluginDeployed(pluginName)
 }
 
 func (tfmContext *TrcFlowMachineContext) GetFlowContext(flowName flowcore.FlowNameType) flowcore.FlowContext {
