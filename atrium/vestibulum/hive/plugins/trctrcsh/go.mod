@@ -48,10 +48,6 @@ require (
 
 replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea => ../trcrosea
 
-replace dev.azure.com/ViewpointVSO/Spectrum/_git/VaultConfig.TenantConfig => ../../../../../../VaultConfig.TenantConfig
-
-replace dev.azure.com/ViewpointVSO/Spectrum/_git/VaultConfig.TenantConfig/trcshtalk => ../../../../../../VaultConfig.TenantConfig/trcshtalk
-
 replace (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0
 	go.opentelemetry.io/otel => go.opentelemetry.io/otel v1.43.0
