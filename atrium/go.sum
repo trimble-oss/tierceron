@@ -1341,8 +1341,12 @@ github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcprocurator v0.0.0-20251215220157-174e238f0dc0/go.mod h1:K5aGoUPyP8qIXAzq707M14+jlQ6SNOd8wtoQHsdeM8s=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20251103195122-175ade98adff h1:vsVQZgflkCYd8SI9/iZ8XG7bblF32UaqJCOx7Hzw4DE=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcrosea v0.0.0-20251103195122-175ade98adff/go.mod h1:EOMGtIlSIYOdSv49imN3UOZtNEOLU9gCTjd3U04T4Pg=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20261109230753-cd8bfe71b66d h1:rLG5kxxsCwEqJWDfC7z5PHT56z8UgeFYIPL4Tx/D+jo=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20261109230753-cd8bfe71b66d/go.mod h1:qmticnDeSFaRxi3Cb2uQ8Ydo99xl5wVMIFqSWsqYjx8=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20251103195122-175ade98adff h1:+7MUidgE+h3dm7dJaUbxZz8+Nyerzmjonl+fFHe3edg=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcspiralis v0.0.0-20251103195122-175ade98adff/go.mod h1:DNEqUViezTHg2UHSTLYSMgwJmxlnifbG0Ltq4idzBLk=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkctl v0.0.0-20261109230753-cd8bfe71b66d h1:MfpnLjA1dcuFt2oo5H/W883gWZXFcy/qlic5OW5UiEQ=
+github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctalkctl v0.0.0-20261109230753-cd8bfe71b66d/go.mod h1:wyojp9zD9lTsEBpUfos7ytMuAvHTKd0rnqHJQIIvJpQ=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc h1:g0mP/yh4B+qSXp5xR/lg28bu2MWXfzDkiPxQNZ12fLs=
 github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trctrcsh v0.0.0-20260126221743-c34de0c97fcc/go.mod h1:+Iv1louJ7n9tV2rCUN2VUkr20CDkHmNC/KFRB5G+Uxc=
 github.com/tv42/httpunix v0.0.0-20150427012821-b75d8614f926/go.mod h1:9ESjWnEqriFuLhtthL60Sar/7RFoluCcXsuvEwTV5KM=

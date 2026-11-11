@@ -5,7 +5,7 @@ go 1.27.2
 require (
 	github.com/townsendmerino/goinfer v0.22.0
 	github.com/townsendmerino/goinfer/cuda v0.22.0
-	github.com/trimble-oss/tierceron-core/v2 v2.12.6
+	github.com/trimble-oss/tierceron-core/v2 v2.12.7
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk v0.0.0-20260918175252-00c9428a705b
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
@@ -15,6 +15,7 @@ require (
 require (
 	github.com/ebitengine/purego v0.10.1 // indirect
 	github.com/eitamring/gocudrv v0.3.2 // indirect
+	github.com/glycerine/bchan v0.0.0-20170210221909-ad30cd867e1c // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/townsendmerino/aikit v1.57.0 // indirect
