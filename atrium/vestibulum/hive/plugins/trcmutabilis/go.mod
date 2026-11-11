@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcmutabilis
 
-go 1.27.2
+go 1.27.4
 
 require (
 	github.com/hanwen/go-fuse/v2 v2.7.2

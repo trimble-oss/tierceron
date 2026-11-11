@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron/atrium
 
-go 1.27.2
+go 1.27.4
 
 require (
 	fyne.io/fyne/v2 v2.5.2
@@ -25,7 +25,7 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.52.1
 	github.com/trimble-oss/tierceron-core/v2 v2.12.7
-	github.com/trimble-oss/tierceron-hat v1.4.4
+	github.com/trimble-oss/tierceron-hat v1.4.5
 	github.com/trimble-oss/tierceron-nute v1.1.4
 	github.com/trimble-oss/tierceron-nute-core v1.0.11
 	golang.org/x/oauth2 v0.36.0
@@ -276,7 +276,7 @@ require (
 
 //replace github.com/trimble-oss/tierceron-succinctly => ../tierceron-succinctly
 
-//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.55.1
+//replace github.com/trimble-oss/tierceron => github.com/trimble-oss/tierceron v1.62.2
 
 replace github.com/go-jose/go-jose/v3 => github.com/go-jose/go-jose/v3 v3.0.5
 

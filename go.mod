@@ -1,6 +1,6 @@
 module github.com/trimble-oss/tierceron
 
-go 1.27.2
+go 1.27.4
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
@@ -26,7 +26,7 @@ require (
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/sergi/go-diff v1.4.0
 	github.com/trimble-oss/tierceron-core/v2 v2.12.7
-	github.com/trimble-oss/tierceron-hat v1.4.4
+	github.com/trimble-oss/tierceron-hat v1.4.5
 	github.com/trimble-oss/tierceron-succinctly v0.0.0-20231202151147-a0fc3a0ba103
 	github.com/trimble-oss/tierceron/atrium v0.0.0-20261109230753-cd8bfe71b66d
 	github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb v0.0.0-20261109230753-cd8bfe71b66d
