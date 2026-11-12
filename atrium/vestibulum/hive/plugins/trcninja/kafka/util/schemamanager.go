@@ -1,4 +1,4 @@
-package kafkautil
+package util
 
 import (
 	"crypto/tls"

@@ -3,7 +3,7 @@ package testsuite
 import (
 	"sync"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkatesting"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafka"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/mysqldbutil"
 )
 
@@ -13,9 +13,9 @@ type Pool struct{}
 var connectionLock sync.Mutex
 
 func CommonInit() {
-	if kafkatesting.IndirectDbFunc == nil {
+	if kafka.IndirectDbFunc == nil {
 		connectionLock.Lock()
-		kafkatesting.IndirectDbFunc = mysqldbutil.OpenIndirectConnection
+		kafka.IndirectDbFunc = mysqldbutil.OpenIndirectConnection
 		connectionLock.Unlock()
 	}
 }

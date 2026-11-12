@@ -13,11 +13,11 @@ import (
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/confighelper"
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkatesting"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafka"
 )
 
 // InitKafka - initialize Kafka
-func InitKafka(pool interface{}, idbFn kafkatesting.IndirectDBConnectionFunc) bool {
+func InitKafka(pool interface{}, idbFn kafka.IndirectDBConnectionFunc) bool {
 	var testRegex string
 	var testTimeout string
 	var testLog string
@@ -51,7 +51,7 @@ func InitKafka(pool interface{}, idbFn kafkatesting.IndirectDBConnectionFunc) bo
 	etlcore.LogError(fmt.Sprintf("args %v", os.Args))
 
 	if idbFn != nil {
-		kafkatesting.IndirectDbFunc = idbFn
+		kafka.IndirectDbFunc = idbFn
 	}
 
 	filteredArgs := filterEmptyElements(os.Args)[1:]
@@ -97,7 +97,7 @@ func InitKafka(pool interface{}, idbFn kafkatesting.IndirectDBConnectionFunc) bo
 		os.Exit(0) // This can exit because it is only used from cli
 	}
 
-	kafkatesting.StartAllTestEngines(nil, nil)
+	kafka.StartAllTestEngines(nil, nil)
 	return false
 }
 
@@ -195,7 +195,7 @@ func registerTest(pool interface{}, fn *ast.FuncDecl, _ *ast.File, isBench bool)
 			etlcore.LogError(fmt.Sprintf("Empty kafka topic in sequence for test %s", testName))
 			continue
 		}
-		kafkaTestReader, err := kafkatesting.NewKafkaTestReader(kafkaTopic, nil, true)
+		kafkaTestReader, err := kafka.NewKafkaTestReader(kafkaTopic, nil, true)
 		if err != nil {
 			etlcore.LogError(fmt.Sprintf("Failed to create KafkaTestReader %v", err))
 			continue

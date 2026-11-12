@@ -11,7 +11,7 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/seed_setup/models"
 
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkatesting"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafka"
 	"github.com/vbauerster/mpb/v8/decor"
 )
 
@@ -37,7 +37,7 @@ func AddBusinessObject() error {
 	currentStateFunc := func(s decor.Statistics) string {
 		return currentState
 	}
-	reader, bar, sociiID, _, spectrumConn, err := kafkatesting.KafkaTestInit(&currentState, BusinessObjectTopic, currentStateFunc)
+	reader, bar, sociiID, _, spectrumConn, err := kafka.KafkaTestInit(&currentState, BusinessObjectTopic, currentStateFunc)
 	if err != nil {
 		currentState = "failed setup"
 		bar.Abort(false)
@@ -90,10 +90,10 @@ func AddBusinessObject() error {
 
 	// 5. Kick off an asynchronous test.
 	var resultError error
-	if !kafkatesting.GetPlugin() {
+	if !kafka.GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("%s Going to kafka.", sociiID))
 	}
-	wg := kafkatesting.TestExpected(reader, "Failure to find expected message.", expectedKey, expectedValueIndex, expectedValue, func(err error) {
+	wg := kafka.TestExpected(reader, "Failure to find expected message.", expectedKey, expectedValueIndex, expectedValue, func(err error) {
 		if err != nil {
 			etlcore.LogError(fmt.Sprintf("%s Kafka error.  %v", sociiID, err))
 			currentState = "failed to connect to kafka"
@@ -142,7 +142,7 @@ func UpdateBusinessObject() error {
 	currentStateFunc := func(s decor.Statistics) string {
 		return currentState
 	}
-	reader, bar, sociiID, _, spectrumConn, err := kafkatesting.KafkaTestInit(&currentState, BusinessObjectTopic, currentStateFunc)
+	reader, bar, sociiID, _, spectrumConn, err := kafka.KafkaTestInit(&currentState, BusinessObjectTopic, currentStateFunc)
 	if err != nil {
 		currentState = "failed setup"
 		bar.Abort(false)
@@ -184,10 +184,10 @@ func UpdateBusinessObject() error {
 
 	// 5. Kick off an asynchronous test.
 	var resultError error
-	if !kafkatesting.GetPlugin() {
+	if !kafka.GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("%s Going to kafka.", sociiID))
 	}
-	wg := kafkatesting.TestExpected(reader, "Failure to find expected BusinessObject.", expectedKey, expectedValueIndex, expectedValue, func(err error) {
+	wg := kafka.TestExpected(reader, "Failure to find expected BusinessObject.", expectedKey, expectedValueIndex, expectedValue, func(err error) {
 		if err != nil {
 			etlcore.LogError(fmt.Sprintf("%s Kafka error.  %v", sociiID, err))
 			resultError = err
@@ -233,7 +233,7 @@ func (p *Pool) CleanBusinessObject() error {
 		return currentState
 	}
 	// 1. Setup connections to database and kafka.
-	_, bar, sociiID, _, spectrumConn, err := kafkatesting.KafkaTestInit(&currentState, "", currentStateFunc)
+	_, bar, sociiID, _, spectrumConn, err := kafka.KafkaTestInit(&currentState, "", currentStateFunc)
 	if err != nil {
 		currentState = "Clean failed setup"
 		bar.Abort(false)

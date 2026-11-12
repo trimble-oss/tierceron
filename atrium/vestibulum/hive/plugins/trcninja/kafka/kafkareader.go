@@ -1,4 +1,4 @@
-package kafkatesting
+package kafka
 
 import (
 	"context"
@@ -87,6 +87,7 @@ type SeededKafkaReader struct {
 	deleteTestChan      chan *KafkaTestBundle
 	HandleEventFunc     func(k map[string]any, n map[string]any)
 	HandleRecordFunc    func(record *kgo.Record, k map[string]any, n map[string]any)
+	RetryNetworkErrors  bool
 	isTestReader        atomic.Bool    // tracks if this is a test reader or event handler; converted to atomic for thread safety
 	ninjaTestClosed     atomic.Bool    // tracks if this reader's ninja test has been closed; replaces plain bool
 	channelsClosed      atomic.Bool    // tracks if incomingTestChan and deleteTestChan have been closed
@@ -1223,6 +1224,14 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 
 		// Check if client was closed using franz-go's built-in method
 		if fetches.IsClientClosed() && !r.isReaderClosing() {
+			if !r.isTestReader.Load() && r.RetryNetworkErrors {
+				r.logFlow("Kafka client closed for flow topic reader, attempting to recreate client.")
+				if err := r.recreateKafkaReader(); err != nil {
+					r.logFlow("Failed to recreate Kafka client for topic %s; retrying: %v", r.TopicName, err)
+				}
+				time.Sleep(2 * time.Second)
+				continue
+			}
 			if !r.isTestReader.Load() {
 				r.logFlow("Kafka client closed for flow topic reader, exiting reader loop.")
 			} else {
@@ -1319,6 +1328,12 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 				if r.isReaderClosing() {
 					break
 				}
+				continue
+			}
+
+			if !r.isTestReader.Load() && r.RetryNetworkErrors {
+				r.logFlow("Kafka error for flow topic reader, retrying in 2s: %v", err)
+				time.Sleep(2 * time.Second)
 				continue
 			}
 

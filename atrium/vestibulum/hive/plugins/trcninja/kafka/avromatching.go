@@ -1,6 +1,7 @@
-package kafkatesting
+package kafka
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -8,12 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/confighelper"
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-// FilterByKeyMap - Ensure we only look at messages for a specific key.
-func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool {
+// FilterByAvroKeyMap -- Ensure we only look at messages for a specific key.  Returns true if a test is found, false otherwise.
+// Presently only matches on integer index keys.  So, in this case allows
+// rejection of further processing of messages based on for instance sociiId.
+func (r *SeededKafkaReader) FilterByAvroKeyMap(kafkaKey map[string]interface{}) bool {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
 	for k := range r.kafkaTestBundle {
@@ -41,24 +45,18 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 		for ek, ev := range expectedAvroKey {
 			if av, aok := kafkaKey[ek]; aok {
 				// Handle both string and numeric keys
-				var evStr, avStr string
+				var evStr string
 				switch v := ev.(type) {
 				case string:
 					evStr = v
 				default:
 					evStr = fmt.Sprintf("%v", v)
 				}
-				switch v := av.(type) {
-				case string:
-					avStr = v
-				default:
-					avStr = fmt.Sprintf("%v", v)
-				}
 
 				// Try numeric comparison first (int32)
 				if i, err := strconv.ParseInt(evStr, 10, 32); err == nil {
-					if avi, err := strconv.ParseInt(avStr, 10, 32); err == nil {
-						if int32(avi) != int32(i) {
+					if avInt32, avOk := av.(int32); avOk {
+						if avInt32 != int32(i) {
 							noMatch = true
 							break
 						}
@@ -67,6 +65,14 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 				}
 
 				// Fall back to string comparison
+				var avStr string
+				switch v := av.(type) {
+				case string:
+					avStr = v
+				default:
+					avStr = fmt.Sprintf("%v", v)
+				}
+
 				if evStr != avStr {
 					noMatch = true
 					break
@@ -84,8 +90,8 @@ func (r *SeededKafkaReader) FilterByKeyMap(kafkaKey map[string]interface{}) bool
 	return false
 }
 
-// FindByJsonKeyIndex - finds matching test by index.
-func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey map[string]interface{}, kafkaLogicalKey map[string]interface{}) *KafkaTestBundle {
+// FindByAvroKeyIndex - finds matching test by index.
+func (r *SeededKafkaReader) FindByAvroKeyIndex(messageTime time.Time, kafkaKey map[string]interface{}, kafkaLogicalKey map[string]interface{}) *KafkaTestBundle {
 	r.kafkaTestBundleLock.RLock()
 	testKeys := make([]string, 0, len(r.kafkaTestBundle))
 	for k := range r.kafkaTestBundle {
@@ -115,24 +121,18 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 		for ek, ev := range expectedAvroKey {
 			if av, aok := kafkaKey[ek]; aok {
 				// Handle both string and numeric keys
-				var evStr, avStr string
+				var evStr string
 				switch v := ev.(type) {
 				case string:
 					evStr = v
 				default:
 					evStr = fmt.Sprintf("%v", v)
 				}
-				switch v := av.(type) {
-				case string:
-					avStr = v
-				default:
-					avStr = fmt.Sprintf("%v", v)
-				}
 
-				// Try numeric comparison first (int64)
-				if i, err := strconv.ParseInt(evStr, 10, 64); err == nil {
-					if avi, err := strconv.ParseInt(avStr, 10, 64); err == nil {
-						if avi != i {
+				// Try numeric comparison first (int32)
+				if i, err := strconv.ParseInt(evStr, 10, 32); err == nil {
+					if avInt32, avOk := av.(int32); avOk {
+						if avInt32 != int32(i) {
 							noMatch = true
 							break
 						}
@@ -141,6 +141,14 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 				}
 
 				// Fall back to string comparison
+				var avStr string
+				switch v := av.(type) {
+				case string:
+					avStr = v
+				default:
+					avStr = fmt.Sprintf("%v", v)
+				}
+
 				if evStr != avStr {
 					noMatch = true
 					break
@@ -211,7 +219,7 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 						etlcore.LogError(fmt.Sprintf("Unexpected malformatted key data for key: %s\n", eki))
 					}
 				} else {
-					etlcore.LogError(fmt.Sprintf("JSON package missing expected logical key: %s\n", eki))
+					etlcore.LogError(fmt.Sprintf("Avro missing expected logical key: %s\n", eki))
 				}
 			}
 		}
@@ -226,28 +234,23 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 	return nil
 }
 
-func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
-	receivedAt := time.Now()
-	if !GetPlugin() {
-		etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v\n", m.Topic, m.Partition, m.Offset))
-	}
-	if etlcore.GetConfigContext() != nil && etlcore.GetConfigContext().Log != nil {
-		etlcore.GetConfigContext().Log.Println("Topic reader received json message from EMS topic.")
-	}
-	// TODO: Implement testExpected for JSON output.
-	var kafkaKey map[string]interface{}
-	keyErr := json.Unmarshal(m.Key, &kafkaKey)
-	if keyErr != nil {
-		etlcore.LogError(fmt.Sprintf("Failed to unmarshal kafka message key: %v", keyErr))
+func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
+	avroKeyData := m.Key[5:]
+	keySchemaID := binary.BigEndian.Uint32(m.Key[1:5])
+
+	_, _, kafkaKey, err := confighelper.KafkaManager.DeserializeMessage(keySchemaID, avroKeyData)
+	if err != nil {
+		etlcore.LogError(fmt.Sprintf("Failure to parse message key, Schema parse error: %v", err))
 		return
 	}
-
+	// etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v: %s = %s\n", m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value)))
 	if r.HandleRecordFunc != nil || r.HandleEventFunc != nil {
-		// Non-test kafka topic reader for processing json messages
-		var kafkaValue map[string]interface{}
-		err := json.Unmarshal(m.Value, &kafkaValue)
+		// Non-test kafka topic reader for processing avro messages
+		avroData := m.Value[5:]
+		schemaID := binary.BigEndian.Uint32(m.Value[1:5])
+		_, _, kafkaValue, err := confighelper.KafkaManager.DeserializeMessage(schemaID, avroData)
 		if err != nil {
-			etlcore.LogError(fmt.Sprintf("Failed to unmarshal kafka message value: %v", err))
+			etlcore.LogError(fmt.Sprintf("Failure to parse message value, Schema parse error: %v", err))
 			return
 		}
 		if r.HandleRecordFunc != nil {
@@ -257,19 +260,24 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 		}
 		return
 	}
-
-	if !r.FilterByKeyMap(kafkaKey) {
+	if !r.FilterByAvroKeyMap(kafkaKey) {
 		// sociiId mismatch for tests we are running.
-		if !GetPlugin() {
-			etlcore.LogError(fmt.Sprintf("FilterByKeyMap returned false for key: %v", kafkaKey))
-		}
+		// This is a common occurrence in a topic with a lot of data from different enterprises...
+		// Don't log here because it clutters the logs and makes the test appear to be
+		// failing..   You can uncomment for debugging sometimes.
+		// etlcore.LogError(fmt.Sprintf("Mismatched socii: %v", kafkaKey))
 		return
 	}
 
-	var kafkaValue map[string]interface{}
-	json.Unmarshal(m.Value, &kafkaValue)
+	avroData := m.Value[5:]
+	schemaID := binary.BigEndian.Uint32(m.Value[1:5])
+	_, _, kafkaValue, err := confighelper.KafkaManager.DeserializeMessage(schemaID, avroData)
+	if err != nil {
+		etlcore.LogError(fmt.Sprintf("Failure to parse message value, Schema parse error: %v", err))
+		return
+	}
 
-	kafkaTestBundle := r.FindByJsonKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
+	kafkaTestBundle := r.FindByAvroKeyIndex(m.Timestamp, kafkaKey, kafkaValue)
 	if kafkaTestBundle == nil {
 		// sociiId mismatch for tests we are running.
 		if !GetPlugin() {
@@ -279,56 +287,46 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 	}
 
 	expectedValue := kafkaTestBundle.ExpectedValue
-	var err error
 
 	// Matching index.  Now compare the changes.
 	for evk, evv := range expectedValue {
 		if av, aoki := kafkaValue[evk]; aoki {
-			if actualDecimal, decimalOk := av.(*big.Rat); decimalOk {
-				if evv.(*big.Rat).Cmp(actualDecimal) != 0 {
-					etlcore.LogError(fmt.Sprintf("Failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal))
-					err = fmt.Errorf("failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal)
-					break
-				}
-			} else if actualString, stringOk := av.(string); stringOk {
-				if expectedNumber, numberOk := evv.(float64); numberOk {
-					actualNumber, parseErr := strconv.ParseFloat(actualString, 64)
-					if parseErr != nil || expectedNumber != actualNumber {
-						etlcore.LogError(fmt.Sprintf("Failure: numeric value mismatch Key: %s Value: expected: %v actual: %v", evk, expectedNumber, actualString))
-						err = fmt.Errorf("failure: numeric value mismatch Key: %s Value: expected: %v actual: %v", evk, expectedNumber, actualString)
+			if avMap, avOk := av.(map[string]interface{}); avOk {
+				if actualDecimal, decimalOk := avMap["bytes.decimal"].(*big.Rat); decimalOk {
+					if evv.(*big.Rat).Cmp(actualDecimal) != 0 {
+						etlcore.LogError(fmt.Sprintf("Failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal))
+						err = fmt.Errorf("failure: Key: %s Value: decimal value mismatch expected: %v actual: %v", evk, evv, actualDecimal)
 						break
 					}
-				} else if evvString, evvStrOk := evv.(string); evvStrOk {
-					if evvString != actualString {
-						etlcore.LogError(fmt.Sprintf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString))
-						err = fmt.Errorf("failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
+				} else if actualString, stringOk := avMap["string"].(string); stringOk {
+					if evvString, evvStrOk := evv.(string); evvStrOk {
+						if evvString != actualString {
+							etlcore.LogError(fmt.Sprintf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString))
+							err = fmt.Errorf("failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
+							break
+						}
+					} else {
+						etlcore.LogError(fmt.Sprintf("Failure to parse string value Key: %s Value: %v", evk, evv))
+						err = fmt.Errorf("failure to parse string value Key: %s Value: %v", evk, evv)
 						break
 					}
-				} else {
-					etlcore.LogError(fmt.Sprintf("Failure to parse string value Key: %s Value: %v", evk, evv))
-					err = fmt.Errorf("failure to parse string value Key: %s Value: %v", evk, evv)
-					break
-				}
-			} else if actualTime, timeOk := av.(time.Time); timeOk {
-				if evvTime, evvTimeOk := evv.(time.Time); evvTimeOk {
-					utcTime := evvTime.UTC()
-					if utcTime != actualTime {
-						etlcore.LogError(fmt.Sprintf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
-						err = fmt.Errorf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
+				} else if actualTime, timeOk := avMap["int.date"].(time.Time); timeOk {
+					if evvTime, evvTimeOk := evv.(time.Time); evvTimeOk {
+						utcTime := evvTime.UTC()
+						if utcTime != actualTime {
+							etlcore.LogError(fmt.Sprintf("Failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime))
+							err = fmt.Errorf("failure: time value mismatch Key: %s Value: expected: %v actual: %v", evk, evvTime, actualTime)
+							break
+						}
+					} else {
+						etlcore.LogError(fmt.Sprintf("Failure to parse Time value Key: %s Value: %v", evk, evv))
+						err = fmt.Errorf("failure to parse Time value Key: %s Value: %v", evk, evv)
 						break
 					}
-				} else {
-					etlcore.LogError(fmt.Sprintf("Failure to parse Time value Key: %s Value: %v", evk, evv))
-					err = fmt.Errorf("failure to parse Time value Key: %s Value: %v", evk, evv)
-					break
 				}
-			} else if fmt.Sprint(evv) != fmt.Sprint(av) {
-				etlcore.LogError(fmt.Sprintf("Failure: value mismatch Key: %s Value: expected: %v actual: %v", evk, evv, av))
-				err = fmt.Errorf("failure: value mismatch Key: %s Value: expected: %v actual: %v", evk, evv, av)
-				break
 			}
 		} else {
-			err = fmt.Errorf("JSON package missing expected value key %v", evk)
+			err = fmt.Errorf("skipping event for topic: %s.  Avro package missing expected value key %v", r.TopicName, evk)
 			break
 		}
 	}
@@ -337,19 +335,11 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 
 	if err != nil {
 		etlcore.LogError(fmt.Sprintf("Failure to parse kafka item.  Ending error: %v", err))
-		r.kafkaTestBundleLock.Lock()
 		kafkaTestBundle.SuccessFun(err)
-		r.kafkaTestBundleLock.Unlock()
 		r.DeleteTest(kafkaTestBundle)
 	} else {
 		// Actual success.
-		r.kafkaTestBundleLock.Lock()
 		kafkaTestBundle.SuccessFun(nil)
-		r.kafkaTestBundleLock.Unlock()
-
 		r.DeleteTest(kafkaTestBundle)
-	}
-	if r.isTestReader.Load() {
-		logWithConfigContext(r.configContext, "Kafka test record matched: topic=%s partition=%d offset=%d received_at=%s record_timestamp=%s record_age=%s matching_elapsed=%s", m.Topic, m.Partition, m.Offset, receivedAt.UTC().Format(time.RFC3339Nano), m.Timestamp.UTC().Format(time.RFC3339Nano), receivedAt.Sub(m.Timestamp), time.Since(receivedAt))
 	}
 }
