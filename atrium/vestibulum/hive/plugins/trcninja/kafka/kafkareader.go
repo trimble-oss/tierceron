@@ -1,4 +1,4 @@
-package kafkatesting
+package kafka
 
 import (
 	"context"

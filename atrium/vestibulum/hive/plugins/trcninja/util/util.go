@@ -8,18 +8,18 @@ import (
 	"time"
 
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkatesting"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafka"
 )
 
 func TestSequenceBundleBuilder(sociiID string,
 	topicSequence [][]string,
-	readerSequence []*kafkatesting.SeededKafkaReader,
+	readerSequence []*kafka.SeededKafkaReader,
 	expectedLogicalKey map[string]interface{},
 	expectedLogicalValue map[string]interface{},
 	successFun func(err error),
-) []*kafkatesting.KafkaTestBundle {
+) []*kafka.KafkaTestBundle {
 
-	kafkaTestSequence := []*kafkatesting.KafkaTestBundle{}
+	kafkaTestSequence := []*kafka.KafkaTestBundle{}
 
 	agnosticExpectedLogicKey := map[string]interface{}{}
 	for key, value := range expectedLogicalKey {
@@ -35,7 +35,7 @@ func TestSequenceBundleBuilder(sociiID string,
 		agnosticExpectedLogicValue[key] = value
 	}
 
-	baseTestBundle := kafkatesting.KafkaTestBundle{
+	baseTestBundle := kafka.KafkaTestBundle{
 		Name:             "",
 		CompletionStatus: "",
 		Message:          "Failure to find expected message.",
@@ -52,7 +52,7 @@ func TestSequenceBundleBuilder(sociiID string,
 		switch reader.TopicName {
 		case topicSequence[0][0]:
 			rawTestBundle := baseTestBundle
-			rawTestBundle.CompletionStatus = kafkatesting.STATE_RAWTOPIC_ARRIVAL
+			rawTestBundle.CompletionStatus = kafka.STATE_RAWTOPIC_ARRIVAL
 			rawTestBundle.ExpectedLogicalKey = expectedLogicalKey // Reset and prepare for raw
 			switch expectedLogicalKey["EventType"] {
 			case "UPDATED":
@@ -66,7 +66,7 @@ func TestSequenceBundleBuilder(sociiID string,
 			kafkaTestSequence = append(kafkaTestSequence, &rawTestBundle)
 		case topicSequence[1][0]:
 			agnosticTestBundle := baseTestBundle
-			agnosticTestBundle.CompletionStatus = kafkatesting.STATE_AGNOSTIC_TOPIC_ARRIVAL
+			agnosticTestBundle.CompletionStatus = kafka.STATE_AGNOSTIC_TOPIC_ARRIVAL
 			kafkaTestSequence = append(kafkaTestSequence, &agnosticTestBundle)
 		}
 	}

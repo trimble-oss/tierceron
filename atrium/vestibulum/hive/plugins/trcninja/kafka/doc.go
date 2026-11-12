@@ -1,4 +1,4 @@
-// Package kafkatesting provides comprehensive Kafka testing utilities with progress tracking.
+// Package kafka provides comprehensive Kafka testing utilities with progress tracking.
 //
 // This package implements a testing framework for Kafka-based ETL operations, including:
 //
@@ -32,4 +32,4 @@
 //
 // The package integrates with the performancetesting package for test orchestration
 // and automatic cleanup.
-package kafkatesting
+package kafka

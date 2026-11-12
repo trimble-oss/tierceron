@@ -6,14 +6,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafkautil"
+	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/kafka/util"
 	"github.com/trimble-oss/tierceron-core/v2/core"
 )
 
 var properties *map[string]interface{}
 
 // KafkaManager - manager of Kafka
-var KafkaManager *kafkautil.KafkaManager
+var KafkaManager *util.KafkaManager
 
 var KafkaCert []byte
 
@@ -102,7 +102,7 @@ func InitKafkaProperties(configContext *core.ConfigContext,
 		return fmt.Errorf("schemaRegistryPassword is not a string")
 	}
 
-	KafkaManager = kafkautil.InitKafkaManager(schemaCert, schemaURL, schemaUser, schemaPass)
+	KafkaManager = util.InitKafkaManager(schemaCert, schemaURL, schemaUser, schemaPass)
 	if KafkaManager == nil {
 		return fmt.Errorf("failed to initialize KafkaManager")
 	}
@@ -180,7 +180,7 @@ func GetKafkaClientCertWithConfig(configContext *core.ConfigContext) ([]byte, er
 	return nil, fmt.Errorf("kafka cert not found in config context")
 }
 
-func NewKafkaManagerWithConfig(configContext *core.ConfigContext) (*kafkautil.KafkaManager, error) {
+func NewKafkaManagerWithConfig(configContext *core.ConfigContext) (*util.KafkaManager, error) {
 	if configContext == nil {
 		return nil, fmt.Errorf("configContext is nil")
 	}
@@ -203,7 +203,7 @@ func NewKafkaManagerWithConfig(configContext *core.ConfigContext) (*kafkautil.Ka
 	if !ok {
 		return nil, fmt.Errorf("schemaRegistryPassword is not configured")
 	}
-	kafkaManager := kafkautil.InitKafkaManager(schemaCert, schemaURL, schemaUser, schemaPass)
+	kafkaManager := util.InitKafkaManager(schemaCert, schemaURL, schemaUser, schemaPass)
 	if kafkaManager == nil {
 		return nil, fmt.Errorf("failed to initialize KafkaManager")
 	}
