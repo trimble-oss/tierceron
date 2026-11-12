@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"net/http"
+	"time"
 
 	schemaregistry "github.com/wildbeavers/schema-registry" //github.com/landoop/schema-registry
 )
@@ -36,6 +37,7 @@ func InitSchemaManager(schemaCert []byte, schemaSource string, schemaUser string
 
 	httpsClient := &http.Client{
 		Transport: httpsClientTransport,
+		Timeout:   30 * time.Second,
 	}
 
 	schemaClient, err := schemaregistry.NewClientWithBasicAuth(schemaSource, schemaUser, schemaPassword, schemaregistry.UsingClient(httpsClient))

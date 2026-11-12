@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
 	goavro "github.com/linkedin/goavro/v2"
+	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 	schemaregistry "github.com/wildbeavers/schema-registry"
@@ -145,7 +145,7 @@ func EncodeConfluentAvroMessage(schema schemaregistry.Schema, value map[string]i
 	return payload, nil
 }
 
-func NewProducer(bootstrapServers string, kafkaUsername string, kafkaPassword string, kafkaCert []byte) (*kgo.Client, error) {
+func NewProducer(bootstrapServers string, kafkaUsername string, kafkaPassword string, kafkaCert []byte, producerOptions ...kgo.Opt) (*kgo.Client, error) {
 	if bootstrapServers == "" {
 		return nil, fmt.Errorf("bootstrapServers is empty")
 	}
@@ -161,7 +161,7 @@ func NewProducer(bootstrapServers string, kafkaUsername string, kafkaPassword st
 		caPool.AppendCertsFromPEM(kafkaCert)
 	}
 
-	client, err := kgo.NewClient(
+	options := []kgo.Opt{
 		kgo.SeedBrokers(bootstrapServers),
 		kgo.SASL(plain.Auth{
 			User: kafkaUsername,
@@ -169,7 +169,8 @@ func NewProducer(bootstrapServers string, kafkaUsername string, kafkaPassword st
 		}.AsMechanism()),
 		kgo.DialTLSConfig(&tls.Config{RootCAs: caPool, MinVersion: tls.VersionTLS12}),
 		kgo.WithLogger(kgo.BasicLogger(io.Discard, kgo.LogLevelNone, nil)),
-	)
+	}
+	client, err := kgo.NewClient(append(options, producerOptions...)...)
 	if err != nil {
 		return nil, err
 	}

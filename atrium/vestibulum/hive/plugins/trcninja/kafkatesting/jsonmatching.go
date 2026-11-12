@@ -227,6 +227,7 @@ func (r *SeededKafkaReader) FindByJsonKeyIndex(messageTime time.Time, kafkaKey m
 }
 
 func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
+	receivedAt := time.Now()
 	if !GetPlugin() {
 		etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v\n", m.Topic, m.Partition, m.Offset))
 	}
@@ -290,7 +291,14 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 					break
 				}
 			} else if actualString, stringOk := av.(string); stringOk {
-				if evvString, evvStrOk := evv.(string); evvStrOk {
+				if expectedNumber, numberOk := evv.(float64); numberOk {
+					actualNumber, parseErr := strconv.ParseFloat(actualString, 64)
+					if parseErr != nil || expectedNumber != actualNumber {
+						etlcore.LogError(fmt.Sprintf("Failure: numeric value mismatch Key: %s Value: expected: %v actual: %v", evk, expectedNumber, actualString))
+						err = fmt.Errorf("failure: numeric value mismatch Key: %s Value: expected: %v actual: %v", evk, expectedNumber, actualString)
+						break
+					}
+				} else if evvString, evvStrOk := evv.(string); evvStrOk {
 					if evvString != actualString {
 						etlcore.LogError(fmt.Sprintf("Failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString))
 						err = fmt.Errorf("failure: string value mismatch Key: %s Value: expected: %v actual: %v", evk, evvString, actualString)
@@ -314,6 +322,10 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 					err = fmt.Errorf("failure to parse Time value Key: %s Value: %v", evk, evv)
 					break
 				}
+			} else if fmt.Sprint(evv) != fmt.Sprint(av) {
+				etlcore.LogError(fmt.Sprintf("Failure: value mismatch Key: %s Value: expected: %v actual: %v", evk, evv, av))
+				err = fmt.Errorf("failure: value mismatch Key: %s Value: expected: %v actual: %v", evk, evv, av)
+				break
 			}
 		} else {
 			err = fmt.Errorf("JSON package missing expected value key %v", evk)
@@ -329,10 +341,6 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 		kafkaTestBundle.SuccessFun(err)
 		r.kafkaTestBundleLock.Unlock()
 		r.DeleteTest(kafkaTestBundle)
-		if r.CountTest() == 0 {
-			// All done.
-			r.Close()
-		}
 	} else {
 		// Actual success.
 		r.kafkaTestBundleLock.Lock()
@@ -340,9 +348,8 @@ func (r *SeededKafkaReader) ProcessMessageJSON(m *kgo.Record) {
 		r.kafkaTestBundleLock.Unlock()
 
 		r.DeleteTest(kafkaTestBundle)
-		if r.CountTest() == 0 {
-			// All done.
-			r.Close()
-		}
+	}
+	if r.isTestReader.Load() {
+		logWithConfigContext(r.configContext, "Kafka test record matched: topic=%s partition=%d offset=%d received_at=%s record_timestamp=%s record_age=%s matching_elapsed=%s", m.Topic, m.Partition, m.Offset, receivedAt.UTC().Format(time.RFC3339Nano), m.Timestamp.UTC().Format(time.RFC3339Nano), receivedAt.Sub(m.Timestamp), time.Since(receivedAt))
 	}
 }

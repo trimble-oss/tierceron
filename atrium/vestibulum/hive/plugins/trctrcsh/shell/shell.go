@@ -553,6 +553,13 @@ func (m *ShellModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	if submission, ok := msg.(testr.CommandSubmitMsg); ok {
+		m.editorModel = nil
+		return m, func() tea.Msg {
+			return m.executeTalkctlCommand(submission.Args)
+		}
+	}
+
 	// Handle editor close messages first
 	if _, ok := msg.(testr.EditorCloseMsg); ok {
 		// Editor requested to close - follow same pattern as commandResultMsg
@@ -1307,6 +1314,12 @@ func (m *ShellModel) findMatches(dir, prefix string) []string {
 func (m *ShellModel) executeCommandAsync(cmd string) tea.Cmd {
 	trimmedCmd := strings.TrimSpace(cmd)
 	parts := strings.Fields(trimmedCmd)
+	if len(parts) > 0 {
+		switch strings.ToLower(parts[0]) {
+		case "@trcshtalk", "@talkctl", "talkctl":
+			return func() tea.Msg { return m.executeTalkctlCommand(parts[1:]) }
+		}
+	}
 
 	// Check if this is a tconfig command with -ofs flag (directory picker)
 	if len(parts) > 0 && parts[0] == "tconfig" {
@@ -1679,9 +1692,6 @@ func (m *ShellModel) executeCommand(cmd string) ([]string, bool) {
 				output = append(output, errorStyle.Render(line))
 			}
 		}
-
-	case "talkctl", "@talkctl":
-		output = append(output, m.executeTalkctlCommand(args)...)
 
 	case "tinit":
 		// Only available in elevated mode

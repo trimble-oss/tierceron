@@ -26,6 +26,25 @@ For a standalone TrcshZ kernel, its kernel ID is also its registration group.
 
 Commands have a 90-second client deadline. The shell waits up to two minutes.
 
+## Extension command interfaces
+
+The shell sends `@talkctl`, `talkctl`, and `@trcshtalk` arguments to the local
+Talkctl plugin without interpreting domain commands.
+
+An extension can call `hcore.InitWithUI` with a `CommandUI` implementation.
+`Open` may return an in-process Bubble Tea model for a recognized command;
+unrecognized commands continue through the ordinary hub transport. `Receive`
+delivers other chat messages to the extension for its own query correlation.
+The supplied context lasts until plugin shutdown. Bound individual queries
+with their own deadlines.
+
+The shell hosts returned models using the same lifecycle as Rosea editors.
+Models cancel with Rosea's `EditorCloseMsg` and submit arguments with its generic
+`CommandSubmitMsg`. Submission rechecks shell elevation and uses the existing
+Talkctl transport. No command grammar or application queries belong in the shell
+or Rosea. Deploy extensions with matching shell, Rosea message contracts, and
+Talkctl lifecycle packages.
+
 ## Build
 
 Build with the same Go toolchain, shared dependency versions, and build tags as

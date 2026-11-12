@@ -26,7 +26,9 @@ import (
 	etlcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/core"
 
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcninja/confighelper"
+	"github.com/twmb/franz-go/pkg/kerr"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/kmsg"
 	"github.com/twmb/franz-go/pkg/sasl/plain"
 )
 
@@ -70,30 +72,31 @@ type KafkaTestBundle struct {
 }
 
 type SeededKafkaReader struct {
-	startTime            time.Time
-	TopicName            string
-	TopicType            string // json or avro
-	ConsumerGroupID      string // tracks the consumer group ID for reconnection
-	configContext        *core.ConfigContext
-	kafkaClient          *kgo.Client
-	kafkaClientLock      sync.RWMutex // protects kafkaClient from concurrent modification
-	firstRecordCommitted atomic.Bool  // tracks if we've committed after first fetch; replaces plain bool
-	kafkaTestBundle      map[string]*KafkaTestBundle
-	kafkaTestBundleLock  sync.RWMutex
-	incomingTestChan     chan *KafkaTestBundle
-	deleteTestChan       chan *KafkaTestBundle
-	HandleEventFunc      func(k map[string]any, n map[string]any)
-	HandleRecordFunc     func(record *kgo.Record, k map[string]any, n map[string]any)
-	isTestReader         atomic.Bool    // tracks if this is a test reader or event handler; converted to atomic for thread safety
-	ninjaTestClosed      atomic.Bool    // tracks if this reader's ninja test has been closed; replaces plain bool
-	channelsClosed       atomic.Bool    // tracks if incomingTestChan and deleteTestChan have been closed
-	flowTopicsClosed     atomic.Bool    // per-reader flag tracks if this flow topic reader should close
-	closeStarted         atomic.Bool    // ensures reader shutdown only runs once per reader instance
-	CacheKey             string         // cached key for reader lookup
-	engineActive         atomic.Bool    // tracks if an engine is currently running on this reader; uses CompareAndSwap for atomic activation
-	engineRunning        sync.WaitGroup // tracks if the KafkaTestEngine loop is still running
-	messageProcessingWg  sync.WaitGroup // tracks in-flight ProcessMessage goroutines to prevent resource leak
-	testReadySignaled    atomic.Bool    // tracks if testReadyWG.Done() already called to prevent double-done panic
+	startTime           time.Time
+	TopicName           string
+	TopicType           string // json or avro
+	ConsumerGroupID     string // tracks the consumer group ID for reconnection
+	balancers           []kgo.GroupBalancer
+	configContext       *core.ConfigContext
+	kafkaClient         *kgo.Client
+	kafkaClientLock     sync.RWMutex // protects kafkaClient from concurrent modification
+	recordBatchLock     sync.Mutex
+	kafkaTestBundle     map[string]*KafkaTestBundle
+	kafkaTestBundleLock sync.RWMutex
+	incomingTestChan    chan *KafkaTestBundle
+	deleteTestChan      chan *KafkaTestBundle
+	HandleEventFunc     func(k map[string]any, n map[string]any)
+	HandleRecordFunc    func(record *kgo.Record, k map[string]any, n map[string]any)
+	isTestReader        atomic.Bool    // tracks if this is a test reader or event handler; converted to atomic for thread safety
+	ninjaTestClosed     atomic.Bool    // tracks if this reader's ninja test has been closed; replaces plain bool
+	channelsClosed      atomic.Bool    // tracks if incomingTestChan and deleteTestChan have been closed
+	flowTopicsClosed    atomic.Bool    // per-reader flag tracks if this flow topic reader should close
+	closeStarted        atomic.Bool    // ensures reader shutdown only runs once per reader instance
+	CacheKey            string         // cached key for reader lookup
+	engineActive        atomic.Bool    // tracks if an engine is currently running on this reader; uses CompareAndSwap for atomic activation
+	engineRunning       sync.WaitGroup // tracks if the KafkaTestEngine loop is still running
+	messageProcessingWg sync.WaitGroup // tracks in-flight ProcessMessage goroutines to prevent resource leak
+	testReadySignaled   atomic.Bool    // tracks if testReadyWG.Done() already called to prevent double-done panic
 	// Quota throttling tracking - for graceful backoff when quota exhausted
 	quotaErrorCount int32 // counts consecutive quota errors
 }
@@ -267,6 +270,10 @@ func createKafkaReaderConfig(topicName string, consumerGroupID ...string) (*kgo.
 }
 
 func createKafkaReaderConfigWithBalancers(configContext *core.ConfigContext, topicName string, balancers []kgo.GroupBalancer, consumerGroupID ...string) (*kgo.Client, string, error) {
+	return createKafkaReaderConfigWithReadiness(configContext, topicName, balancers, nil, consumerGroupID...)
+}
+
+func createKafkaReaderConfigWithReadiness(configContext *core.ConfigContext, topicName string, balancers []kgo.GroupBalancer, ready func(), consumerGroupID ...string) (*kgo.Client, string, error) {
 	if configContext == nil || configContext.Config == nil {
 		return nil, "", errors.New("configContext.Config is nil")
 	}
@@ -344,19 +351,96 @@ func createKafkaReaderConfigWithBalancers(configContext *core.ConfigContext, top
 		kgo.FetchMinBytes(1),
 		kgo.FetchMaxBytes(10e6),
 		kgo.FetchMaxWait(1 * time.Second),
-		kgo.SessionTimeout(10 * time.Minute),
+		kgo.SessionTimeout(45 * time.Second),
+		kgo.DisableAutoCommit(),
+		kgo.BlockRebalanceOnPoll(),
 		kgo.WithLogger(kgo.BasicLogger(io.Discard, kgo.LogLevelNone, nil)),
 	}
 	if len(balancers) > 0 {
 		clientOpts = append(clientOpts, kgo.Balancers(balancers...))
 	}
+	var client *kgo.Client
+	var configured chan struct{}
+	if ready != nil {
+		configured = make(chan struct{})
+		clientOpts = append(clientOpts, kgo.AdjustFetchOffsetsFn(func(ctx context.Context, offsets map[string]map[int32]kgo.Offset) (map[string]map[int32]kgo.Offset, error) {
+			select {
+			case <-configured:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
+			if err := resolveTestReaderStartingOffsets(ctx, offsets, client.RequestSharded); err != nil {
+				return nil, err
+			}
+			if len(offsets[topicName]) > 0 {
+				ready()
+			}
+			return offsets, nil
+		}))
+	}
 
 	client, err := kgo.NewClient(clientOpts...)
+	if configured != nil {
+		close(configured)
+	}
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create kafka client: %w", err)
 	}
 
 	return client, groupID, nil
+}
+
+func resolveTestReaderStartingOffsets(ctx context.Context, offsets map[string]map[int32]kgo.Offset, fetch func(context.Context, kmsg.Request) []kgo.ResponseShard) error {
+	request := kmsg.NewPtrListOffsetsRequest()
+	remaining := 0
+	for topic, partitions := range offsets {
+		requestedTopic := kmsg.NewListOffsetsRequestTopic()
+		requestedTopic.Topic = topic
+		for partition, offset := range partitions {
+			if offset != kgo.NewOffset().AtEnd() {
+				continue
+			}
+			requestedPartition := kmsg.NewListOffsetsRequestTopicPartition()
+			requestedPartition.Partition = partition
+			requestedPartition.Timestamp = -1
+			requestedTopic.Partitions = append(requestedTopic.Partitions, requestedPartition)
+			remaining++
+		}
+		if len(requestedTopic.Partitions) > 0 {
+			request.Topics = append(request.Topics, requestedTopic)
+		}
+	}
+	if remaining == 0 {
+		return ctx.Err()
+	}
+	for _, shard := range fetch(ctx, request) {
+		if shard.Err != nil {
+			return shard.Err
+		}
+		response, ok := shard.Resp.(*kmsg.ListOffsetsResponse)
+		if !ok {
+			return errors.New("unexpected Kafka starting-offset response")
+		}
+		for _, topic := range response.Topics {
+			for _, partition := range topic.Partitions {
+				if err := kerr.ErrorForCode(partition.ErrorCode); err != nil {
+					return err
+				}
+				if offsets[topic.Topic][partition.Partition] != kgo.NewOffset().AtEnd() {
+					continue
+				}
+				if partition.Offset < 0 {
+					return errors.New("Kafka returned an unresolved starting offset")
+				}
+				offsets[topic.Topic][partition.Partition] = kgo.NewOffset().At(partition.Offset)
+				remaining--
+			}
+		}
+	}
+	if remaining != 0 {
+		return errors.New("Kafka did not return all starting offsets")
+	}
+	return ctx.Err()
 }
 
 // NewKafkaTestReader -- create new kafka test reader for a topic.
@@ -487,7 +571,24 @@ func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.Con
 	}
 
 	// Create kafka reader using shared helper
-	r, groupID, err := createKafkaReaderConfigWithBalancers(configContext, topic[0], balancers, consumerGroupID)
+	var reader *SeededKafkaReader
+	var ready func()
+	var initialized chan struct{}
+	if isTestReader && testReadyWG != nil {
+		initialized = make(chan struct{})
+		var readyOnce sync.Once
+		ready = func() {
+			<-initialized
+			readyOnce.Do(func() {
+				reader.testReadySignaled.Store(true)
+				testReadyWG.Done()
+				if !reader.isReaderClosing() && reader.kafkaClient.Context().Err() == nil {
+					etlcore.LogError("Test reader signaled engine ready after Kafka starting offsets resolved.")
+				}
+			})
+		}
+	}
+	r, groupID, err := createKafkaReaderConfigWithReadiness(configContext, topic[0], balancers, ready, consumerGroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -504,11 +605,12 @@ func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.Con
 
 	startTime := time.Now()
 
-	reader := &SeededKafkaReader{
+	reader = &SeededKafkaReader{
 		startTime:       startTime,
 		TopicName:       topic[0],
 		TopicType:       topicType,
 		ConsumerGroupID: groupID,
+		balancers:       append([]kgo.GroupBalancer(nil), balancers...),
 		configContext:   configContext,
 		kafkaClient:     r,
 		CacheKey:        cacheKey,
@@ -532,6 +634,13 @@ func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.Con
 	}
 
 	kafkaReaderCache.Store(cacheKey, reader)
+	if initialized != nil {
+		close(initialized)
+		go func() {
+			<-r.Context().Done()
+			ready()
+		}()
+	}
 	return reader, nil
 }
 
@@ -737,6 +846,7 @@ func (r *SeededKafkaReader) PreSeed() {
 		}
 
 		fetches := kafkaClient.PollFetches(ctx)
+		kafkaClient.AllowRebalance()
 		if fetches.IsClientClosed() {
 			etlcore.LogError("Kafka client closed during PreSeed")
 			return
@@ -982,6 +1092,11 @@ func (r *SeededKafkaReader) recreateKafkaReader() error {
 	if r == nil {
 		return errors.New("cannot recreate reader on nil SeededKafkaReader")
 	}
+	r.recordBatchLock.Lock()
+	defer r.recordBatchLock.Unlock()
+	if r.isReaderClosing() {
+		return kgo.ErrClientClosed
+	}
 
 	// Acquire write lock to protect kafkaClient replacement
 	r.kafkaClientLock.Lock()
@@ -1000,32 +1115,34 @@ func (r *SeededKafkaReader) recreateKafkaReader() error {
 	}
 
 	// Create new client using shared helper with the same consumer group ID
-	newClient, _, err := createKafkaReaderConfig(r.TopicName, r.ConsumerGroupID)
+	newClient, _, err := createKafkaReaderConfigWithBalancers(r.configContext, r.TopicName, r.balancers, r.ConsumerGroupID)
 	if err != nil {
 		etlcore.LogError(fmt.Sprintf("Failed to recreate kafka client for topic %s: %v", r.TopicName, err))
 		return fmt.Errorf("failed to create kafka client config: %w", err)
 	}
 
 	r.kafkaClient = newClient
-	r.firstRecordCommitted.Store(false) // Reset so we commit after first fetch on reconnect
 	r.logFlow("Successfully recreated kafka client for topic: %s with group ID: %s", r.TopicName, r.ConsumerGroupID)
 	return nil
+}
+
+func processRecordsBeforeCommit(records []*kgo.Record, process func(*kgo.Record), commit func(...*kgo.Record) error) error {
+	var processing sync.WaitGroup
+	for _, record := range records {
+		processing.Add(1)
+		go func(record *kgo.Record) {
+			defer processing.Done()
+			process(record)
+		}(record)
+	}
+	processing.Wait()
+	return commit(records...)
 }
 
 func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, testReadyWG *sync.WaitGroup) {
 	// Atomically try to activate this engine. This prevents a race condition where
 	// multiple goroutines could all pass the engineActive.Load() check before any of
 	// them sets engineActive to true. CompareAndSwap ensures only ONE goroutine succeeds.
-
-	// Recover from any panics to ensure engineActive is released
-	defer func() {
-		if recErr := recover(); recErr != nil {
-			etlcore.LogError(fmt.Sprintf("Panic in KafkaTestEngine: %v", recErr))
-			r.engineActive.Store(false) // Ensure engine state is reset on panic
-			panic(recErr)               // Re-raise the panic after cleanup
-		}
-		r.engineActive.Store(false) // Release the engine claim when done normally
-	}()
 
 	// Signal that the engine loop is running
 	r.engineRunning.Add(1)
@@ -1051,28 +1168,27 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 		} else {
 			etlcore.LogError(fmt.Sprintf("Engine already active on reader for topic %s - exiting", r.TopicName))
 		}
-		if testReadyWG != nil && !r.testReadySignaled.Load() {
+		if !r.isTestReader.Load() && testReadyWG != nil && !r.testReadySignaled.Load() {
 			if r.testReadySignaled.CompareAndSwap(false, true) {
 				testReadyWG.Done() // Still need to signal done since we were counted in newKafkaReaderInternal
 			}
 		}
 		return
 	}
+	defer func() {
+		if recErr := recover(); recErr != nil {
+			etlcore.LogError(fmt.Sprintf("Panic in KafkaTestEngine: %v", recErr))
+			r.engineActive.Store(false)
+			panic(recErr)
+		}
+		r.engineActive.Store(false)
+	}()
 	if !r.isTestReader.Load() && testReadyWG != nil && !r.testReadySignaled.Load() {
 		if r.testReadySignaled.CompareAndSwap(false, true) {
 			testReadyWG.Done()
 			r.logFlow("Flow reader signaled engine ready.")
 		}
 	}
-	// Signal that this engine is ready to process messages
-	// IMPORTANT: Only signal after ScanTests wg.Done() confirms ScanTests goroutine is fully initialized
-	if r.isTestReader.Load() && testReadyWG != nil && !r.testReadySignaled.Load() {
-		if r.testReadySignaled.CompareAndSwap(false, true) {
-			testReadyWG.Done()
-			etlcore.LogError("Test reader signaled engine ready.")
-		}
-	}
-
 	// All tests loaded and ready to go.
 	for {
 		// Exit only when explicitly closed by test framework (ninjaTestClosed set by CloseAllTests).
@@ -1128,7 +1244,12 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 		}
 
 		// Check for errors in fetches
-		if err := fetches.Err(); err != nil {
+		fetchErr := fetches.Err()
+		if err := fetchErr; err != nil && fetches.NumRecords() == 0 {
+			kafkaClient.AllowRebalance()
+			if r.isReaderClosing() {
+				break
+			}
 			// Check for quota/throttling errors FIRST - these need graceful backoff
 			if r.isQuotaError(err) {
 				backoffDuration := r.handleQuotaThrottling()
@@ -1275,36 +1396,18 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 			continue
 		}
 
-		// If this is the first successful fetch, commit immediately to establish position
-		if !r.firstRecordCommitted.Load() {
-			commitCtx, commitCancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer commitCancel() // Release context resources (removed duplicate commitCancel())
-
-			r.kafkaClientLock.RLock()
-			kafkaClient := r.kafkaClient
-			r.kafkaClientLock.RUnlock()
-
-			if kafkaClient != nil {
-				if err := kafkaClient.CommitUncommittedOffsets(commitCtx); err != nil {
-					if !r.isTestReader.Load() {
-						r.logFlow("First fetch commit failed for flow topic reader: %v", err)
-					} else {
-						etlcore.LogError(fmt.Sprintf("First fetch commit failed for test topic reader: %v", err))
-					}
-				} else {
-					r.firstRecordCommitted.Store(true)
-					if !r.isTestReader.Load() {
-						r.logFlow("Successfully committed position after first fetch for flow topic reader")
-					} else {
-						etlcore.LogError("Successfully committed position after first fetch for test topic reader")
-					}
-				}
-			}
+		if fetchErr != nil {
 			if !r.isTestReader.Load() {
-				r.logFlow("First fetch processing complete.")
+				r.logFlow("Kafka fetch contained records and an error for topic %s; processing valid records: %v", r.TopicName, fetchErr)
 			} else {
-				etlcore.LogError("First fetch processing complete for test topic reader")
+				etlcore.LogError(fmt.Sprintf("Kafka fetch contained records and an error for test topic %s; processing valid records: %v", r.TopicName, fetchErr))
 			}
+		}
+		r.recordBatchLock.Lock()
+		if r.isReaderClosing() {
+			kafkaClient.AllowRebalance()
+			r.recordBatchLock.Unlock()
+			break
 		}
 
 		// Reset quota throttling state on successful fetch
@@ -1312,11 +1415,14 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 
 		// Process all records in the fetch
 		iter := fetches.RecordIter()
+		processedRecords := make([]*kgo.Record, 0)
+		polledRecords := false
 		for !iter.Done() {
 			if !r.isTestReader.Load() {
 				r.logFlow("Processing record from flow topic reader...")
 			}
 			rec := iter.Next()
+			polledRecords = true
 
 			if !GetPlugin() {
 				etlcore.LogError(fmt.Sprintf("message at topic/partition/offset %v/%v/%v\n",
@@ -1324,15 +1430,37 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 			}
 
 			if (!r.ninjaTestClosed.Load() && r.isTestReader.Load()) || (!r.flowTopicsClosed.Load() && !r.isTestReader.Load()) {
-				r.messageProcessingWg.Add(1)
-				go func(record *kgo.Record) {
-					defer r.messageProcessingWg.Done()
-					r.ProcessMessage(record)
-				}(rec)
+				processedRecords = append(processedRecords, rec)
 			} else if !r.isTestReader.Load() && r.flowTopicsClosed.Load() {
 				r.logFlow("Skipping flow record dispatch because flowTopicsClosed is set: topic=%s partition=%d offset=%d", rec.Topic, rec.Partition, rec.Offset)
 			}
 		}
+		if polledRecords {
+			if len(processedRecords) > 0 {
+				r.messageProcessingWg.Add(len(processedRecords))
+				err := processRecordsBeforeCommit(processedRecords, func(record *kgo.Record) {
+					defer r.messageProcessingWg.Done()
+					r.ProcessMessage(record)
+				}, func(records ...*kgo.Record) error {
+					commitCtx, commitCancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer commitCancel()
+					return kafkaClient.CommitRecords(commitCtx, records...)
+				})
+				if err != nil {
+					if !r.isTestReader.Load() {
+						r.logFlow("Completion commit failed for topic %s: %v", r.TopicName, err)
+					} else {
+						etlcore.LogError(fmt.Sprintf("Completion commit failed for test topic reader on %s: %v", r.TopicName, err))
+					}
+				} else if !r.isTestReader.Load() {
+					r.logFlow("Committed offsets after completion for %d records on topic %s", len(processedRecords), r.TopicName)
+				} else {
+					etlcore.LogError(fmt.Sprintf("Committed offsets after completion for %d test records on topic %s", len(processedRecords), r.TopicName))
+				}
+			}
+			kafkaClient.AllowRebalance()
+		}
+		r.recordBatchLock.Unlock()
 		if !r.isTestReader.Load() {
 			r.logFlow("Finished processing fetch from flow topic reader.")
 		}
@@ -1348,6 +1476,13 @@ func (r *SeededKafkaReader) Close() {
 	if !r.closeStarted.CompareAndSwap(false, true) {
 		return
 	}
+	if r.isTestReader.Load() {
+		r.ninjaTestClosed.Store(true)
+	} else {
+		r.flowTopicsClosed.Store(true)
+	}
+	r.recordBatchLock.Lock()
+	defer r.recordBatchLock.Unlock()
 
 	// Remove from cache so a new reader can be created on next use
 	kafkaReaderCache.Delete(r.CacheKey)
@@ -1428,6 +1563,9 @@ func testExpected(r *SeededKafkaReader, kafkaTestBundle *KafkaTestBundle) {
 
 	testBundleFun := kafkaTestBundle.SuccessFun
 	kafkaTestBundle.SuccessFun = func(err error) {
+		if err != nil {
+			kafkaTestBundle.CompletionStatus = STATE_FAILED
+		}
 		if testBundleFun != nil {
 			testBundleFun(err)
 		}
@@ -1477,9 +1615,6 @@ func testExpected(r *SeededKafkaReader, kafkaTestBundle *KafkaTestBundle) {
 		if resultErr != nil {
 			// Pass nil on success or the error on failure - SuccessFun callback will call Wg.Done()
 			kafkaTestBundle.SuccessFun(resultErr)
-		} else {
-			// Success case: call SuccessFun to trigger Wg.Done() via callback
-			kafkaTestBundle.SuccessFun(nil)
 		}
 	}()
 }
@@ -1588,6 +1723,9 @@ func TestWait(currentState *atomic.Value, kafkaTestSequence []*KafkaTestBundle, 
 			kafkaTest.Wg = &sync.WaitGroup{}
 		}
 		kafkaTest.Wg.Wait()
+		if kafkaTest.CompletionStatus == STATE_FAILED {
+			resultError = errors.New("Kafka test validation failed")
+		}
 		// Use flowTopicsClosed global flag, not inverted allTestsClosed logic
 		if flowTopicsClosed.Load() {
 			resultError = errors.New("timeout signal sent")
