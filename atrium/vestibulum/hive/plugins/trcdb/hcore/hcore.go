@@ -341,6 +341,16 @@ func chatReceiver(chatReceiverChan chan *core.ChatMsg) {
 			*configContext.ChatSenderChan <- event
 		case event.ChatId != nil && (*event).ChatId != nil && *event.ChatId != "PROGRESS" && event.TrcdbExchange != nil && (*event).TrcdbExchange != nil:
 			routinglog.LogRouting(configContext.Log, "Received trcdb request.")
+			if event.TrcdbExchange.Operation == "LIBRARY" {
+				event.TrcdbExchange.Response = core.TrcdbResponse{}
+				if _, err := TrcdbChatMessageHandler(event); err != nil {
+					configContext.Log.Printf("Trcdb library request rejected: %v", err)
+				}
+				response := "Handled Trcdb library request"
+				event.Response = &response
+				*configContext.ChatSenderChan <- event
+				continue
+			}
 			if event.Name != nil && strings.Contains(*event.Name, ":") {
 				pluginFlow := strings.Split(*event.Name, ":")
 				if len(pluginFlow) > 1 {

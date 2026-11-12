@@ -337,17 +337,9 @@ func (r *SeededKafkaReader) ProcessMessageAvro(m *kgo.Record) {
 		etlcore.LogError(fmt.Sprintf("Failure to parse kafka item.  Ending error: %v", err))
 		kafkaTestBundle.SuccessFun(err)
 		r.DeleteTest(kafkaTestBundle)
-		if r.CountTest() == 0 {
-			// All done.
-			r.Close()
-		}
 	} else {
 		// Actual success.
 		kafkaTestBundle.SuccessFun(nil)
 		r.DeleteTest(kafkaTestBundle)
-		if r.CountTest() == 0 {
-			// All done.
-			r.Close()
-		}
 	}
 }

@@ -2,6 +2,7 @@ package hcore
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -10,11 +11,19 @@ import (
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore/common"
 )
 
+// CommandUI lets an extension supply an in-process model before hub submission.
+// Open receives the plugin lifetime context; individual queries must bound it.
+type CommandUI interface {
+	Open(context.Context, *tccore.ConfigContext, []string) (any, bool, error)
+	Receive(*tccore.ChatMsg)
+}
+
 type commandPlugin struct {
 	config *tccore.ConfigContext
 	ctx    context.Context
 	cancel context.CancelFunc
 	send   func(context.Context, string, string) (string, error)
+	ui     CommandUI
 }
 
 func GetConfigPaths(pluginName string) []string {
@@ -26,6 +35,14 @@ func Init(pluginName string, properties *map[string]any) {
 }
 
 func InitWithSender(pluginName string, properties *map[string]any, send func(context.Context, string, string) (string, error)) {
+	initPlugin(pluginName, properties, send, nil)
+}
+
+func InitWithUI(pluginName string, properties *map[string]any, ui CommandUI) {
+	initPlugin(pluginName, properties, common.SendHubCommand, ui)
+}
+
+func initPlugin(pluginName string, properties *map[string]any, send func(context.Context, string, string) (string, error), ui CommandUI) {
 	if properties == nil || *properties == nil {
 		return
 	}
@@ -43,7 +60,7 @@ func InitWithSender(pluginName string, properties *map[string]any, send func(con
 		send = common.SendHubCommand
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	plugin := &commandPlugin{ctx: ctx, cancel: cancel, send: send}
+	plugin := &commandPlugin{ctx: ctx, cancel: cancel, send: send, ui: ui}
 	config, err := tccore.InitWithPlugin(pluginName, properties, "", "", "", "talkctl", plugin.start, plugin.receiver, plugin.chatReceiver)
 	if err != nil {
 		cancel()
@@ -110,6 +127,8 @@ func (plugin *commandPlugin) chatReceiver(messages chan *tccore.ChatMsg) {
 			}
 			if shellCommand(event) {
 				go plugin.handleCommand(event)
+			} else if plugin.ui != nil {
+				plugin.ui.Receive(event)
 			}
 		case <-plugin.ctx.Done():
 			return
@@ -124,14 +143,31 @@ func (plugin *commandPlugin) handleCommand(event *tccore.ChatMsg) {
 	args, valid := event.HookResponse.([]string)
 	prompt := strings.TrimSpace(strings.Join(args, " "))
 	result := "Usage: @talkctl <command...>"
+	var model any
 	if valid && prompt != "" {
-		ctx, cancel := context.WithTimeout(plugin.ctx, 90*time.Second)
-		response, err := plugin.send(ctx, *event.RoutingId, prompt)
-		cancel()
+		var handled bool
+		var err error
+		if plugin.ui != nil {
+			model, handled, err = plugin.ui.Open(plugin.ctx, plugin.config, args)
+		}
+		if err == nil && handled && model == nil {
+			err = fmt.Errorf("command UI returned no model")
+		}
 		if err != nil {
+			model = nil
 			result = "Talkctl: " + err.Error()
+		} else if !handled {
+			model = nil
+			ctx, cancel := context.WithTimeout(plugin.ctx, 90*time.Second)
+			response, err := plugin.send(ctx, *event.RoutingId, prompt)
+			cancel()
+			if err != nil {
+				result = "Talkctl: " + err.Error()
+			} else {
+				result = response
+			}
 		} else {
-			result = response
+			result = ""
 		}
 	}
 	if plugin.config == nil || plugin.config.ChatSenderChan == nil || *plugin.config.ChatSenderChan == nil {
@@ -144,6 +180,10 @@ func (plugin *commandPlugin) handleCommand(event *tccore.ChatMsg) {
 		ChatId:    &command,
 		RoutingId: event.RoutingId,
 		Response:  &result,
+	}
+	if model != nil {
+		reply.Response = nil
+		reply.HookResponse = model
 	}
 	timer := time.NewTimer(5 * time.Second)
 	defer timer.Stop()

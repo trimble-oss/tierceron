@@ -1,0 +1,19 @@
+# Binaries for programs and plugins
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+vendor
+
+.DS_Store
+Certificates.pem
+kafkamonger.log
+trc_seeds/**
+vault_seeds/**
+bin/
+*.log
+local_config/**
+.vscode/launch.json
+.idea/**
+testsuite/__debug_bin
+deploy/target/**
+ninja.so

@@ -22,6 +22,9 @@ import (
 // EditorCloseMsg signals that the editor should be closed
 type EditorCloseMsg struct{}
 
+// CommandSubmitMsg returns arguments to the shell's elevated command transport.
+type CommandSubmitMsg struct{ Args []string }
+
 // CloseEditor returns a command that sends EditorCloseMsg
 func CloseEditor() tea.Cmd {
 	return func() tea.Msg {
