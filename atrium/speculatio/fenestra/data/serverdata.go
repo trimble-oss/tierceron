@@ -91,7 +91,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
-			TokenCache:    cache.NewTokenCacheEmpty(addressPtr),
+			TokenCache:    cache.NewTokenCacheEmpty(),
 			CertCache:     cache.NewCertCache(),
 			Insecure:      *insecure,
 			Log:           logger,

@@ -272,16 +272,18 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 	if memonly.IsMemonly() {
-		logger.Println("Unlocking everything.")
-		memprotectopts.MemUnprotectAll(nil)
 		for _, environmentConfig := range environmentConfigs {
 			for _, value := range environmentConfig.(map[string]any) {
 				if valueSlice, isValueSlice := value.([]string); isValueSlice {
 					for _, valueEntry := range valueSlice {
-						memprotectopts.MemProtect(nil, &valueEntry)
+						if err := memprotectopts.MemProtect(nil, &valueEntry); err != nil {
+							return err
+						}
 					}
 				} else if valueString, isValueString := value.(string); isValueString {
-					memprotectopts.MemProtect(nil, &valueString)
+					if err := memprotectopts.MemProtect(nil, &valueString); err != nil {
+						return err
+					}
 				} else if _, isBool := value.(bool); isBool {
 					// memprotectopts.MemProtect(nil, &valueString)
 					// TODO: no need to lock bools
@@ -290,7 +292,10 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		}
 		logger.Println("Finished selective locks.")
 	}
-	tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+	tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+	if err != nil {
+		return err
+	}
 
 	go func(pec map[string]any, l *log.Logger) {
 		if prod.IsProd() {
@@ -451,11 +456,15 @@ func TrcRead(ctx context.Context, req *logical.Request, data *framework.FieldDat
 			return nil, mTokenErr
 		}
 		token := vData["token"].(string)
-		memprotectopts.MemProtect(nil, &token)
+		if err := memprotectopts.MemProtect(nil, &token); err != nil {
+			return nil, err
+		}
 		tokenEnvMap["tokenptr"] = &token
 		tokenEnvMap["caddress"] = vData["caddress"]
 		ctoken := vData["ctoken"].(string)
-		memprotectopts.MemProtect(nil, &ctoken)
+		if err := memprotectopts.MemProtect(nil, &ctoken); err != nil {
+			return nil, err
+		}
 		tokenEnvMap["ctokenptr"] = &ctoken
 
 		logger.Println("Read Pushing env: " + tokenEnvMap["env"].(string))
@@ -482,7 +491,9 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	if t, tokenOk := data.GetOk("token"); tokenOk {
 		token := t.(string)
-		memprotectopts.MemProtect(nil, &token)
+		if err := memprotectopts.MemProtect(nil, &token); err != nil {
+			return nil, err
+		}
 		tokenEnvMap["tokenptr"] = &token
 	} else {
 		return nil, errors.New("Token required.")
@@ -495,7 +506,9 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 	}
 	if ct, tokenOK := data.GetOk("ctoken"); tokenOK {
 		ctoken := ct.(string)
-		memprotectopts.MemProtect(nil, &ctoken)
+		if err := memprotectopts.MemProtect(nil, &ctoken); err != nil {
+			return nil, err
+		}
 		tokenEnvMap["ctokenptr"] = &ctoken
 	} else {
 		return nil, errors.New("ctoken required.")
@@ -586,7 +599,9 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 			if ct, tokenOK := data.GetOk("ctoken"); tokenOK {
 				ctoken := ct.(string)
-				memprotectopts.MemProtect(nil, &ctoken)
+				if err := memprotectopts.MemProtect(nil, &ctoken); err != nil {
+					return nil, err
+				}
 				tokenEnvMap["ctokenptr"] = &ctoken
 			} else {
 				return nil, errors.New("Certification Vault token required.")
@@ -613,8 +628,12 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 			pluginConfig["vaddress"] = tokenEnvMap["caddress"].(string)
 			pluginConfig["tokenptr"] = tokenEnvMap["ctokenptr"]
 			pluginConfig["regions"] = []string{hostRegion}
+			tokenCache, err := cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
+			if err != nil {
+				return nil, err
+			}
 			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig,
-				cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
+				tokenCache,
 				"config_token_pluginany", logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")
@@ -657,7 +676,9 @@ func TrcUpdate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 		if t, tokenOk := data.GetOk("token"); tokenOk {
 			token := t.(string)
-			memprotectopts.MemProtect(nil, &token)
+			if err := memprotectopts.MemProtect(nil, &token); err != nil {
+				return nil, err
+			}
 
 			tokenEnvMap["tokenptr"] = &token
 		} else {

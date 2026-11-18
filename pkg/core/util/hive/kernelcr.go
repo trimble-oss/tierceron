@@ -1094,10 +1094,15 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 									insecure := false
 									driverConfig.CoreConfig.Log.Printf("Flow bootstrap authentication fields present for plugin %s; preparing Vault authentication, not starting harbinger\n", pluginHandler.Name)
 
+									tokenCache, err := cache.NewTokenCache("", nil, &rattanAddress)
+									if err != nil {
+										driverConfig.CoreConfig.Log.Printf("Cannot lock flow bootstrap configuration: %v", err)
+										return
+									}
 									bootDriverConfig = &config.DriverConfig{
 										CoreConfig: &coreconfig.CoreConfig{
 											ExitOnFailure: true,
-											TokenCache:    cache.NewTokenCacheEmpty(&rattanAddress),
+											TokenCache:    tokenCache,
 											CertCache:     cache.NewCertCache(),
 											Regions:       driverConfig.CoreConfig.Regions,
 											Insecure:      insecure,
@@ -1106,7 +1111,10 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 											EnvBasis:      rattanEnv,
 										},
 									}
-									bootDriverConfig.CoreConfig.TokenCache.AddRoleStr("rattan", &rattanRole)
+									if err := bootDriverConfig.CoreConfig.TokenCache.AddRoleStr("rattan", &rattanRole); err != nil {
+										driverConfig.CoreConfig.Log.Printf("Cannot lock flow bootstrap role: %v", err)
+										return
+									}
 									tokenPtr := fmt.Sprintf("config_token_plugin%s", rattanEnv)
 									currentTokenNamePtr := &tokenPtr
 									currentRattanRoleEntity := "rattan"
@@ -1120,8 +1128,14 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 										// This is actually a config_token_plugin<rattanEnv> token, but naming it unrestricted
 										// only in the context of bootDriverConfig
 										rattanTokenAlias := fmt.Sprintf("config_token_%s_unrestricted", rattanEnv)
-										bootDriverConfig.CoreConfig.TokenCache.AddToken(rattanTokenAlias, rattanToken)
+										if err := bootDriverConfig.CoreConfig.TokenCache.AddToken(rattanTokenAlias, rattanToken); err != nil {
+											driverConfig.CoreConfig.Log.Printf("Cannot lock flow bootstrap token: %v", err)
+											return
+										}
 										currentTokenNamePtr = &rattanTokenAlias
+									} else {
+										driverConfig.CoreConfig.Log.Printf("Flow bootstrap authentication failed: %v", autoErr)
+										return
 									}
 
 									bootDriverConfig.CoreConfig.CurrentTokenNamePtr = currentTokenNamePtr

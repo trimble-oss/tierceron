@@ -14,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
@@ -94,7 +96,11 @@ func rotatePluginToolServiceToken(env string, token string, vaultAddr string, lo
 		"exitOnFailure": false,
 	}
 
-	tokenCache := cache.NewTokenCache(currentTokenName, &tokenPtr, &vaultAddr)
+	tokenCache, err := cache.NewTokenCache(currentTokenName, &tokenPtr, &vaultAddr)
+	if err != nil {
+		logger.Printf("Service token rotator cannot lock credentials: %v", err)
+		return
+	}
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
 	if err != nil {
 		logger.Printf("Service token rotator init failed for env %s: %v\n", env, err)
@@ -217,6 +223,11 @@ func getGraphAccessToken(tenantID string, clientID string, clientSecret string) 
 	if tokenResp.AccessToken == "" {
 		return "", errors.New("graph token response missing access_token")
 	}
+	if memonly.IsMemonly() {
+		if err := memprotectopts.MemProtect(nil, &tokenResp.AccessToken); err != nil {
+			return "", err
+		}
+	}
 	return tokenResp.AccessToken, nil
 }
 
@@ -227,6 +238,12 @@ func getApplicationObjectID(graphToken string, clientID string) (string, error) 
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+graphToken)
+	if memonly.IsMemonly() {
+		authorization := req.Header.Get("Authorization")
+		if err := memprotectopts.MemProtect(nil, &authorization); err != nil {
+			return "", err
+		}
+	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
 	resp, err := client.Do(req)
@@ -276,6 +293,12 @@ func addApplicationPassword(graphToken string, applicationID string) (string, st
 		return "", "", "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+graphToken)
+	if memonly.IsMemonly() {
+		authorization := req.Header.Get("Authorization")
+		if err := memprotectopts.MemProtect(nil, &authorization); err != nil {
+			return "", "", "", err
+		}
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 30 * time.Second}
@@ -304,6 +327,11 @@ func addApplicationPassword(graphToken string, applicationID string) (string, st
 	if addResp.SecretText == "" || addResp.KeyID == "" {
 		return "", "", "", errors.New("addPassword response missing secretText or keyId")
 	}
+	if memonly.IsMemonly() {
+		if err := memprotectopts.MemProtect(nil, &addResp.SecretText); err != nil {
+			return "", "", "", err
+		}
+	}
 	return addResp.SecretText, addResp.KeyID, addResp.EndDateTime, nil
 }
 
@@ -320,6 +348,12 @@ func removeApplicationPassword(graphToken string, applicationID string, keyID st
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+graphToken)
+	if memonly.IsMemonly() {
+		authorization := req.Header.Get("Authorization")
+		if err := memprotectopts.MemProtect(nil, &authorization); err != nil {
+			return err
+		}
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 30 * time.Second}

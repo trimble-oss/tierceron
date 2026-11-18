@@ -81,7 +81,10 @@ func main() {
 	}()
 
 	factory.Init(buildopts.BuildOptions.ProcessPluginEnvConfig, flumen.BootFlowMachine, true, logger)
-	memprotectopts.MemProtectInit(logger)
+	if err := memprotectopts.MemProtectInit(logger); err != nil {
+		logger.Print(err)
+		return
+	}
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

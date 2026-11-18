@@ -58,7 +58,9 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			return err
+		}
 	}
 	var envPtr *string = nil
 	var envCtxPtr *string = new(string)
@@ -97,13 +99,17 @@ func CommonMain(envDefaultPtr *string,
 	}
 	driverConfig.CoreConfig.Log = log.New(f, "["+coreopts.BuildOptions.GetFolderPrefix(nil)+"config]", log.LstdFlags)
 	if utils.RefLength(addrPtr) == 0 {
-		eUtils.ReadAuthParts(driverConfig, false)
+		if _, _, err := eUtils.ReadAuthParts(driverConfig, false); err != nil {
+			return err
+		}
 		if utils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
 			fmt.Fprintln(os.Stderr, "Missing required vault address")
 			return errors.New("Missing required vault address")
 		}
 	} else {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+			return err
+		}
 	}
 
 	var ctl string
@@ -209,7 +215,11 @@ func CommonMain(envDefaultPtr *string,
 		trcconfigbase.CommonMain(envPtr, envCtxPtr, &tokenName, nil, nil, os.Args, driverConfig)
 	case "pluginx":
 		tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(*envPtr))
-		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+		if eUtils.RefLength(tokenPtr) > 0 {
+			if err := driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr); err != nil {
+				return err
+			}
+		}
 		if len(*pluginNamePtr) == 0 {
 			fmt.Fprintf(os.Stderr, "Must specify either -pluginName flag \n")
 			return errors.New("Must specify either -pluginName flag \n")
@@ -243,7 +253,11 @@ func CommonMain(envDefaultPtr *string,
 			OutputMemCache:    true,
 			MemFs:             trcshMemFs.NewTrcshMemFs(),
 		}
-		driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+		if eUtils.RefLength(tokenPtr) > 0 {
+			if err := driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr); err != nil {
+				return err
+			}
+		}
 		if len(*pluginNamePtr) == 0 {
 			fmt.Fprintf(os.Stderr, "Must specify either -pluginName flag \n")
 			return errors.New("Must specify either -pluginName flag \n")
@@ -271,7 +285,10 @@ func CommonMain(envDefaultPtr *string,
 					deploy_secret := os.Getenv("DEPLOY_SECRET")
 					if len(deploy_role) > 0 && len(deploy_secret) > 0 {
 						azureDeployRole := []string{deploy_role, deploy_secret}
-						dc.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole)
+						if err := dc.CoreConfig.TokenCache.AddRole("hivekernel", &azureDeployRole); err != nil {
+							fmt.Fprintln(os.Stderr, err)
+							return
+						}
 					}
 				}
 
@@ -313,14 +330,20 @@ func CommonMain(envDefaultPtr *string,
 			}
 			tokenName = tokenWanted
 		} else {
-			editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+			if err := editDriverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr); err != nil {
+				return err
+			}
 			// Services downstream several more limited tokens but all covered
 			// by the scope of the unrestricted token.
 			limitedTokenName := fmt.Sprintf("config_token_%s", *envPtr)
-			editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr)
+			if err := editDriverConfig.CoreConfig.TokenCache.AddToken(limitedTokenName, tokenPtr); err != nil {
+				return err
+			}
 		}
 		statTokenName := "config_token_pluginany"
-		editDriverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr)
+		if err := editDriverConfig.CoreConfig.TokenCache.AddToken(statTokenName, tokenPtr); err != nil {
+			return err
+		}
 
 		configMap := map[string]any{
 			"plugin_name": "trcctl",

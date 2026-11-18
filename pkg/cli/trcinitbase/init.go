@@ -181,7 +181,10 @@ func CommonMain(envPtr *string,
 		return
 	}
 	if eUtils.RefLength(addrPtr) > 0 {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 	}
 
 	// Security check: Block dangerous operations in shell mode (IsKernelZ)
@@ -229,7 +232,12 @@ func CommonMain(envPtr *string,
 				return
 			}
 
-			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+			if eUtils.RefLength(tokenPtr) > 0 {
+				if err := driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return
+				}
+			}
 
 			eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {
@@ -440,7 +448,10 @@ func CommonMain(envPtr *string,
 	}
 
 	if *devPtr || !*newPtr { // Dev server, initialization taken care of, get root token
-		v.SetToken(driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr))
+		if err := v.SetToken(driverConfigBase.CoreConfig.TokenCache.GetToken(*tokenNamePtr)); err != nil {
+			eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
+			return
+		}
 	} else { // Unseal and grab keys/root token
 		totalKeyShard, err := strconv.ParseUint(*keyShardPtr, 10, 32)
 		if err != nil || totalKeyShard > math.MaxInt {
@@ -453,8 +464,14 @@ func CommonMain(envPtr *string,
 			return
 		}
 		keyToken, err := v.InitVault(int(totalKeyShard), int(keyThreshold))
-		eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, true)
-		v.SetToken(keyToken.TokenPtr)
+		if err != nil {
+			eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
+			return
+		}
+		if err := v.SetToken(keyToken.TokenPtr); err != nil {
+			eUtils.LogErrorObject(driverConfigBase.CoreConfig, err, false)
+			return
+		}
 		v.SetShards(keyToken.Keys)
 		// check error returned by unseal
 		_, _, _, err = v.Unseal()

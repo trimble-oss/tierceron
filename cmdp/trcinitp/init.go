@@ -24,7 +24,10 @@ import (
 
 func main() {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())
@@ -43,9 +46,14 @@ func main() {
 	addr := coreopts.BuildOptions.GetVaultHostPort()
 	tokenPtr := flagset.String("token", "", "Vault access token, only use if in dev mode or reseeding")
 	uploadCertPtr := flagset.Bool("certs", false, "Upload certs if provided")
+	tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", env), tokenPtr, &addr)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 	driverConfig := config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
-			TokenCache:    cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", env), tokenPtr, &addr),
+			TokenCache:    tokenCache,
 			ExitOnFailure: true,
 		},
 	}

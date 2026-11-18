@@ -1627,7 +1627,10 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 			return nil, &SkipRowError{Reason: "row excluded by flow startup filter"}
 		}
 	}
-	row := tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
+	row, err := tfmContext.writeToTableHelper(tfContext, nil, rowDataMap)
+	if err != nil {
+		return nil, err
+	}
 
 	if region, exists := rowDataMap["region"]; exists {
 		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsRegionSupported(tfmContext.DriverConfig, region) {
@@ -1670,7 +1673,7 @@ func (tfmContext *TrcFlowMachineContext) LoadBaseTemplate(
 	return &baseTableTemplate, loadTemplateError
 }
 
-func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowContext, valueColumns map[string]string, secretColumns map[string]string) []any {
+func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowContext, valueColumns map[string]string, secretColumns map[string]string) ([]any, error) {
 	tableSQL, tableOk, _ := tfmContext.TierceronEngine.Database.GetTableInsensitive(nil, tfContext.FlowHeader.TableName())
 	var table *sqlememory.Table
 
@@ -1724,7 +1727,11 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 					iVar = nil
 				}
 			} else {
-				iVar, _ = column.Type.Convert(stringClone(value))
+				cloned, err := stringClone(value)
+				if err != nil {
+					return nil, err
+				}
+				iVar, _ = column.Type.Convert(cloned)
 				allDefaults = false
 			}
 			row = append(row, iVar)
@@ -1752,7 +1759,11 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 				if secretValue == "" {
 					iVar = []uint8(decodedValue)
 				} else {
-					iVar, _ = column.Type.Convert(stringClone(secretValue))
+					cloned, err := stringClone(secretValue)
+					if err != nil {
+						return nil, err
+					}
+					iVar, _ = column.Type.Convert(cloned)
 				}
 				allDefaults = false
 			} else if secretValue == "<Enter Secret Here>" || secretValue == "" {
@@ -1761,7 +1772,11 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 					iVar = nil
 				}
 			} else {
-				iVar, _ = column.Type.Convert(stringClone(secretValue))
+				cloned, err := stringClone(secretValue)
+				if err != nil {
+					return nil, err
+				}
+				iVar, _ = column.Type.Convert(cloned)
 				allDefaults = false
 			}
 			row = append(row, iVar)
@@ -1778,9 +1793,9 @@ func (tfmContext *TrcFlowMachineContext) writeToTableHelper(tfContext *TrcFlowCo
 	}
 
 	if !allDefaults {
-		return row
+		return row, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (tfmContext *TrcFlowMachineContext) Log(msg string, err error) {

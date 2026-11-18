@@ -65,7 +65,9 @@ type OAuthLoginResult struct {
 //	    log.Fatal(err)
 //	}
 //
-//	vault.SetToken(&result.VaultToken)
+//	if err := vault.SetToken(&result.VaultToken); err != nil {
+//	    log.Fatal(err)
+//	}
 //	// Now vault client is authenticated and can access policies granted by JWT role
 func (v *Vault) LoginWithOAuth(ctx context.Context, config *OAuthLoginConfig) (*OAuthLoginResult, error) {
 	// Create OAuth client
@@ -163,7 +165,9 @@ func (v *Vault) GetAppRoleCredentialsWithOAuth(ctx context.Context, config *OAut
 	}
 
 	// Set the Vault token from OAuth login
-	v.SetToken(&result.VaultToken)
+	if err := v.SetToken(&result.VaultToken); err != nil {
+		return "", "", nil, err
+	}
 
 	// Get AppRole role-id
 	roleID, _, err = v.GetRoleID(appRoleName)

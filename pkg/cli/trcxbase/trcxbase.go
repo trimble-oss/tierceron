@@ -194,16 +194,26 @@ func CommonMain(ctx config.ProcessContext,
 	}
 	var driverConfigBase *config.DriverConfig
 	if driverConfig == nil {
+		tokenCache, err := cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 		driverConfigBase = &config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
 				Insecure:      *insecurePtr,
-				TokenCache:    cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr),
+				TokenCache:    tokenCache,
 				ExitOnFailure: true,
 			},
 		}
 	} else {
 		driverConfigBase = driverConfig
-		driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		if eUtils.RefLength(addrPtr) > 0 {
+			if err := driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+		}
 	}
 
 	// Initialize logging
@@ -359,7 +369,10 @@ func CommonMain(ctx config.ProcessContext,
 		} else {
 			*tokenPtr = "novault"
 			// Add novault token to cache immediately for this environment
-			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), tokenPtr)
+			if err := driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", envBasis), tokenPtr); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
 		}
 
 		if len(envVersion) >= 2 { // Put back env+version together
@@ -431,10 +444,16 @@ skipDiff:
 	if !isProd {
 		if eUtils.RefLength(appRoleIDPtr) > 0 && eUtils.RefLength(secretIDPtr) > 0 {
 			appRole := []string{*appRoleIDPtr, *secretIDPtr}
-			driverConfigBase.CoreConfig.TokenCache.AddRole("bamboo", &appRole)
+			if err := driverConfigBase.CoreConfig.TokenCache.AddRole("bamboo", &appRole); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
 		}
 		if eUtils.RefLength(addrPtr) > 0 {
-			driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+			if err := driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
 		} else {
 			addrPtr = driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr
 		}
@@ -868,7 +887,10 @@ skipDiff:
 					currentEnvBasis := eUtils.GetEnvBasis(*envPtr)
 					if eUtils.RefLength(driverConfigBase.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s", currentEnvBasis))) == 0 {
 						token := "novault"
-						driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", currentEnvBasis), &token)
+						if err := driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", currentEnvBasis), &token); err != nil {
+							fmt.Fprintln(os.Stderr, err)
+							return
+						}
 					}
 				}
 				if len(envVersion) >= 2 { // Put back env+version together

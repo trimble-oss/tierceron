@@ -53,7 +53,9 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 			Tokens:  nil,
 		}, err
 	}
-	v.SetToken(keyToken.TokenPtr)
+	if err := v.SetToken(keyToken.TokenPtr); err != nil {
+		return nil, err
+	}
 	v.SetShards(keyToken.Keys)
 	s.VaultTokenPtr = keyToken.TokenPtr
 	// check error returned by unseal
@@ -83,13 +85,16 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 			}, err
 		}
 
+		tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env),
+			s.VaultTokenPtr, s.VaultAddrPtr)
+		if err != nil {
+			return nil, err
+		}
 		il.SeedVaultFromData(&config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
-				WantCerts: true,
-				Insecure:  false,
-				TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env),
-					s.VaultTokenPtr,
-					s.VaultAddrPtr),
+				WantCerts:     true,
+				Insecure:      false,
+				TokenCache:    tokenCache,
 				Env:           seed.Env,
 				ExitOnFailure: true,
 				Log:           logger,

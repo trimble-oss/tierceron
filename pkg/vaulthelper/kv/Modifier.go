@@ -117,6 +117,11 @@ func NewModifierFromCoreConfig(coreConfig *coreconfig.CoreConfig, tokenName stri
 //
 //	Any errors generated in creating the client
 func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if memonly.IsMemonly() && tokenPtr != nil {
+		if err := memprotectopts.MemProtect(nil, tokenPtr); err != nil {
+			return nil, err
+		}
+	}
 	if addressPtr == nil || len(*addressPtr) == 0 {
 		addressPtr = new(string)
 		*addressPtr = "http://127.0.0.1:8020" // Default address
@@ -168,6 +173,11 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 	// Set access token and path for this modifier
 	if tokenPtr != nil {
 		modClient.SetToken(*tokenPtr)
+	} else if memonly.IsMemonly() {
+		token := modClient.Token()
+		if err := memprotectopts.MemProtect(nil, &token); err != nil {
+			return nil, err
+		}
 	}
 
 	// Return the modifier
@@ -623,7 +633,9 @@ processResult:
 				if dataValuesSlice, isSlice := dataValues.([]any); isSlice {
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
-							memprotectopts.MemProtect(nil, &dataValueString)
+							if err := memprotectopts.MemProtect(nil, &dataValueString); err != nil {
+								return nil, err
+							}
 						} else if _, isBool := dataValues.(bool); isBool {
 							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept bools.
@@ -641,7 +653,9 @@ processResult:
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
-					memprotectopts.MemProtect(nil, &dataValueString)
+					if err := memprotectopts.MemProtect(nil, &dataValueString); err != nil {
+						return nil, err
+					}
 				} else if _, isBool := dataValues.(bool); isBool {
 					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept bools.
@@ -679,7 +693,9 @@ func (m *Modifier) ReadMapValue(valueMap map[string]any, path string, key string
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
 			mapval := stringer.GoString()
-			memprotectopts.MemProtect(nil, &mapval)
+			if err := memprotectopts.MemProtect(nil, &mapval); err != nil {
+				return "", err
+			}
 			return mapval, nil
 		} else if stringer, ok := valueMap[key].(json.Number); ok {
 			return stringer.String(), nil

@@ -87,7 +87,9 @@ func CommonMain(
 	driverConfig *config.DriverConfig,
 ) error {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			return err
+		}
 	}
 
 	isShellCmd := driverConfig != nil && driverConfig.IsShellCommand
@@ -250,7 +252,9 @@ func CommonMain(
 			driverConfig.CoreConfig.TokenCache.VaultAddressPtr = addrPtr
 		}
 		if tokenPtr != nil && *tokenPtr != "" {
-			driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr)
+			if err := driverConfig.CoreConfig.TokenCache.AddToken(tokenName, tokenPtr); err != nil {
+				return err
+			}
 		} else {
 			roleEntity := "bamboo"
 			autoErr := eUtils.AutoAuth(driverConfig, &tokenName, &tokenPtr, &env, envCtxPtr, &roleEntity, *pingPtr)

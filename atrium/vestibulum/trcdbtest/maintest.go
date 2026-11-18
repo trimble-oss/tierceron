@@ -57,14 +57,19 @@ func main() {
 	pluginConfig["insecure"] = true
 
 	if memonly.IsMemonly() {
-		memprotectopts.MemUnprotectAll(nil)
 		for _, value := range pluginConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
 				for _, valueEntry := range valueSlice {
-					memprotectopts.MemProtect(nil, &valueEntry)
+					if err := memprotectopts.MemProtect(nil, &valueEntry); err != nil {
+						logger.Print(err)
+						return
+					}
 				}
 			} else if valueString, isValueString := value.(string); isValueString {
-				memprotectopts.MemProtect(nil, &valueString)
+				if err := memprotectopts.MemProtect(nil, &valueString); err != nil {
+					logger.Print(err)
+					return
+				}
 			}
 		}
 	}
@@ -97,7 +102,11 @@ func main() {
 		DfsChan:             &ttdi_receiver,
 	}
 	currentTokenName := fmt.Sprintf("config_token_%s_unrestricted", pluginConfig["env"])
-	tokenCache := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
+	tokenCache, err := cache.NewTokenCache(currentTokenName, eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
+	if err != nil {
+		logger.Print(err)
+		return
+	}
 
 	driverConfig, err := eUtils.InitDriverConfigForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
 	if err != nil {

@@ -49,7 +49,10 @@ func init() {
 // The Tierceron Shell runs tierceron and kubectl commands in a secure shell.
 func main() {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	flowcoreopts.NewOptionsBuilder(flowcoreopts.LoadOptions())
 	testopts.NewOptionsBuilder(testopts.LoadOptions())

@@ -22,7 +22,10 @@ import (
 
 func main() {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
 	coreopts.NewOptionsBuilder(coreopts.LoadOptions())

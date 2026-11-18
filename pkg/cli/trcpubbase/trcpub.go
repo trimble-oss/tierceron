@@ -48,7 +48,10 @@ func CommonMain(envPtr *string,
 	}
 
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 	}
 	var tokenPtr *string = nil
 	var addrPtr *string = nil
@@ -133,7 +136,10 @@ func CommonMain(envPtr *string,
 	}
 
 	if eUtils.RefLength(addrPtr) > 0 {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 	} else {
 		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
 			fmt.Fprintln(os.Stderr, "Please set the addr flag")
@@ -171,7 +177,12 @@ func CommonMain(envPtr *string,
 			tokenName := fmt.Sprintf("vault_pub_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		if eUtils.RefLength(tokenPtr) > 0 {
+			if err := driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+		}
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		if eUtils.RefLength(driverConfigBase.CoreConfig.CurrentRoleEntityPtr) > 0 {
