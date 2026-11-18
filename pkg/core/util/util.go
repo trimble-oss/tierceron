@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
@@ -55,8 +56,14 @@ func GetJSONFromClientByGet(config *coreconfig.CoreConfig, httpClient *http.Clie
 	request, err := http.NewRequest("GET", address, body)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
+		return nil, 0, err
 	}
 	for headerkey, headervalue := range headers {
+		if memonly.IsMemonly() && (strings.EqualFold(headerkey, "Authorization") || strings.EqualFold(headerkey, "X-Vault-Token")) {
+			if err := memprotectopts.MemProtect(nil, &headervalue); err != nil {
+				return nil, 0, err
+			}
+		}
 		request.Header.Set(headerkey, headervalue)
 	}
 	// request.Header.Set("Accept", "application/json")
@@ -64,7 +71,10 @@ func GetJSONFromClientByGet(config *coreconfig.CoreConfig, httpClient *http.Clie
 	response, err := httpClient.Do(request)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
-		return nil, response.StatusCode, err
+		if response != nil {
+			return nil, response.StatusCode, err
+		}
+		return nil, 0, err
 	}
 	if response.Body != nil {
 		defer response.Body.Close()
@@ -95,8 +105,14 @@ func GetJSONFromClientByPost(config *coreconfig.CoreConfig, httpClient *http.Cli
 	request, err := http.NewRequest("POST", address, body)
 	if err != nil {
 		eUtils.LogErrorObject(config, err, false)
+		return nil, 0, err
 	}
 	for headerkey, headervalue := range headers {
+		if memonly.IsMemonly() && (strings.EqualFold(headerkey, "Authorization") || strings.EqualFold(headerkey, "X-Vault-Token")) {
+			if err := memprotectopts.MemProtect(nil, &headervalue); err != nil {
+				return nil, 0, err
+			}
+		}
 		request.Header.Set(headerkey, headervalue)
 	}
 	// request.Header.Set("Accept", "application/json")
@@ -120,11 +136,20 @@ func GetJSONFromClientByPost(config *coreconfig.CoreConfig, httpClient *http.Cli
 		jsonDataFromHttp, err := io.ReadAll(response.Body)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
+			return nil, response.StatusCode, err
 		}
 
 		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
+			return nil, response.StatusCode, err
+		}
+		for _, key := range []string{"access_token", "refresh_token", "id_token"} {
+			if token, ok := jsonData[key].(string); ok && memonly.IsMemonly() {
+				if err := memprotectopts.MemProtect(nil, &token); err != nil {
+					return nil, response.StatusCode, err
+				}
+			}
 		}
 
 		return jsonData, response.StatusCode, nil

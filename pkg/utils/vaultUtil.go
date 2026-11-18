@@ -99,7 +99,10 @@ func InitVaultMod(driverConfig *config.DriverConfig) (*config.DriverConfig, *hel
 	if RefLength(tokenPtr) == 0 {
 		return driverConfig, nil, nil, fmt.Errorf("token found nothing in token cache: %s", tokenName)
 	}
-	vault.SetToken(tokenPtr)
+	if err := vault.SetToken(tokenPtr); err != nil {
+		vault.Close()
+		return driverConfig, nil, nil, err
+	}
 	LogInfo(driverConfig.CoreConfig, "InitVaultMod - Initializing Modifier")
 	mod, err := helperkv.NewModifierFromCoreConfig(driverConfig.CoreConfig, tokenName, driverConfig.CoreConfig.Env, false)
 	if err != nil {

@@ -10,11 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
 
 	"github.com/hashicorp/vault/api"
 	"gopkg.in/yaml.v2"
 )
+
+var protectMemory = memprotectopts.MemProtect
 
 // Vault Represents a vault connection for managing the vault's properties
 type Vault struct {
@@ -61,6 +65,12 @@ func NewVaultWithNonlocal(insecure bool, addressPtr *string, env string, newVaul
 		logger.Println("vaultHost: " + *addressPtr)
 		return nil, err
 	}
+	if memonly.IsMemonly() {
+		token := client.Token()
+		if err := protectMemory(nil, &token); err != nil {
+			return nil, err
+		}
+	}
 
 	health, err := client.Sys().Health()
 	if err != nil {
@@ -98,6 +108,12 @@ func (v *Vault) RefreshClient() error {
 			if err != nil {
 				refreshErr = err
 			} else {
+				if memonly.IsMemonly() {
+					token := client.Token()
+					if err := protectMemory(nil, &token); err != nil {
+						return err
+					}
+				}
 				v.client = client
 				return nil
 			}
@@ -111,9 +127,19 @@ func (v *Vault) RefreshClient() error {
 	return refreshErr
 }
 
-// SetToken Stores the access token for this vault
-func (v *Vault) SetToken(token *string) {
+// SetToken protects the access token in memonly builds before replacing it.
+// On protection failure, the existing token remains unchanged.
+func (v *Vault) SetToken(token *string) error {
+	if token == nil {
+		return errors.New("vault token is nil")
+	}
+	if memonly.IsMemonly() {
+		if err := protectMemory(nil, token); err != nil {
+			return err
+		}
+	}
 	v.client.SetToken(*token)
+	return nil
 }
 
 // GetToken Fetches current token from client
@@ -355,6 +381,11 @@ func (v *Vault) InitVault(keyShares int, keyThreshold int) (*KeyTokenWrapper, er
 		fmt.Fprintln(os.Stderr, "There was an error with initializing vault @ "+v.client.Address())
 		return nil, err
 	}
+	if memonly.IsMemonly() {
+		if err := protectMemory(nil, &response.RootToken); err != nil {
+			return nil, err
+		}
+	}
 	// Remove for deployment
 	fmt.Fprintln(os.Stderr, "Vault successfully Init'd")
 	fmt.Fprintln(os.Stderr, "=========================")
@@ -509,7 +540,7 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			return response.Auth.ClientToken, err
+			return protectedClientToken(response)
 		}
 	}
 
@@ -517,7 +548,7 @@ func (v *Vault) CreateTokenFromFile(filename string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return response.Auth.ClientToken, err
+	return protectedClientToken(response)
 }
 
 // CreateTokenFromMap takes a map and generates a vault token, returning the token
@@ -563,10 +594,22 @@ func (v *Vault) CreateTokenFromMap(data map[string]any) (string, error) {
 	}
 
 	response, err := v.client.Auth().Token().Create(token)
-	if response == nil {
+	if err != nil {
 		return "", err
 	}
-	return response.Auth.ClientToken, err
+	return protectedClientToken(response)
+}
+
+func protectedClientToken(response *api.Secret) (string, error) {
+	if response == nil || response.Auth == nil || response.Auth.ClientToken == "" {
+		return "", errors.New("vault response missing client token")
+	}
+	if memonly.IsMemonly() {
+		if err := protectMemory(nil, &response.Auth.ClientToken); err != nil {
+			return "", err
+		}
+	}
+	return response.Auth.ClientToken, nil
 }
 
 // GetStatus checks the health of the vault and retrieves version and status of init/seal
@@ -584,6 +627,11 @@ func (v *Vault) GetStatus() (map[string]any, error) {
 
 // JWTLogin authenticates to Vault using a JWT token (from OIDC) and returns a client token
 func (v *Vault) JWTLogin(jwt string, role string) (*string, error) {
+	if memonly.IsMemonly() {
+		if err := protectMemory(nil, &jwt); err != nil {
+			return nil, err
+		}
+	}
 	r := v.client.NewRequest("POST", fmt.Sprintf("/v1/auth/jwt/login"))
 
 	payload := map[string]any{
@@ -611,6 +659,11 @@ func (v *Vault) JWTLogin(jwt string, role string) (*string, error) {
 
 	if authData, ok := jsonData["auth"].(map[string]any); ok {
 		if token, ok := authData["client_token"].(string); ok {
+			if memonly.IsMemonly() {
+				if err := protectMemory(nil, &token); err != nil {
+					return nil, err
+				}
+			}
 			return &token, nil
 		}
 		return nil, fmt.Errorf("error parsing response for key 'auth.client_token'")

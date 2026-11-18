@@ -53,7 +53,9 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 			Tokens:  nil,
 		}, err
 	}
-	v.SetToken(keyToken.TokenPtr)
+	if err := v.SetToken(keyToken.TokenPtr); err != nil {
+		return nil, err
+	}
 	v.SetShards(keyToken.Keys)
 	s.VaultTokenPtr = keyToken.TokenPtr
 	// check error returned by unseal

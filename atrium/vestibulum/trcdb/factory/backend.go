@@ -272,10 +272,6 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	logger.Println("Begin processFlows for env: " + env.(string))
 	if memonly.IsMemonly() {
-		logger.Println("Unlocking everything.")
-		if err := memprotectopts.MemUnprotectAll(nil); err != nil {
-			return err
-		}
 		for _, environmentConfig := range environmentConfigs {
 			for _, value := range environmentConfig.(map[string]any) {
 				if valueSlice, isValueSlice := value.([]string); isValueSlice {

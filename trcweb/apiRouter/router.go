@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
@@ -94,10 +95,17 @@ func authrouter(restHandler http.Handler, isAuth bool) *rtr.Router {
 		s.Log.Print(errMsg)
 		s.Log.SetPrefix("[ERROR]")
 		authString := r.Header.Get("Authorization")
+		if memonly.IsMemonly() {
+			if err := memprotectopts.MemProtect(nil, &authString); err != nil {
+				s.Log.Printf("Unable to protect authorization token: %v", err)
+				http.Error(w, "Unable to protect authorization token", http.StatusInternalServerError)
+				return
+			}
+		}
 
 		if len(authString) > 0 { // Ensure a token was actually sent
 			splitAuth := strings.SplitN(authString, " ", 2)
-			if splitAuth[0] == "Bearer" {
+			if len(splitAuth) == 2 && splitAuth[0] == "Bearer" {
 				token, err := jwt.Parse(splitAuth[1], func(token *jwt.Token) (any, error) { // Parse token and verify formatting
 					if _, ok := token.Method.(*jwt.SigningMethodHMAC); ok {
 						return s.TrcAPITokenSecret, nil

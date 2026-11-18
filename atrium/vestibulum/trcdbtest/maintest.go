@@ -57,10 +57,6 @@ func main() {
 	pluginConfig["insecure"] = true
 
 	if memonly.IsMemonly() {
-		if err := memprotectopts.MemUnprotectAll(nil); err != nil {
-			logger.Print(err)
-			return
-		}
 		for _, value := range pluginConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
 				for _, valueEntry := range valueSlice {

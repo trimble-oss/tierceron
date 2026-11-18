@@ -117,6 +117,11 @@ func NewModifierFromCoreConfig(coreConfig *coreconfig.CoreConfig, tokenName stri
 //
 //	Any errors generated in creating the client
 func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string, regions []string, useCache bool, logger *log.Logger) (*Modifier, error) {
+	if memonly.IsMemonly() && tokenPtr != nil {
+		if err := memprotectopts.MemProtect(nil, tokenPtr); err != nil {
+			return nil, err
+		}
+	}
 	if addressPtr == nil || len(*addressPtr) == 0 {
 		addressPtr = new(string)
 		*addressPtr = "http://127.0.0.1:8020" // Default address
@@ -168,6 +173,11 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 	// Set access token and path for this modifier
 	if tokenPtr != nil {
 		modClient.SetToken(*tokenPtr)
+	} else if memonly.IsMemonly() {
+		token := modClient.Token()
+		if err := memprotectopts.MemProtect(nil, &token); err != nil {
+			return nil, err
+		}
 	}
 
 	// Return the modifier

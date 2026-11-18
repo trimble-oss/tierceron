@@ -9,7 +9,12 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 )
+
+var protectMemory = memprotectopts.MemProtect
 
 // Config holds the OAuth/OIDC client configuration
 type Config struct {
@@ -91,6 +96,16 @@ func (c *Client) AuthorizationURLWithPrompt(state, nonce string, pkce *PKCEChall
 
 // ExchangeCode exchanges an authorization code for tokens
 func (c *Client) ExchangeCode(ctx context.Context, code string, pkce *PKCEChallenge) (*TokenResponse, error) {
+	if memonly.IsMemonly() {
+		if err := protectMemory(nil, &code); err != nil {
+			return nil, err
+		}
+		if pkce != nil {
+			if err := protectMemory(nil, &pkce.Verifier); err != nil {
+				return nil, err
+			}
+		}
+	}
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
@@ -110,6 +125,11 @@ func (c *Client) ExchangeCode(ctx context.Context, code string, pkce *PKCEChalle
 
 // RefreshToken exchanges a refresh token for new tokens
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+	if memonly.IsMemonly() {
+		if err := protectMemory(nil, &refreshToken); err != nil {
+			return nil, err
+		}
+	}
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
 	data.Set("refresh_token", refreshToken)
@@ -124,11 +144,19 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*TokenR
 
 // requestToken sends a token request to the token endpoint
 func (c *Client) requestToken(ctx context.Context, data url.Values) (*TokenResponse, error) {
+	encoded := data.Encode()
+	if memonly.IsMemonly() {
+		for _, value := range []*string{&c.config.ClientSecret, &encoded} {
+			if err := protectMemory(nil, value); err != nil {
+				return nil, err
+			}
+		}
+	}
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.config.Discovery.TokenEndpoint, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.config.Discovery.TokenEndpoint, strings.NewReader(encoded))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
@@ -153,6 +181,13 @@ func (c *Client) requestToken(ctx context.Context, data url.Values) (*TokenRespo
 	var tokenResp TokenResponse
 	if err := json.Unmarshal(body, &tokenResp); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
+	}
+	if memonly.IsMemonly() {
+		for _, value := range []*string{&tokenResp.AccessToken, &tokenResp.RefreshToken, &tokenResp.IDToken} {
+			if err := protectMemory(nil, value); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	return &tokenResp, nil

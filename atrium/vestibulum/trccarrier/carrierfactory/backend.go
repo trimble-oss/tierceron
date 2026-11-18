@@ -609,12 +609,6 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 // this function is always called.
 func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) error {
 	logger.Println("TrcCarrierInitialize begun.")
-	if memonly.IsMemonly() {
-		logger.Println("Unlocking everything.")
-		if err := memprotectopts.MemUnprotectAll(nil); err != nil {
-			return err
-		}
-	}
 	queuedEnvironments := environments
 	if prod.IsProd() {
 		queuedEnvironments = environmentsProd

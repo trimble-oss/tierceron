@@ -7,6 +7,8 @@ import (
 
 	jwt "github.com/golang-jwt/jwt/v5"
 
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"
@@ -43,7 +45,16 @@ func (s *Server) generateJWT(user string, id string, mod *helperkv.Modifier) (st
 		}()
 	}
 
-	return token.SignedString(tokenSecret)
+	signedToken, err := token.SignedString(tokenSecret)
+	if err != nil {
+		return "", err
+	}
+	if memonly.IsMemonly() {
+		if err := memprotectopts.MemProtect(nil, &signedToken); err != nil {
+			return "", err
+		}
+	}
+	return signedToken, nil
 }
 
 // GetVaultTokens takes app role credentials and attempts to fetch names tokens from the vault
@@ -60,7 +71,9 @@ func (s *Server) GetVaultTokens(ctx context.Context, req *pb.TokensReq) (*pb.Tok
 		return nil, err
 	}
 
-	v.SetToken(s.VaultTokenPtr)
+	if err := v.SetToken(s.VaultTokenPtr); err != nil {
+		return nil, err
+	}
 
 	if len(req.AppRoleID) == 0 || len(req.AppRoleSecretID) == 0 {
 		return nil, fmt.Errorf("need both role ID and secret ID to login through app role")

@@ -212,12 +212,6 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 			bkv.(*kv.PassthroughBackend).Paths[0].Callbacks[logical.ReadOperation] = readFunc
 			bkv.(*kv.PassthroughBackend).InitializeFunc = func(ctx context.Context, req *logical.InitializationRequest) error {
 				logger.Println("TrcCursorInitialize init begun.")
-				if memonly.IsMemonly() {
-					logger.Println("Unlocking everything.")
-					if err := memprotectopts.MemUnprotectAll(nil); err != nil {
-						return err
-					}
-				}
 				queuedEnvironments := environments
 				if prod.IsProd() {
 					queuedEnvironments = environmentsProd

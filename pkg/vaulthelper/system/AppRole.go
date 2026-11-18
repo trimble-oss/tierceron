@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/vault/api"
+	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 )
 
 // NewRoleOptions is used to create a new approle
@@ -151,6 +152,11 @@ func (v *Vault) GetSecretID(roleName string) (string, error) {
 
 	if raw, ok := jsonData["data"].(map[string]any); ok {
 		if secretID, ok := raw["secret_id"].(string); ok {
+			if memonly.IsMemonly() {
+				if err := protectMemory(nil, &secretID); err != nil {
+					return "", err
+				}
+			}
 			return secretID, nil
 		}
 		return "", fmt.Errorf("error parsing response for key 'data.secret_id'")
@@ -182,6 +188,13 @@ func (v *Vault) GetListApproles() (string, error) {
 
 // AppRoleLogin tries logging into the vault using app role and returns a client token on success
 func (v *Vault) AppRoleLogin(roleID string, secretID string) (*string, error) {
+	if memonly.IsMemonly() {
+		for _, value := range []*string{&roleID, &secretID} {
+			if err := protectMemory(nil, value); err != nil {
+				return nil, err
+			}
+		}
+	}
 	r := v.client.NewRequest("POST", "/v1/auth/approle/login")
 
 	payload := map[string]any{
@@ -210,6 +223,11 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (*string, error) {
 
 	if authData, ok := jsonData["auth"].(map[string]any); ok {
 		if token, ok := authData["client_token"].(string); ok {
+			if memonly.IsMemonly() {
+				if err := protectMemory(nil, &token); err != nil {
+					return nil, err
+				}
+			}
 			return &token, nil
 		}
 		return nil, fmt.Errorf("error parsing response for key 'auth.client_token'")
