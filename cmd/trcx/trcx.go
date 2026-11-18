@@ -6,12 +6,12 @@ import (
 	"os"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/buildopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	trcxbase "github.com/trimble-oss/tierceron/pkg/cli/trcxbase"

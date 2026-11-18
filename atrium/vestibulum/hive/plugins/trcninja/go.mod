@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/linkedin/goavro/v2 v2.14.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/trimble-oss/tierceron-core/v2 v2.12.8
+	github.com/trimble-oss/tierceron-core/v2 v2.12.9
 	github.com/twmb/franz-go v1.20.7
 	github.com/twmb/franz-go/pkg/kmsg v1.12.0
 	github.com/vbauerster/mpb/v8 v8.10.2

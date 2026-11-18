@@ -14,7 +14,6 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	memonly "github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	prod "github.com/trimble-oss/tierceron-core/v2/prod"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
@@ -26,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	tiercerontls "github.com/trimble-oss/tierceron/pkg/tls"
@@ -34,16 +34,14 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
-	"golang.org/x/sys/unix"
 )
 
 func main() {
 	executableName := os.Args[0]
 	if memonly.IsMemonly() {
-		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
-		if mLockErr != nil {
-			fmt.Fprintln(os.Stderr, mLockErr)
-			os.Exit(-1)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 	}
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())
@@ -81,10 +79,6 @@ func main() {
 	}()
 
 	factory.Init(buildopts.BuildOptions.ProcessPluginEnvConfig, flumen.BootFlowMachine, true, logger)
-	if err := memprotectopts.MemProtectInit(logger); err != nil {
-		logger.Print(err)
-		return
-	}
 
 	apiClientMeta := api.PluginAPIClientMeta{}
 	flags := apiClientMeta.FlagSet()

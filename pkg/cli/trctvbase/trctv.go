@@ -13,8 +13,8 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	eUtils "github.com/trimble-oss/tierceron/pkg/utils"
 	"github.com/trimble-oss/tierceron/pkg/utils/config"
 	helperkv "github.com/trimble-oss/tierceron/pkg/vaulthelper/kv"

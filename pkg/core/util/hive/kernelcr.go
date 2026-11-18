@@ -704,17 +704,22 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
 			return
 		}
-		if flowMachineInitContext != nil {
-			if fmCtx, ok := flowMachineInitContext.(*flow.FlowMachineInitContext); ok {
-				pluginConfig = fmCtx.GetFlowMachineTemplates()
-			} else {
-				driverConfig.CoreConfig.Log.Printf("Flow machine context has wrong type for %s\n", service)
-				return
-			}
-		} else {
+		// A typed nil *flow.FlowMachineInitContext stored in the interface is
+		// non-nil as an interface value, so check the concrete pointer too.
+		fmCtx, fmCtxOk := flowMachineInitContext.(*flow.FlowMachineInitContext)
+		if flowMachineInitContext != nil && !fmCtxOk {
+			driverConfig.CoreConfig.Log.Printf("Flow machine context has wrong type for %s\n", service)
+			return
+		}
+		if fmCtx == nil {
 			driverConfig.CoreConfig.Log.Printf("Missing flow machine context %s\n", service)
 			return
 		}
+		if fmCtx.GetFlowMachineTemplates == nil {
+			driverConfig.CoreConfig.Log.Printf("Missing flow machine templates for %s\n", service)
+			return
+		}
+		pluginConfig = fmCtx.GetFlowMachineTemplates()
 	} else {
 		pluginConfig = make(map[string]any)
 	}
