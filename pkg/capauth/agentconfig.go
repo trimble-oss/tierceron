@@ -368,7 +368,9 @@ func (agentconfig *AgentConfigs) penseFeatherQueryWithClient(featherCtx *cap.Fea
 	var penseProtect *string
 	rPense := r.GetPense()
 	penseProtect = &rPense
-	memprotectopts.MemProtect(nil, penseProtect)
+	if err := memprotectopts.MemProtect(nil, penseProtect); err != nil {
+		return nil, err
+	}
 
 	return penseProtect, nil
 }
@@ -404,7 +406,11 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 	drone ...*bool,
 ) (*AgentConfigs, *TrcShConfig, error) {
 	if isShellRunner {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(driverConfig.CoreConfig.TokenCache.VaultAddressPtr)
+		if eUtils.RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) > 0 {
+			if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(driverConfig.CoreConfig.TokenCache.VaultAddressPtr); err != nil {
+				return nil, nil, err
+			}
+		}
 		return &AgentConfigs{Env: &env}, &TrcShConfig{
 			IsShellRunner: isShellRunner,
 			Env:           env,
@@ -466,17 +472,27 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 		}
 		trcHatHostLocal := new(string)
 		trcHatEncryptPass := data["trcHatEncryptPass"].(string)
-		memprotectopts.MemProtect(nil, &trcHatEncryptPass)
+		if err := memprotectopts.MemProtect(nil, &trcHatEncryptPass); err != nil {
+			return nil, nil, err
+		}
 		trcHatEncryptSalt := data["trcHatEncryptSalt"].(string)
-		memprotectopts.MemProtect(nil, &trcHatEncryptSalt)
+		if err := memprotectopts.MemProtect(nil, &trcHatEncryptSalt); err != nil {
+			return nil, nil, err
+		}
 		hatHandshakeHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatHandshakePort"].(string))
-		memprotectopts.MemProtect(nil, &hatHandshakeHostAddr)
+		if err := memprotectopts.MemProtect(nil, &hatHandshakeHostAddr); err != nil {
+			return nil, nil, err
+		}
 		trcHatHandshakeCode := data["trcHatHandshakeCode"].(string)
-		memprotectopts.MemProtect(nil, &trcHatHandshakeCode)
+		if err := memprotectopts.MemProtect(nil, &trcHatHandshakeCode); err != nil {
+			return nil, nil, err
+		}
 		sessionIdentifier := "sessionIdDynamicFill"
 
 		hatFeatherHostAddr := fmt.Sprintf("%s:%s", data["trcHatHost"].(string), data["trcHatSecretsPort"].(string))
-		memprotectopts.MemProtect(nil, &hatFeatherHostAddr)
+		if err := memprotectopts.MemProtect(nil, &hatFeatherHostAddr); err != nil {
+			return nil, nil, err
+		}
 		var trcHatEnv string
 		if strings.HasPrefix(env, data["trcHatEnv"].(string)) {
 			trcHatEnv = env
@@ -554,7 +570,9 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 				fmt.Fprintf(os.Stderr, ".")
 			}
 		}
-		driverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", bambooRolePtr)
+		if err := driverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", bambooRolePtr); err != nil {
+			return nil, nil, err
+		}
 
 		if eUtils.RefLength(vaultAddressPtr) == 0 {
 			vaultAddressPtr, penseError = agentconfig.RetryingPenseFeatherQuery("caddress")
@@ -567,7 +585,9 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 				fmt.Fprintf(os.Stderr, ".")
 			}
 		}
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(vaultAddressPtr)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(vaultAddressPtr); err != nil {
+			return nil, nil, err
+		}
 
 		if eUtils.RefLength(pluginAnyPtr) == 0 {
 			if kernelopts.BuildOptions.IsKernel() && driverConfig.CoreConfig.TokenCache.GetToken("config_token_pluginany") == nil {
@@ -583,7 +603,11 @@ func NewAgentConfig(driverConfig *config.DriverConfig,
 				}
 			}
 		}
-		driverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
+		if eUtils.RefLength(pluginAnyPtr) > 0 {
+			if err := driverConfig.CoreConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr); err != nil {
+				return nil, nil, err
+			}
+		}
 		return agentconfig, trcshConfig, nil
 	}
 }
@@ -615,7 +639,9 @@ func NewTlsFeatherConfig(agentconfig *AgentConfigs, driverConfig *config.DriverC
 		configToken = tokenPtr
 
 		// Cache the token for future use
-		driverConfig.CoreConfig.TokenCache.AddToken(wantedTokenName, configToken)
+		if err := driverConfig.CoreConfig.TokenCache.AddToken(wantedTokenName, configToken); err != nil {
+			return err
+		}
 	}
 
 	mod, modErr := helperkv.NewModifier(false, configToken, driverConfig.CoreConfig.TokenCache.VaultAddressPtr, driverConfig.CoreConfig.Env, nil, true, nil)
@@ -690,7 +716,9 @@ func PenseQuery(trcshDriverConfig *TrcshDriverConfig, capPath string, pense stri
 	var penseProtect *string
 	rPense := r.GetPense()
 	penseProtect = &rPense
-	memprotectopts.MemProtect(nil, penseProtect)
+	if err := memprotectopts.MemProtect(nil, penseProtect); err != nil {
+		return nil, err
+	}
 
 	return penseProtect, nil
 }

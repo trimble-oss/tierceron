@@ -69,7 +69,9 @@ func ParseCursorFields(e *logical.StorageEntry, cursorSecretData *map[string]any
 				logger.Printf("Parse Cursor field: %s %d\n", cursorField, eUtils.RefLength(secretFieldValuePtr))
 
 				if memonly.IsMemonly() {
-					memprotectopts.MemProtect(nil, secretFieldValuePtr)
+					if err := memprotectopts.MemProtect(nil, secretFieldValuePtr); err != nil {
+						return err
+					}
 				}
 				(*cursorSecretData)[tokenNameKey] = secretFieldValuePtr
 			} else {
@@ -212,7 +214,9 @@ func GetCursorPluginOpts(pluginName string, tlsProviderFunc func() (*tls.Config,
 				logger.Println("TrcCursorInitialize init begun.")
 				if memonly.IsMemonly() {
 					logger.Println("Unlocking everything.")
-					memprotectopts.MemUnprotectAll(nil)
+					if err := memprotectopts.MemUnprotectAll(nil); err != nil {
+						return err
+					}
 				}
 				queuedEnvironments := environments
 				if prod.IsProd() {

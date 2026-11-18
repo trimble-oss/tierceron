@@ -85,7 +85,9 @@ func CommonMain(envDefaultPtr *string,
 	driverConfig *config.DriverConfig,
 ) error {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			return err
+		}
 	}
 	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
@@ -271,7 +273,9 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if eUtils.RefLength(addrPtr) > 0 {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+			return err
+		}
 	}
 
 	if envPtr == nil || len(*envPtr) == 0 || strings.HasPrefix(*envPtr, "$") {
@@ -366,7 +370,11 @@ func CommonMain(envDefaultPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		if eUtils.RefLength(tokenPtr) > 0 {
+			if err := driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr); err != nil {
+				return err
+			}
+		}
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		currentRoleEntityPtr = new(string)
@@ -454,10 +462,14 @@ func CommonMain(envDefaultPtr *string,
 		} else {
 			token := "novault"
 			if utils.RefLength(addrPtr) == 0 {
-				eUtils.ReadAuthParts(driverConfigBase, false)
+				if _, _, err := eUtils.ReadAuthParts(driverConfigBase, false); err != nil {
+					return err
+				}
 			}
 			driverConfigBase.CoreConfig.TokenCache.VaultAddressPtr = addrPtr
-			driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
+			if err := driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token); err != nil {
+				return err
+			}
 		}
 
 		if len(envVersion) >= 2 { // Put back env+version together
@@ -569,7 +581,9 @@ func CommonMain(envDefaultPtr *string,
 				}
 			} else {
 				token := "novault"
-				driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
+				if err := driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token); err != nil {
+					return err
+				}
 			}
 			if len(envVersion) >= 2 { // Put back env+version together
 				*envPtr = envVersion[0] + "_" + envVersion[1]

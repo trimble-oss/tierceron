@@ -1,8 +1,8 @@
 package core
 
 import (
+	"strings"
 	"sync"
-	"unsafe"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
@@ -10,17 +10,14 @@ import (
 
 var m sync.Mutex
 
-// TODO: revisit this in 1.19 or later...
-func stringClone(s string) string {
-	b := make([]byte, len(s))
-	copy(b, s)
+func stringClone(s string) (string, error) {
+	newData := strings.Clone(s)
 	if memonly.IsMemonly() {
-		newData := *(*string)(unsafe.Pointer(&b))
-		memprotectopts.MemProtect(nil, &newData)
-		return newData
-	} else {
-		return *(*string)(unsafe.Pointer(&b))
+		if err := memprotectopts.MemProtect(nil, &newData); err != nil {
+			return "", err
+		}
 	}
+	return newData, nil
 }
 
 /*	Methods are no longer used for initial row insertion.

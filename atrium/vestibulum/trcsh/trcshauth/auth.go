@@ -223,7 +223,9 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 		if eUtils.RefLength(kubeConfigPtr) > 0 {
 			trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
 			trcshConfig.KubeConfigPtr = kubeConfigPtr
-			memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr)
+			if err := memprotectopts.MemProtect(nil, trcshConfig.KubeConfigPtr); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -253,9 +255,10 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	}
 	if eUtils.RefLength(vaultAddressPtr) > 0 {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
-		memprotectopts.MemProtect(nil, vaultAddressPtr)
+		if err := memprotectopts.MemProtect(nil, vaultAddressPtr); err != nil {
+			return nil, err
+		}
 		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr = vaultAddressPtr
-		memprotectopts.MemProtect(nil, trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.VaultAddressPtr)
 	}
 
 	if eUtils.RefLength(configRolePtr) == 0 {
@@ -271,9 +274,15 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	}
 	if eUtils.RefLength(configRolePtr) > 0 && strings.Contains(*configRolePtr, ":") {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
-		memprotectopts.MemProtect(nil, configRolePtr)
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr)
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", configRolePtr) // alias to old name.
+		if err := memprotectopts.MemProtect(nil, configRolePtr); err != nil {
+			return nil, err
+		}
+		if err := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("configrole", configRolePtr); err != nil {
+			return nil, err
+		}
+		if err := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("bamboo", configRolePtr); err != nil {
+			return nil, err
+		}
 	}
 
 	if eUtils.RefLength(pubRolePtr) == 0 {
@@ -283,13 +292,19 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			if err != nil {
 				return trcshConfig, err
 			}
-			memprotectopts.MemProtect(nil, pubRolePtr)
+			if err := memprotectopts.MemProtect(nil, pubRolePtr); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if eUtils.RefLength(pubRolePtr) > 0 && strings.Contains(*pubRolePtr, ":") {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr)
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", pubRolePtr) // alias to old name.
+		if err := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pubrole", pubRolePtr); err != nil {
+			return nil, err
+		}
+		if err := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddRoleStr("pub", pubRolePtr); err != nil {
+			return nil, err
+		}
 	}
 
 	if eUtils.RefLength(pluginAnyPtr) == 0 {
@@ -299,7 +314,9 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 			if err != nil {
 				return trcshConfig, err
 			}
-			memprotectopts.MemProtect(nil, pluginAnyPtr)
+			if err := memprotectopts.MemProtect(nil, pluginAnyPtr); err != nil {
+				return nil, err
+			}
 		}
 		if err != nil {
 			return trcshConfig, err
@@ -307,7 +324,9 @@ func TrcshAuth(featherCtx *cap.FeatherContext, agentConfigs *capauth.AgentConfig
 	}
 	if eUtils.RefLength(pluginAnyPtr) > 0 {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("------------")
-		trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr)
+		if err := trcshConfig.TokenCache.AddToken("config_token_pluginany", pluginAnyPtr); err != nil {
+			return nil, err
+		}
 	}
 
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Println("Auth complete.")

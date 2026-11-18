@@ -42,7 +42,10 @@ import (
 // The swiss army knife of tierceron if you will.
 func main() {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	}
 	testopts.NewOptionsBuilder(testloadopts.LoadOptions())
 	flowopts.NewOptionsBuilder(flowloadopts.LoadOptions())

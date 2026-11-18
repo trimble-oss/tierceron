@@ -107,10 +107,15 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 					// startDailyServiceTokenRotation(pluginEnvConfig, logger)
 
 					if bootFlowMachineFunc != nil {
-						tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+						tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+						if err != nil {
+							logger.Printf("Cannot lock flow credentials: %v", err)
+							return
+						}
 						driverConfig, driverConfigErr := eUtils.InitDriverConfigForPlugin(pluginEnvConfig, tokenCache, fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), l)
 						if driverConfigErr != nil {
 							l.Printf("Flow %s had an error: %s\n", pluginEnvConfig["trcplugin"], driverConfigErr.Error())
+							return
 						}
 						bootFlowMachineFunc(nil, driverConfig, pluginEnvConfig, logger)
 					}
@@ -134,11 +139,17 @@ func Init(processFlowConfig trcvutils.ProcessFlowConfig,
 						for k, v := range pluginEnvConfig {
 							if _, okStr := v.(string); okStr {
 								v2 := strings.Clone(v.(string))
-								memprotectopts.MemProtect(nil, &v2)
+								if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+									logger.Printf("Cannot lock plugin configuration: %v", err)
+									return
+								}
 								pluginEnvConfigClone[k] = v2
 							} else if vPtr, okPtrStr := v.(*string); okPtrStr {
 								v2 := strings.Clone(*vPtr)
-								memprotectopts.MemProtect(nil, &v2)
+								if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+									logger.Printf("Cannot lock plugin configuration: %v", err)
+									return
+								}
 								pluginEnvConfigClone[k] = &v2
 							} else if _, okBool := v.(bool); okBool {
 								pluginEnvConfigClone[k] = v
@@ -293,13 +304,14 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			return nil, decodeErr
 		}
 		if memonly.IsMemonly() {
-			memprotectopts.MemProtect(nil, &tokenConfig.VAddress)
-			memprotectopts.MemProtect(nil, &tokenConfig.CAddress)
-			memprotectopts.MemProtect(nil, &tokenConfig.CToken)
-			memprotectopts.MemProtect(nil, &tokenConfig.Token)
-			memprotectopts.MemProtect(nil, &tokenConfig.Pubrole)
-			memprotectopts.MemProtect(nil, &tokenConfig.Configrole)
-			memprotectopts.MemProtect(nil, &tokenConfig.Kubeconfig)
+			for _, sensitive := range []*string{
+				&tokenConfig.VAddress, &tokenConfig.CAddress, &tokenConfig.CToken,
+				&tokenConfig.Token, &tokenConfig.Pubrole, &tokenConfig.Configrole, &tokenConfig.Kubeconfig,
+			} {
+				if err := memprotectopts.MemProtect(nil, sensitive); err != nil {
+					return nil, err
+				}
+			}
 		}
 		tokenMap["vaddress"] = tokenConfig.VAddress
 		tokenMap["caddress"] = tokenConfig.CAddress
@@ -319,7 +331,9 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 			if token, tokenOk := reqData.GetOk(tokenName); tokenOk && token.(string) != "" {
 				tokenStr := token.(string)
 				if memonly.IsMemonly() {
-					memprotectopts.MemProtect(nil, &tokenStr)
+					if err := memprotectopts.MemProtect(nil, &tokenStr); err != nil {
+						return nil, err
+					}
 				}
 				switch tokenName {
 				case "ctoken", "token", "pubrole", "configrole", "kubeconfig":
@@ -374,8 +388,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						*currentRoleEntityPtr = "configpub.yml"
 
 						token := new(string)
-						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
-						tokenCache.AddRoleStr("pub", roleCheckPtr)
+						tokenCache, err := cache.NewTokenCache("", nil, &caddrCheck)
+						if err != nil {
+							return nil, err
+						}
+						if err := tokenCache.AddRoleStr("pub", roleCheckPtr); err != nil {
+							return nil, err
+						}
 						certCache := cache.NewCertCache()
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &coreconfig.CoreConfig{
@@ -397,8 +416,13 @@ func parseCarrierEnvRecord(e *logical.StorageEntry, reqData *framework.FieldData
 						*currentRoleEntityPtr = "config.yml"
 
 						token := new(string)
-						tokenCache := cache.NewTokenCacheEmpty(&caddrCheck)
-						tokenCache.AddRoleStr("bamboo", roleCheckPtr)
+						tokenCache, err := cache.NewTokenCache("", nil, &caddrCheck)
+						if err != nil {
+							return nil, err
+						}
+						if err := tokenCache.AddRoleStr("bamboo", roleCheckPtr); err != nil {
+							return nil, err
+						}
 						certCache := cache.NewCertCache()
 						verr = eUtils.AutoAuth(&config.DriverConfig{
 							CoreConfig: &coreconfig.CoreConfig{
@@ -491,12 +515,18 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		for _, value := range pluginEnvConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
 				for _, valueEntry := range valueSlice {
-					memprotectopts.MemProtect(nil, &valueEntry)
+					if err := memprotectopts.MemProtect(nil, &valueEntry); err != nil {
+						return err
+					}
 				}
 			} else if valueString, isValueString := value.(string); isValueString {
-				memprotectopts.MemProtect(nil, &valueString)
+				if err := memprotectopts.MemProtect(nil, &valueString); err != nil {
+					return err
+				}
 			} else if valuePtrString, isValuePtrString := value.(*string); isValuePtrString {
-				memprotectopts.MemProtect(nil, valuePtrString)
+				if err := memprotectopts.MemProtect(nil, valuePtrString); err != nil {
+					return err
+				}
 			} else if _, isBool := value.(bool); isBool {
 				// memprotectopts.MemProtect(nil, &valueString)
 				// TODO: no need to lock bools
@@ -504,7 +534,10 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 		}
 	}
 	logger.Printf("Init: %s plugin: %s\n", pluginEnvConfig["env"], pluginEnvConfig["trcplugin"])
-	tokenCache := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+	tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", pluginEnvConfig["env"]), eUtils.RefMap(pluginEnvConfig, "tokenptr"), eUtils.RefMap(pluginEnvConfig, "vaddress"))
+	if err != nil {
+		return err
+	}
 
 	go func(pec map[string]any, l *log.Logger) {
 		defer func() {
@@ -578,7 +611,9 @@ func TrcInitialize(ctx context.Context, req *logical.InitializationRequest) erro
 	logger.Println("TrcCarrierInitialize begun.")
 	if memonly.IsMemonly() {
 		logger.Println("Unlocking everything.")
-		memprotectopts.MemUnprotectAll(nil)
+		if err := memprotectopts.MemUnprotectAll(nil); err != nil {
+			return err
+		}
 	}
 	queuedEnvironments := environments
 	if prod.IsProd() {
@@ -683,7 +718,9 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	if t, tokenOk := data.GetOk("token"); tokenOk {
 		token := t.(string)
-		memprotectopts.MemProtect(nil, &token)
+		if err := memprotectopts.MemProtect(nil, &token); err != nil {
+			return nil, err
+		}
 		tokenEnvMap["tokenptr"] = &token
 	} else {
 		return nil, errors.New("token required")
@@ -703,7 +740,9 @@ func TrcCreate(ctx context.Context, req *logical.Request, data *framework.FieldD
 
 	if ct, addressOk := data.GetOk("ctoken"); addressOk {
 		ctoken := ct.(string)
-		memprotectopts.MemProtect(nil, &ctoken)
+		if err := memprotectopts.MemProtect(nil, &ctoken); err != nil {
+			return nil, err
+		}
 		tokenEnvMap["ctokenptr"] = &ctoken
 	} else {
 		return nil, errors.New("vault Certify token required")
@@ -808,8 +847,12 @@ func TrcUpdate(ctx context.Context, req *logical.Request, reqData *framework.Fie
 			pluginConfig["tokenptr"] = tokenEnvMap["ctokenptr"]
 			pluginConfig["regions"] = []string{hostRegion}
 			currentTokenName := "config_token_pluginany"
+			tokenCache, err := cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
+			if err != nil {
+				return nil, err
+			}
 			carrierDriverConfig, cMod, cVault, err := eUtils.InitVaultModForPlugin(pluginConfig,
-				cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
+				tokenCache,
 				currentTokenName, logger)
 			if err != nil {
 				logger.Println("Error: " + err.Error() + " - 1")

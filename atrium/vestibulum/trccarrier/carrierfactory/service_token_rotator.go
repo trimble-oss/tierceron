@@ -94,7 +94,11 @@ func rotatePluginToolServiceToken(env string, token string, vaultAddr string, lo
 		"exitOnFailure": false,
 	}
 
-	tokenCache := cache.NewTokenCache(currentTokenName, &tokenPtr, &vaultAddr)
+	tokenCache, err := cache.NewTokenCache(currentTokenName, &tokenPtr, &vaultAddr)
+	if err != nil {
+		logger.Printf("Service token rotator cannot lock credentials: %v", err)
+		return
+	}
 	_, mod, vault, err := eUtils.InitVaultModForPlugin(pluginConfig, tokenCache, currentTokenName, logger)
 	if err != nil {
 		logger.Printf("Service token rotator init failed for env %s: %v\n", env, err)

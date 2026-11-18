@@ -23,19 +23,25 @@ func TestCommonMain(t *testing.T) {
 	flagset := &flag.FlagSet{}
 	argLines := []string{"arg1", "arg2"}
 
+	tokenCache, err := trcshcache.NewTokenCache(fmt.Sprintf("config_token_%s", envPtr), &tokenPtr, &addrPtr)
+	if err != nil {
+		t.Fatal(err)
+	}
 	driverConfig := config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
-			TokenCache:    trcshcache.NewTokenCache(fmt.Sprintf("config_token_%s", envPtr), &tokenPtr, &addrPtr),
+			TokenCache:    tokenCache,
 			ExitOnFailure: true,
 		},
 	}
 
 	if eUtils.RefLength(&appRoleIDPtr) > 0 && eUtils.RefLength(&secretIDPtr) > 0 {
 		roleSlice := []string{appRoleIDPtr, secretIDPtr}
-		driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &roleSlice)
+		if err := driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &roleSlice); err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	err := CommonMain(&envPtr, &envCtxPtr, &tokenNamePtr, &regionPtr, flagset, argLines, &driverConfig)
+	err = CommonMain(&envPtr, &envCtxPtr, &tokenNamePtr, &regionPtr, flagset, argLines, &driverConfig)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

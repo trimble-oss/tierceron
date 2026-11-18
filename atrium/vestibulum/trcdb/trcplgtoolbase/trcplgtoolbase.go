@@ -190,7 +190,11 @@ func CommonMain(envPtr *string,
 			tokenNamePtr = new(string)
 			*tokenNamePtr = fmt.Sprintf("config_token_plugin%s", *envPtr)
 		}
-		trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		if eUtils.RefLength(tokenPtr) > 0 {
+			if err := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr); err != nil {
+				return err
+			}
+		}
 		trcshDriverConfig.DriverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 	} else {
 		argOffset := 1
@@ -238,9 +242,13 @@ func CommonMain(envPtr *string,
 
 	if !isRunnableKernelPlugin && !isInternalKernelPlugin {
 		if eUtils.RefLength(addrPtr) == 0 {
-			eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false)
+			if _, _, err := eUtils.ReadAuthParts(trcshDriverConfig.DriverConfig, false); err != nil {
+				return err
+			}
 		} else {
-			trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+			if err := trcshDriverConfig.DriverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+				return err
+			}
 		}
 	}
 

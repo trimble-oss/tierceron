@@ -37,7 +37,9 @@ func CommonMain(envDefaultPtr *string,
 	driverConfig *config.DriverConfig,
 ) error {
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			return err
+		}
 	}
 	STARTDIR_DEFAULT = coreopts.BuildOptions.GetFolderPrefix(nil) + "_templates"
 
@@ -167,7 +169,11 @@ func CommonMain(envDefaultPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", eUtils.GetEnvBasis(driverConfig.CoreConfig.Env))
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache = cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr)
+		tokenCache, cacheErr := cache.NewTokenCache(*tokenNamePtr, tokenPtr, addrPtr)
+		if cacheErr != nil {
+			return cacheErr
+		}
+		driverConfigBase.CoreConfig.TokenCache = tokenCache
 		driverConfig.CoreConfig.CurrentTokenNamePtr = tokenNamePtr
 
 		appRoleConfigPtr = new(string)
@@ -200,7 +206,9 @@ func CommonMain(envDefaultPtr *string,
 		}
 	} else {
 		token := "novault"
-		driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token)
+		if err := driverConfigBase.CoreConfig.TokenCache.AddToken(fmt.Sprintf("config_token_%s", *envPtr), &token); err != nil {
+			return err
+		}
 	}
 
 	if len(envVersion) >= 2 { // Put back env+version together

@@ -98,6 +98,10 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("PluginTapFeatherInit start env=%s envBasis=%s\n", env, trcshDriverConfig.DriverConfig.CoreConfig.EnvBasis)
 	tempAddr := pluginConfig["vaddress"]
 	tempTokenPtr := pluginConfig["tokenptr"]
+	defer func() {
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["tokenptr"] = tempTokenPtr
+	}()
 	if cAddr, cAddressOk := pluginConfig["caddress"].(string); cAddressOk && len(cAddr) > 0 {
 		trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("PluginTapFeatherInit using caddress override for env=%s\n", env)
 		pluginConfig["vaddress"] = cAddr
@@ -119,11 +123,15 @@ func PluginTapFeatherInit(trcshDriverConfig *capauth.TrcshDriverConfig, pluginCo
 	var featherMod *helperkv.Modifier
 	var vault *sys.Vault
 	var modErr error
+	tokenCache, err := cache.NewTokenCache("config_token_pluginany",
+		eUtils.RefMap(pluginConfig, "tokenptr"),
+		eUtils.RefMap(pluginConfig, "vaddress"))
+	if err != nil {
+		return err
+	}
 	// Create modifier from kernel's TokenCache for cert loading (use kernel's env-based token with full permissions)
 	trcshDriverConfig.DriverConfig, featherMod, vault, modErr = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany",
-			eUtils.RefMap(pluginConfig, "tokenptr"),
-			eUtils.RefMap(pluginConfig, "vaddress")),
+		tokenCache,
 		"config_token_pluginany", trcshDriverConfig.DriverConfig.CoreConfig.Log)
 	if vault != nil {
 		defer vault.Close()

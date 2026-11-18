@@ -27,10 +27,18 @@ func ConfigCertLibHelper(token string,
 ) (string, string, error) {
 	logger := log.New(os.Stdout, "[configCertLibHelper]", log.LstdFlags)
 	mod, err := helperkv.NewModifier(false, &token, &address, env, nil, true, logger)
+	if err != nil {
+		return "", "", err
+	}
+	defer mod.Release()
+	tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token, &address)
+	if err != nil {
+		return "", "", err
+	}
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
 			WantCerts:  wantCerts,
-			TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s", env), &token, &address),
+			TokenCache: tokenCache,
 			Insecure:   true,
 			Log:        logger,
 		},
@@ -38,12 +46,7 @@ func ConfigCertLibHelper(token string,
 		ZeroConfig: true,
 		StartDir:   append([]string{}, "trc_templates"),
 	}
-	if err != nil {
-		eUtils.LogErrorMessage(driverConfig.CoreConfig, err.Error(), false)
-		return "", "", err
-	}
 	mod.Env = env
-	defer mod.Release()
 	serviceParts := strings.Split(service, ".")
 	configTemplate, configuredCert, _, err := vcutils.ConfigTemplate(driverConfig, mod, templatePath, true, project, serviceParts[0], wantCerts, true)
 	if err != nil {

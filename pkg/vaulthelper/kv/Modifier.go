@@ -623,7 +623,9 @@ processResult:
 				if dataValuesSlice, isSlice := dataValues.([]any); isSlice {
 					for _, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
-							memprotectopts.MemProtect(nil, &dataValueString)
+							if err := memprotectopts.MemProtect(nil, &dataValueString); err != nil {
+								return nil, err
+							}
 						} else if _, isBool := dataValues.(bool); isBool {
 							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept bools.
@@ -641,7 +643,9 @@ processResult:
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
-					memprotectopts.MemProtect(nil, &dataValueString)
+					if err := memprotectopts.MemProtect(nil, &dataValueString); err != nil {
+						return nil, err
+					}
 				} else if _, isBool := dataValues.(bool); isBool {
 					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept bools.
@@ -679,7 +683,9 @@ func (m *Modifier) ReadMapValue(valueMap map[string]any, path string, key string
 			return value, nil
 		} else if stringer, ok := valueMap[key].(fmt.GoStringer); ok {
 			mapval := stringer.GoString()
-			memprotectopts.MemProtect(nil, &mapval)
+			if err := memprotectopts.MemProtect(nil, &mapval); err != nil {
+				return "", err
+			}
 			return mapval, nil
 		} else if stringer, ok := valueMap[key].(json.Number); ok {
 			return stringer.String(), nil

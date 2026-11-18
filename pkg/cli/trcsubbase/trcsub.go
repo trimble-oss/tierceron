@@ -49,7 +49,9 @@ func CommonMain(envDefaultPtr *string,
 	}
 
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			return err
+		}
 	}
 	var envPtr *string = nil
 	var tokenPtr *string = nil
@@ -192,9 +194,15 @@ func CommonMain(envDefaultPtr *string,
 			tokenName := fmt.Sprintf("config_token_%s", envBasis)
 			tokenNamePtr = &tokenName
 		}
-		driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+		if eUtils.RefLength(tokenPtr) > 0 {
+			if err := driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr); err != nil {
+				return err
+			}
+		}
 		if eUtils.RefLength(addrPtr) > 0 {
-			driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+			if err := driverConfigBase.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+				return err
+			}
 		}
 	}
 

@@ -47,9 +47,20 @@ func PluginDeployEnvFlow(flowMachineInitContext *flowcore.FlowMachineInitContext
 	tempTokenPtr := pluginConfig["tokenptr"]
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
+	defer func() {
+		pluginConfig["vaddress"] = tempAddr
+		pluginConfig["tokenptr"] = tempTokenPtr
+	}()
+	tokenCache, err := cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
+	if err != nil {
+		return err
+	}
 	driverConfig, goMod, vault, err = eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
+		tokenCache,
 		"config_token_pluginany", logger)
+	if err != nil {
+		return err
+	}
 	if vault != nil {
 		defer vault.Close()
 	}
@@ -107,8 +118,16 @@ func PluginDeployFlow(flowMachineInitContext *flowcore.FlowMachineInitContext, d
 	tokenPtr := eUtils.RefMap(pluginConfig, "tokenptr")
 	pluginConfig["vaddress"] = pluginConfig["caddress"]
 	pluginConfig["tokenptr"] = pluginConfig["ctokenptr"]
+	defer func() {
+		pluginConfig["vaddress"] = addr
+		pluginConfig["tokenptr"] = tokenPtr
+	}()
+	tokenCache, err := cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress"))
+	if err != nil {
+		return nil, err
+	}
 	carrierDriverConfig, cGoMod, _, err := eUtils.InitVaultModForPlugin(pluginConfig,
-		cache.NewTokenCache("config_token_pluginany", eUtils.RefMap(pluginConfig, "tokenptr"), eUtils.RefMap(pluginConfig, "vaddress")),
+		tokenCache,
 		"config_token_pluginany", logger)
 	if err != nil {
 		eUtils.LogErrorMessage(carrierDriverConfig.CoreConfig, "Could not access vault.  Failure to start.", false)

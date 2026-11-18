@@ -242,7 +242,10 @@ func main() {
 	f, err := os.OpenFile(*logPathPtr, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o644)
 	eUtils.CheckError(driverConfig.CoreConfig, err, true)
 	s.Log.SetOutput(f)
-	memprotectopts.MemProtectInit(nil)
+	if err := memprotectopts.MemProtectInit(nil); err != nil {
+		s.Log.Print(err)
+		return
+	}
 
 	status, err := s.GetStatus(context.Background(), nil)
 	eUtils.LogErrorObject(driverConfig.CoreConfig, err, true)

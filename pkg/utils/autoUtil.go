@@ -352,8 +352,7 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string, for
 		if existingCreds != nil && len(*existingCreds) == 2 && (*existingCreds)[0] != "" && (*existingCreds)[1] != "" {
 			fmt.Fprintf(os.Stderr, "Using existing credentials from cache for role\n")
 			// Also ensure "hivekernel" points to these credentials for backward compatibility
-			driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", existingCreds)
-			return nil
+			return driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", existingCreds)
 		}
 	}
 
@@ -379,13 +378,17 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string, for
 	// Generic "hivekernel" key maintains backward compatibility with existing code
 	// Also store under bare role name for authorization checks
 	appRoleSecret := []string{roleID, secretID}
-	driverConfig.CoreConfig.TokenCache.AddRole(cacheKey, &appRoleSecret)
-	driverConfig.CoreConfig.TokenCache.AddRole("hivekernel", &appRoleSecret)
-	driverConfig.CoreConfig.TokenCache.AddRole(targetRole, &appRoleSecret)
+	for _, key := range []string{cacheKey, "hivekernel", targetRole} {
+		if err := driverConfig.CoreConfig.TokenCache.AddRole(key, &appRoleSecret); err != nil {
+			return err
+		}
+	}
 
 	// Update vault address if needed
 	if vaultHost != "" {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost); err != nil {
+			return err
+		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Successfully authenticated for role: %s\n", targetRole)
@@ -457,12 +460,16 @@ func AutoAuth(driverConfig *config.DriverConfig,
 				(*appRoleSecret)[1] = secretID
 
 				// Update token cache with hivekernel key (OAuth retrieved trcshhivez role)
-				driverConfig.CoreConfig.TokenCache.AddRole(hivekernelRole, appRoleSecret)
+				if err := driverConfig.CoreConfig.TokenCache.AddRole(hivekernelRole, appRoleSecret); err != nil {
+					return err
+				}
 
 				// Set vault address
 				if vaultHost != "" {
 					addrPtr = &vaultHost
-					driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost)
+					if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(&vaultHost); err != nil {
+						return err
+					}
 				}
 
 				LogInfo(driverConfig.CoreConfig, "Using trcshhivez AppRole stored as hivekernel\n")
@@ -481,12 +488,13 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 		tokenPtr = *tokenProvidedPtr
 		// Make thebig assumption here.
-		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
+		if err := driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr); err != nil {
+			return err
+		}
 	} else if driverConfig.CoreConfig.IsEditor &&
 		RefContains(driverConfig.CoreConfig.CurrentTokenNamePtr, "unrestricted") {
 		tokenPtr = driverConfig.CoreConfig.TokenCache.GetToken(*driverConfig.CoreConfig.CurrentTokenNamePtr)
-		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
-		return nil
+		return driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
 	}
 
 	if RefLength(tokenPtr) != 0 &&
@@ -735,7 +743,9 @@ func AutoAuth(driverConfig *config.DriverConfig,
 		}
 		tokenPtr = &token
 		driverConfig.CoreConfig.CurrentTokenNamePtr = wantedTokenNamePtr
-		driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr)
+		if err := driverConfig.CoreConfig.TokenCache.AddToken(*wantedTokenNamePtr, tokenPtr); err != nil {
+			return err
+		}
 		if tokenProvidedPtr != nil {
 			*tokenProvidedPtr = tokenPtr
 		}
@@ -900,7 +910,9 @@ func cmdAutoAuthHelper(appRoleSecret *[]string, IsApproleEmpty bool, tokenPtr *s
 			if !override {
 				if len(approleID) > 0 && len(secretID) > 0 {
 					role := []string{approleID, secretID}
-					driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &role)
+					if err := driverConfig.CoreConfig.TokenCache.AddRole("bamboo", &role); err != nil {
+						return nil, false, nil, err
+					}
 				}
 			}
 		}
@@ -941,7 +953,9 @@ func ReadAuthParts(driverConfig *config.DriverConfig,
 				return false, "", configErr
 			}
 			if RefLength(driverConfig.CoreConfig.TokenCache.VaultAddressPtr) == 0 {
-				driverConfig.CoreConfig.TokenCache.SetVaultAddress(&c.VaultHost)
+				if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(&c.VaultHost); err != nil {
+					return false, "", err
+				}
 			}
 
 			if readAuthParts {
@@ -950,7 +964,9 @@ func ReadAuthParts(driverConfig *config.DriverConfig,
 					role := []string{c.ApproleID, c.SecretID}
 					bambooRole := "bamboo"
 					driverConfig.CoreConfig.CurrentRoleEntityPtr = &bambooRole
-					driverConfig.CoreConfig.TokenCache.AddRole(bambooRole, &role)
+					if err := driverConfig.CoreConfig.TokenCache.AddRole(bambooRole, &role); err != nil {
+						return false, "", err
+					}
 				}
 			}
 		} else {

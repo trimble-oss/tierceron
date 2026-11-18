@@ -263,7 +263,9 @@ func InitVaultModForPlugin(pluginConfig map[string]any, tokenCache *cache.TokenC
 		trcdbEnvLogger.Println("Missing required env")
 		return nil, nil, nil, errors.New("missing required env")
 	}
-	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
+	if err := tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress")); err != nil {
+		return nil, nil, nil, err
+	}
 
 	driverConfig := config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
@@ -317,7 +319,9 @@ func InitDriverConfigForPlugin(pluginConfig map[string]any, tokenCache *cache.To
 		trcdbEnvLogger.Println("Missing required env")
 		return nil, errors.New("missing required env")
 	}
-	tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
+	if err := tokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress")); err != nil {
+		return nil, err
+	}
 
 	return &config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
@@ -367,7 +371,9 @@ func InitVaultModForTool(pluginConfig map[string]any, driverConfig *config.Drive
 
 		driverConfig.CoreConfig.WantCerts = false
 		driverConfig.CoreConfig.Insecure = !exitOnFailure // Plugin has exitOnFailure=false ...  always local, so this is ok...
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress"))
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(RefMap(pluginConfig, "vaddress")); err != nil {
+			return nil, nil, nil, err
+		}
 		driverConfig.CoreConfig.Env = pluginConfig["env"].(string)
 		driverConfig.CoreConfig.EnvBasis = GetEnvBasis(pluginConfig["env"].(string))
 		driverConfig.CoreConfig.Regions = regions

@@ -289,7 +289,9 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 	for k, v := range pluginToolConfig {
 		if _, okStr := v.(string); okStr {
 			v2 := strings.Clone(v.(string))
-			memprotectopts.MemProtect(nil, &v2)
+			if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+				return nil, err
+			}
 			pluginEnvConfigClone[k] = v2
 		} else {
 			// Safe to share...
@@ -300,7 +302,9 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 	for k, v := range pluginConfig {
 		if _, okStr := v.(string); okStr {
 			v2 := strings.Clone(v.(string))
-			memprotectopts.MemProtect(nil, &v2)
+			if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+				return nil, err
+			}
 			pluginEnvConfigClone[k] = v2
 		} else {
 			// Safe to share...
@@ -332,7 +336,9 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 		for k, v := range ptc1 {
 			if _, okStr := v.(string); okStr {
 				v2 := strings.Clone(v.(string))
-				memprotectopts.MemProtect(nil, &v2)
+				if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+					return nil, err
+				}
 				pluginEnvConfigClone[k] = v2
 			} else {
 				// Safe to share...

@@ -43,7 +43,9 @@ func CloneRepository(
 
 	// Initialize memory protection if needed
 	if memonly.IsMemonly() {
-		memprotectopts.MemProtectInit(nil)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			return err
+		}
 	}
 
 	// If no target directory is specified, use "../<repositoryname>"

@@ -181,7 +181,10 @@ func CommonMain(envPtr *string,
 		return
 	}
 	if eUtils.RefLength(addrPtr) > 0 {
-		driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr)
+		if err := driverConfig.CoreConfig.TokenCache.SetVaultAddress(addrPtr); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
 	}
 
 	// Security check: Block dangerous operations in shell mode (IsKernelZ)
@@ -229,7 +232,12 @@ func CommonMain(envPtr *string,
 				return
 			}
 
-			driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr)
+			if eUtils.RefLength(tokenPtr) > 0 {
+				if err := driverConfigBase.CoreConfig.TokenCache.AddToken(*tokenNamePtr, tokenPtr); err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return
+				}
+			}
 
 			eUtils.CheckError(driverConfigBase.CoreConfig, err, true)
 		} else if eUtils.RefLength(tokenPtr) == 0 && eUtils.RefLength(tokenNamePtr) > 0 {

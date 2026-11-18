@@ -83,13 +83,16 @@ func (s *Server) InitVault(ctx context.Context, req *pb.InitReq) (*pb.InitResp, 
 			}, err
 		}
 
+		tokenCache, err := cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env),
+			s.VaultTokenPtr, s.VaultAddrPtr)
+		if err != nil {
+			return nil, err
+		}
 		il.SeedVaultFromData(&config.DriverConfig{
 			CoreConfig: &coreconfig.CoreConfig{
-				WantCerts: true,
-				Insecure:  false,
-				TokenCache: cache.NewTokenCache(fmt.Sprintf("config_token_%s_unrestricted", seed.Env),
-					s.VaultTokenPtr,
-					s.VaultAddrPtr),
+				WantCerts:     true,
+				Insecure:      false,
+				TokenCache:    tokenCache,
 				Env:           seed.Env,
 				ExitOnFailure: true,
 				Log:           logger,
