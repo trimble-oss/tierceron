@@ -12,12 +12,12 @@ import (
 	trcshMemFs "github.com/trimble-oss/tierceron-core/v2/trcshfs"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/trcshbase"
 	"github.com/trimble-oss/tierceron/buildopts/coreopts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/pluginopts"
 	"github.com/trimble-oss/tierceron/pkg/cli/trcconfigbase"
 	trcinitbase "github.com/trimble-oss/tierceron/pkg/cli/trcinitbase"

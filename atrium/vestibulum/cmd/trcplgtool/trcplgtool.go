@@ -10,7 +10,6 @@ import (
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memonly"
-	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowcoreopts"
 	plgtbase "github.com/trimble-oss/tierceron/atrium/vestibulum/trcdb/trcplgtoolbase"
@@ -19,6 +18,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
 	"github.com/trimble-oss/tierceron/pkg/capauth"

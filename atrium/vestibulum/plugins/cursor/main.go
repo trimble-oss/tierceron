@@ -20,6 +20,7 @@ import (
 	"github.com/trimble-oss/tierceron/buildopts/cursoropts"
 	"github.com/trimble-oss/tierceron/buildopts/deployopts"
 	"github.com/trimble-oss/tierceron/buildopts/harbingeropts"
+	"github.com/trimble-oss/tierceron/buildopts/memprotectopts"
 	"github.com/trimble-oss/tierceron/buildopts/saltyopts"
 	"github.com/trimble-oss/tierceron/buildopts/tcopts"
 	"github.com/trimble-oss/tierceron/buildopts/xencryptopts"
@@ -29,7 +30,6 @@ import (
 
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
-	"golang.org/x/sys/unix"
 )
 
 var logger *log.Logger
@@ -37,10 +37,9 @@ var logger *log.Logger
 func main() {
 	executableName := os.Args[0]
 	if memonly.IsMemonly() {
-		mLockErr := unix.Mlockall(unix.MCL_CURRENT | unix.MCL_FUTURE)
-		if mLockErr != nil {
-			fmt.Fprintln(os.Stderr, mLockErr)
-			os.Exit(-1)
+		if err := memprotectopts.MemProtectInit(nil); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
 		}
 	}
 	buildopts.NewOptionsBuilder(buildopts.LoadOptions())

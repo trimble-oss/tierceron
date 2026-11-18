@@ -252,6 +252,8 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 		return nil, errors.New("no plugins available")
 	}
 	deploymentList := []*map[string]interface{}{}
+	logger := trcshDriverConfig.DriverConfig.CoreConfig.Log
+	listedDeployments := make(map[string]bool)
 	var machineID string
 	if isDrone && !isShellRunner && !kernelopts.BuildOptions.IsKernel() {
 		machineID = coreopts.BuildOptions.GetMachineID()
@@ -271,12 +273,20 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 					continue
 				}
 			}
+			listedDeployments[deployment] = true
 
 			deploymentConfig, deploymentConfigErr := mod.ReadData(fmt.Sprintf("super-secrets/Index/TrcVault/trcplugin/%s/Certify", deployment))
-			if deploymentConfigErr != nil || deploymentConfig == nil {
+			if deploymentConfigErr != nil {
+				logger.Printf("Skipping deployment %s: cannot read Certify metadata: %s\n", deployment, eUtils.SanitizeForLogging(deploymentConfigErr.Error()))
 				continue
 			}
-			if _, ok := deploymentConfig["trctype"]; !ok {
+			if deploymentConfig == nil {
+				logger.Printf("Skipping deployment %s: Certify metadata is missing\n", deployment)
+				continue
+			}
+			deploymentType, ok := deploymentConfig["trctype"].(string)
+			if !ok || deploymentType == "" {
+				logger.Printf("Skipping deployment %s: Certify trctype must be a non-empty string\n", deployment)
 				continue
 			}
 
@@ -291,7 +301,7 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 			}
 
 			// Skip trcshcmdtoolplugin types if running on Kubernetes
-			if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" && hive.IsRunningInKubernetes() {
+			if deploymentType == "trcshcmdtoolplugin" && hive.IsRunningInKubernetes() {
 				trcshDriverConfig.DriverConfig.CoreConfig.Log.Printf("Skipping trcshcmdtoolplugin %s on Kubernetes\n", deployment)
 				continue
 			}
@@ -358,26 +368,35 @@ func GetDeployers(kernelPluginHandler *hive.PluginHandler,
 					}
 				}
 			allvalid:
-				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentConfig["trctype"].(string) == "trcshpluginservice" || deploymentConfig["trctype"].(string) == "trcshkubeservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" || deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin") {
+				if kernelopts.BuildOptions.IsKernel() && isValidInstance && (deploymentType == "trcshpluginservice" || deploymentType == "trcshkubeservice" || deploymentType == "trcflowpluginservice" || deploymentType == "trcshcmdtoolplugin") {
 					deploymentList = append(deploymentList, &deploymentConfig)
-				} else if (deploymentConfig["trctype"].(string) == "trcshservice" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" || deploymentConfig["trctype"].(string) == "trcshpluginservice") && len(valid_id) > 0 && valid_id == machineID {
+				} else if (deploymentType == "trcshservice" || deploymentType == "trcflowpluginservice" || deploymentType == "trcshpluginservice") && len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, &deploymentConfig)
-				} else if (deploymentConfig["trctype"].(string) == "agent") &&
+				} else if (deploymentType == "agent") &&
 					coreopts.BuildOptions != nil &&
 					coreopts.BuildOptions.GetDefaultDeployments != nil &&
 					len(coreopts.BuildOptions.GetDefaultDeployments()) > 0 &&
 					len(valid_id) > 0 && valid_id == machineID {
 					deploymentList = append(deploymentList, &deploymentConfig)
+				} else {
+					logger.Printf("Skipping deployment %s: deployment type or instance assignment does not match this runtime (kernel instance match: %t)\n", deployment, isValidInstance)
 				}
 			} else {
 				if trcshDriverConfig.DriverConfig.CoreConfig.IsEditor {
 					deploymentList = append(deploymentList, &deploymentConfig)
 				} else {
-					if deploymentConfig["trctype"].(string) == "trcshcmdtoolplugin" || deploymentConfig["trctype"].(string) == "trcflowpluginservice" {
+					if deploymentType == "trcshcmdtoolplugin" || deploymentType == "trcflowpluginservice" {
 						deploymentList = append(deploymentList, &deploymentConfig)
+					} else {
+						logger.Printf("Skipping deployment %s: deployment type is not supported outside editor or drone mode\n", deployment)
 					}
 				}
 			}
+		}
+	}
+	for deployment := range deploymentShardsSet {
+		if !listedDeployments[deployment] {
+			logger.Printf("Skipping deployment %s: requested plugin was not returned by the Vault deployment index\n", deployment)
 		}
 	}
 	return deploymentList, nil
