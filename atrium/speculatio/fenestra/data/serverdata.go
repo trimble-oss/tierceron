@@ -87,7 +87,6 @@ func createDetailedElements(detailedElements []*mashupsdk.MashupDetailedElement,
 
 // Returns an array of mashup detailed elements populated with each entities' data and Childnodes
 func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.MashupDetailedElement {
-	addressPtr := new(string)
 	driverConfig := &config.DriverConfig{
 		CoreConfig: &coreconfig.CoreConfig{
 			ExitOnFailure: true,
@@ -104,7 +103,7 @@ func GetData(insecure *bool, logger *log.Logger, envPtr *string) []*mashupsdk.Ma
 	autoErr := eUtils.AutoAuth(driverConfig, &empty, &tokenPtr, envPtr, nil, currentRoleEntityPtr, false)
 	eUtils.CheckError(driverConfig.CoreConfig, autoErr, true)
 
-	mod, modErr := helperkv.NewModifier(*insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_protected", driverConfig.CoreConfig.EnvBasis)), addressPtr, *envPtr, nil, true, logger)
+	mod, modErr := helperkv.NewModifier(*insecure, driverConfig.CoreConfig.TokenCache.GetToken(fmt.Sprintf("config_token_%s_protected", driverConfig.CoreConfig.EnvBasis)), driverConfig.CoreConfig.TokenCache.VaultAddressPtr, *envPtr, nil, true, logger)
 	mod.Direct = true
 	mod.Env = *envPtr
 	eUtils.CheckError(driverConfig.CoreConfig, modErr, true)
