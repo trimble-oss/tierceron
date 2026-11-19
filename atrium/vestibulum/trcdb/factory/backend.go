@@ -273,10 +273,11 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 	logger.Println("Begin processFlows for env: " + env.(string))
 	if memonly.IsMemonly() {
 		for _, environmentConfig := range environmentConfigs {
-			for _, value := range environmentConfig.(map[string]any) {
+			config := environmentConfig.(map[string]any)
+			for key, value := range config {
 				if valueSlice, isValueSlice := value.([]string); isValueSlice {
-					for _, valueEntry := range valueSlice {
-						if err := memprotectopts.MemProtect(nil, &valueEntry); err != nil {
+					for i := range valueSlice {
+						if err := memprotectopts.MemProtect(nil, &valueSlice[i]); err != nil {
 							return err
 						}
 					}
@@ -284,6 +285,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 					if err := memprotectopts.MemProtect(nil, &valueString); err != nil {
 						return err
 					}
+					config[key] = valueString
 				} else if _, isBool := value.(bool); isBool {
 					// memprotectopts.MemProtect(nil, &valueString)
 					// TODO: no need to lock bools

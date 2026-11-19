@@ -512,10 +512,10 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 
 	pluginEnvConfig = processFlowConfig(pluginEnvConfig)
 	if memonly.IsMemonly() {
-		for _, value := range pluginEnvConfig {
+		for key, value := range pluginEnvConfig {
 			if valueSlice, isValueSlice := value.([]string); isValueSlice {
-				for _, valueEntry := range valueSlice {
-					if err := memprotectopts.MemProtect(nil, &valueEntry); err != nil {
+				for i := range valueSlice {
+					if err := memprotectopts.MemProtect(nil, &valueSlice[i]); err != nil {
 						return err
 					}
 				}
@@ -523,6 +523,7 @@ func ProcessPluginEnvConfig(processFlowConfig trcvutils.ProcessFlowConfig,
 				if err := memprotectopts.MemProtect(nil, &valueString); err != nil {
 					return err
 				}
+				pluginEnvConfig[key] = valueString
 			} else if valuePtrString, isValuePtrString := value.(*string); isValuePtrString {
 				if err := memprotectopts.MemProtect(nil, valuePtrString); err != nil {
 					return err
