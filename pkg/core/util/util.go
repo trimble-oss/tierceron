@@ -133,21 +133,55 @@ func GetJSONFromClientByPost(config *coreconfig.CoreConfig, httpClient *http.Cli
 	case http.StatusUnauthorized:
 		return nil, response.StatusCode, fmt.Errorf("http auth failure: %d", response.StatusCode)
 	case http.StatusOK:
-		jsonDataFromHttp, err := io.ReadAll(response.Body)
+		var jsonDataFromHttp []byte
+		var lockedTokens map[string]string
+		tokenKeys := []string{"access_token", "refresh_token", "id_token"}
+		if memonly.IsMemonly() {
+			// Obtain locked memory first; token bytes are received directly
+			// into protected storage and never land in unprotected memory.
+			jsonDataFromHttp, err = memprotectopts.LockedReadAll(response.Body)
+			if err == nil {
+				// Pull tokens out of the locked body and redact them so the
+				// unmarshal below cannot copy them to unprotected memory.
+				lockedTokens, err = memprotectopts.ExtractLockedStrings(jsonDataFromHttp, tokenKeys...)
+				if err != nil {
+					memprotectopts.LockedFree(jsonDataFromHttp)
+				}
+			}
+		} else {
+			jsonDataFromHttp, err = io.ReadAll(response.Body)
+		}
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			return nil, response.StatusCode, err
 		}
 
-		err = json.Unmarshal([]byte(jsonDataFromHttp), &jsonData)
+		err = json.Unmarshal(jsonDataFromHttp, &jsonData)
+		if memonly.IsMemonly() {
+			if freeErr := memprotectopts.LockedFree(jsonDataFromHttp); freeErr != nil {
+				// Content is already erased; releasing failed, keep going.
+				eUtils.LogErrorObject(config, freeErr, false)
+			}
+		}
 		if err != nil {
 			eUtils.LogErrorObject(config, err, false)
 			return nil, response.StatusCode, err
 		}
-		for _, key := range []string{"access_token", "refresh_token", "id_token"} {
-			if token, ok := jsonData[key].(string); ok && memonly.IsMemonly() {
-				if err := memprotectopts.MemProtect(nil, &token); err != nil {
-					return nil, response.StatusCode, err
+		if memonly.IsMemonly() {
+			for key, lockedToken := range lockedTokens {
+				jsonData[key] = lockedToken
+			}
+			for _, key := range tokenKeys {
+				if _, extracted := lockedTokens[key]; extracted {
+					continue
+				}
+				// Escaped value fell through to the decoder; relocate it and
+				// erase the exclusively owned decode residue.
+				if token, ok := jsonData[key].(string); ok {
+					if err := memprotectopts.MemProtectMove(nil, &token); err != nil {
+						return nil, response.StatusCode, err
+					}
+					jsonData[key] = token
 				}
 			}
 		}
@@ -314,7 +348,8 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 	for k, v := range pluginToolConfig {
 		if _, okStr := v.(string); okStr {
 			v2 := strings.Clone(v.(string))
-			if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+			// The clone is exclusively owned; move erases it after relocation.
+			if err := memprotectopts.MemProtectMove(nil, &v2); err != nil {
 				return nil, err
 			}
 			pluginEnvConfigClone[k] = v2
@@ -327,7 +362,7 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 	for k, v := range pluginConfig {
 		if _, okStr := v.(string); okStr {
 			v2 := strings.Clone(v.(string))
-			if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+			if err := memprotectopts.MemProtectMove(nil, &v2); err != nil {
 				return nil, err
 			}
 			pluginEnvConfigClone[k] = v2
@@ -361,7 +396,7 @@ func GetPluginToolConfig(driverConfig *config.DriverConfig, mod *helperkv.Modifi
 		for k, v := range ptc1 {
 			if _, okStr := v.(string); okStr {
 				v2 := strings.Clone(v.(string))
-				if err := memprotectopts.MemProtect(nil, &v2); err != nil {
+				if err := memprotectopts.MemProtectMove(nil, &v2); err != nil {
 					return nil, err
 				}
 				pluginEnvConfigClone[k] = v2

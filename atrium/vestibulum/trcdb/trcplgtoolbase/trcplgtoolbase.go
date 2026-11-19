@@ -566,6 +566,19 @@ func CommonMain(envPtr *string,
 			return plcErr
 		}
 	}
+	defer func() {
+		// Plugin configuration is re-read every deploy; release its locked
+		// values so repeated deploys do not accumulate locked memory. Values
+		// shared with the retained DeploymentConfig and cached token pointers
+		// are kept.
+		shared := []map[string]any{}
+		if trcshDriverConfigBase.DriverConfig.DeploymentConfig != nil {
+			shared = append(shared, *trcshDriverConfigBase.DriverConfig.DeploymentConfig)
+		}
+		if releaseErr := memprotectopts.ReleaseStringValues(pluginToolConfig, shared...); releaseErr != nil {
+			trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Plugin configuration release incomplete: %v\n", releaseErr)
+		}
+	}()
 
 	if *certifyImagePtr {
 		trcshDriverConfigBase.DriverConfig.CoreConfig.Log.Printf("Certify begin activities\n")

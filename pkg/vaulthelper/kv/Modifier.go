@@ -178,6 +178,7 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		if err := memprotectopts.MemProtect(nil, &token); err != nil {
 			return nil, err
 		}
+		modClient.SetToken(token)
 	}
 
 	// Return the modifier
@@ -631,11 +632,14 @@ processResult:
 					continue
 				}
 				if dataValuesSlice, isSlice := dataValues.([]any); isSlice {
-					for _, dataValues := range dataValuesSlice {
+					for i, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
-							if err := memprotectopts.MemProtect(nil, &dataValueString); err != nil {
+							// Freshly decoded and exclusively owned; move
+							// erases the unlocked source after relocation.
+							if err := memprotectopts.MemProtectMove(nil, &dataValueString); err != nil {
 								return nil, err
 							}
+							dataValuesSlice[i] = dataValueString
 						} else if _, isBool := dataValues.(bool); isBool {
 							// memprotectopts.MemProtect(nil, &dataValueString)
 							// don't lock but accept bools.
@@ -653,9 +657,10 @@ processResult:
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
-					if err := memprotectopts.MemProtect(nil, &dataValueString); err != nil {
+					if err := memprotectopts.MemProtectMove(nil, &dataValueString); err != nil {
 						return nil, err
 					}
+					data[dataKey] = dataValueString
 				} else if _, isBool := dataValues.(bool); isBool {
 					// memprotectopts.MemProtect(nil, &dataValueString)
 					// don't lock but accept bools.
