@@ -44,7 +44,8 @@ type Modifier struct {
 	httpClient       *http.Client // Handle to http client.
 	client           *api.Client  // Client connected to vault
 	logical          *api.Logical // Logical used for read/write options
-	SecretDictionary *api.Secret  // Current Secret Dictionary Cache -- populated by mod.List("templates"
+	logger           *log.Logger
+	SecretDictionary *api.Secret // Current Secret Dictionary Cache -- populated by mod.List("templates"
 
 	Env             string // Environment (local/dev/QA; Initialized to secrets)
 	EnvBasis        string
@@ -132,6 +133,7 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 		checkoutModifier, err := cachedModifierHelper(env, *addressPtr)
 		if err == nil && checkoutModifier != nil {
 			checkoutModifier.Insecure = insecure
+			checkoutModifier.logger = logger
 			checkoutModifier.EnvBasis = env
 			checkoutModifier.Regions = regions
 			checkoutModifier.Version = ""               // Version for data
@@ -182,7 +184,7 @@ func NewModifier(insecure bool, tokenPtr *string, addressPtr *string, env string
 	}
 
 	// Return the modifier
-	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}
+	newModifier := &Modifier{httpClient: httpClient, client: modClient, logical: modClient.Logical(), logger: logger, Env: "secret", EnvBasis: env, Regions: regions, Version: "", Insecure: insecure}
 	return newModifier, nil
 }
 
@@ -483,6 +485,11 @@ func (m *Modifier) getVersionSpecificRead(path string, fullPath string, versionM
 //	errors generated from reading
 func (m *Modifier) ReadData(path string) (map[string]any, error) {
 	bucket := path
+	traceCertify := m.logger != nil && memonly.IsMemonly() &&
+		path == "super-secrets/Index/TrcVault/trcplugin/trcsh.exe/Certify"
+	if traceCertify {
+		m.logger.Println("trcsh self-certification: reading Vault Certify record")
+	}
 	// Create full path
 	if len(m.SectionPath) > 0 && !strings.HasPrefix(path, "templates") && !strings.HasPrefix(path, "value-metrics") { // Template paths are not indexed -> values & super-secrets are
 		if strings.Contains(path, "values") {
@@ -602,6 +609,7 @@ processResult:
 		return nil, err
 	}
 	if data, ok := secret.Data["data"].(map[string]any); ok {
+		var addedTestedDate, addedArgosID bool
 		//
 		// TODO: Bad data cleanup.
 		// TODO: Hacking around missing lastTestedDate data.
@@ -610,6 +618,7 @@ processResult:
 			if testedDate == "" {
 				if metadata, ok := secret.Data["metadata"].(map[string]any); ok {
 					data["lastTestedDate"] = metadata["created_time"]
+					addedTestedDate = true
 				}
 			}
 		}
@@ -620,6 +629,7 @@ processResult:
 				for i := range pathParts {
 					if pathParts[i] == "argosId" {
 						data["argosId"] = pathParts[i+1]
+						addedArgosID = true
 						break
 					}
 				}
@@ -627,6 +637,9 @@ processResult:
 			}
 		}
 		if memonly.IsMemonly() && !strings.HasPrefix(path, "templates") { // Don't lock templates
+			if traceCertify {
+				m.logger.Println("trcsh self-certification: Vault record decoded")
+			}
 			for dataKey, dataValues := range data {
 				if !buildopts.BuildOptions.CheckMemLock(bucket, dataKey) {
 					continue
@@ -634,9 +647,7 @@ processResult:
 				if dataValuesSlice, isSlice := dataValues.([]any); isSlice {
 					for i, dataValues := range dataValuesSlice {
 						if dataValueString, isString := dataValues.(string); isString {
-							// Freshly decoded and exclusively owned; move
-							// erases the unlocked source after relocation.
-							if err := memprotectopts.MemProtectMove(nil, &dataValueString); err != nil {
+							if err := protectReadDataString(&dataValueString, false); err != nil {
 								return nil, err
 							}
 							dataValuesSlice[i] = dataValueString
@@ -657,7 +668,8 @@ processResult:
 						}
 					}
 				} else if dataValueString, isString := dataValues.(string); isString {
-					if err := memprotectopts.MemProtectMove(nil, &dataValueString); err != nil {
+					shared := dataKey == "lastTestedDate" && addedTestedDate || dataKey == "argosId" && addedArgosID
+					if err := protectReadDataString(&dataValueString, shared); err != nil {
 						return nil, err
 					}
 					data[dataKey] = dataValueString
@@ -688,6 +700,15 @@ processResult:
 		return nil, nil // Handle deleted, but not destroyed data from vault.
 	}
 	return nil, errors.New("could not get data from vault response")
+}
+
+func protectReadDataString(value *string, shared bool) error {
+	// Decoded one-byte strings can share Go runtime storage. Metadata and
+	// path-derived strings can also alias backing bytes we do not own.
+	if shared || len(*value) == 1 {
+		return memprotectopts.MemProtect(nil, value)
+	}
+	return memprotectopts.MemProtectMove(nil, value)
 }
 
 // ReadMapValue takes a valueMap, path, and a key and returns the corresponding value from the vault
