@@ -728,11 +728,11 @@ func AutoAuth(driverConfig *config.DriverConfig,
 			mod.Env = "rattan"
 		}
 		LogInfo(driverConfig.CoreConfig, "AutoAuth: obtaining access\n")
-		token, err := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr)
+		token, err := mod.ReadAutoAuthToken(*wantedTokenNamePtr)
 		if err != nil {
-			if strings.Contains(err.Error(), "permission denied") {
+			if errors.Is(err, helperkv.ErrAutoAuthTokenDenied) || strings.Contains(err.Error(), "permission denied") {
 				mod.Env = "sugarcane"
-				sugarToken, sugarErr := mod.ReadValue("super-secrets/tokens", *wantedTokenNamePtr+"_protected")
+				sugarToken, sugarErr := mod.ReadAutoAuthToken(*wantedTokenNamePtr + "_protected")
 				if sugarErr != nil {
 					return err
 				}
