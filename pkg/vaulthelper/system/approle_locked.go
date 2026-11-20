@@ -6,14 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 	"sync"
 	"unsafe"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/memprotectopts"
+	"github.com/trimble-oss/tierceron/pkg/vaulthelper/internal/lockedjson"
 )
-
-const maxAppRoleResponse = 1 << 20
 
 func (v *Vault) lockedAppRoleLogin(roleID, secretID string) (*string, error) {
 	if v.client.OutputCurlString() {
@@ -116,88 +114,15 @@ func appendAppRoleQuote(dst []byte, value string) ([]byte, error) {
 }
 
 func readLockedAppRoleToken(r io.Reader) (*string, error) {
-	// Prefix JSON whitespace so LockedReadAll always returns a freeable slice
-	// even when the response is empty.
-	body, err := memprotectopts.LockedReadAll(io.MultiReader(strings.NewReader(" "), io.LimitReader(r, maxAppRoleResponse+1)))
+	decoded, err := lockedjson.ReadString(r, "auth", "client_token")
 	if err != nil {
-		return nil, fmt.Errorf("read locked AppRole response: %w", err)
-	}
-	var decoded []byte
-	var allocation []byte
-	if len(body) > maxAppRoleResponse+1 {
-		err = errors.New("AppRole response exceeds 1 MiB")
-	} else {
-		decoded, allocation, err = decodeLockedAppRoleToken(body)
-	}
-	if err = errors.Join(err, memprotectopts.LockedFree(body)); err != nil {
-		return nil, errors.Join(err, memprotectopts.LockedFree(allocation))
+		return nil, fmt.Errorf("read AppRole token: %w", err)
 	}
 
 	// The separate token allocation lives until process-wide memory cleanup.
 	token := unsafe.String(unsafe.SliceData(decoded), len(decoded))
 	if err := protectMemory(nil, &token); err != nil {
-		return nil, errors.Join(err, memprotectopts.LockedFree(allocation))
+		return nil, errors.Join(err, memprotectopts.LockedFree(decoded))
 	}
 	return &token, nil
-}
-
-func decodeLockedAppRoleToken(body []byte) (decoded, allocation []byte, err error) {
-	// jsontext parses directly from bytes.Buffer's existing storage.
-	d := jsontext.NewDecoder(bytes.NewBuffer(body))
-	auth, err := lockedJSONObjectMember(d, body, "auth")
-	if err != nil || auth.Kind() != '{' {
-		return nil, nil, errors.New("invalid AppRole response auth object")
-	}
-	if _, err := d.ReadValue(); err != io.EOF {
-		return nil, nil, errors.New("unexpected data after AppRole response")
-	}
-	d = jsontext.NewDecoder(bytes.NewBuffer(auth))
-	raw, err := lockedJSONObjectMember(d, auth, "client_token")
-	if err != nil || raw.Kind() != '"' {
-		return nil, nil, errors.New("invalid AppRole response client token")
-	}
-	allocation, err = memprotectopts.LockedAlloc(len(raw))
-	if err != nil {
-		return nil, nil, fmt.Errorf("allocate locked AppRole token: %w", err)
-	}
-	decoded, err = jsontext.AppendUnquote(allocation[:0], raw)
-	if err != nil || len(decoded) == 0 {
-		return nil, allocation, errors.New("invalid AppRole response client token")
-	}
-	return decoded, allocation, nil
-}
-
-// ReadValue's slice is valid only until the next decoder operation. Save its
-// offsets and return a view into the original locked input instead.
-func lockedJSONObjectMember(d *jsontext.Decoder, input []byte, name string) (jsontext.Value, error) {
-	if d.PeekKind() != '{' {
-		return nil, errors.New("expected JSON object")
-	}
-	if _, err := d.ReadToken(); err != nil {
-		return nil, err
-	}
-	var found jsontext.Value
-	for d.PeekKind() == '"' {
-		key, err := d.ReadToken()
-		if err != nil {
-			return nil, err
-		}
-		if key.String() != name {
-			if err := d.SkipValue(); err != nil {
-				return nil, err
-			}
-			continue
-		}
-		value, err := d.ReadValue()
-		if err != nil {
-			return nil, err
-		}
-		end := d.InputOffset()
-		found = input[end-int64(len(value)) : end]
-	}
-	if d.PeekKind() != '}' {
-		return nil, errors.New("invalid JSON object")
-	}
-	_, err := d.ReadToken()
-	return found, err
 }
