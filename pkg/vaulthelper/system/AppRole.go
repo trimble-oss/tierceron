@@ -186,14 +186,11 @@ func (v *Vault) GetListApproles() (string, error) {
 	return "", fmt.Errorf("error parsing resonse for key 'data'")
 }
 
-// AppRoleLogin tries logging into the vault using app role and returns a client token on success
+// AppRoleLogin logs into Vault with an AppRole. In memonly builds it encodes
+// the request and parses successful responses in locked application buffers.
 func (v *Vault) AppRoleLogin(roleID string, secretID string) (*string, error) {
 	if memonly.IsMemonly() {
-		for _, value := range []*string{&roleID, &secretID} {
-			if err := protectMemory(nil, value); err != nil {
-				return nil, err
-			}
-		}
+		return v.lockedAppRoleLogin(roleID, secretID)
 	}
 	r := v.client.NewRequest("POST", "/v1/auth/approle/login")
 
@@ -223,11 +220,6 @@ func (v *Vault) AppRoleLogin(roleID string, secretID string) (*string, error) {
 
 	if authData, ok := jsonData["auth"].(map[string]any); ok {
 		if token, ok := authData["client_token"].(string); ok {
-			if memonly.IsMemonly() {
-				if err := protectMemory(nil, &token); err != nil {
-					return nil, err
-				}
-			}
 			return &token, nil
 		}
 		return nil, fmt.Errorf("error parsing response for key 'auth.client_token'")
