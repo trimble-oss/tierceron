@@ -312,6 +312,9 @@ func (tfmContext *TrcFlowMachineContext) vaultPersistPushRemoteChanges(
 	flowPushRemote func(flowcore.FlowContext, map[string]any) error,
 ) error {
 	tfContext := tcflowContext.(*TrcFlowContext)
+	if tfContext.ReadOnly {
+		return nil
+	}
 	tfContext.persistenceMu.Lock()
 	defer tfContext.persistenceMu.Unlock()
 
@@ -599,6 +602,7 @@ func (tfmContext *TrcFlowMachineContext) seedTrcDBFromVault(
 
 	if (kernelOrdinal > 0) &&
 		kernelopts.BuildOptions.IsKernel() &&
+		!kernelopts.BuildOptions.IsKernelZ() &&
 		tfContext.FlowHeader.FlowName() != flowcore.TierceronControllerFlow.FlowName() {
 		// If a filtered list is provide, it'll be ok to continue even in the hive...
 		// This is because we're planning to have support for "sparse" TrcDb in the hive kernel

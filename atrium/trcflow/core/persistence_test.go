@@ -35,12 +35,22 @@ func TestFlowPersistenceRejectsUnauthorizedWrites(t *testing.T) {
 		context := &flowPersistenceContext{
 			flow: &TrcFlowContext{ReadOnly: !remoteAllowed}, writeRemote: false,
 		}
+
 		if err := context.WriteRecord("example/record", map[string]any{}); err == nil {
 			t.Fatal("remote write accepted without permission")
 		}
 	}
+
 	context := &flowPersistenceContext{flow: &TrcFlowContext{ReadOnly: true}, writeRemote: true}
 	if err := context.WriteRecord("example/record", map[string]any{}); err == nil {
 		t.Fatal("remote write accepted for read-only flow")
+	}
+}
+
+func TestReadOnlyFlowDoesNotSerializeChanges(t *testing.T) {
+	machine := &TrcFlowMachineContext{}
+	context := &TrcFlowContext{ReadOnly: true}
+	if err := machine.vaultPersistPushRemoteChanges(context, nil, nil, true, nil, nil); err != nil {
+		t.Fatalf("read-only persistence: %v", err)
 	}
 }
