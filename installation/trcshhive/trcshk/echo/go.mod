@@ -5,7 +5,7 @@ go 1.27.4
 require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/trimble-oss/tierceron v1.62.2
-	github.com/trimble-oss/tierceron-core/v2 v2.12.10
+	github.com/trimble-oss/tierceron-core/v2 v2.12.11
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
 	google.golang.org/api v0.278.0
 	google.golang.org/grpc v1.85.0
