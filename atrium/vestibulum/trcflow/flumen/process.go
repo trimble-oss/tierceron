@@ -462,7 +462,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 			QueryLock:             &sync.Mutex{},
 			FlowStateLock:         &sync.RWMutex{},
 			PreviousFlowStateLock: &sync.RWMutex{},
-			ReadOnly:              false,
+			ReadOnly:              kernelopts.BuildOptions.IsKernelZ(),
 			Init:                  true,
 			Logger:                tfmContext.DriverConfig.CoreConfig.Log, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1),
 			FlowChatMsgReceiverChan: &flowChatMsgReceiverChan,
@@ -537,7 +537,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
 		// Create a flow-scoped logger with [trcdb] prefix
 		flowLogger := log.New(tfmContext.DriverConfig.CoreConfig.Log.Writer(), fmt.Sprintf("[trcdb:%s]", table.FlowHeader.FlowName()), log.LstdFlags)
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: flowLogger, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: kernelopts.BuildOptions.IsKernelZ(), Init: true, Logger: flowLogger, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
 		tableFlow := table
 		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[tableFlow.FlowHeader.TableName()]
 		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[tableFlow.FlowHeader.TableName()]
@@ -618,7 +618,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 		flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
 		// Create a flow-scoped logger with [trcdb] prefix
 		flowLogger := log.New(tfmContext.DriverConfig.CoreConfig.Log.Writer(), fmt.Sprintf("[trcdb:%s]", businessFlow.FlowHeader.FlowName()), log.LstdFlags)
-		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: flowLogger, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
+		tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: kernelopts.BuildOptions.IsKernelZ(), Init: true, Logger: flowLogger, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
 		tfContext.FlowHeader = &businessFlow.FlowHeader
 		tfContext.RemoteDataSource["flowStateController"] = flowStateControllerMap[businessFlow.FlowHeader.TableName()]
 		tfContext.RemoteDataSource["flowStateReceiver"] = flowStateReceiverMap[businessFlow.FlowHeader.TableName()]
@@ -667,7 +667,7 @@ func BootFlowMachine(flowMachineInitContext *flowcore.FlowMachineInitContext, dr
 				flowChatMsgReceiverChan := make(chan *tccore.ChatMsg)
 				// Create a flow-scoped logger with [trcdb] prefix
 				flowLogger := log.New(tfmContext.DriverConfig.CoreConfig.Log.Writer(), fmt.Sprintf("[trcdb:%s]", testFlow.FlowHeader.FlowName()), log.LstdFlags)
-				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: false, Init: true, Logger: flowLogger, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
+				tfContext := trcflowcore.TrcFlowContext{RemoteDataSource: map[string]any{}, QueryLock: &sync.Mutex{}, FlowStateLock: &sync.RWMutex{}, PreviousFlowStateLock: &sync.RWMutex{}, ReadOnly: kernelopts.BuildOptions.IsKernelZ(), Init: true, Logger: flowLogger, ContextNotifyChan: make(chan bool, 1), FlowLoadedNotifyChan: bchan.New(1), FlowChatMsgReceiverChan: &flowChatMsgReceiverChan}
 				tfContext.FlowHeader = &testFlow.FlowHeader
 				var initErr error
 				dc, tfContext.GoMod, tfContext.Vault, initErr = eUtils.InitVaultMod(dc)

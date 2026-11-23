@@ -67,6 +67,10 @@ type TrcFlowContext struct {
 
 var _ flowcore.FlowContext = (*TrcFlowContext)(nil)
 
+func (tfContext *TrcFlowContext) IsBackingStoreReadOnly() bool {
+	return tfContext.ReadOnly
+}
+
 func (tfContext *TrcFlowContext) IsInit() bool {
 	return tfContext.Init
 }

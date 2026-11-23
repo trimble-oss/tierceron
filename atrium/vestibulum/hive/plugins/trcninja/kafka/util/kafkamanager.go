@@ -31,9 +31,10 @@ type SchemaContainer struct {
 }
 
 type KafkaManager struct {
-	schemaManager   *SchemaManager
-	schemaCache     map[uint32]*SchemaContainer
-	schemaCacheLock sync.RWMutex
+	schemaManager     *SchemaManager
+	schemaCache       map[uint32]*SchemaContainer
+	schemaCacheLock   sync.RWMutex
+	registeredSchemas map[string]schemaregistry.Schema
 }
 
 // InitKafkaManager - initialize kafka with defaults.
@@ -118,6 +119,31 @@ func (kafkaManager *KafkaManager) LoadSchema(schemaSubject string, version int) 
 		return schemaregistry.Schema{}, fmt.Errorf("schemaManager is nil")
 	}
 	return kafkaManager.schemaManager.LoadSchema(schemaSubject, version)
+}
+
+func (kafkaManager *KafkaManager) RegisterSchema(subject string, schemaText string) (schemaregistry.Schema, error) {
+	if kafkaManager == nil || kafkaManager.schemaManager == nil || kafkaManager.schemaManager.SchemaClient == nil {
+		return schemaregistry.Schema{}, fmt.Errorf("schema registry client is unavailable")
+	}
+	cacheKey := subject + "\x00" + schemaText
+	kafkaManager.schemaCacheLock.RLock()
+	schema, ok := kafkaManager.registeredSchemas[cacheKey]
+	kafkaManager.schemaCacheLock.RUnlock()
+	if ok {
+		return schema, nil
+	}
+	id, err := kafkaManager.schemaManager.SchemaClient.RegisterNewSchema(subject, schemaText)
+	if err != nil {
+		return schemaregistry.Schema{}, err
+	}
+	schema = schemaregistry.Schema{Subject: subject, Schema: schemaText, ID: id}
+	kafkaManager.schemaCacheLock.Lock()
+	if kafkaManager.registeredSchemas == nil {
+		kafkaManager.registeredSchemas = make(map[string]schemaregistry.Schema)
+	}
+	kafkaManager.registeredSchemas[cacheKey] = schema
+	kafkaManager.schemaCacheLock.Unlock()
+	return schema, nil
 }
 
 func (kafkaManager *KafkaManager) EncodeSubjectMessage(schemaSubject string, version int, value map[string]interface{}) ([]byte, error) {

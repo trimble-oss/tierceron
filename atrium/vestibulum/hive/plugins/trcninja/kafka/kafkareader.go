@@ -77,6 +77,7 @@ type SeededKafkaReader struct {
 	TopicType           string // json or avro
 	ConsumerGroupID     string // tracks the consumer group ID for reconnection
 	balancers           []kgo.GroupBalancer
+	clientOptions       []kgo.Opt
 	configContext       *core.ConfigContext
 	kafkaClient         *kgo.Client
 	kafkaClientLock     sync.RWMutex // protects kafkaClient from concurrent modification
@@ -87,6 +88,8 @@ type SeededKafkaReader struct {
 	deleteTestChan      chan *KafkaTestBundle
 	HandleEventFunc     func(k map[string]any, n map[string]any)
 	HandleRecordFunc    func(record *kgo.Record, k map[string]any, n map[string]any)
+	// Raw handlers own value decoding, including encrypted payloads, and run in poll order.
+	HandleRawRecordFunc func(record *kgo.Record) error
 	RetryNetworkErrors  bool
 	isTestReader        atomic.Bool    // tracks if this is a test reader or event handler; converted to atomic for thread safety
 	ninjaTestClosed     atomic.Bool    // tracks if this reader's ninja test has been closed; replaces plain bool
@@ -275,6 +278,10 @@ func createKafkaReaderConfigWithBalancers(configContext *core.ConfigContext, top
 }
 
 func createKafkaReaderConfigWithReadiness(configContext *core.ConfigContext, topicName string, balancers []kgo.GroupBalancer, ready func(), consumerGroupID ...string) (*kgo.Client, string, error) {
+	return createKafkaReaderConfigWithOptions(configContext, topicName, balancers, ready, nil, consumerGroupID...)
+}
+
+func createKafkaReaderConfigWithOptions(configContext *core.ConfigContext, topicName string, balancers []kgo.GroupBalancer, ready func(), options []kgo.Opt, consumerGroupID ...string) (*kgo.Client, string, error) {
 	if configContext == nil || configContext.Config == nil {
 		return nil, "", errors.New("configContext.Config is nil")
 	}
@@ -360,6 +367,7 @@ func createKafkaReaderConfigWithReadiness(configContext *core.ConfigContext, top
 	if len(balancers) > 0 {
 		clientOpts = append(clientOpts, kgo.Balancers(balancers...))
 	}
+	clientOpts = append(clientOpts, options...)
 	var client *kgo.Client
 	var configured chan struct{}
 	if ready != nil {
@@ -492,6 +500,19 @@ func NewKafkaReaderWithConsumerGroupAndBalancersAndConfig(configContext *core.Co
 	return newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext, topic, consumerGroupID, balancers, false, nil, ignoreCacheFail...)
 }
 
+func NewKafkaRecordReaderWithConfig(configContext *core.ConfigContext, topic []string, consumerGroupID string, balancers []kgo.GroupBalancer, resetOffset kgo.Offset, handler func(*kgo.Record) error) (*SeededKafkaReader, error) {
+	if handler == nil {
+		return nil, errors.New("raw record handler is nil")
+	}
+	flowTopicsClosed.Store(false)
+	reader, err := newKafkaReaderInternalWithOptions(configContext, topic, consumerGroupID, balancers, false, nil, []kgo.Opt{kgo.ConsumeResetOffset(resetOffset)}, true)
+	if err != nil {
+		return nil, err
+	}
+	reader.HandleRawRecordFunc = handler
+	return reader, nil
+}
+
 // newKafkaReaderInternal -- internal function to create kafka readers with specific cache keys
 func newKafkaReaderInternal(configContext *core.ConfigContext, topic []string, isTestReader bool, testReadyWG *sync.WaitGroup, ignoreCacheFail ...bool) (*SeededKafkaReader, error) {
 	return newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext, topic, "", nil, isTestReader, testReadyWG, ignoreCacheFail...)
@@ -502,6 +523,10 @@ func newKafkaReaderInternalWithConsumerGroup(configContext *core.ConfigContext, 
 }
 
 func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.ConfigContext, topic []string, consumerGroupID string, balancers []kgo.GroupBalancer, isTestReader bool, testReadyWG *sync.WaitGroup, ignoreCacheFail ...bool) (*SeededKafkaReader, error) {
+	return newKafkaReaderInternalWithOptions(configContext, topic, consumerGroupID, balancers, isTestReader, testReadyWG, nil, ignoreCacheFail...)
+}
+
+func newKafkaReaderInternalWithOptions(configContext *core.ConfigContext, topic []string, consumerGroupID string, balancers []kgo.GroupBalancer, isTestReader bool, testReadyWG *sync.WaitGroup, options []kgo.Opt, ignoreCacheFail ...bool) (*SeededKafkaReader, error) {
 	// Defensive: Validate input
 	if len(topic) == 0 {
 		return nil, errors.New("topic array is empty")
@@ -517,6 +542,9 @@ func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.Con
 	cacheKey := GetCacheKey(topic[0], isTestReader)
 	if cached, ok := kafkaReaderCache.Load(cacheKey); ok {
 		reader := cached.(*SeededKafkaReader)
+		if len(options) > 0 && !reader.closeStarted.Load() && !reader.channelsClosed.Load() {
+			return nil, fmt.Errorf("cannot reuse Kafka reader for topic %s with new consumer options; close the existing reader first", topic[0])
+		}
 		// For non-test (handler) readers, don't check global flowTopicsClosed during cache reuse.
 		// The global flag is a signal to stop reading at engine level, not a cache invalidation.
 		// Handlers should remain reusable as long as they're not explicitly closed.
@@ -589,7 +617,7 @@ func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.Con
 			})
 		}
 	}
-	r, groupID, err := createKafkaReaderConfigWithReadiness(configContext, topic[0], balancers, ready, consumerGroupID)
+	r, groupID, err := createKafkaReaderConfigWithOptions(configContext, topic[0], balancers, ready, options, consumerGroupID)
 	if err != nil {
 		return nil, err
 	}
@@ -612,6 +640,7 @@ func newKafkaReaderInternalWithConsumerGroupAndBalancers(configContext *core.Con
 		TopicType:       topicType,
 		ConsumerGroupID: groupID,
 		balancers:       append([]kgo.GroupBalancer(nil), balancers...),
+		clientOptions:   append([]kgo.Opt(nil), options...),
 		configContext:   configContext,
 		kafkaClient:     r,
 		CacheKey:        cacheKey,
@@ -1116,7 +1145,7 @@ func (r *SeededKafkaReader) recreateKafkaReader() error {
 	}
 
 	// Create new client using shared helper with the same consumer group ID
-	newClient, _, err := createKafkaReaderConfigWithBalancers(r.configContext, r.TopicName, r.balancers, r.ConsumerGroupID)
+	newClient, _, err := createKafkaReaderConfigWithOptions(r.configContext, r.TopicName, r.balancers, nil, r.clientOptions, r.ConsumerGroupID)
 	if err != nil {
 		etlcore.LogError(fmt.Sprintf("Failed to recreate kafka client for topic %s: %v", r.TopicName, err))
 		return fmt.Errorf("failed to create kafka client config: %w", err)
@@ -1138,6 +1167,45 @@ func processRecordsBeforeCommit(records []*kgo.Record, process func(*kgo.Record)
 	}
 	processing.Wait()
 	return commit(records...)
+}
+
+func processRawRecordsBeforeCommit(records []*kgo.Record, process func(*kgo.Record) error, commit func(...*kgo.Record) error) error {
+	for _, record := range records {
+		if err := process(record); err != nil {
+			return err
+		}
+		if err := commit(record); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *SeededKafkaReader) processRawRecord(record *kgo.Record) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("panic processing topic %s partition %d offset %d: %v", record.Topic, record.Partition, record.Offset, recovered)
+		}
+	}()
+	return r.HandleRawRecordFunc(record)
+}
+
+func (r *SeededKafkaReader) retryRecordOperation(client *kgo.Client, record *kgo.Record, operation func() error) error {
+	for !r.isReaderClosing() && client.Context().Err() == nil {
+		if err := operation(); err == nil {
+			return nil
+		} else {
+			r.logFlow("Record operation failed; retrying without committing: topic=%s partition=%d offset=%d error=%v", record.Topic, record.Partition, record.Offset, err)
+		}
+		timer := time.NewTimer(time.Second)
+		select {
+		case <-client.Context().Done():
+			timer.Stop()
+			return client.Context().Err()
+		case <-timer.C:
+		}
+	}
+	return kgo.ErrClientClosed
 }
 
 func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, testReadyWG *sync.WaitGroup) {
@@ -1452,6 +1520,25 @@ func (r *SeededKafkaReader) KafkaTestEngine(kafkaErrChan chan KafkaErrMessage, t
 		}
 		if polledRecords {
 			if len(processedRecords) > 0 {
+				if r.HandleRawRecordFunc != nil {
+					err := processRawRecordsBeforeCommit(processedRecords, func(record *kgo.Record) error {
+						return r.retryRecordOperation(kafkaClient, record, func() error { return r.processRawRecord(record) })
+					}, func(records ...*kgo.Record) error {
+						record := records[0]
+						return r.retryRecordOperation(kafkaClient, record, func() error {
+							commitCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+							defer cancel()
+							return kafkaClient.CommitRecords(commitCtx, record)
+						})
+					})
+					kafkaClient.AllowRebalance()
+					r.recordBatchLock.Unlock()
+					if err != nil {
+						r.logFlow("Raw record processing stopped: %v", err)
+						break
+					}
+					continue
+				}
 				r.messageProcessingWg.Add(len(processedRecords))
 				err := processRecordsBeforeCommit(processedRecords, func(record *kgo.Record) {
 					defer r.messageProcessingWg.Done()

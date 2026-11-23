@@ -16,8 +16,8 @@ github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsK
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=
 github.com/rogpeppe/go-internal v1.14.1/go.mod h1:MaRKkUm5W0goXpeCfT7UZI6fk/L7L7so1lCWt35ZSgc=
-github.com/trimble-oss/tierceron-core/v2 v2.12.10 h1:asAbm+KLB8rfalSNSigL3n2AGjYgw38HhfGB2UNgx3c=
-github.com/trimble-oss/tierceron-core/v2 v2.12.10/go.mod h1:fttib/4PewGH3WQfJwHgwxo0CBV5ej+msoQRIBXWwq8=
+github.com/trimble-oss/tierceron-core/v2 v2.12.11 h1:Y2/aQWYZklr2vqN0oLG9SezBfYKFr/IJivtV3l2xfgA=
+github.com/trimble-oss/tierceron-core/v2 v2.12.11/go.mod h1:fttib/4PewGH3WQfJwHgwxo0CBV5ej+msoQRIBXWwq8=
 github.com/trimble-oss/tierceron-nute-core v1.0.11 h1:K2jS+azEML6xPt7376/L6hXgM8UUBbcZU1/Qu9lRzcs=
 github.com/trimble-oss/tierceron-nute-core v1.0.11/go.mod h1:8VKrBc1wAlcWAh7bwXx7gZ0zkvGaDYmvfGtSB955OWI=
 golang.org/x/net v0.60.0 h1:79p50tfZlm0J9YfoDsSi639qSXNGVwEzOPLCxM2FsYU=

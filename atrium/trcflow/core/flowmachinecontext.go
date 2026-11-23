@@ -858,7 +858,7 @@ func (tfmContext *TrcFlowMachineContext) SyncTableCycle(tcflowContext flowcore.F
 				tfmContext.DriverConfig.CoreConfig.Log.Println("GetDFSPathName returned an empty index path value.")
 				return
 			}
-			DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfstat, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, true)
+			DeliverStatistic(tfmContext, tfContext, tfContext.GoMod, dfstat, "flume", tenantIndexPath, tenantDFSIdPath, tfmContext.DriverConfig.CoreConfig.Log, !tfContext.ReadOnly)
 			tfmContext.DriverConfig.CoreConfig.Log.Printf("Delivered dataflow statistic: %s\n", dfstat.Name)
 		} else {
 			tfmContext.Log("deliver stat ctx extraction error: "+tfContext.FlowHeader.TableName(), err)
@@ -1633,7 +1633,7 @@ func (tfmContext *TrcFlowMachineContext) PathToTableRowHelper(tcflowContext flow
 	}
 
 	if region, exists := rowDataMap["region"]; exists {
-		if kernelopts.BuildOptions.IsKernel() && !eUtils.IsRegionSupported(tfmContext.DriverConfig, region) {
+		if kernelopts.BuildOptions.IsKernel() && !kernelopts.BuildOptions.IsKernelZ() && !eUtils.IsRegionSupported(tfmContext.DriverConfig, region) {
 			return nil, &SkipRowError{
 				Reason: fmt.Sprintf("Region mismatch: %s (row) vs %v (current)",
 					region, tfmContext.DriverConfig.CoreConfig.Regions),
