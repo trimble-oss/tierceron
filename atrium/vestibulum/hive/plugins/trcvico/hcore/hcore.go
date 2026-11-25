@@ -743,7 +743,7 @@ func AuthenticateIncoming(ctx context.Context) (context.Context, error) {
 	if identity.HasElevatedUserAuthorization(ctx) {
 		return ctx, nil
 	}
-	return trcshtalkcommon.AuthenticateIncoming(ctx, validateIncomingTTBToken, trcshtalkcommon.ConfiguredUserTokenValidator(configContext))
+	return trcshtalkcommon.AuthenticateIncoming(ctx, validateIncomingTTBToken, trcshtalkcommon.ConfiguredOIDCIDTokenValidator(configContext))
 }
 
 func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
@@ -1846,8 +1846,8 @@ func Init(pluginName string, properties *map[string]any) {
 		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
 	}
-	if validator, ok := identity.UserTokenValidatorFromProperties(*properties); ok {
-		(*configContext.Config)[identity.UserTokenValidatorProperty] = validator
+	if validator, ok := identity.OIDCIDTokenValidatorFromProperties(*properties); ok {
+		(*configContext.Config)[identity.OIDCIDTokenValidatorProperty] = validator
 	}
 	trcshtalkcommon.SetHubCommandHandler(func(ctx context.Context, messageID string, data []string) (string, error) {
 		return ExecuteLocalModelRoute(ctx, messageID, "", data, localModelRouteTranslator)

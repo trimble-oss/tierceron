@@ -273,8 +273,8 @@ func GetConfigPaths(pluginName string) []string {
 }
 
 func Init(pluginName string, properties *map[string]interface{}) {
-	if provider, ok := identity.UserTokenProviderFromProperties(*properties); ok {
-		common.SetUserTokenProvider(provider)
+	if provider, ok := identity.OIDCIDTokenProviderFromProperties(*properties); ok {
+		common.SetOIDCIDTokenProvider(provider)
 	}
 	ctx, err := common.InitTrcshTalk(pluginName, properties, start, receiver, chatReceiver)
 	if ctx == nil {

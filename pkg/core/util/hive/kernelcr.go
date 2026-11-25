@@ -540,7 +540,7 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 	}
 }
 
-func talkctlUserTokenValidator(driverConfig *config.DriverConfig) func(context.Context, string) error {
+func talkctlOIDCIDTokenValidator(driverConfig *config.DriverConfig) func(context.Context, string) error {
 	return func(ctx context.Context, token string) error {
 		address := driverConfig.CoreConfig.TokenCache.VaultAddressPtr
 		if address == nil || *address == "" {
@@ -551,7 +551,7 @@ func talkctlUserTokenValidator(driverConfig *config.DriverConfig) func(context.C
 			return fmt.Errorf("%w: Vault connection failed", identity.ErrUserAuthUnavailable)
 		}
 		defer vault.Close()
-		return vault.ValidateUserToken(ctx, token)
+		return vault.ValidateOIDCIDToken(ctx, token)
 	}
 }
 
@@ -601,12 +601,12 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
 	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 	if service == "trcshtalk" && kernelopts.BuildOptions.IsKernelZ() {
-		provider := eUtils.TalkctlUserTokenProvider(driverConfig)
-		(*serviceConfig)[identity.UserTokenProviderProperty] = provider
+		provider := eUtils.TalkctlOIDCIDTokenProvider(driverConfig)
+		(*serviceConfig)[identity.OIDCIDTokenProviderProperty] = provider
 	}
 	if service == "vico" {
-		validator := talkctlUserTokenValidator(driverConfig)
-		(*serviceConfig)[identity.UserTokenValidatorProperty] = validator
+		validator := talkctlOIDCIDTokenValidator(driverConfig)
+		(*serviceConfig)[identity.OIDCIDTokenValidatorProperty] = validator
 	}
 	(*serviceConfig)["kernelID"] = pluginHandler.KernelId
 
@@ -1029,12 +1029,12 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
 			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
 			if service == "trcshtalk" && kernelopts.BuildOptions.IsKernelZ() {
-				provider := eUtils.TalkctlUserTokenProvider(driverConfig)
-				serviceConfig[identity.UserTokenProviderProperty] = provider
+				provider := eUtils.TalkctlOIDCIDTokenProvider(driverConfig)
+				serviceConfig[identity.OIDCIDTokenProviderProperty] = provider
 			}
 			if service == "vico" {
-				validator := talkctlUserTokenValidator(driverConfig)
-				serviceConfig[identity.UserTokenValidatorProperty] = validator
+				validator := talkctlOIDCIDTokenValidator(driverConfig)
+				serviceConfig[identity.OIDCIDTokenValidatorProperty] = validator
 			}
 			serviceConfig["kernelID"] = pluginHandler.KernelId
 			go pluginHandler.handleErrors(driverConfig)

@@ -45,7 +45,7 @@ func SendHubCommand(ctx context.Context, messageID string, prompt string) (strin
 	}
 	hubCommandMu.RLock()
 	client := hubCommandClient
-	provider := userTokenProvider
+	provider := oidcIDTokenProvider
 	hubCommandMu.RUnlock()
 	if client == nil {
 		return "", status.Error(codes.Unavailable, "TrcshTalk hub client is not running")
@@ -60,9 +60,9 @@ func SendHubCommand(ctx context.Context, messageID string, prompt string) (strin
 	if token == "" {
 		return "", status.Error(codes.Unauthenticated, "Talkctl requires a user session; run su")
 	}
-	callCtx := withUserToken(ctx, token)
+	callCtx := withOIDCIDToken(ctx, token)
 	result, err := client(callCtx, messageID, prompt)
-	if !UserTokenExpired(err) {
+	if !OIDCIDTokenExpired(err) {
 		return result, err
 	}
 	token, err = provider(ctx, true)
@@ -72,11 +72,11 @@ func SendHubCommand(ctx context.Context, messageID string, prompt string) (strin
 	if token == "" {
 		return "", status.Error(codes.Unauthenticated, "user reauthentication returned no token")
 	}
-	return client(withUserToken(ctx, token), messageID, prompt)
+	return client(withOIDCIDToken(ctx, token), messageID, prompt)
 }
 
-func withUserToken(ctx context.Context, token string) context.Context {
-	return withOutgoingMetadata(ctx, identity.UserTokenMetadataKey, token)
+func withOIDCIDToken(ctx context.Context, token string) context.Context {
+	return withOutgoingMetadata(ctx, identity.OIDCIDTokenMetadataKey, token)
 }
 
 type hubCommandServer interface {
@@ -98,7 +98,7 @@ func (service *hubCommandService) RunCommand(ctx context.Context, request *pb.Di
 	}
 	var err error
 	if !identity.HasElevatedUserAuthorization(ctx) {
-		ctx, err = AuthenticateIncoming(ctx, workload, ConfiguredUserTokenValidator(service.config))
+		ctx, err = AuthenticateIncoming(ctx, workload, ConfiguredOIDCIDTokenValidator(service.config))
 		if err != nil {
 			return nil, err
 		}

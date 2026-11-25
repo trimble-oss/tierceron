@@ -12,15 +12,15 @@ import (
 	"github.com/trimble-oss/tierceron/pkg/oauth"
 )
 
-// ValidateUserToken verifies elevated access using Vault's JWT and role policy checks.
-func (v *Vault) ValidateUserToken(ctx context.Context, token string) error {
+// ValidateOIDCIDToken verifies elevated access using Vault's JWT and role policy checks.
+func (v *Vault) ValidateOIDCIDToken(ctx context.Context, token string) error {
 	claims, err := oauth.ParseIDToken(token)
 	if err != nil || claims.ExpiresAt == 0 {
-		return fmt.Errorf("invalid user token")
+		return fmt.Errorf("invalid OIDC ID token")
 	}
 	// Unverified expiry is only a reauthentication hint, never authorization.
 	if claims.ExpiresAt <= time.Now().Unix() {
-		return identity.ErrUserTokenExpired
+		return identity.ErrOIDCIDTokenExpired
 	}
 	if memonly.IsMemonly() {
 		if err := protectMemory(nil, &token); err != nil {
@@ -34,7 +34,7 @@ func (v *Vault) ValidateUserToken(ctx context.Context, token string) error {
 		var response *api.ResponseError
 		if errors.As(err, &response) && (response.StatusCode == 400 || response.StatusCode == 403) {
 			if claims.ExpiresAt <= time.Now().Unix() {
-				return identity.ErrUserTokenExpired
+				return identity.ErrOIDCIDTokenExpired
 			}
 			return fmt.Errorf("user authentication denied")
 		}

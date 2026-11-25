@@ -319,7 +319,7 @@ func oauthKernelZAuth(driverConfig *config.DriverConfig, kzConfig *kernelZConfig
 		if userIdentity == nil || userIdentity.IDToken == "" {
 			return "", "", "", fmt.Errorf("authentication returned no user identity")
 		}
-		if err := driverConfig.CoreConfig.TokenCache.AddToken(identity.UserTokenCacheKey, &userIdentity.IDToken); err != nil {
+		if err := driverConfig.CoreConfig.TokenCache.AddToken(identity.OIDCIDTokenCacheKey, &userIdentity.IDToken); err != nil {
 			return "", "", "", err
 		}
 	}
@@ -363,7 +363,7 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string, for
 	if !alwaysReauth {
 		existingCreds := driverConfig.CoreConfig.TokenCache.GetRole(cacheKey)
 		identityReady := targetRole != "trcshunrestricted"
-		if token := driverConfig.CoreConfig.TokenCache.GetToken(identity.UserTokenCacheKey); targetRole == "trcshunrestricted" && token != nil {
+		if token := driverConfig.CoreConfig.TokenCache.GetToken(identity.OIDCIDTokenCacheKey); targetRole == "trcshunrestricted" && token != nil {
 			claims, err := oauth.ParseIDToken(*token)
 			identityReady = err == nil && claims.ExpiresAt > time.Now().Unix()
 		}
@@ -388,7 +388,7 @@ func KernelZOAuthForRole(driverConfig *config.DriverConfig, roleName string, for
 	publishedIdentity := false
 	defer func() {
 		if targetRole == "trcshunrestricted" && !publishedIdentity {
-			driverConfig.CoreConfig.TokenCache.RemoveToken(identity.UserTokenCacheKey)
+			driverConfig.CoreConfig.TokenCache.RemoveToken(identity.OIDCIDTokenCacheKey)
 		}
 	}()
 	roleID, secretID, vaultHost, oauthErr := oauthKernelZAuth(driverConfig, kzConfig, roleName, forceLoginPrompt, requestContexts...)
