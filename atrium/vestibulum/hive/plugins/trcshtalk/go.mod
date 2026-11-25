@@ -1,10 +1,13 @@
 module github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk
 
+replace github.com/trimble-oss/tierceron-core/v2 => ../../../../../../tierceron-core
+
 go 1.27.4
 
 require (
-	github.com/trimble-oss/tierceron-core/v2 v2.12.11
+	github.com/trimble-oss/tierceron-core/v2 v2.12.12
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260817212433-ac3dfec99bb1
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v2 v2.4.0
@@ -19,7 +22,6 @@ require (
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260817212433-ac3dfec99bb1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
