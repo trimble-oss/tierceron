@@ -305,6 +305,7 @@ func ProcessTrcshTalkRequestGeneric(
 	}
 	callCtx = WithHubClientPodOutgoingContext(callCtx, ctx)
 	callCtx = WithHubClientStatefulSetOutgoingContext(callCtx, ctx)
+	callCtx = withOutgoingMetadata(callCtx, HubClientRegionMetadataKey, NormalizeRegion(ctx.Region))
 	diagRes, err := invokeDiagnostics(client, callCtx, diagReq)
 	if err != nil {
 		ctx.Log.Printf("ProcessTrcshTalkRequestGeneric: bad response: %v\n", err)

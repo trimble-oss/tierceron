@@ -16,6 +16,7 @@ import (
 	"time"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/identity"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -28,10 +29,12 @@ func preserveHubCommandHooks(t *testing.T) {
 	t.Helper()
 	hubCommandMu.RLock()
 	savedHandler, savedClient := hubCommandHandler, hubCommandClient
+	savedProvider := oidcIDTokenProvider
 	hubCommandMu.RUnlock()
 	t.Cleanup(func() {
 		SetHubCommandHandler(savedHandler)
 		SetHubCommandClient(savedClient)
+		SetOIDCIDTokenProvider(savedProvider)
 	})
 }
 
@@ -77,7 +80,15 @@ func startCommandTestHub(t *testing.T, handler func(context.Context, string, []s
 		Certificates: []tls.Certificate{{Certificate: [][]byte{certBytes}, PrivateKey: key}},
 		MinVersion:   tls.VersionTLS12,
 	})))
-	hubConfig := &tccore.ConfigContext{Config: &map[string]any{CfgTrcshTalkMode: ModeHub, CfgTTBToken: "test-token"}}
+	hubConfig := &tccore.ConfigContext{Config: &map[string]any{
+		CfgTrcshTalkMode: ModeHub, CfgTTBToken: "test-token",
+		identity.OIDCIDTokenValidatorProperty: func(_ context.Context, token string) error {
+			if token != "test-oidc-id-token" {
+				return status.Error(codes.Unauthenticated, "invalid OIDC ID token")
+			}
+			return nil
+		},
+	}}
 	pb.RegisterTrcshTalkServiceServer(server, &vicoDiagnosticTestServer{service: &hubCommandService{config: hubConfig}})
 	go func() { _ = server.Serve(listener) }()
 	t.Cleanup(func() {
@@ -114,7 +125,7 @@ func TestHubCommandTransportPreservesContextAndCorrelation(t *testing.T) {
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	result, err := RunHubCommand(ctx, clientConfig, "shell-command-1", "inspect worker")
+	result, err := RunHubCommand(withOIDCIDToken(ctx, "test-oidc-id-token"), clientConfig, "shell-command-1", "inspect worker")
 	if err != nil || result != "first\nsecond" {
 		t.Fatalf("command failed: result=%q err=%v", result, err)
 	}
@@ -123,6 +134,7 @@ func TestHubCommandTransportPreservesContextAndCorrelation(t *testing.T) {
 		t.Fatalf("incorrect command envelope: %#v", command)
 	}
 	for key, expected := range map[string]string{
+		identity.OIDCIDTokenMetadataKey: "test-oidc-id-token",
 		TTBTokenMetadataKey:             "test-token",
 		HubClientPodMetadataKey:         "trcshz-session",
 		HubClientStatefulSetMetadataKey: "trcshz-session",
@@ -141,7 +153,10 @@ func TestHubCommandRejectsInvalidRequests(t *testing.T) {
 		t.Error("invalid command reached the router")
 		return "", nil
 	})
-	service := &hubCommandService{config: &tccore.ConfigContext{Config: &map[string]any{CfgTrcshTalkMode: ModeHub, CfgTTBToken: "test-token"}}}
+	service := &hubCommandService{config: &tccore.ConfigContext{Config: &map[string]any{
+		CfgTrcshTalkMode: ModeHub, CfgTTBToken: "test-token",
+		identity.OIDCIDTokenValidatorProperty: func(context.Context, string) error { return nil },
+	}}}
 	for _, test := range []struct {
 		name       string
 		missingKey string
@@ -149,15 +164,13 @@ func TestHubCommandRejectsInvalidRequests(t *testing.T) {
 		prompt     string
 		wantCode   codes.Code
 	}{
-		{name: "missing token", missingKey: TTBTokenMetadataKey, messageID: "command-1", prompt: "inspect worker", wantCode: codes.Unauthenticated},
-		{name: "missing client", missingKey: HubClientPodMetadataKey, messageID: "command-1", prompt: "inspect worker", wantCode: codes.PermissionDenied},
-		{name: "missing group", missingKey: HubClientStatefulSetMetadataKey, messageID: "command-1", prompt: "inspect worker", wantCode: codes.PermissionDenied},
-		{name: "missing deployments", missingKey: SupportedDeploymentsMetadataKey, messageID: "command-1", prompt: "inspect worker", wantCode: codes.PermissionDenied},
+		{name: "workload cannot elevate", missingKey: identity.OIDCIDTokenMetadataKey, messageID: "command-1", prompt: "inspect worker", wantCode: codes.PermissionDenied},
 		{name: "missing ID", prompt: "inspect worker", wantCode: codes.InvalidArgument},
 		{name: "missing command", messageID: "command-1", wantCode: codes.InvalidArgument},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			md := metadata.Pairs(TTBTokenMetadataKey, "test-token", HubClientPodMetadataKey, "shell-session", HubClientStatefulSetMetadataKey, "shell-session", SupportedDeploymentsMetadataKey, "trcshtalk,talkctl")
+			md.Set(identity.OIDCIDTokenMetadataKey, "test-oidc-id-token")
 			md.Delete(test.missingKey)
 			ctx := metadata.NewIncomingContext(context.Background(), md)
 			_, err := service.RunCommand(ctx, &pb.DiagnosticRequest{MessageId: test.messageID, Data: []string{test.prompt}})
@@ -196,6 +209,7 @@ func TestSendHubCommandRequiresRunningClient(t *testing.T) {
 	SetHubCommandClient(func(ctx context.Context, id string, prompt string) (string, error) {
 		return id + ":" + prompt, nil
 	})
+	SetOIDCIDTokenProvider(func(context.Context, bool) (string, error) { return "test-oidc-id-token", nil })
 	result, err := SendHubCommand(context.Background(), "command-1", "inspect worker")
 	if err != nil || result != "command-1:inspect worker" {
 		t.Fatalf("registered client was not used: %q %v", result, err)

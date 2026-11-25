@@ -25,6 +25,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/plugincoreopts"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/identity"
 	ttsdk "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk"
 	trcshtalkttcore "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore"
 	trcshtalkcommon "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore/common"
@@ -58,6 +59,8 @@ var (
 	localModelRoutePromptResolver = defaultRouter.ResolveLoggingPrompt
 	localModelRouteTranslator     func(messageID string, routingResults string) (*LocalModelRouteExecution, error)
 	localModelRouteAuthorizer     = defaultLocalModelRouteAuthorizer
+	localModelRouteExecutor       func(context.Context, *LocalModelRouteExecution) (string, error)
+	chatPromptExecutor            func(context.Context, string, string) (string, error)
 	localModelReadyHook           = func(*tccore.ConfigContext) error { return defaultRouter.Train() }
 )
 
@@ -92,12 +95,14 @@ type proxyRequestEnvelope struct {
 	messageID         string
 	targetPlugins     []string
 	serializedRequest string
+	region            string
 }
 
 type proxyResponseTracker struct {
 	mu        sync.Mutex
 	expected  int
 	responses []string
+	sources   map[string]struct{}
 	complete  chan struct{}
 	closed    bool
 }
@@ -114,10 +119,25 @@ func (tracker *proxyResponseTracker) setExpected(expected int) {
 }
 
 func (tracker *proxyResponseTracker) addResponse(response string) bool {
+	return tracker.addResponseFromSource("", response)
+}
+
+func (tracker *proxyResponseTracker) addResponseFromSource(source, response string) bool {
 	tracker.mu.Lock()
 	defer tracker.mu.Unlock()
+	if source != "" {
+		if _, exists := tracker.sources[source]; exists {
+			return true
+		}
+	}
 	if tracker.closed {
 		return false
+	}
+	if source != "" {
+		if tracker.sources == nil {
+			tracker.sources = make(map[string]struct{})
+		}
+		tracker.sources[source] = struct{}{}
 	}
 	tracker.responses = append(tracker.responses, response)
 	tracker.completeIfReady()
@@ -158,9 +178,11 @@ type proxyRequestBroker struct {
 type hubClientHost struct {
 	supportedPlugins  map[string]struct{}
 	statefulSetID     string
+	podID             string
 	lastSeen          time.Time
 	activePolls       int
 	directiveVersions map[string]uint64
+	region            string
 }
 
 type proxyDirective struct {
@@ -183,8 +205,12 @@ func newProxyRequestBroker() *proxyRequestBroker {
 	}
 }
 
-func hubClientDeliveryKey(statefulSetID string, podID string) string {
-	return strings.TrimSpace(statefulSetID) + "/" + strings.TrimSpace(podID)
+func hubClientDeliveryKey(statefulSetID string, podID string, regions ...string) string {
+	key := strings.TrimSpace(statefulSetID) + "/" + strings.TrimSpace(podID)
+	if len(regions) > 0 && strings.TrimSpace(regions[0]) != "" {
+		key = strings.TrimSpace(regions[0]) + "/" + key
+	}
+	return key
 }
 
 func proxyRequestQueueKey(targetPlugins []string) string {
@@ -199,10 +225,30 @@ func proxyRequestQueueKey(targetPlugins []string) string {
 func (broker *proxyRequestBroker) enqueue(request *proxyRequestEnvelope) {
 	broker.mu.Lock()
 	defer broker.mu.Unlock()
-	key := proxyRequestQueueKey(request.targetPlugins)
+	key := request.region + ":" + proxyRequestQueueKey(request.targetPlugins)
 	broker.queues[key] = append(broker.queues[key], request)
 	close(broker.changed)
 	broker.changed = make(chan struct{})
+}
+
+func (broker *proxyRequestBroker) removeQueued(request *proxyRequestEnvelope) {
+	broker.mu.Lock()
+	defer broker.mu.Unlock()
+	for _, queues := range []map[string][]*proxyRequestEnvelope{broker.queues, broker.deliveryQueues} {
+		for key, queue := range queues {
+			remaining := queue[:0]
+			for _, pending := range queue {
+				if pending != request {
+					remaining = append(remaining, pending)
+				}
+			}
+			if len(remaining) == 0 {
+				delete(queues, key)
+			} else {
+				queues[key] = remaining
+			}
+		}
+	}
 }
 
 func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope, hasLocal bool) int {
@@ -216,14 +262,14 @@ func (broker *proxyRequestBroker) enqueueFanout(request *proxyRequestEnvelope, h
 			delete(broker.deliveryQueues, deliveryKey)
 			continue
 		}
-		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) {
+		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) || request.region != "" && request.region != host.region {
 			continue
 		}
 		broker.deliveryQueues[deliveryKey] = append(broker.deliveryQueues[deliveryKey], request)
 		deliveries++
 	}
 	if deliveries == 0 && !hasLocal {
-		key := proxyRequestQueueKey(request.targetPlugins)
+		key := request.region + ":" + proxyRequestQueueKey(request.targetPlugins)
 		broker.queues[key] = append(broker.queues[key], request)
 	}
 	close(broker.changed)
@@ -261,8 +307,8 @@ func (broker *proxyRequestBroker) enqueueToPod(targetKernelID string, request *p
 			delete(broker.deliveryQueues, candidateKey)
 			continue
 		}
-		_, podID, found := strings.Cut(candidateKey, "/")
-		if !found || !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) || !kernelIDMatchesPod(targetKernelID, podID) {
+		if !proxyRequestSupported(request.targetPlugins, host.supportedPlugins) || !kernelIDMatchesPod(targetKernelID, host.podID) ||
+			request.region != "" && request.region != host.region {
 			continue
 		}
 		if deliveryKey != "" {
@@ -288,17 +334,21 @@ func (broker *proxyRequestBroker) registerHost(hostID string, statefulSetID stri
 	broker.registerHostLocked(hostID, statefulSetID, supportedPlugins)
 }
 
-func (broker *proxyRequestBroker) registerHostLocked(hostID string, statefulSetID string, supportedPlugins map[string]struct{}) string {
+func (broker *proxyRequestBroker) registerHostLocked(hostID string, statefulSetID string, supportedPlugins map[string]struct{}, regions ...string) string {
 	if hostID == "" || statefulSetID == "" || len(supportedPlugins) == 0 {
 		return ""
 	}
-	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID)
+	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID, regions...)
 	host := broker.hosts[deliveryKey]
 	if host.directiveVersions == nil {
 		host.directiveVersions = make(map[string]uint64)
 	}
 	host.supportedPlugins = supportedPlugins
 	host.statefulSetID = statefulSetID
+	host.podID = hostID
+	if len(regions) > 0 {
+		host.region = regions[0]
+	}
 	host.lastSeen = time.Now()
 	for directiveKey, directive := range broker.directives {
 		if proxyRequestSupported(directive.request.targetPlugins, supportedPlugins) && host.directiveVersions[directiveKey] < directive.version {
@@ -312,10 +362,10 @@ func (broker *proxyRequestBroker) registerHostLocked(hostID string, statefulSetI
 	return deliveryKey
 }
 
-func (broker *proxyRequestBroker) beginHostPoll(hostID string, statefulSetID string, supportedPlugins map[string]struct{}) string {
+func (broker *proxyRequestBroker) beginHostPoll(hostID string, statefulSetID string, supportedPlugins map[string]struct{}, regions ...string) string {
 	broker.mu.Lock()
 	defer broker.mu.Unlock()
-	deliveryKey := broker.registerHostLocked(hostID, statefulSetID, supportedPlugins)
+	deliveryKey := broker.registerHostLocked(hostID, statefulSetID, supportedPlugins, regions...)
 	if deliveryKey != "" {
 		host := broker.hosts[deliveryKey]
 		host.activePolls++
@@ -376,8 +426,8 @@ func (broker *proxyRequestBroker) enqueueDirective(directiveKey string, request 
 	return deliveries
 }
 
-func (broker *proxyRequestBroker) dequeue(ctx context.Context, hostID string, statefulSetID string, supportedPlugins map[string]struct{}) (*proxyRequestEnvelope, error) {
-	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID)
+func (broker *proxyRequestBroker) dequeue(ctx context.Context, hostID string, statefulSetID string, supportedPlugins map[string]struct{}, regions ...string) (*proxyRequestEnvelope, error) {
+	deliveryKey := hubClientDeliveryKey(statefulSetID, hostID, regions...)
 	for {
 		broker.mu.Lock()
 		if deliveryQueue := broker.deliveryQueues[deliveryKey]; len(deliveryQueue) > 0 {
@@ -391,7 +441,8 @@ func (broker *proxyRequestBroker) dequeue(ctx context.Context, hostID string, st
 			return request, nil
 		}
 		for key, queue := range broker.queues {
-			if len(queue) == 0 || !proxyRequestSupported(queue[0].targetPlugins, supportedPlugins) {
+			if len(queue) == 0 || !proxyRequestSupported(queue[0].targetPlugins, supportedPlugins) ||
+				queue[0].region != "" && queue[0].region != broker.hosts[deliveryKey].region {
 				continue
 			}
 			request := queue[0]
@@ -464,6 +515,20 @@ func SetLocalModelRouteNormalizer(normalizer func(raw string) (string, error)) {
 // SetLocalModelRouteTranslator overrides how normalized plans are executed for chat requests.
 func SetLocalModelRouteTranslator(translator func(messageID string, routingResults string) (*LocalModelRouteExecution, error)) {
 	localModelRouteTranslator = translator
+}
+
+func SetLocalModelRouteExecutor(executor func(context.Context, *LocalModelRouteExecution) (string, error)) {
+	localModelRouteExecutor = executor
+}
+
+func SetChatPromptExecutor(executor func(context.Context, string, string) (string, error)) {
+	chatPromptExecutor = executor
+}
+
+var chatMessageHandler func(*tccore.ChatMsg) bool
+
+func SetChatMessageHandler(handler func(*tccore.ChatMsg) bool) {
+	chatMessageHandler = handler
 }
 
 // SetLocalModelRouteAuthorizer validates a normalized routing result before it is executed.
@@ -549,6 +614,9 @@ func executeLocalModelRoutingResults(ctx context.Context, messageID string, rout
 	}
 	if strings.TrimSpace(execution.MessageID) == "" {
 		execution.MessageID = messageID
+	}
+	if localModelRouteExecutor != nil {
+		return localModelRouteExecutor(ctx, execution)
 	}
 	return EnqueueProxyRequest(ctx, execution.MessageID, execution.TargetPlugins, execution.SerializedRequest)
 }
@@ -671,6 +739,13 @@ func ValidateIncomingTTBToken(ctx context.Context) error {
 	return validateIncomingTTBToken(ctx)
 }
 
+func AuthenticateIncoming(ctx context.Context) (context.Context, error) {
+	if identity.HasElevatedUserAuthorization(ctx) {
+		return ctx, nil
+	}
+	return trcshtalkcommon.AuthenticateIncoming(ctx, validateIncomingTTBToken, trcshtalkcommon.ConfiguredOIDCIDTokenValidator(configContext))
+}
+
 func promptFromDiagnosticRequest(req *ttsdk.DiagnosticRequest) string {
 	if req == nil {
 		return ""
@@ -688,13 +763,13 @@ func defaultLocalModelRouteNormalizer(raw string) (string, error) {
 
 func defaultLocalModelRouteAuthorizer(ctx context.Context, routingResults string) error {
 	plan, err := defaultRouter.ParsePlan(routingResults)
-	if err != nil || plan.LoggingAction == "" {
+	if err != nil {
+		return err
+	}
+	if plan.LoggingAction == "" {
 		return nil
 	}
-	if !IsHubClientRequest(ctx) {
-		return status.Error(codes.PermissionDenied, "logging directives require elevated permissions")
-	}
-	return nil
+	return trcshtalkcommon.RequireElevatedUserAuthorization(ctx)
 }
 
 func localModelActiveCount() string {
@@ -818,7 +893,7 @@ func EnqueueProxyRequest(ctx context.Context, messageID string, targetPlugins []
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	if local := trcshtalkcommon.LocalDiagnosticHandler(targetPlugins); local != nil {
+	if local := localDiagnosticHandler(ctx, targetPlugins); local != nil {
 		if configContext != nil && configContext.Log != nil {
 			configContext.Log.Printf("vico dispatching local diagnostic: routing_id=%s targets=%s", tccore.SanitizeForLogging(messageID), tccore.SanitizeForLogging(strings.Join(targetPlugins, ",")))
 		}
@@ -838,20 +913,24 @@ func EnqueueProxyRequestReplies(ctx context.Context, messageID string, targetPlu
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	responseTracker := newProxyResponseTracker()
-	proxyReplies.Store(messageID, responseTracker)
-	defer proxyReplies.Delete(messageID)
+	if _, loaded := proxyReplies.LoadOrStore(messageID, responseTracker); loaded {
+		return nil, status.Error(codes.AlreadyExists, "diagnostic message ID is already in use")
+	}
+	defer proxyReplies.CompareAndDelete(messageID, responseTracker)
 	envelope := &proxyRequestEnvelope{
 		messageID:         messageID,
 		targetPlugins:     append([]string(nil), targetPlugins...),
 		serializedRequest: serializedRequest,
 	}
+	defer proxyRequests.removeQueued(envelope)
 
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
 	}
-	local := trcshtalkcommon.LocalDiagnosticHandler(targetPlugins)
+	local := localDiagnosticHandler(ctx, targetPlugins)
+	envelope.region = trcshtalkcommon.TargetRegion(ctx)
 	deliveries := proxyRequests.enqueueFanout(envelope, local != nil)
 	if local != nil {
 		deliveries++
@@ -896,22 +975,39 @@ func EnqueueProxyRequestReplies(ctx context.Context, messageID string, targetPlu
 // EnqueueProxyRequestToPod sends a request to exactly one connected pod identified
 // by its kernel ID. Empty targets use EnqueueProxyRequest fan-out.
 func EnqueueProxyRequestToPod(ctx context.Context, messageID string, targetKernelID string, targetPlugins []string, serializedRequest string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 	if strings.TrimSpace(targetKernelID) == "" {
 		return EnqueueProxyRequest(ctx, messageID, targetPlugins, serializedRequest)
 	}
+	if trcshtalkcommon.TargetRegion(ctx) == "" {
+		md, _ := metadata.FromIncomingContext(ctx)
+		regions := md.Get(trcshtalkcommon.HubClientRegionMetadataKey)
+		if len(regions) == 1 && strings.TrimSpace(regions[0]) != "" {
+			ctx = trcshtalkcommon.WithTargetRegion(ctx, trcshtalkcommon.NormalizeRegion(regions[0]))
+		}
+	}
 	if configContext != nil && configContext.KernelID != "" && kernelIDMatchesPod(targetKernelID, configContext.KernelID) {
-		if local := trcshtalkcommon.LocalDiagnosticHandler(targetPlugins); local != nil {
+		if local := localDiagnosticHandler(ctx, targetPlugins); local != nil {
 			return local(ctx, messageID, serializedRequest)
 		}
 	}
 	responseTracker := newProxyResponseTracker()
 	responseTracker.setExpected(1)
-	proxyReplies.Store(messageID, responseTracker)
-	defer proxyReplies.Delete(messageID)
+	if _, loaded := proxyReplies.LoadOrStore(messageID, responseTracker); loaded {
+		return "", status.Error(codes.AlreadyExists, "diagnostic message ID is already in use")
+	}
+	defer proxyReplies.CompareAndDelete(messageID, responseTracker)
 	envelope := &proxyRequestEnvelope{
 		messageID:         messageID,
 		targetPlugins:     append([]string(nil), targetPlugins...),
 		serializedRequest: serializedRequest,
+		region:            trcshtalkcommon.TargetRegion(ctx),
+	}
+	defer proxyRequests.removeQueued(envelope)
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
 	if err := proxyRequests.enqueueToPod(targetKernelID, envelope); err != nil {
 		return "", err
@@ -944,9 +1040,11 @@ func DequeueProxyRequest(ctx context.Context) (string, error) {
 	supportedPlugins := supportedPluginsFromIncomingContext(ctx)
 	podID := hubClientPodFromIncomingContext(ctx)
 	statefulSetID := hubClientStatefulSetFromIncomingContext(ctx)
-	deliveryKey := proxyRequests.beginHostPoll(podID, statefulSetID, supportedPlugins)
+	md, _ := metadata.FromIncomingContext(ctx)
+	region := strings.TrimSpace(strings.Join(md.Get(trcshtalkcommon.HubClientRegionMetadataKey), ""))
+	deliveryKey := proxyRequests.beginHostPoll(podID, statefulSetID, supportedPlugins, region)
 	defer proxyRequests.endHostPoll(deliveryKey)
-	proxyRequest, err := proxyRequests.dequeue(ctx, podID, statefulSetID, supportedPlugins)
+	proxyRequest, err := proxyRequests.dequeue(ctx, podID, statefulSetID, supportedPlugins, region)
 	if err != nil {
 		return "", err
 	}
@@ -968,11 +1066,24 @@ func EnqueueProxyDirective(directiveKey string, messageID string, targetPlugins 
 
 // PostProxyResponse records a queued request response by message ID.
 func PostProxyResponse(messageID string, result string) bool {
+	return postProxyResponseFromSource(messageID, result, "")
+}
+
+func PostProxyResponseFromHost(ctx context.Context, messageID, result string) bool {
+	source := ""
+	if pod, stateful := hubClientPodFromIncomingContext(ctx), hubClientStatefulSetFromIncomingContext(ctx); pod != "" && stateful != "" {
+		md, _ := metadata.FromIncomingContext(ctx)
+		source = hubClientDeliveryKey(stateful, pod, strings.Join(md.Get(trcshtalkcommon.HubClientRegionMetadataKey), ""))
+	}
+	return postProxyResponseFromSource(messageID, result, source)
+}
+
+func postProxyResponseFromSource(messageID, result, source string) bool {
 	responseTrackerValue, ok := proxyReplies.Load(messageID)
 	if !ok {
 		return false
 	}
-	accepted := responseTrackerValue.(*proxyResponseTracker).addResponse(result)
+	accepted := responseTrackerValue.(*proxyResponseTracker).addResponseFromSource(source, result)
 	if configContext != nil && configContext.Log != nil {
 		configContext.Log.Printf("vico received diagnostic reply: routing_id=%s accepted=%t", tccore.SanitizeForLogging(messageID), accepted)
 	}
@@ -1030,11 +1141,15 @@ func dequeueProxyRequest(ctx context.Context, req *ttsdk.DiagnosticRequest) (*tt
 	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: serializedRequest}, nil
 }
 
-func postProxyResponse(req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, bool) {
+func postProxyResponse(req *ttsdk.DiagnosticRequest, contexts ...context.Context) (*ttsdk.DiagnosticResponse, bool) {
 	if len(req.GetData()) == 0 {
 		return nil, false
 	}
-	if !PostProxyResponse(req.GetMessageId(), req.GetData()[0]) {
+	ctx := context.Background()
+	if len(contexts) > 0 {
+		ctx = contexts[0]
+	}
+	if !PostProxyResponseFromHost(ctx, req.GetMessageId(), req.GetData()[0]) {
 		return nil, false
 	}
 	return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Response posted"}, true
@@ -1117,23 +1232,30 @@ func isHubClientPoll(req *ttsdk.DiagnosticRequest) bool {
 
 // Runs Vico diagnostics for the shared trcshtalk RPC contract.
 func (s *diagnosticsServiceServer) RunDiagnostics(ctx context.Context, req *ttsdk.DiagnosticRequest) (*ttsdk.DiagnosticResponse, error) {
-	if err := validateIncomingTTBToken(ctx); err != nil {
-		if configContext != nil {
-			configContext.Log.Printf("Rejecting RunDiagnostics request: %v", err)
-		}
-		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
+	var err error
+	ctx, err = AuthenticateIncoming(ctx)
+	if err != nil {
+		return nil, err
 	}
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "missing diagnostic request")
 	}
 	if IsHubClientBroadcast(req.GetMessageId(), req.GetData()) {
+		if identity.HasElevatedUserAuthorization(ctx) {
+			return nil, status.Error(codes.PermissionDenied, "broadcasts require workload authentication")
+		}
 		if err := RelayHubClientBroadcast(req.GetMessageId(), req.GetData()); err != nil {
 			return nil, status.Error(codes.Unavailable, err.Error())
 		}
 		return &ttsdk.DiagnosticResponse{MessageId: req.GetMessageId(), Results: "Broadcast relayed"}, nil
 	}
-	if response, handled := postProxyResponse(req); handled {
-		return response, nil
+	if identity.HasElevatedUserAuthorization(ctx) && isHubClientPoll(req) {
+		return nil, status.Error(codes.PermissionDenied, "polls and replies require workload authentication")
+	}
+	if !identity.HasElevatedUserAuthorization(ctx) {
+		if response, handled := postProxyResponse(req, ctx); handled {
+			return response, nil
+		}
 	}
 	if isHubClientPoll(req) {
 		return dequeueProxyRequest(ctx, req)
@@ -1362,7 +1484,18 @@ func InitServer(port int, certBytes []byte, keyBytes []byte) (net.Listener, *grp
 	if err != nil {
 		return nil, nil, err
 	}
-	return lis, grpc.NewServer(grpc.Creds(creds)), nil
+	return lis, grpc.NewServer(grpc.Creds(creds), grpc.UnaryInterceptor(
+		func(ctx context.Context, request any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+			if strings.HasPrefix(info.FullMethod, "/grpc.health.v1.Health/") {
+				return handler(ctx, request)
+			}
+			ctx, err := AuthenticateIncoming(ctx)
+			if err != nil {
+				return nil, err
+			}
+			return handler(ctx, request)
+		},
+	)), nil
 }
 
 func startCore(pluginName string, registerFn func(grpcServer *grpc.Server)) (string, *grpc.Server, *tccore.TTDINode, error) {
@@ -1531,6 +1664,9 @@ func queryLocalModelForRouting(prompt string) (string, error) {
 func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 	for {
 		event := <-chatReceiverChan
+		if chatMessageHandler != nil && chatMessageHandler(event) {
+			continue
+		}
 		switch {
 		case event == nil:
 			continue
@@ -1559,6 +1695,24 @@ func chatReceiver(chatReceiverChan chan *tccore.ChatMsg) {
 			}(event, targetPlugin)
 		case extractPrompt(event) != "":
 			prompt := extractPrompt(event)
+			if chatPromptExecutor != nil {
+				go func(event *tccore.ChatMsg, prompt string) {
+					messageID := fmt.Sprintf("vico:%d", time.Now().UnixNano())
+					if event.RoutingId != nil && strings.TrimSpace(*event.RoutingId) != "" {
+						messageID = *event.RoutingId
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), hubClientRequestTimeout)
+					defer cancel()
+					response, err := chatPromptExecutor(ctx, messageID, prompt)
+					if err != nil {
+						configContext.Log.Printf("vico query failed: %s", tccore.SanitizeForLogging(err.Error()))
+						response = "Vico query failed: " + err.Error()
+					}
+					event.Response = &response
+					*configContext.ChatSenderChan <- event
+				}(event, prompt)
+				continue
+			}
 			configContext.Log.Println("vico local model request")
 			response, err := queryLocalModelForRouting(prompt)
 			if err != nil {
@@ -1691,6 +1845,9 @@ func Init(pluginName string, properties *map[string]any) {
 	if _, ok := (*properties)[COMMON_PATH]; !ok {
 		fmt.Fprintln(os.Stderr, "Missing common config components")
 		return
+	}
+	if validator, ok := identity.OIDCIDTokenValidatorFromProperties(*properties); ok {
+		(*configContext.Config)[identity.OIDCIDTokenValidatorProperty] = validator
 	}
 	trcshtalkcommon.SetHubCommandHandler(func(ctx context.Context, messageID string, data []string) (string, error) {
 		return ExecuteLocalModelRoute(ctx, messageID, "", data, localModelRouteTranslator)

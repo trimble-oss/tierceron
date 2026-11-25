@@ -1,6 +1,7 @@
 package hive
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -22,6 +23,7 @@ import (
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig"
 	"github.com/trimble-oss/tierceron-core/v2/core/coreconfig/cache"
 	"github.com/trimble-oss/tierceron-core/v2/flow"
+	"github.com/trimble-oss/tierceron-core/v2/identity"
 	"github.com/trimble-oss/tierceron/atrium/buildopts/flowopts"
 
 	"github.com/trimble-oss/tierceron-core/v2/buildopts/kernelopts"
@@ -538,6 +540,21 @@ func (pluginHandler *PluginHandler) Init(properties *map[string]any) {
 	}
 }
 
+func talkctlOIDCIDTokenValidator(driverConfig *config.DriverConfig) func(context.Context, string) error {
+	return func(ctx context.Context, token string) error {
+		address := driverConfig.CoreConfig.TokenCache.VaultAddressPtr
+		if address == nil || *address == "" {
+			return fmt.Errorf("%w: Vault address missing", identity.ErrUserAuthUnavailable)
+		}
+		vault, err := system.NewVault(false, address, driverConfig.CoreConfig.Env, false, false, false, driverConfig.CoreConfig.Log)
+		if err != nil {
+			return fmt.Errorf("%w: Vault connection failed", identity.ErrUserAuthUnavailable)
+		}
+		defer vault.Close()
+		return vault.ValidateOIDCIDToken(ctx, token)
+	}
+}
+
 func (pluginHandler *PluginHandler) RunPlugin(
 	driverConfig *config.DriverConfig,
 	service string,
@@ -583,6 +600,14 @@ func (pluginHandler *PluginHandler) RunPlugin(
 	(*serviceConfig)["env"] = driverConfig.CoreConfig.Env
 	(*serviceConfig)["isKubernetes"] = IsRunningInKubernetes()
 	(*serviceConfig)["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
+	if service == "trcshtalk" && kernelopts.BuildOptions.IsKernelZ() {
+		provider := eUtils.TalkctlOIDCIDTokenProvider(driverConfig)
+		(*serviceConfig)[identity.OIDCIDTokenProviderProperty] = provider
+	}
+	if service == "vico" {
+		validator := talkctlOIDCIDTokenValidator(driverConfig)
+		(*serviceConfig)[identity.OIDCIDTokenValidatorProperty] = validator
+	}
 	(*serviceConfig)["kernelID"] = pluginHandler.KernelId
 
 	// KernelZ permits shell tools and the TrcshTalk command transport.
@@ -1003,6 +1028,14 @@ func (pluginHandler *PluginHandler) PluginserviceStart(driverConfig *config.Driv
 			serviceConfig["env"] = driverConfig.CoreConfig.Env
 			serviceConfig["isKubernetes"] = IsRunningInKubernetes()
 			serviceConfig["isKernelZ"] = kernelopts.BuildOptions.IsKernelZ()
+			if service == "trcshtalk" && kernelopts.BuildOptions.IsKernelZ() {
+				provider := eUtils.TalkctlOIDCIDTokenProvider(driverConfig)
+				serviceConfig[identity.OIDCIDTokenProviderProperty] = provider
+			}
+			if service == "vico" {
+				validator := talkctlOIDCIDTokenValidator(driverConfig)
+				serviceConfig[identity.OIDCIDTokenValidatorProperty] = validator
+			}
 			serviceConfig["kernelID"] = pluginHandler.KernelId
 			go pluginHandler.handleErrors(driverConfig)
 			*driverConfig.CoreConfig.CurrentTokenNamePtr = "config_token_pluginany"

@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/identity"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/buildopts/coreopts"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk"
 	"github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/ttcore/common"
@@ -272,6 +273,9 @@ func GetConfigPaths(pluginName string) []string {
 }
 
 func Init(pluginName string, properties *map[string]interface{}) {
+	if provider, ok := identity.OIDCIDTokenProviderFromProperties(*properties); ok {
+		common.SetOIDCIDTokenProvider(provider)
+	}
 	ctx, err := common.InitTrcshTalk(pluginName, properties, start, receiver, chatReceiver)
 	if ctx == nil {
 		return
@@ -343,7 +347,12 @@ func processTrcshTalkRequest(serverName string, port int, ttbToken *string, isRe
 		},
 		shutdownChan,
 		b,
-		GenMsgId,
+		func(env, region string, broadcast bool) string {
+			if !broadcast && diagReq.GetMessageId() != "" {
+				return diagReq.GetMessageId()
+			}
+			return GenMsgId(env, region, broadcast)
+		},
 		mashupCertBytes,
 		func(serverName string, certBytes []byte) (*tls.Config, error) {
 			if certBytes == nil {
