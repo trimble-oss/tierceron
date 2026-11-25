@@ -300,7 +300,7 @@ replace github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcdb =>
 
 //replace github.com/trimble-oss/tierceron-hat => ../tierceron-hat
 
-replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
+//replace github.com/trimble-oss/tierceron-core/v2 => ../tierceron-core
 
 replace (
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp => go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.68.0
