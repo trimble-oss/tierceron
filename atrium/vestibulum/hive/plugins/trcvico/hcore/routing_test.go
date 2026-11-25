@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/identity"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -79,8 +80,11 @@ func TestDefaultRouteAuthorizerRequiresHubClientForLogging(t *testing.T) {
 		hubClientStatefulSetMetadataKey, "worker",
 		hubClientPluginsMetadataKey, "worker",
 	))
-	if err := defaultLocalModelRouteAuthorizer(hubClientContext, routingResults); err != nil {
-		t.Fatalf("hub client logging directive rejected: %v", err)
+	if err := defaultLocalModelRouteAuthorizer(hubClientContext, routingResults); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("workload metadata granted elevation: %v", err)
+	}
+	if err := defaultLocalModelRouteAuthorizer(identity.WithElevatedUserAuthorization(hubClientContext), routingResults); err != nil {
+		t.Fatalf("authorized user logging directive rejected: %v", err)
 	}
 }
 

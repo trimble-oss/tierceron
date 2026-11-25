@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	tccore "github.com/trimble-oss/tierceron-core/v2/core"
+	"github.com/trimble-oss/tierceron-core/v2/identity"
 	pb "github.com/trimble-oss/tierceron/atrium/vestibulum/hive/plugins/trcshtalk/trcshtalksdk"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -39,13 +40,43 @@ func SetHubCommandClient(client func(context.Context, string, string) (string, e
 }
 
 func SendHubCommand(ctx context.Context, messageID string, prompt string) (string, error) {
+	if strings.Contains(strings.ToLower(prompt), "region:") {
+		return "", status.Error(codes.InvalidArgument, "client region overrides are not allowed")
+	}
 	hubCommandMu.RLock()
 	client := hubCommandClient
+	provider := userTokenProvider
 	hubCommandMu.RUnlock()
 	if client == nil {
 		return "", status.Error(codes.Unavailable, "TrcshTalk hub client is not running")
 	}
-	return client(ctx, messageID, prompt)
+	if provider == nil {
+		return "", status.Error(codes.FailedPrecondition, "Talkctl user session is unavailable; run su")
+	}
+	token, err := provider(ctx, false)
+	if err != nil {
+		return "", err
+	}
+	if token == "" {
+		return "", status.Error(codes.Unauthenticated, "Talkctl requires a user session; run su")
+	}
+	callCtx := withUserToken(ctx, token)
+	result, err := client(callCtx, messageID, prompt)
+	if !UserTokenExpired(err) {
+		return result, err
+	}
+	token, err = provider(ctx, true)
+	if err != nil {
+		return "", err
+	}
+	if token == "" {
+		return "", status.Error(codes.Unauthenticated, "user reauthentication returned no token")
+	}
+	return client(withUserToken(ctx, token), messageID, prompt)
+}
+
+func withUserToken(ctx context.Context, token string) context.Context {
+	return withOutgoingMetadata(ctx, identity.UserTokenMetadataKey, token)
 }
 
 type hubCommandServer interface {
@@ -58,21 +89,22 @@ type hubCommandService struct {
 }
 
 func (service *hubCommandService) RunCommand(ctx context.Context, request *pb.DiagnosticRequest) (*pb.DiagnosticResponse, error) {
-	var tokenErr error
-	if service.validateToken != nil {
-		tokenErr = service.validateToken(ctx)
-	} else {
+	workload := service.validateToken
+	if workload == nil {
 		if service.config == nil || resolveTrcshTalkMode(service.config.Config) != ModeHub {
 			return nil, status.Error(codes.FailedPrecondition, "hub command service is not enabled")
 		}
-		tokenErr = ValidateIncomingTTBToken(service.config, ctx)
+		workload = func(ctx context.Context) error { return ValidateIncomingTTBToken(service.config, ctx) }
 	}
-	if tokenErr != nil {
-		return nil, status.Error(codes.Unauthenticated, "invalid talkback token")
+	var err error
+	if !identity.HasElevatedUserAuthorization(ctx) {
+		ctx, err = AuthenticateIncoming(ctx, workload, ConfiguredUserTokenValidator(service.config))
+		if err != nil {
+			return nil, err
+		}
 	}
-	md, _ := metadata.FromIncomingContext(ctx)
-	if !hasHubMetadataValue(md, HubClientPodMetadataKey) || !hasHubMetadataValue(md, HubClientStatefulSetMetadataKey) || len(SupportedDeploymentsFromIncomingContext(ctx)) == 0 {
-		return nil, status.Error(codes.PermissionDenied, "commands require elevated permissions")
+	if err := RequireElevatedUserAuthorization(ctx); err != nil {
+		return nil, err
 	}
 	if request == nil || strings.TrimSpace(request.GetMessageId()) == "" || strings.TrimSpace(strings.Join(request.GetData(), " ")) == "" {
 		return nil, status.Error(codes.InvalidArgument, "missing command or message ID")

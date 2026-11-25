@@ -51,7 +51,7 @@ type OAuthLoginResult struct {
 // Example usage:
 //
 //	config := &OAuthLoginConfig{
-//	    OIDCDiscoveryURL: "https://id.trimble.com/.well-known/openid-configuration",
+//	    OIDCDiscoveryURL: "https://identity.example.com/.well-known/openid-configuration",
 //	    ClientID:         os.Getenv("OAUTH_CLIENT_ID"),
 //	    ClientSecret:     "",  // Empty for public client
 //	    RedirectURL:      "http://localhost:8080/callback",
@@ -143,7 +143,7 @@ func (v *Vault) LoginWithOAuth(ctx context.Context, config *OAuthLoginConfig) (*
 // Example usage:
 //
 //	config := &OAuthLoginConfig{
-//	    OIDCDiscoveryURL: "https://id.trimble.com/.well-known/openid-configuration",
+//	    OIDCDiscoveryURL: "https://identity.example.com/.well-known/openid-configuration",
 //	    ClientID:         os.Getenv("OAUTH_CLIENT_ID"),
 //	    RedirectURL:      "http://localhost:8080/callback",
 //	    Scopes:           []string{"openid", "profile", "email"},
