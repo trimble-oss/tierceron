@@ -53,7 +53,7 @@ func (v *Vault) ValidateOIDCIDToken(ctx context.Context, token string) error {
 	defer v.client.SetToken(previousToken)
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
-	if err := v.client.Auth().Token().RevokeSelfWithContext(cleanup); err != nil {
+	if err := v.client.Auth().Token().RevokeSelfWithContext(cleanup, clientToken); err != nil {
 		return fmt.Errorf("%w: token cleanup failed", identity.ErrUserAuthUnavailable)
 	}
 	if protectionErr != nil {
