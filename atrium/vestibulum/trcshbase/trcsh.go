@@ -67,6 +67,20 @@ const (
 	YOU_SHALL_NOT_PASS = "you shall not pass"
 )
 
+func kubectlCommandTimeout(args []string) time.Duration {
+	if len(args) > 1 {
+		switch args[1] {
+		case "wait", "scale":
+			return 11 * time.Minute
+		case "rollout":
+			if len(args) > 2 && args[2] == "status" {
+				return 11 * time.Minute
+			}
+		}
+	}
+	return 15 * time.Second
+}
+
 func CreateLogFile() (*log.Logger, error) {
 	var f *os.File
 	var logPrefix string = "[DEPLOY]"
@@ -1593,7 +1607,7 @@ func processPluginCmds(trcKubeDeploymentConfig **kube.TrcKubeConfig,
 		}(trcshDriverConfig.DriverConfig)
 
 		select {
-		case <-time.After(15 * time.Second):
+		case <-time.After(kubectlCommandTimeout(os.Args)):
 			eUtils.LogSyncAndExit(trcshDriverConfig.DriverConfig.CoreConfig.Log, "Kubernetes connection stalled or timed out.  Possible kubernetes ip change", -1)
 		case kubeErr := <-kubectlErrChan:
 			if kubeErr != nil {
